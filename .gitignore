@@ -20,3 +20,5 @@ yarn-error.log
 /resources/\@client//main.ts
 Dockerfile
 /app/Providers/AppServiceProvider.php
+Dockerfile
+docker-compose.yml
