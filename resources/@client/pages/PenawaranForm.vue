@@ -427,7 +427,7 @@
     <option value="" disabled>Pilih…</option>
     <option value="COD">COD</option>
     <option value="CBD">CBD</option>
-    <option value="TOP">TOP</option>
+    <option value="TOP 30">TOP 30</option>
     <option value="CUSTOM">Custom</option>
   </FormSelect>
 
