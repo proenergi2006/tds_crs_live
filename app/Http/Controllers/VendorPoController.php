@@ -255,13 +255,7 @@ public function preview($id)
     $logoLeft  = file_exists($leftPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))  : null;
     $logoRight = file_exists($rightPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath)) : null;
 
-    $qrPayload = json_encode([
-        'type'      => 'APPROVAL_PO',
-        'po_number' => $po->nomor_po,
-        'approved'  => 'Vica Krisdianatha',
-        'role'      => 'Direktur Utama',
-        'date'      => now()->format('Y-m-d H:i:s'),
-    ]);
+    $qrPayload = (string) $po->nomor_po;
 
     $result = Builder::create()
     ->writer(new PngWriter())
