@@ -317,22 +317,35 @@
     </tbody>
 
     <tfoot>
-      <tr class="bg-slate-100 font-semibold">
-        <td class="px-4 py-2 text-right" colspan="1">Total</td>
-        <td
-          class="px-2 py-2 text-right"
-          :class="totalPersenNumber !== 100 ? 'text-red-600 font-bold' : ''"
-        >
-          {{ totalPersenDisplay }}
-        </td>
-        <td class="px-4 py-2 text-right">{{ totalVolume }}</td>
-        <td class="px-4 py-2"></td> <!-- kolom harga_price_list kosong di total -->
+  <tr class="bg-slate-100 font-semibold">
+    <!-- 1 Produk -->
+    <td class="px-4 py-2 text-right">Tota</td>
 
-        <!-- Kolom harga_tebus & jumlah harga hanya jika canSeeHarga -->
-        <td v-if="canSeeHarga" colspan="2"></td>
-        <td v-else colspan="1"></td>
-      </tr>
-    </tfoot>
+    <!-- 2 Persen -->
+    <td
+      class="px-2 py-2 text-right"
+      :class="totalPersenNumber !== 100 ? 'text-red-600 font-bold' : ''"
+    >
+      {{ totalPersenDisplay }}
+    </td>
+
+    <!-- 3 Volume -->
+    <td class="px-4 py-2 text-right">{{ totalVolume }}</td>
+
+    <!-- 4 Harga Price List (AVG) -->
+    <td class="px-4 py-2 text-right">
+      {{ formatCurrency(avgHargaPriceList || 0) }}
+    </td>
+
+    <!-- 5 & 6 hanya jika canSeeHarga -->
+    <td v-if="canSeeHarga" class="px-4 py-2"></td>
+    <td v-if="canSeeHarga" class="px-4 py-2"></td>
+
+    <!-- Kolom terakhir: Aksi (SELALU ADA) -->
+    <td class="px-4 py-2"></td>
+  </tr>
+</tfoot>
+
   </table>
 
   <!-- Ringkasan harga -->
@@ -427,7 +440,7 @@
     <option value="" disabled>Pilih…</option>
     <option value="COD">COD</option>
     <option value="CBD">CBD</option>
-    <option value="TOP 30">TOP 30</option>
+    <option value="TOP">TOP</option>
     <option value="CUSTOM">Custom</option>
   </FormSelect>
 
@@ -599,8 +612,17 @@
                 </td>
               </tr>
 
+              <tr class="font-semibold bg-slate-50">
+  <td class="px-3 py-2 border text-center">3</td>
+  <td class="px-3 py-2 border">Subtotal (Harga Dasar + OA)</td>
+  <td class="px-3 py-2 border"></td>
+  <td class="px-3 py-2 border text-right bg-gray-50">
+    {{ formatCurrency(dppHargaDasar) }}
+  </td>
+</tr>
+
               <tr>
-                <td class="px-3 py-2 border text-center">3</td>
+                <td class="px-3 py-2 border text-center">4</td>
                 <td class="px-3 py-2 border bg-slate-50">PPN</td>
                 <td class="px-3 py-2 border text-right">11%</td>
                 <td class="px-3 py-2 border text-right bg-gray-50">
@@ -848,6 +870,21 @@ const ppnHargaDasar = computed(() => {
 
 const grandTotalHargaDasar = computed(() => {
   return dppHargaDasar.value + ppnHargaDasar.value
+})
+
+//baru
+const avgHargaPriceList = computed(() => {
+  const totalPersen = form.items.reduce((s, it) => s + (toFloat(it.persen || '0')), 0)
+  if (totalPersen <= 0) return 0
+
+  const totalWeighted = form.items.reduce((sum, it) => {
+    const persen = toFloat(it.persen || '0')
+    const harga = Number(it.harga_price_list || 0)
+    return sum + (harga * persen)
+  }, 0)
+
+  // kalau persen wajib 100, ini sama saja /100
+  return totalWeighted / totalPersen
 })
 
 function validateForm(): boolean {
