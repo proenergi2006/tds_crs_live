@@ -173,7 +173,7 @@
   <table class="hdr">
     <tr>
       <td class="logo" style="width:55%">
-        <img src="{{ public_path('images/tds.png') }}" alt="Logo">
+        <img src="{{ public_path('images/logo-new.png') }}" alt="Logo">
       </td>
       <td class="right" style="width:45%">
         Jakarta, {{ $nowID }}
@@ -187,7 +187,7 @@
         No. Ref {{ $penawaran->nomor_penawaran }}
       </td>
       <td class="refright" style="width:40%">
-        Telp. {{ $penawaran->telepon ?? '-' }}
+        {{-- Telp. {{ $penawaran->telepon ?? '-' }} --}}
       </td>
     </tr>
   </table>
@@ -214,7 +214,7 @@
   <!-- Intro -->
   <p class="p">Yth. Bapak/Ibu,</p>
   <p class="p">
-    Bersama surat ini, perkenankan kami memperkenalkan bahwa kami dari PT Tri Daya Selaras (Perusahaan afiliasi dari PT Pro Energi ) sebagai Badan Hukum yang memiliki
+    Bersama surat ini, perkenankan kami memperkenalkan bahwa kami dari PT Tri Daya Selaras sebagai Badan Hukum yang memiliki
     Izin Usaha Penjualan & Jasa Pertambangan dari ESDM, bergerak di bidang pertambangan.
   </p>
   <p class="p">
@@ -236,7 +236,7 @@
       </tr>
       <tr>
         <td class="no">3.</td><td class="label"><b>Harga per m&sup3;</b></td><td class="colon">:</td>
-        <td class="value">{{ $rupiah($penawaran->harga_dasar) }} <span style="color:#666">(Harga belum termasuk PPN 11%)</span></td>
+        <td class="value">{{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }} <span style="color:#666">(Harga belum termasuk PPN 11%)</span></td>
       </tr>
       <tr>
         <td class="no">4.</td>
@@ -327,7 +327,13 @@
           <strong>{{ $contact['name'] }}</strong><br>
           {{ $contact['role'] }}<br>
           {{ $contact['phone'] }}<br>
+          <a
+          href="mailto:{{ e($contact['email']) }}"
+          class="text-blue-600 underline hover:text-blue-800"
+        >
           {{ $contact['email'] }}
+        </a>
+        
         </div>
       </td>
     </tr>
@@ -339,7 +345,15 @@
 <div class="footer">
   <hr style="border: none; border-top: 1px solid #000;">
   <strong >PT. Tri Daya Selaras, </strong> • Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2 •
-  Telp. +021 5289 2321 • Fax +021 5289 2310 • www.tridayaselaras.com
+  Telp. +021 5289 2321 • Fax +021 5289 2310 • <a
+  href="https://www.tridayaselaras.com"
+  target="_blank"
+  rel="noopener noreferrer"
+  class="text-blue-600 underline hover:text-blue-800"
+>
+  www.tridayaselaras.com
+</a>
+
 </div>
 
 </body>
