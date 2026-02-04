@@ -174,33 +174,87 @@ class VendorPoController extends Controller
 //         ])->stream("PO.pdf");
 // }
 
+// public function preview($id)
+// {
+//     $po = VendorPo::with([
+//         'vendor',
+//         'terminal',
+//         'produks.produk',
+//         'produks.produk.ukuran.satuan',
+//         'produks.produk.jenis'
+//     ])->findOrFail($id);
+
+//     // Logo
+//     $leftPath  = public_path('images/tds.png');
+//     $rightPath = public_path('images/logo_prodiesel.png');
+
+//     $logoLeft  = file_exists($leftPath)
+//         ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))
+//         : null;
+
+//     $logoRight = file_exists($rightPath)
+//         ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath))
+//         : null;
+
+//     /**
+//      * ==========================
+//      * QR SIGNATURE – DIREKTUR
+//      * ==========================
+//      */
+//     $qrPayload = json_encode([
+//         'type'      => 'APPROVAL_PO',
+//         'po_number' => $po->nomor_po,
+//         'approved'  => 'Vica Krisdianatha',
+//         'role'      => 'Direktur Utama',
+//         'date'      => now()->format('Y-m-d H:i:s'),
+//     ]);
+    
+//     // $result = Builder::create()
+//     //     ->writer(new PngWriter())
+//     //     ->data($qrPayload)
+//     //     ->encoding(new Encoding('UTF-8'))
+//     //     ->errorCorrectionLevel(ErrorCorrectionLevel::High) // ⬅️ INI KUNCI-NYA
+//     //     ->size(220)
+//     //     ->margin(5)
+//     //     ->build();
+    
+//     // $qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
+    
+//     $filename = 'PO-' . str_replace(['/', '\\'], '-', $po->nomor_po) . '.pdf';
+
+//     // return Pdf::loadView(
+//     //     'vendorpos.preview',
+//     //     compact('po', 'logoLeft', 'logoRight', 'qrBase64')
+//     // )
+
+//     return Pdf::loadView(
+//         'vendorpos.preview',
+//         compact('po', 'logoLeft', 'logoRight')
+//     )
+//     ->setPaper('a4', 'portrait')
+//     ->setOptions([
+//         'isRemoteEnabled' => true,
+//         'defaultFont' => 'DejaVu Sans',
+//     ])
+//     ->stream($filename);
+    
+// }
+
+
+
+
 public function preview($id)
 {
     $po = VendorPo::with([
-        'vendor',
-        'terminal',
-        'produks.produk',
-        'produks.produk.ukuran.satuan',
-        'produks.produk.jenis'
+        'vendor','terminal','produks.produk','produks.produk.ukuran.satuan','produks.produk.jenis'
     ])->findOrFail($id);
 
-    // Logo
     $leftPath  = public_path('images/tds.png');
     $rightPath = public_path('images/logo_prodiesel.png');
 
-    $logoLeft  = file_exists($leftPath)
-        ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))
-        : null;
+    $logoLeft  = file_exists($leftPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))  : null;
+    $logoRight = file_exists($rightPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath)) : null;
 
-    $logoRight = file_exists($rightPath)
-        ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath))
-        : null;
-
-    /**
-     * ==========================
-     * QR SIGNATURE – DIREKTUR
-     * ==========================
-     */
     $qrPayload = json_encode([
         'type'      => 'APPROVAL_PO',
         'po_number' => $po->nomor_po,
@@ -208,38 +262,29 @@ public function preview($id)
         'role'      => 'Direktur Utama',
         'date'      => now()->format('Y-m-d H:i:s'),
     ]);
-    
-    // $result = Builder::create()
-    //     ->writer(new PngWriter())
-    //     ->data($qrPayload)
-    //     ->encoding(new Encoding('UTF-8'))
-    //     ->errorCorrectionLevel(ErrorCorrectionLevel::High) // ⬅️ INI KUNCI-NYA
-    //     ->size(220)
-    //     ->margin(5)
-    //     ->build();
-    
-    // $qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
-    
+
+    $result = Builder::create()
+    ->writer(new PngWriter())
+    ->data($qrPayload)
+    ->encoding(new Encoding('UTF-8'))
+    ->errorCorrectionLevel(ErrorCorrectionLevel::High)
+    ->size(220)
+    ->margin(5)
+    ->build();
+
+$qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
+
+
     $filename = 'PO-' . str_replace(['/', '\\'], '-', $po->nomor_po) . '.pdf';
 
-    // return Pdf::loadView(
-    //     'vendorpos.preview',
-    //     compact('po', 'logoLeft', 'logoRight', 'qrBase64')
-    // )
-
-    return Pdf::loadView(
-        'vendorpos.preview',
-        compact('po', 'logoLeft', 'logoRight')
-    )
-    ->setPaper('a4', 'portrait')
-    ->setOptions([
-        'isRemoteEnabled' => true,
-        'defaultFont' => 'DejaVu Sans',
-    ])
-    ->stream($filename);
-    
+    return Pdf::loadView('vendorpos.preview', compact('po','logoLeft','logoRight','qrBase64'))
+        ->setPaper('a4', 'portrait')
+        ->setOptions([
+            'isRemoteEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
+        ])
+        ->stream($filename);
 }
-
 
 
 
