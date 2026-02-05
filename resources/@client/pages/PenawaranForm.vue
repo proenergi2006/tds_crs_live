@@ -973,7 +973,7 @@ function validateForm(): boolean {
 async function fetchSelects() {
   try {
     const [cData, caData, pData] = await Promise.all([
-      axios.get('/api/customers'),
+      axios.get('/api/customers', { params: { per_page: 100 } }),
       axios.get('/api/cabangs'),
       axios.get('/api/produks?with=ukuran'),
     ]);
