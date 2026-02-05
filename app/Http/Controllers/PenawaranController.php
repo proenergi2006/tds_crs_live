@@ -20,6 +20,10 @@ use PDF;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
 
 
 
@@ -1120,93 +1124,101 @@ public function ajukan($id)
         return $user?->email;
     }
 
-    // PenawaranController.php (tambahkan method baru ini)
-public function previewPdfMultiLang(Request $request, $id)
-{
-    $lang = strtolower($request->query('lang', 'id')); // default: Indonesia
-    $penawaran = Penawaran::with(['customer', 'cabang', 'items.produk.ukuran', 'user.role'])->findOrFail($id);
+    public function previewPdfMultiLang(Request $request, $id)
+    {
+        $lang = strtolower($request->query('lang', 'id')); // default: Indonesia
+    
+        $penawaran = Penawaran::with(['customer', 'cabang', 'items.produk.ukuran', 'user.role'])
+            ->findOrFail($id);
+    
+        $u = $penawaran->user;
+        if (!$u && !empty($penawaran->created_by)) {
+            $u = \App\Models\User::with('role')
+                ->where('name', $penawaran->created_by)
+                ->first();
+        }
+    
+        // Contact
+        $contact = [
+            'name'  => $u?->name ?? ($penawaran->kontak_nama ?? 'Robby Pratama Putra'),
+            'role'  => $u?->role?->role_name ?? 'Project Manager',
+            'phone' => $u?->telepon ?? $u?->phone ?? $u?->no_hp ?? ($penawaran->kontak_telepon ?? '-'),
+            'email' => $u?->email ?? ($penawaran->kontak_email ?? '-'),
+        ];
+    
+        // Company
+        $company = [
+            'nama_perusahaan' => config('app.name'),
+            'alamat'          => 'Alamat Perusahaan Anda',
+            'telepon'         => '021-xxxxxxx',
+            'fax'             => '021-xxxxxxx',
+            'logo_path'       => null,
+        ];
+    
+        // Pilih view berdasarkan bahasa + jenis_penawaran
+        $jenis = (int) ($penawaran->jenis_penawaran ?? 1);
+        if ($jenis === 2) {
+            $view = $lang === 'en' ? 'penawaran.pdf_lub_en' : 'penawaran.pdf_lub_id';
+        } else {
+            $view = $lang === 'en' ? 'penawaran.pdf_en' : 'penawaran.pdf_id';
+        }
+    
+        /**
+         * ==========================
+         * QR (PO STYLE) -> BASE64 PNG
+         * ==========================
+         * Payload bisa nomor saja, atau json.
+         * Jika mau sama persis PO: pakai nomor_penawaran string.
+         */
+        $qrBase64 = null;
+    
+        // opsi 1: string saja (paling aman untuk scan)
+        $qrPayload = (string) ($penawaran->nomor_penawaran ?? '');
+    
+        // opsi 2 (kalau mau detail):
+        // $qrPayload = json_encode([
+        //     'type' => 'APPROVAL_PENAWARAN',
+        //     'quotation' => $penawaran->nomor_penawaran,
+        //     'date' => now()->format('Y-m-d H:i:s'),
+        // ], JSON_UNESCAPED_SLASHES);
+    
+        if (!empty($qrPayload)) {
+            $result = Builder::create()
+                ->writer(new PngWriter())
+                ->data($qrPayload)
+                ->encoding(new Encoding('UTF-8'))
+                ->errorCorrectionLevel(ErrorCorrectionLevel::High)
+                ->size(220)
+                ->margin(5)
+                ->build();
+    
+            $qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
+        }
 
-    $u = $penawaran->user;
-    if (!$u && !empty($penawaran->created_by)) {
-        $u = \App\Models\User::with('role')
-            ->where('name', $penawaran->created_by)
-            ->first();
+        $logoLeftPath  = public_path('images/logo-new.png');
+        $logoRightPath = public_path('images/logo-crs.png');
+
+        $logoLeft = is_file($logoLeftPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoLeftPath))
+        : null;
+
+        $logoRight = is_file($logoRightPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoRightPath))
+        : null;
+    
+        // Generate PDF
+        $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft','logoRight'))
+            ->setPaper('A4', 'portrait')
+            ->setOptions([
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+            ]);
+    
+        $safeNomor = str_replace(['/', '\\'], '-', $penawaran->nomor_penawaran);
+        $suffix = $lang === 'en' ? 'EN' : 'ID';
+    
+        return $pdf->stream("Quotation-{$safeNomor}-{$suffix}.pdf");
     }
-
-       // Susun contact dengan null-safe
-       $contact = [
-        'name'  => $u?->name ?? ($penawaran->kontak_nama ?? 'Robby Pratama Putra'),
-        'role'  => $u?->role?->role_name ?? 'Project Manager',
-        // sesuaikan nama kolom telepon di users kamu (telepon/phone/no_hp)
-        'phone' => $u?->telepon ?? $u?->phone ?? $u?->no_hp ?? ($penawaran->kontak_telepon ?? '-'),
-        'email' => $u?->email ?? ($penawaran->kontak_email ?? '-'),
-    ];
-
-    $company = [
-        'nama_perusahaan' => config('app.name'),
-        'alamat'          => 'Alamat Perusahaan Anda',
-        'telepon'         => '021-xxxxxxx',
-        'fax'             => '021-xxxxxxx',
-        'logo_path'       => null,
-    ];
-
-    // Pilih view berdasarkan bahasa + jenis_penawaran
-    // Misal:
-    // - Indonesia:  resources/views/penawaran/pdf_id.blade.php
-    // - English:    resources/views/penawaran/pdf_en.blade.php
-    // - Untuk jenis lubricant, pakai pdf_lub_id / pdf_lub_en
-    $jenis = (int) ($penawaran->jenis_penawaran ?? 1);
-
-    if ($jenis === 2) {
-        $view = $lang === 'en' ? 'penawaran.pdf_lub_en' : 'penawaran.pdf_lub_id';
-    } else {
-        $view = $lang === 'en' ? 'penawaran.pdf_en' : 'penawaran.pdf_id';
-    }
-
-
-     /** QR untuk dompdf: pakai file lokal jika ada; regenerate jika perlu */
-     $qrPathForPdf = null;   // file://...
-     $qrInlineSvg  = null;   // isi svg string (fallback terakhir)
-
-     if (!empty($penawaran->qr_code)) {
-         $parsed = parse_url($penawaran->qr_code, PHP_URL_PATH); // /storage/qrcodes/...png
-         if ($parsed && Str::startsWith($parsed, '/storage/')) {
-             $abs = public_path(ltrim($parsed, '/'));
-             if (is_file($abs)) {
-                 $qrPathForPdf = 'file://' . $abs;
-             }
-         }
-     }
-
-     if (!$qrPathForPdf) {
-         try {
-             $saved = $this->saveQrPngToStorage($this->buildQrPayload($penawaran), $penawaran->id_penawaran);
-             $qrPathForPdf = $saved['abs_for_pdf'];
-             // update kolom agar konsisten
-             $penawaran->forceFill(['qr_code' => $saved['url']])->save();
-         } catch (\Throwable $e) {
-             report($e);
-             // fallback SVG inline
-             $saved = $this->saveQrSvgToStorage($this->buildQrPayload($penawaran), $penawaran->id_penawaran);
-             $svg = preg_replace('/^<\?xml.*?\?>/i', '', $saved['svg']);
-             if (!preg_match('/\bwidth=|\bheight=/', $svg)) {
-                 $svg = preg_replace('/<svg\b/i', '<svg width="28mm" height="28mm"', $svg, 1);
-             }
-             $qrInlineSvg = $svg;
-             $penawaran->forceFill(['qr_code' => $saved['url']])->save();
-         }
-     }
-
-
-
-    $pdf = \PDF::loadView($view, compact('penawaran', 'company','contact'))->setPaper('A4', 'portrait');
-
-    $safeNomor = str_replace(['/', '\\'], '-', $penawaran->nomor_penawaran);
-    $suffix = $lang === 'en' ? 'EN' : 'ID';
-    return $pdf->stream("Quotation-{$safeNomor}-{$suffix}.pdf");
-}
-
-
 
 
 }

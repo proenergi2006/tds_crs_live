@@ -215,11 +215,17 @@
   <table class="hdr">
     <tr>
       <td class="logo left" style="width:50%">
-        <img src="{{ public_path('images/logo-new.png') }}" alt="Logo Kiri">
+        @if($logoLeft)
+          <img src="{{ $logoLeft }}" alt="Logo Kiri">
+        @endif
       </td>
+      
       <td class="logo right" style="width:50%">
-        <img src="{{ public_path('images/logo-crs.png') }}" alt="Logo Kanan">
+        @if($logoRight)
+          <img src="{{ $logoRight }}" alt="Logo Kanan">
+        @endif
       </td>
+      
     </tr>
   </table>
 
@@ -354,13 +360,9 @@
         <strong>PT. Tri Daya Selaras</strong>
       
         <div class="qrwrap">
-          {{-- <span class="qrimg">
-            @if(!empty($qrPathForPdf))
-              <img src="{{ $qrPathForPdf }}" alt="QR">
-            @elseif(!empty($qrInlineSvg))
-              {!! $qrInlineSvg !!}
-            @endif
-          </span> --}}
+          @if(!empty($qrBase64))
+            <img src="{{ $qrBase64 }}" style="width:20mm;height:20mm" alt="QR">
+          @endif
         </div>
       
       
