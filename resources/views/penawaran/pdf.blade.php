@@ -40,7 +40,7 @@
     .p{ margin:4px 0 8px; text-align:justify }
 
     /* ====== Bagian 1–9 TANPA KOTAK ====== */
-    .box{ width:70%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
+    .box{ width:92%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
     .kv{
   width:100%;
   border-collapse:separate;
@@ -164,24 +164,32 @@
   $nowID = \Carbon\Carbon::now()->translatedFormat('d F Y');
   $cust  = optional($penawaran->customer);
 
- // Contoh output: "Batu Pecah — 2-3 m³, Batu Pecah — 3-5 m³"
- $produkList = $penawaran->items
-      ->map(function($it){
-          $p  = $it->produk;
-          if (!$p) return null;
-          $uk = optional($p->ukuran);
-          $st = optional($uk->satuan);
-          // gabung ukuran + satuan bila ada
-          $ukTxt = trim(implode(' ', array_filter([
-              $uk->nama_ukuran ?? null,
-              $st->nama_satuan ?? null,
-          ])));
-          // "Nama Produk — 2-3 m³" atau hanya "Nama Produk" jika ukuran kosong
-          return trim($p->nama_produk . ($ukTxt ? ' — '.$ukTxt : ''));
-      })
-      ->filter()
-      ->unique()
-      ->implode(', ');
+  $produkLines = $penawaran->items
+  ->map(function($it){
+      $p  = $it->produk;
+      if (!$p) return null;
+
+      $uk = optional($p->ukuran);
+      $st = optional($uk->satuan);
+
+      $ukTxt = trim(implode(' ', array_filter([
+          $uk->nama_ukuran ?? null,
+          $st->nama_satuan ?? null,
+      ])));
+
+      $persen = $it->persen !== null
+          ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.')
+          : '0';
+
+      return trim(
+          $p->nama_produk
+          . ($ukTxt ? ' — ' . $ukTxt : '')
+          . ' (' . $persen . '%)'
+      );
+  })
+  ->filter()
+  ->unique()
+  ->values();   // penting: reset index
 
   $firstItem   = $penawaran->items->first();
   $hargaSatuan = $firstItem?->harga_dasar ?? 0;
@@ -206,11 +214,11 @@
   <br>
   <table class="hdr">
     <tr>
-      <td class="logo" style="width:55%">
-        <img src="{{ public_path('images/logo-new.png') }}" alt="Logo">
+      <td class="logo left" style="width:50%">
+        <img src="{{ public_path('images/logo-new.png') }}" alt="Logo Kiri">
       </td>
-      <td class="right" style="width:45%">
-        Jakarta, {{ $nowID }}
+      <td class="logo right" style="width:50%">
+        <img src="{{ public_path('images/logo-crs.png') }}" alt="Logo Kanan">
       </td>
     </tr>
   </table>
@@ -221,7 +229,7 @@
         No. Ref {{ $penawaran->nomor_penawaran }}
       </td>
       <td class="refright" style="width:40%">
-        {{-- Telp. {{ $penawaran->telepon ?? '+62 812-3456-7890' }} --}}
+        Jakarta, {{ $nowID }}
       </td>
     </tr>
   </table>
@@ -255,22 +263,48 @@
     With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
     Crushed Stone for <strong>{{ $cust->nama_perusahaan ?? '—' }}.</strong> Therefore, we would like to offer to your company:
   </p>
-  <br>
+ 
 
   <!-- 1–9: tanpa kotak -->
   <div class="box">
     <table class="kv">
-      <tr>
+      {{-- <tr>
         <td class="no">1.</td><td class="label"><b>Product</b></td><td class="colon">:</td>
         <td class="value"><b>{!! $produkList ?: $defaultProduct !!}</b></td>
+      </tr> --}}
+      @if(($produkLines ?? collect())->isEmpty())
+      <tr>
+        <td class="no">1.</td>
+        <td class="label"><b>Produk</b></td>
+        <td class="colon">:</td>
+        <td class="value"><b>{!! $defaultProduct !!}</b></td>
       </tr>
+    @else
+      @foreach($produkLines as $i => $line)
+        <tr>
+          @if($i === 0)
+            <td class="no">1.</td>
+            <td class="label"><b>Produk</b></td>
+            <td class="colon">:</td>
+          @else
+            {{-- baris lanjutan: kosongkan kiri supaya sejajar --}}
+            <td class="no"></td>
+            <td class="label"></td>
+            <td class="colon"></td>
+          @endif
+    
+          <td class="value"><b>{{ $line }}</b></td>
+        </tr>
+      @endforeach
+    @endif
+    
       <tr>
         <td class="no">2.</td><td class="label"><b>Abrasion</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0' }} </b></td>
       </tr>
       <tr>
         <td class="no">3.</td><td class="label"><b>Price per m&sup3;</b></td><td class="colon">:</td>
-        <td class="value"> {{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }} <span style="color:#666">(Price1 exclude 11% VAT)</span></td>
+        <td class="value"> {{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }} <span style="color:#666">(Harga belum termasuk PPN 11%)</span></td>
       </tr>
       <tr>
         <td class="no">4.</td><td class="label"><b>Payment Method</b></td><td class="colon">:</td>
@@ -304,14 +338,13 @@
       </tr>
     </table>
   </div>
-  <br>
+
 
   <!-- Closing -->
   <p class="p">
     Hopefully we can get the opportunity and trust from you to do the good business relationship with your company.
     Thank you for your attention and cooperation
   </p>
-  <br>
 
   <!-- Signature + Contact -->
   <table class="sigrow">
@@ -330,9 +363,9 @@
           </span> --}}
         </div>
       
-        <br>
+      
         <strong>Vica Krisdianatha</strong><br>
-        Operation Manager
+        Chief Executive Officer
       </td>
       
       <td style="width:45%;">

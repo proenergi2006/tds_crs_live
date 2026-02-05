@@ -23,7 +23,7 @@
     /* Header */
     .hdr{ width:100%; border-collapse:collapse; margin-bottom:6px }
     .hdr td{ vertical-align:top }
-    .logo img{ height:27mm; width:auto }   /* atur ukuran logo */
+    .logo img{ height:14mm; width:auto }   /* atur ukuran logo */
     .right{ text-align:right; color:#555; font-size:11.5px }
 
     .refrow{ width:100%; border-collapse:collapse; margin-bottom:10px }
@@ -40,7 +40,7 @@
     .p{ margin:4px 0 8px; text-align:justify }
 
     /* ====== Bagian 1–9 TANPA KOTAK ====== */
-    .box{ width:70%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
+    .box{ width:92%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
     .kv{
   width:100%;
   border-collapse:separate;
@@ -126,32 +126,59 @@
   $nowID = \Carbon\Carbon::now()->translatedFormat('d F Y');
   $cust  = optional($penawaran->customer);
 
-  $produkList = $penawaran->items
-      ->map(function($it){
-          $p  = $it->produk;
-          if (!$p) return null;
-          $uk = optional($p->ukuran);
-          $st = optional($uk->satuan);
-          // gabung ukuran + satuan bila ada
-          $ukTxt = trim(implode(' ', array_filter([
-              $uk->nama_ukuran ?? null,
-              $st->nama_satuan ?? null,
-          ])));
+  // $produkList = $penawaran->items
+  //     ->map(function($it){
+  //         $p  = $it->produk;
+  //         if (!$p) return null;
+  //         $uk = optional($p->ukuran);
+  //         $st = optional($uk->satuan);
+  //         // gabung ukuran + satuan bila ada
+  //         $ukTxt = trim(implode(' ', array_filter([
+  //             $uk->nama_ukuran ?? null,
+  //             $st->nama_satuan ?? null,
+  //         ])));
 
-          // persen (fallback 0)
-        $persen = $it->persen !== null
-            ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.') // buang .00
-            : '0';
-          // "Nama Produk — 2-3 m³" atau hanya "Nama Produk" jika ukuran kosong
-          return trim(
-            $p->nama_produk
-            . ($ukTxt ? ' — ' . $ukTxt : '')
-            . ' (' . $persen . '%)'
-        );
-      })
-      ->filter()
-      ->unique()
-      ->implode(', ');
+  //         // persen (fallback 0)
+  //       $persen = $it->persen !== null
+  //           ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.') // buang .00
+  //           : '0';
+  //         // "Nama Produk — 2-3 m³" atau hanya "Nama Produk" jika ukuran kosong
+  //         return trim(
+  //           $p->nama_produk
+  //           . ($ukTxt ? ' — ' . $ukTxt : '')
+  //           . ' (' . $persen . '%)'
+  //       );
+  //     })
+  //     ->filter()
+  //     ->unique()
+  //     ->implode(', ');
+
+  $produkLines = $penawaran->items
+  ->map(function($it){
+      $p  = $it->produk;
+      if (!$p) return null;
+
+      $uk = optional($p->ukuran);
+      $st = optional($uk->satuan);
+
+      $ukTxt = trim(implode(' ', array_filter([
+          $uk->nama_ukuran ?? null,
+          $st->nama_satuan ?? null,
+      ])));
+
+      $persen = $it->persen !== null
+          ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.')
+          : '0';
+
+      return trim(
+          $p->nama_produk
+          . ($ukTxt ? ' — ' . $ukTxt : '')
+          . ' (' . $persen . '%)'
+      );
+  })
+  ->filter()
+  ->unique()
+  ->values(); 
 
   $firstItem   = $penawaran->items->first();
   $hargaSatuan = $firstItem?->harga_tebus ?? 0;
@@ -177,11 +204,11 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
   <br>
   <table class="hdr">
     <tr>
-      <td class="logo" style="width:55%">
-       <img src="{{ public_path('images/logo-new.png') }}" alt="Logo">
+      <td class="logo left" style="width:50%">
+        <img src="{{ public_path('images/logo-new.png') }}" alt="Logo Kiri">
       </td>
-      <td class="right" style="width:45%">
-        Jakarta, {{ $nowID }}
+      <td class="logo right" style="width:50%">
+        <img src="{{ public_path('images/logo-crs.png') }}" alt="Logo Kanan">
       </td>
     </tr>
   </table>
@@ -192,14 +219,7 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
         No. Ref {{ $penawaran->nomor_penawaran }}
       </td>
       <td class="refright" style="width:40%">
-        {{-- Telp.
-        {{
-          $penawaran->telepon
-            ? (str_starts_with($penawaran->telepon, '0')
-                ? '+62' . substr($penawaran->telepon, 1)
-                : $penawaran->telepon)
-            : '-'
-        }} --}}
+        Jakarta, {{ $nowID }}
       </td>
     </tr>
   </table>
@@ -233,15 +253,40 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
     With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
     Crushed Stone for <strong>{{ $cust->nama_perusahaan ?? '—' }}.</strong> Therefore, we would like to offer to your company:
   </p>
-  <br>
+
 
   <!-- 1–9: tanpa kotak -->
   <div class="box">
     <table class="kv">
-      <tr>
+      {{-- <tr>
         <td class="no">1.</td><td class="label"><b>Product</b></td><td class="colon">:</td>
         <td class="value"><b>{!! $produkList ?: $defaultProduct !!}</b></td>
+      </tr> --}}
+      @if(($produkLines ?? collect())->isEmpty())
+      <tr>
+        <td class="no">1.</td>
+        <td class="label"><b>Product</b></td>
+        <td class="colon">:</td>
+        <td class="value"><b>{!! $defaultProduct !!}</b></td>
       </tr>
+    @else
+      @foreach($produkLines as $i => $line)
+        <tr>
+          @if($i === 0)
+            <td class="no">1.</td>
+            <td class="label"><b>Product</b></td>
+            <td class="colon">:</td>
+          @else
+            {{-- baris lanjutan: kosongkan kiri supaya sejajar --}}
+            <td class="no"></td>
+            <td class="label"></td>
+            <td class="colon"></td>
+          @endif
+    
+          <td class="value"><b>{{ $line }}</b></td>
+        </tr>
+      @endforeach
+    @endif
       <tr>
         <td class="no">2.</td><td class="label"><b>Abrasion</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0%' }} </b></td>
@@ -279,7 +324,8 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
         </td>
       </tr>
       <tr>
-        <td class="no">7.</td><td class="label"><b>Receiving Point & QC</b></td><td class="colon">:</td>
+        <td class="no">7.</td><td class="label"><b>
+          Handover Point & Unloading TC</b></td><td class="colon">:</td>
         <td class="value">{!! $penawaran->keterangan !!}</td>
       </tr>
     
@@ -306,7 +352,7 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
     Hopefully we can get the opportunity and trust from you to do the good business relationship with your company.
     Thank you for your attention and cooperation
   </p>
-  <br>
+
 
   <!-- Signature + Contact -->
   <table class="sigrow">
