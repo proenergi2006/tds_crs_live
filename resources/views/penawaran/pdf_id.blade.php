@@ -299,7 +299,7 @@
 @endif
 
       <tr>
-        <td class="no">2.</td><td class="label"><b>Abrasi</b></td><td class="colon">:</td>
+        <td class="no">2.</td><td class="label"><b>Parameter</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0' }} </b></td>
       </tr>
       <tr>
