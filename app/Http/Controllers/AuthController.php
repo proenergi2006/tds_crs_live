@@ -28,11 +28,8 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken(
-            'api_token',
-            ['*'],
-            now()->addMinutes(5)
-        )->plainTextToken;
+        $token = $user->createToken('api_token', ['*'], now()->addYear())->plainTextToken;
+
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
