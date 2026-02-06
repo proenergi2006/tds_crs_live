@@ -375,7 +375,7 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
       
         <br>
         <strong><u>Vica Krisdianatha</u></strong><br>
-        Operation Manager
+        Chief Executive Officer
       </td>
       <td style="width:45%;">
         <div class="contact">
