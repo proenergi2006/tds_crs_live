@@ -249,7 +249,7 @@ public function preview($id)
         'vendor','terminal','produks.produk','produks.produk.ukuran.satuan','produks.produk.jenis'
     ])->findOrFail($id);
 
-    $leftPath  = public_path('images/tds.png');
+    $leftPath  = public_path('images/logo-new.png');
     $rightPath = public_path('images/logo_prodiesel.png');
 
     $logoLeft  = file_exists($leftPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))  : null;
