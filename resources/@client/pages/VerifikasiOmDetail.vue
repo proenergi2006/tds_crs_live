@@ -158,23 +158,23 @@
             </span>
           </div>
 
-          <div class="grid grid-cols-3">
+          <!-- <div class="grid grid-cols-3">
             <span class="font-medium text-gray-600">Net Margin / vol</span>
             <span class="col-span-2">
               : <b>{{ formatCurrency(netMarginPerVol) }}</b>
               ({{ netMarginPct.toFixed(2) }}%)
             </span>
-          </div>
+          </div> -->
 
           <div class="grid grid-cols-3">
             <span class="font-medium text-gray-600">Gross Profit (total)</span>
             <span class="col-span-2">: {{ formatCurrency(grossProfit) }}</span>
           </div>
 
-          <div class="grid grid-cols-3">
+          <!-- <div class="grid grid-cols-3">
             <span class="font-medium text-gray-600">Net Profit (total)</span>
             <span class="col-span-2">: {{ formatCurrency(netProfit) }}</span>
-          </div>
+          </div> -->
         </div>
 
         <p class="text-xs text-slate-500 mt-3">
