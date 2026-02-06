@@ -132,7 +132,7 @@
         @if($logoLeft)
           <img src="{{ $logoLeft }}" alt="Tri Daya Selaras">
         @else
-          <img src="{{ public_path('images/tds.png') }}" width="10px" >
+          <img src="{{ public_path('images/logo-new.png') }}" width="10px" >
         @endif
       </td>
       <td class="logo" style="width:70%; text-align:right">
