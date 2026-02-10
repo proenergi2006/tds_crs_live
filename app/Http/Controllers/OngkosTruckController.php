@@ -13,7 +13,7 @@ class OngkosTruckController extends Controller
     {
         $data = OngkosTruck::with(['transportir', 'angkutWilayah', 'details.volume'])
             ->latest()
-            ->get();
+            ->paginate($request->get('per_page', 100));
 
         return response()->json($data);
     }
