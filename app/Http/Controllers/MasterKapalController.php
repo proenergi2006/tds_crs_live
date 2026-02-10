@@ -12,7 +12,7 @@ class MasterKapalController extends Controller
     {
         return MasterKapal::with('transportir')
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->get();
     }
 
     public function store(Request $request)

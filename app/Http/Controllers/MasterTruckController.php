@@ -13,7 +13,7 @@ class MasterTruckController extends Controller
     {
         $data = MasterTruck::with('transportir')
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->get();
 
         return response()->json($data);
     }

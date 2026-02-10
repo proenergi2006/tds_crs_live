@@ -11,7 +11,7 @@ class WilayahAngkutController extends Controller
     {
         $data = WilayahAngkut::with(['provinsi', 'kabupaten'])
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->get();
 
         return response()->json($data);
     }
