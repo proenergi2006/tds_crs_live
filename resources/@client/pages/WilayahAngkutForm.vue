@@ -70,11 +70,11 @@
   
   async function fetchWilayah() {
     try {
-      const resProv = await axios.get('/api/provinsis')
-      provinsis.value = resProv.data.data || resProv.data
-  
-      const resKab = await axios.get('/api/kabupatens')
-      kabupatens.value = resKab.data.data || resKab.data
+      const resProv = await axios.get('/api/provinsis', { params: { per_page: 1000 } })
+provinsis.value = resProv.data.data || resProv.data
+
+const resKab = await axios.get('/api/kabupatens', { params: { per_page: 1000 } })
+kabupatens.value = resKab.data.data || resKab.data
     } catch {
       Swal.fire('Error', 'Gagal memuat data wilayah', 'error')
     }
