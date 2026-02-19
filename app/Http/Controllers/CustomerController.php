@@ -57,6 +57,10 @@ class CustomerController extends Controller
         $data['created_time'] = now();
         $data['created_by']   = $request->user()->name;
 
+        if (!empty($data['nama_perusahaan'])) {
+            $data['nama_perusahaan'] = mb_strtoupper(trim($data['nama_perusahaan']), 'UTF-8');
+        }
+
         $customer = null;
 
         DB::transaction(function () use (&$customer, $data) {
@@ -167,6 +171,10 @@ class CustomerController extends Controller
         $data['id_user']         = $request->user()->id;
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name;
+
+        if (!empty($data['nama_perusahaan'])) {
+            $data['nama_perusahaan'] = mb_strtoupper(trim($data['nama_perusahaan']), 'UTF-8');
+        }
 
         $customer->update($data);
 
