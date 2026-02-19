@@ -246,7 +246,7 @@
       <td style="width:100%">
         <div class="attn">
           <strong>Attention to :</strong><br>
-          PT {{ $cust->nama_perusahaan ?? '-' }}<br>
+          {{ $cust->nama_perusahaan ?? '-' }}<br>
           {{ $cust->alamat_perusahaan ?? 'Alamat belum diisi' }}<br><br>
 
           <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
