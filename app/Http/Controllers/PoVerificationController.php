@@ -17,9 +17,10 @@ class PoVerificationController extends Controller
         $q = VendorPo::with(['vendor', 'terminal', 'produks.produk']);
 
         if ($roleId === 2) {
-            $q->where('disposisi_po', '>=', 2); // CEO
+            $q->where('disposisi_po', '>=', 2)
+              ->orderByRaw("CASE WHEN disposisi_po = 2 THEN 0 ELSE 1 END ASC");
         } elseif ($roleId === 3) {
-            $q->where('disposisi_po', '>=', 1); // CFO
+            $q->where('disposisi_po', '>=', 1);
         }
 
         if ($search) {
@@ -28,6 +29,10 @@ class PoVerificationController extends Controller
                     ->orWhere('keterangan', 'like', "%{$search}%");
             });
         }
+
+        $q->orderBy('lastupdate_time', 'desc')
+        ->orderBy('id_po', 'desc');
+  
 
         return response()->json($q->paginate($perPage));
     }
