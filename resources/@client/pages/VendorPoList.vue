@@ -33,6 +33,7 @@
           <tr>
             <th class="px-4 py-2 text-xs font-medium text-left uppercase">No</th>
             <th class="px-4 py-2 text-xs font-medium text-left uppercase">Nomor PO</th>
+            <th class="px-4 py-2 text-xs font-medium text-left uppercase">Tanggal PO</th>
             <th class="px-4 py-2 text-xs font-medium text-left uppercase">Vendor</th>
             <th class="px-4 py-2 text-xs font-medium text-left uppercase">Terminal</th>
             <th class="px-4 py-2 text-xs font-medium text-center uppercase">Status</th>
@@ -49,6 +50,9 @@
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </td>
             <td class="px-4 py-3 whitespace-nowrap">{{ po.nomor_po }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {{ formatDate(po.tanggal_inven) }}
+            </td>
             <td class="px-4 py-3 whitespace-nowrap">{{ po.vendor?.nama_vendor }}</td>
             <td class="px-4 py-3 whitespace-nowrap">{{ po.terminal?.nama_terminal }}</td>
             <td class="px-4 py-3 text-center whitespace-nowrap">
@@ -69,61 +73,58 @@
                 }}
               </span>
             </td>
-         
+
             <td class="px-4 py-3 whitespace-nowrap text-center">
-    <div class="inline-flex items-center space-x-4">
-      <!-- Cetak (ikon printer) -->
-      <button
-        v-if="po.disposisi_po === 4"
-        @click="preview(po.id_po)"
-        class="text-green-600 hover:text-green-800"
-        title="Cetak"
-      >
-        <Lucide icon="Printer" class="w-5 h-5" />
-      </button>
+              <div class="inline-flex items-center space-x-4">
+                <!-- Cetak -->
+                <button
+                  v-if="po.disposisi_po === 4"
+                  @click="preview(po.id_po)"
+                  class="text-green-600 hover:text-green-800"
+                  title="Cetak"
+                >
+                  <Lucide icon="Printer" class="w-5 h-5" />
+                </button>
 
-      <!-- Receive Item (ikon package/delivery) -->
-      <button
-        v-if="po.disposisi_po === 4"
-        @click="goReceiveItem(po.id_po)"
-        class="text-indigo-600 hover:text-indigo-800"
-        title="Receive Item"
-      >
-        <Lucide icon="Package" class="w-5 h-5" />
-      </button>
+                <!-- Receive Item -->
+                <button
+                  v-if="po.disposisi_po === 4"
+                  @click="goReceiveItem(po.id_po)"
+                  class="text-indigo-600 hover:text-indigo-800"
+                  title="Receive Item"
+                >
+                  <Lucide icon="Package" class="w-5 h-5" />
+                </button>
 
-      <!-- Delete (ikon trash) -->
-      <button
-        v-if="po.disposisi_po === 0"
-        @click="confirmDelete(po.nomor_po, po.id_po)"
-        class="text-red-600 hover:text-red-800"
-        title="Delete"
-      >
-        <Lucide icon="Trash2" class="w-5 h-5" />
-      </button>
+                <!-- Delete -->
+                <button
+                  v-if="po.disposisi_po === 0"
+                  @click="confirmDelete(po.nomor_po, po.id_po)"
+                  class="text-red-600 hover:text-red-800"
+                  title="Delete"
+                >
+                  <Lucide icon="Trash2" class="w-5 h-5" />
+                </button>
 
-      <!-- Detail (ikon eye) -->
-      <RouterLink
-        :to="{ name: 'vendor-pos-detail', params: { id: po.id_po } }"
-        class="text-blue-600 hover:text-blue-800"
-        title="Detail"
-      >
-        <Lucide icon="Eye" class="w-5 h-5" />
-      </RouterLink>
+                <!-- Detail -->
+                <RouterLink
+                  :to="{ name: 'vendor-pos-detail', params: { id: po.id_po } }"
+                  class="text-blue-600 hover:text-blue-800"
+                  title="Detail"
+                >
+                  <Lucide icon="Eye" class="w-5 h-5" />
+                </RouterLink>
 
-      <!-- Edit (ikon edit) -->
-      <RouterLink
-        :to="{ name: 'vendor-pos-edit', params: { id: po.id_po } }"
-        class="text-yellow-600 hover:text-yellow-800"
-        title="Edit"
-      >
-        <Lucide icon="Edit" class="w-5 h-5" />
-      </RouterLink>
-    </div>
-  </td>
-
-
-
+                <!-- Edit -->
+                <RouterLink
+                  :to="{ name: 'vendor-pos-edit', params: { id: po.id_po } }"
+                  class="text-yellow-600 hover:text-yellow-800"
+                  title="Edit"
+                >
+                  <Lucide icon="Edit" class="w-5 h-5" />
+                </RouterLink>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -136,7 +137,7 @@
           :disabled="currentPage === 1"
           @click="fetchData(currentPage - 1)"
         >
-          <Lucide icon="ChevronLeft"/>
+          <Lucide icon="ChevronLeft" />
         </Pagination.Link>
         <Pagination.Link
           v-for="p in totalPages"
@@ -150,7 +151,7 @@
           :disabled="currentPage === totalPages"
           @click="fetchData(currentPage + 1)"
         >
-          <Lucide icon="ChevronRight"/>
+          <Lucide icon="ChevronRight" />
         </Pagination.Link>
       </Pagination>
     </div>
@@ -168,12 +169,24 @@ import Pagination from '@/components/Base/Pagination'
 import { FormInput, FormSelect } from '@/components/Base/Form'
 import Lucide from '@/components/Base/Lucide'
 
-const router      = useRouter()
-const vendorPos   = ref<any[]>([])
+const router = useRouter()
+const vendorPos = ref<any[]>([])
 const searchQuery = ref('')
-const perPage     = ref(10)
+const perPage = ref(10)
 const currentPage = ref(1)
-const totalPages  = ref(1)
+const totalPages = ref(1)
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return value
+
+  return date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
 
 /** Ambil data PO */
 async function fetchData(page = 1) {
@@ -181,11 +194,11 @@ async function fetchData(page = 1) {
     const res = await axios.get('/api/vendor-pos', {
       params: { page, per_page: perPage.value, search: searchQuery.value || undefined }
     })
-    vendorPos.value   = res.data.data
+    vendorPos.value = res.data.data
     currentPage.value = res.data.current_page
-    totalPages.value  = res.data.last_page
-  } catch (e:any) {
-    Swal.fire('Error', e.response?.data?.message || 'Gagal memuat data','error')
+    totalPages.value = res.data.last_page
+  } catch (e: any) {
+    Swal.fire('Error', e.response?.data?.message || 'Gagal memuat data', 'error')
   }
 }
 
@@ -194,19 +207,19 @@ async function preview(id: number) {
   try {
     const response = await axios.get(`/vendor-pos/${id}/preview`, {
       responseType: 'blob'
-    });
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url  = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    })
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
   } catch {
-    Swal.fire('Error','Gagal membuka PDF','error');
+    Swal.fire('Error', 'Gagal membuka PDF', 'error')
   }
 }
 
 function goReceiveItem(idPo: number) {
   router.push({
-    name: 'receive-item-list',    // ganti sesuai nama route-mu
+    name: 'receive-item-list',
     params: { id: idPo }
   })
 }
@@ -218,17 +231,17 @@ function confirmDelete(nomorPo: string, id: number) {
     showCancelButton: true,
     confirmButtonText: 'Ya, hapus'
   }).then(async res => {
-    if (!res.isConfirmed) return;
-    await axios.delete(`/api/vendor-pos/${id}`);
+    if (!res.isConfirmed) return
+    await axios.delete(`/api/vendor-pos/${id}`)
     Swal.fire({
       icon: 'success',
       title: `PO ${nomorPo} terhapus`,
       toast: true,
       position: 'top-end',
       timer: 1500
-    });
-    fetchData(currentPage.value);
-  });
+    })
+    fetchData(currentPage.value)
+  })
 }
 
 onMounted(() => fetchData())
