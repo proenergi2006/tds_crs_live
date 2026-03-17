@@ -12,30 +12,30 @@ class ProdukHargaController extends Controller
 {
     public function index(Request $request)
     {
-        $q = VendorPo::with(['vendor', 'terminal', 'produks.produk']);
+        $q = ProdukHarga::with(['cabang', 'produk.ukuran.satuan']);
     
-        if ($vendorId = $request->query('id_vendor')) {
-            $q->where('id_vendor', $vendorId);
+        // filter by cabang jika param id_cabang dikirim
+        if ($cabangId = $request->query('id_cabang')) {
+            $q->where('id_cabang', $cabangId);
         }
     
-        if ($terminalId = $request->query('id_terminal')) {
-            $q->where('id_terminal', $terminalId);
+        // filter by produk jika param id_produk dikirim
+        if ($produkId = $request->query('id_produk')) {
+            $q->where('id_produk', $produkId);
         }
     
+        // search by nama produk atau nama cabang
         if ($s = $request->query('search')) {
-            $q->where(function ($q2) use ($s) {
-                $q2->where('nomor_po', 'like', "%{$s}%")
-                   ->orWhere('keterangan', 'like', "%{$s}%");
+            $q->where(function($q2) use ($s) {
+                $q2->whereHas('produk', fn($q3) => $q3->where('nama_produk', 'like', "%{$s}%"))
+                   ->orWhereHas('cabang', fn($q4) => $q4->where('nama_cabang', 'like', "%{$s}%"));
             });
         }
+
+        $q->orderBy('created_time', 'desc');
     
         $perPage = $request->query('per_page', 10);
-    
-        return response()->json(
-            $q->orderBy('tanggal_inven', 'desc')
-              ->orderBy('id_po', 'desc')
-              ->paginate($perPage)
-        );
+        return response()->json($q->paginate($perPage));
     }
 
     public function check(Request $request)
