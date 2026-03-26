@@ -128,11 +128,11 @@
 <div class="content">
   <table class="hdr">
     <tr>
-      <td style="width:50%">
+      <td class="logo" style="width:50%">
         @if($logoLeft)
-          <img src="{{ $logoLeft }}" width="95px" alt="Tri Daya Selaras">
+        <img src="{{ $logoLeft }}" width="95px" alt="Tri Daya Selaras">
         @else
-          <img src="{{ public_path('images/logo-new.png') }}" width="10px" >
+          <img src="{{ public_path('images/tds.png') }}" alt="Tri Daya Selaras">
         @endif
       </td>
       <td class="logo" style="width:70%; text-align:right">
@@ -265,7 +265,7 @@
     </tr>
     <tr>
       <td class="signbox">
-        @if(!empty($qrBase64))
+        @if(!empty($qrBase64) && (int) $po->disposisi_po === 4)
           <img src="{{ $qrBase64 }}" class="qr">
         @endif
       </td>
@@ -276,7 +276,7 @@
       <td class="name t-right"></td>
     </tr>
   </table>
-  @endif
+@endif
 </div>
 
 
@@ -345,10 +345,9 @@
       <td class="label t-right">{{ strtoupper(optional($po->vendor)->nama_vendor) }}</td>
     </tr>
   
-    {{-- Baris ruang tanda tangan (tinggi sama di kiri-kanan) --}}
     <tr>
       <td class="signbox">
-        @if(!empty($qrBase64))
+        @if(!empty($qrBase64) && (int) $po->disposisi_po === 4)
           <img src="{{ $qrBase64 }}" class="qr">
         @endif
       </td>
