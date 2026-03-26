@@ -20,18 +20,38 @@ class VendorPoController extends Controller
 {
     public function index(Request $request)
     {
-        $perPage = $request->query('per_page', 10);
-
-        $q = VendorPo::with(['vendor', 'terminal', 'produks.produk']);
-
+        $q = VendorPo::with(['vendor', 'terminal']);
+    
         if ($search = $request->query('search')) {
-            $q->where('nomor_po', 'like', "%{$search}%")
-              ->orWhere('keterangan', 'like', "%{$search}%");
+            $q->where(function ($sub) use ($search) {
+                $sub->where('nomor_po', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%");
+            });
         }
-
-        return response()->json($q->paginate($perPage));
+    
+        if ($tanggalDari = $request->query('tanggal_dari')) {
+            $q->whereDate('tanggal_inven', '>=', $tanggalDari);
+        }
+    
+        if ($tanggalSampai = $request->query('tanggal_sampai')) {
+            $q->whereDate('tanggal_inven', '<=', $tanggalSampai);
+        }
+    
+        if ($terminal = $request->query('id_terminal')) {
+            $q->where('id_terminal', $terminal);
+        }
+    
+        if ($vendor = $request->query('id_vendor')) {
+            $q->where('id_vendor', $vendor);
+        }
+    
+        $q->orderByDesc('tanggal_inven')->orderByDesc('id_po');
+    
+        return response()->json(
+            $q->paginate($request->query('per_page', 10))
+        );
     }
-
+    
     public function store(Request $request)
 {
     // Ambil id_cabang berdasarkan id_terminal (dari terminal)
