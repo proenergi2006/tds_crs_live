@@ -38,6 +38,7 @@ class UserController extends Controller
             'is_active' => ['boolean'],
             'id_role'   => ['nullable', 'exists:roles,id_role'],
             'id_cabang'  => ['nullable', 'exists:cabangs,id_cabang'], // ✅
+            'no_telepon' => ['nullable', 'string', 'max:30'],
         ]);
 
         // hash password
@@ -72,6 +73,7 @@ class UserController extends Controller
             'is_active' => ['boolean'],
             'id_role'   => ['nullable', 'exists:roles,id_role'],
             'id_cabang'  => ['nullable', 'exists:cabangs,id_cabang'], // ✅
+            'no_telepon' => ['nullable', 'string', 'max:30'],
         ]);
 
         if (! empty($data['password'])) {
@@ -96,5 +98,26 @@ class UserController extends Controller
     {
         $user->delete();
         return response()->json(null, 204);
+    }
+
+    public function resetPassword(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string|min:6',
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+    
+        $user = User::findOrFail($id);
+        $user->password = Hash::make($request->password);
+        $user->save();
+    
+        return response()->json([
+            'message' => 'Password berhasil direset'
+        ]);
     }
 }

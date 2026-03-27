@@ -25,6 +25,7 @@ class User extends Authenticatable
         'id_cabang',
         'id_role',
         'face_image_path',
+        'no_telepon',
         'face_descriptor',
         'liveness_passed',
     ];
