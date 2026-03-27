@@ -59,6 +59,8 @@ export const useMenuStore = defineStore('menu', {
         
         }else if(typeof item !== 'string' && item.title === 'Customer'){
           return roleId === 4
+        }else if(typeof item !== 'string' && item.title === 'Customer '){
+          return roleId === 14 || roleId === 13
         }else if(typeof item !== 'string' && item.title === 'Master Logistik' || item.title === 'Review Data Customer Logistik' || item.title === 'Delivery Plan'){
           return roleId === 7
         }else if(typeof item !== 'string' && item.title === 'PO Customer'){
@@ -68,10 +70,14 @@ export const useMenuStore = defineStore('menu', {
         }else if(typeof item !== 'string' && item.title === 'Sales Confirmation (BM)' || item.title === 'Verifikasi BM' || item.title === 'Review Customer BM' || item.title === 'Master Wilayah' ||
           item.title === 'Harga Bm'){
           return roleId === 8
+        }else if(typeof item !== 'string' && item.title === 'Verifikasi '){
+          return roleId === 15
         }else if(typeof item !== 'string' && item.title === 'Verifikasi'){
           return roleId === 2 || roleId === 3
         }else if(typeof item !== 'string' && item.title === 'Verifikasi-om' || item.title === 'Review Data Customer OM'){
           return roleId === 10
+        }else if(typeof item !== 'string' && item.title === 'Verifikasi Penawaran'){
+            return roleId === 16
         }else if(typeof item !== 'string' && item.title === 'Verifikasi LCR - Logistik'){
           return roleId === 6
         }return true

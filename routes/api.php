@@ -45,6 +45,10 @@ use App\Http\Controllers\DeliveryPlanController;
 use App\Http\Controllers\PrController;
 use App\Http\Controllers\DeliveryRequestController;
 
+// Controller Proenergi 
+use App\Http\Controllers\PenawaranProenergiController;
+// End
+
 
 // use Illuminate\Support\Facades\Mail;
 
@@ -279,6 +283,26 @@ Route::prefix('procurement')->group(function () {
     // Stock lookup (untuk modal pilih stok)
     Route::get('/stocks', [StockController::class, 'index']);
 });
+
+// PROENERGI
+
+    Route::get('penawarans-proenergi', [PenawaranProenergiController::class, 'index']);
+    Route::get('penawarans-proenergi/bm', [PenawaranProenergiController::class, 'indexForBranchManager']);
+    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
+    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
+    Route::get('penawarans-proenergi/om',                  [PenawaranProenergiController::class, 'indexForOperationalManager']);
+    Route::patch('penawarans-proenergi/{id}/verifikasi-om',[PenawaranProenergiController::class, 'verifikasiOm']);
+    Route::patch('penawarans-proenergi/{id}/tolak-om',     [PenawaranProenergiController::class, 'tolakom']);
+    Route::get('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'show']);
+    Route::post('penawarans-proenergi',                    [PenawaranProenergiController::class, 'store']);
+    Route::put('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'update']);
+    Route::delete('penawarans-proenergi/{id}',             [PenawaranProenergiController::class, 'destroy']);
+    // routes/web.php (atau api.php kalau kamu expose via API)
+    Route::get('/penawarans-proenergi/{id}/preview', [\App\Http\Controllers\PenawaranProenergiController::class, 'previewPdfMultiLang']);
+    Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranProenergiController::class, 'ajukan']);
+    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
+    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
+
 
 
 

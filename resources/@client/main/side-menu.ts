@@ -106,6 +106,43 @@ const menu: Array<Menu | "divider"> = [
     ],
   },
 
+  {
+    icon: "Users",
+    pageName: "Customer Proenergi",
+    title: "Customer ",
+    subMenu: [
+      {
+        icon: "User",
+        pageName: "customers-list-proenergi",
+        title: "customer",
+      },
+      {
+        icon: "File",
+        pageName: "penawarans-list-proenergi",
+        title: "penawaran",
+      },
+      // {
+      //   icon: 'MapPin',
+      //   pageName: 'lcr-list',
+      //   title: 'LCR',
+      // },
+      // {
+      //   icon: 'File',
+      //   pageName: 'customer-verifications',
+      //   title: 'Generate Link',
+      // },
+      // {
+      //   icon: 'File',
+      //   pageName: 'review-customer',
+      //   title: 'Review Data Customer',
+      // },
+    
+     
+     
+      
+    ],
+  },
+
   // {
   //   icon: "File",
   //   pageName: "po-customers-index",
@@ -150,6 +187,19 @@ const menu: Array<Menu | "divider"> = [
     ],
   },
 
+  {
+    icon: "CheckCircle",
+    pageName: "verifikasi proenergi",
+    title: "Verifikasi ",
+    subMenu: [
+      {
+        icon: "File",
+        pageName: "penawarans-verifikasi-proenergi",
+        title: "penawaran",
+      },
+    ],
+  },
+
   // {
   //   icon: 'File',
   //   pageName: 'verify-data-customer-bm',
@@ -170,6 +220,19 @@ const menu: Array<Menu | "divider"> = [
       {
         icon: "File",
         pageName: "penawarans-verifikasi-om",
+        title: "penawaran",
+      },
+    ],
+  },
+
+  {
+    icon: "CheckCircle",
+    pageName: "verifikasi",
+    title: "Verifikasi Penawaran",
+    subMenu: [
+      {
+        icon: "File",
+        pageName: "penawarans-verifikasi-om-proenergi",
         title: "penawaran",
       },
     ],

@@ -206,9 +206,21 @@ const routes = [
       
       },
       {
+        path: 'customers-proenergi',
+        name: 'customers-list-proenergi',
+        component: () => import('@/pages/CustomersListProenergi.vue'),
+      
+      },
+      {
         path: 'customers/create',
         name: 'customers-create',
         component: () => import('@/pages/CustomersCreate.vue'),
+        
+      },
+      {
+        path: 'customers-proenergi/create',
+        name: 'customers-create-proenergi',
+        component: () => import('@/pages/CustomersCreateProenergi.vue'),
         
       },
       {
@@ -311,10 +323,21 @@ const routes = [
         component: () => import('@/pages/PenawaranList.vue'),
       },
       {
+        path: '/penawarans-proenergi',
+        name: 'penawarans-list-proenergi',
+        component: () => import('@/pages/PenawaranListProenergi.vue'),
+      },
+      {
         path: '/penawarans/create',
         name: 'penawarans-create',
         component: () => import('@/pages/PenawaranForm.vue'),
       },
+      {
+        path: '/penawarans-proenergi/create',
+        name: 'penawarans-create-proenergi',
+        component: () => import('@/pages/PenawaranFormProenergi.vue'),
+      },
+      
       {
         path: '/penawarans/createlubricant',
         name: 'penawarans-create-lubricant',
@@ -326,11 +349,23 @@ const routes = [
         name: 'penawarans-edit',
         component: () => import('@/pages/PenawaranForm.vue'),
       },
+
+      {
+        path: '/penawarans-proenergi/:id/edit',
+        name: 'penawarans-edit-proenergi',
+        component: () => import('@/pages/PenawaranFormProenergi.vue'),
+      },
       {
         path: '/penawarans/:id',
         name: 'penawarans-detail',
         component: () => import('@/pages/PenawaranDetail.vue'),
       },
+      {
+        path: '/penawarans-proenergi/:id',
+        name: 'penawarans-detail-proenergi',
+        component: () => import('@/pages/PenawaranDetailProenergi.vue'),
+      },
+
 
       {
         path: '/jenis-produks',
@@ -490,9 +525,19 @@ const routes = [
         component: () => import('@/pages/PenawaranVerifikasiList.vue'),
       },
       {
+        path: '/penawarans-proenergi/verifikasi',
+        name: 'penawarans-verifikasi-proenergi',
+        component: () => import('@/pages/PenawaranVerifikasiListProenergi.vue'),
+      },
+      {
         path: '/penawarans/:id/verifikasi',
         name: 'penawarans-verifikasi-detail',
         component: () => import('@/pages/VerifikasiDetail.vue'), // Pastikan path sesuai
+      },
+      {
+        path: '/penawarans-proenergi/:id/verifikasi',
+        name: 'penawarans-verifikasi-detail-proenergi',
+        component: () => import('@/pages/VerifikasiDetailProenergi.vue'), // Pastikan path sesuai
       },
       {
         path: '/penawarans/verifikasi/om',
@@ -500,9 +545,20 @@ const routes = [
         component: () => import('@/pages/PenawaranVerifikasiListOm.vue'),
       },
       {
+        path: '/penawarans-proenergi/verifikasi/om',
+        name: 'penawarans-verifikasi-om-proenergi',
+        component: () => import('@/pages/PenawaranVerifikasiListOmProenergi.vue'),
+      },
+      {
         path: '/penawarans/verifikasi/om/:id',
         name: 'penawarans-verifikasi-om-detail',
         component: () => import('@/pages/VerifikasiOmDetail.vue'),
+      
+      },
+      {
+        path: '/penawarans-proenergi/verifikasi/om/:id',
+        name: 'penawarans-verifikasi-om-detail-proenergi',
+        component: () => import('@/pages/VerifikasiOmDetailProenergi.vue'),
       
       },
       {
