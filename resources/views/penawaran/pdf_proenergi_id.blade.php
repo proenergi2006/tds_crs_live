@@ -414,7 +414,7 @@
   </p>
 
   {{-- Kalau tidak ada terms, tanda tangan tampil di halaman 1 --}}
-  @if(!$hasTerms)
+ 
     <table class="sigrow">
       <tr>
         <td style="width:55%;">
@@ -444,7 +444,7 @@
         </td>
       </tr>
     </table>
-  @endif
+ 
 </div>
 
 <div class="brand-band"></div>
