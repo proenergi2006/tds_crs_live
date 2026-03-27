@@ -6,7 +6,6 @@
           <h2 class="text-lg font-medium mb-4">Tambah Harga</h2>
           <p v-if="error" class="text-red-500 mb-4">{{ error }}</p>
 
-          <!-- Add Row Button -->
           <div class="mb-4 flex justify-end">
             <Button variant="outline-secondary" @click="addRow" class="inline-flex items-center gap-2">
               <Lucide icon="Plus" class="w-4 h-4" />
@@ -14,7 +13,6 @@
             </Button>
           </div>
 
-          <!-- Rows -->
           <div
             v-for="(row, i) in formRows"
             :key="i"
@@ -82,6 +80,18 @@
             </div>
 
             <div>
+              <FormLabel :for="`hplpe_${i}`">Harga Price List PE</FormLabel>
+              <FormInput
+                type="text"
+                :value="row.displayPriceListPe"
+                @input="onPriceListPeInput(i, $event)"
+                placeholder="0"
+                class="w-full"
+                :readonly="isReadonly('harga_price_list_pe')"
+              />
+            </div>
+
+            <div>
               <FormLabel :for="`hbm_${i}`">Harga BM</FormLabel>
               <FormInput
                 type="text"
@@ -130,17 +140,16 @@
             </div>
 
             <div>
-  <FormLabel :for="`ceo_${i}`">Harga CEO</FormLabel>
-  <FormInput
-    type="text"
-    :value="row.displayCeo"
-    @input="onCeoInput(i, $event)"
-    placeholder="0"
-    class="w-full"
-    :readonly="isReadonly('harga_ceo')"
-  />
-</div>
-
+              <FormLabel :for="`ceo_${i}`">Harga CEO</FormLabel>
+              <FormInput
+                type="text"
+                :value="row.displayCeo"
+                @input="onCeoInput(i, $event)"
+                placeholder="0"
+                class="w-full"
+                :readonly="isReadonly('harga_ceo')"
+              />
+            </div>
 
             <!-- Catatan -->
             <div class="col-span-full">
@@ -154,7 +163,6 @@
             </div>
           </div>
 
-          <!-- Tombol -->
           <div class="mt-6 flex justify-end space-x-2">
             <Button variant="outline-secondary" @click="cancel" class="inline-flex items-center gap-2">
               <Lucide icon="X" class="w-4 h-4" />
@@ -180,10 +188,8 @@ import { FormInput, FormSelect, FormLabel } from '@/components/Base/Form'
 import Lucide from '@/components/Base/Lucide'
 import { useRouter } from 'vue-router'
 
-// router
 const router = useRouter()
 
-// dropdown data
 const cabangs = ref<any[]>([])
 const produks = ref<any[]>([])
 
@@ -196,31 +202,23 @@ onMounted(async () => {
   produks.value = p.data.data
 })
 
-// user login
 const currentUser = ref<any>({ name: '', id_role: 0 })
 onMounted(async () => {
   const { data } = await axios.get('/api/user')
   currentUser.value = data
 })
 
-// role checks
 const isRole5 = computed(() => currentUser.value.id_role === 5)
 const isRole8 = computed(() => currentUser.value.id_role === 8)
 const isRole10 = computed(() => currentUser.value.id_role === 10)
 
-
-// helper: field readonly rules
 function isReadonly(field: string) {
-  // role 5: hanya bisa isi harga_cogs
   if (isRole5.value && field !== 'harga_cogs') return true
-  // role 8: hanya bisa isi harga_bm
   if (isRole8.value && field !== 'harga_bm') return true
   if (isRole10.value && field !== 'harga_om') return true
- 
   return false
 }
 
-// tipe data
 interface Row {
   periode_awal: string
   periode_akhir: string
@@ -228,6 +226,8 @@ interface Row {
   id_produk: number | ''
   harga_price_list: number | null
   displayPriceList: string
+  harga_price_list_pe: number | null
+  displayPriceListPe: string
   harga_bm: number | null
   displayBm: string
   harga_cogs: number | null
@@ -242,14 +242,16 @@ interface Row {
   created_by: string
 }
 
-const formRows = ref<Row[]>([
-  {
+function makeEmptyRow(): Row {
+  return {
     periode_awal: '',
     periode_akhir: '',
     id_cabang: '',
     id_produk: '',
     harga_price_list: 0,
     displayPriceList: '0',
+    harga_price_list_pe: 0,
+    displayPriceListPe: '0',
     harga_bm: 0,
     displayBm: '0',
     harga_cogs: null,
@@ -262,20 +264,23 @@ const formRows = ref<Row[]>([
     displayCeo: '0',
     catatan: '',
     created_by: currentUser.value.name,
-  },
-])
+  }
+}
+
+const formRows = ref<Row[]>([makeEmptyRow()])
 
 function addRow() {
-  formRows.value.push({ ...formRows.value[0] })
+  formRows.value.push(makeEmptyRow())
 }
+
 function removeRow(i: number) {
   if (formRows.value.length > 1) formRows.value.splice(i, 1)
 }
 
-// format ribuan
 function formatThousand(v: string) {
   return v.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
+
 function parseMoney(e: Event) {
   return (e.target as HTMLInputElement).value.replace(/\D/g, '')
 }
@@ -285,6 +290,13 @@ function onPriceListInput(i: number, e: Event) {
   const raw = parseMoney(e)
   formRows.value[i].harga_price_list = raw ? parseInt(raw) : 0
   formRows.value[i].displayPriceList = formatThousand(raw)
+}
+
+function onPriceListPeInput(i: number, e: Event) {
+  if (isReadonly('harga_price_list_pe')) return
+  const raw = parseMoney(e)
+  formRows.value[i].harga_price_list_pe = raw ? parseInt(raw) : 0
+  formRows.value[i].displayPriceListPe = formatThousand(raw)
 }
 
 function onBmInput(i: number, e: Event) {
@@ -322,8 +334,8 @@ function onCeoInput(i: number, e: Event) {
   formRows.value[i].displayCeo = formatThousand(raw)
 }
 
-// validasi sederhana
 const error = ref('')
+
 function validateRows(): { ok: boolean; message?: string } {
   for (let i = 0; i < formRows.value.length; i++) {
     const r = formRows.value[i]
@@ -331,17 +343,19 @@ function validateRows(): { ok: boolean; message?: string } {
 
     if (!r.periode_awal) return { ok: false, message: `Row ${rowNo}: Periode Awal wajib diisi` }
     if (!r.periode_akhir) return { ok: false, message: `Row ${rowNo}: Periode Akhir wajib diisi` }
-    if (new Date(r.periode_akhir) < new Date(r.periode_awal))
+    if (new Date(r.periode_akhir) < new Date(r.periode_awal)) {
       return { ok: false, message: `Row ${rowNo}: Periode Akhir tidak boleh lebih awal dari Periode Awal` }
+    }
 
     if (!r.id_cabang) return { ok: false, message: `Row ${rowNo}: Cabang wajib dipilih` }
     if (!r.id_produk) return { ok: false, message: `Row ${rowNo}: Produk wajib dipilih` }
   }
+
   return { ok: true }
 }
 
-// submit semua
 const loading = ref(false)
+
 async function submitAll() {
   const v = validateRows()
   if (!v.ok) {
@@ -359,11 +373,12 @@ async function submitAll() {
           id_cabang: r.id_cabang,
           id_produk: r.id_produk,
           harga_price_list: r.harga_price_list ?? 0,
+          harga_price_list_pe: r.harga_price_list_pe ?? 0,
           harga_bm: r.harga_bm ?? 0,
           harga_cogs: r.harga_cogs ?? 0,
           harga_margin: r.harga_margin ?? 0,
           harga_om: r.harga_om ?? 0,
-          harga_ceo: r.harga_ceo ?? 0, 
+          harga_ceo: r.harga_ceo ?? 0,
           catatan: r.catatan,
           created_by: currentUser.value.name,
         }
@@ -371,7 +386,14 @@ async function submitAll() {
       })
     )
 
-    Swal.fire({ icon: 'success', title: 'Data tersimpan', toast: true, timer: 1500, showConfirmButton: false })
+    Swal.fire({
+      icon: 'success',
+      title: 'Data tersimpan',
+      toast: true,
+      timer: 1500,
+      showConfirmButton: false
+    })
+
     router.push({ name: 'produk-hargas' })
   } catch (e: any) {
     error.value = e.response?.data?.message || 'Gagal menyimpan'

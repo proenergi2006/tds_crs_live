@@ -11,32 +11,37 @@ use Illuminate\Support\Facades\Schema;
 class ProdukHargaController extends Controller
 {
     public function index(Request $request)
-    {
-        $q = ProdukHarga::with(['cabang', 'produk.ukuran.satuan']);
-    
-        // filter by cabang jika param id_cabang dikirim
-        if ($cabangId = $request->query('id_cabang')) {
-            $q->where('id_cabang', $cabangId);
-        }
-    
-        // filter by produk jika param id_produk dikirim
-        if ($produkId = $request->query('id_produk')) {
-            $q->where('id_produk', $produkId);
-        }
-    
-        // search by nama produk atau nama cabang
-        if ($s = $request->query('search')) {
-            $q->where(function($q2) use ($s) {
-                $q2->whereHas('produk', fn($q3) => $q3->where('nama_produk', 'like', "%{$s}%"))
-                   ->orWhereHas('cabang', fn($q4) => $q4->where('nama_cabang', 'like', "%{$s}%"));
-            });
-        }
+{
+    $q = ProdukHarga::with(['cabang', 'produk.ukuran.satuan']);
 
-        $q->orderBy('created_time', 'desc');
-    
-        $perPage = $request->query('per_page', 10);
-        return response()->json($q->paginate($perPage));
+    if ($cabangId = $request->query('id_cabang')) {
+        $q->where('id_cabang', $cabangId);
     }
+
+    if ($produkId = $request->query('id_produk')) {
+        $q->where('id_produk', $produkId);
+    }
+
+    if ($periodeAwal = $request->query('periode_awal')) {
+        $q->whereDate('periode_awal', '>=', $periodeAwal);
+    }
+
+    if ($periodeAkhir = $request->query('periode_akhir')) {
+        $q->whereDate('periode_akhir', '<=', $periodeAkhir);
+    }
+
+    if ($s = $request->query('search')) {
+        $q->where(function($q2) use ($s) {
+            $q2->whereHas('produk', fn($q3) => $q3->where('nama_produk', 'like', "%{$s}%"))
+               ->orWhereHas('cabang', fn($q4) => $q4->where('nama_cabang', 'like', "%{$s}%"));
+        });
+    }
+
+    $q->orderBy('created_time', 'desc');
+
+    $perPage = $request->query('per_page', 10);
+    return response()->json($q->paginate($perPage));
+}
 
     public function check(Request $request)
     {
@@ -66,6 +71,7 @@ class ProdukHargaController extends Controller
             'id_cabang'        => 'required|exists:cabangs,id_cabang',
             'id_produk'        => 'required|exists:produks,id_produk',
             'harga_price_list' => 'nullable|numeric|min:0',
+            'harga_price_list_pe' => 'nullable|numeric|min:0',
             'harga_bm'         => 'nullable|numeric|min:0',
             'harga_cogs'       => 'nullable|numeric|min:0',
             'harga_margin'     => 'nullable|numeric|min:0',
@@ -74,7 +80,7 @@ class ProdukHargaController extends Controller
             'catatan'          => 'nullable|string',
         ]);
     
-        foreach (['harga_price_list', 'harga_bm', 'harga_cogs', 'harga_margin', 'harga_om'] as $k) {
+        foreach (['harga_price_list',  'harga_price_list_pe', 'harga_bm', 'harga_cogs', 'harga_margin', 'harga_om'] as $k) {
             $data[$k] = $data[$k] ?? 0;
         }
     
@@ -103,6 +109,7 @@ class ProdukHargaController extends Controller
             'id_cabang'        => 'required|exists:cabangs,id_cabang',
             'id_produk'        => 'required|exists:produks,id_produk',
             'harga_price_list' => 'nullable|numeric|min:0',
+            'harga_price_list_pe' => 'nullable|numeric|min:0',
             'harga_bm'         => 'nullable|numeric|min:0',
             'harga_cogs'       => 'nullable|numeric|min:0',
             'harga_margin'     => 'nullable|numeric|min:0',

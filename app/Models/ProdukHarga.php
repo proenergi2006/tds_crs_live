@@ -15,6 +15,7 @@ class ProdukHarga extends Model
         'id_cabang',
         'id_produk',
         'harga_price_list',
+        'harga_price_list_pe',
         'harga_bm',
         'harga_cogs',      // ✅ baru
         'harga_margin',    // ✅ baru

@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // c) Users CRUD
     Route::apiResource('users', UserController::class);
+    Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
 
     // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class,'generate']);

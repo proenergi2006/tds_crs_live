@@ -116,6 +116,11 @@ const routes = [
         props: true,
       },
       {
+        path: 'produk-hargas/:id/detail',
+        name: 'produk-hargas-detail',
+        component: () => import('@/pages/ProdukHargaDetail.vue'),
+      },
+      {
         path: 'produk-hargas',
         name: 'produk-hargas',
         component: () => import('@/pages/ProdukHargaList.vue'),
