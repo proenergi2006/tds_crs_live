@@ -44,6 +44,7 @@ use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\DeliveryPlanController;
 use App\Http\Controllers\PrController;
 use App\Http\Controllers\DeliveryRequestController;
+use App\Http\Controllers\DashboardController;
 
 // Controller Proenergi 
 use App\Http\Controllers\PenawaranProenergiController;
@@ -77,6 +78,7 @@ Route::get('produk-hargas/check', [ProdukHargaController::class, 'check']);
 Route::middleware('auth:sanctum')->group(function () {
     // a) Get current user
     Route::get('user', fn(Request $req) => $req->user());
+    Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
 
     // b) Roles CRUD
     Route::apiResource('roles', RoleController::class);
