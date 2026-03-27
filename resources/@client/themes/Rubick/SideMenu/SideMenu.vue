@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import "@/assets/css/themes/rubick/side-nav.css";
 import { useRoute, useRouter } from "vue-router";
-import logoUrl from "@/assets/images/logo.png";
+import defaultLogoUrl from "@/assets/images/logo.png";
+import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import Tippy from "@/components/Base/Tippy";
 import Lucide from "@/components/Base/Lucide";
 import TopBar from "@/components/Themes/Rubick/TopBar";
 import MobileMenu from "@/components/MobileMenu";
 import { useMenuStore } from "@/stores/menu";
+import { useAuthStore } from "@/stores/auth";
 import {
   type ProvideForceActiveMenu,
   forceActiveMenu,
@@ -28,8 +30,32 @@ const setFormattedMenu = (
   Object.assign(formattedMenu, computedFormattedMenu);
 };
 const menuStore = useMenuStore();
+const authStore = useAuthStore();
 const menu = computed(() => nestedMenu(menuStore.menu("side-menu"), route));
 const windowWidth = ref(window.innerWidth);
+
+// Ambil user dari auth store
+const user = computed(() => authStore.user);
+
+// Role agen
+const agenRoles = [13, 14, 15, 16];
+
+// Cek apakah user role agen
+const isAgenRole = computed(() => {
+  return agenRoles.includes(Number(user.value?.id_role));
+});
+
+// Nama aplikasi dinamis
+const appName = computed(() => {
+  return isAgenRole.value
+    ? "Agen TDS"
+    : "Tri Daya Selaras";
+});
+
+// Logo dinamis
+const currentLogo = computed(() => {
+  return isAgenRole.value ? agenLogoUrl : defaultLogoUrl;
+});
 
 provide<ProvideForceActiveMenu>("forceActiveMenu", (pageName: string) => {
   forceActiveMenu(route, pageName);
@@ -73,12 +99,19 @@ onMounted(() => {
           :to="{ name: 'dashboard-overview-1' }"
           class="flex items-center pt-4 pl-5 intro-x"
         >
-          <img
-            alt="Midone - Tailwind Admin Dashboard Template"
-            class="w-6"
-            :src="logoUrl"
+        <img
+            alt="Application Logo"
+            class="w-16"
+            :src="currentLogo"
           />
-          <span class="hidden ml-3 text-lg text-white xl:block"> Tri Daya Selaras </span>
+          <span
+  class="hidden ml-3 text-lg font-semibold xl:block"
+  :class="isAgenRole
+    ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
+    : 'text-white'"
+>
+  {{ appName }}
+</span>
         </RouterLink>
         <div class="my-6 side-nav__divider"></div>
         <ul>
