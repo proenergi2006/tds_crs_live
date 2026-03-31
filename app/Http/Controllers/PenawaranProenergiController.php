@@ -280,21 +280,30 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             'cabang',
             'items.produk.jenis',
             'items.produk.ukuran.satuan',
-            'produk_harga', // relasi baru
-            'ongkos.volume', // ✅
+            'ongkos.volume',
         ])->findOrFail($id);
-
-        if (!$penawaran->produk_harga && $penawaran->items->isNotEmpty()) {
+    
+        // ambil harga berdasarkan item pertama + cabang + masa berlaku
+        if ($penawaran->items->isNotEmpty()) {
             $firstProdukId = $penawaran->items->first()->id_produk;
-            $harga = \App\Models\ProdukHarga::where('id_produk', $firstProdukId)
+    
+            $harga = \App\Models\ProdukHarga::query()
+                ->where('id_produk', $firstProdukId)
+                ->where('id_cabang', $penawaran->id_cabang)
+                ->whereDate('periode_awal', '<=', $penawaran->masa_berlaku)
+                ->whereDate('periode_akhir', '>=', $penawaran->masa_berlaku)
                 ->orderByDesc('periode_akhir')
                 ->first();
     
             if ($harga) {
                 $penawaran->setRelation('produk_harga', $harga);
+            } else {
+                $penawaran->setRelation('produk_harga', null);
             }
+        } else {
+            $penawaran->setRelation('produk_harga', null);
         }
-
+    
         return response()->json($penawaran);
     }
 
