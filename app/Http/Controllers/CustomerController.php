@@ -148,7 +148,7 @@ class CustomerController extends Controller
     {
         $data = $request->validate([
             'id_user'           => 'sometimes|nullable|exists:users,id', // diabaikan
-            'email'             => "required|email|unique:customers,email,{$id},id_customer",
+            'email'             => "nullable|email|unique:customers,email,{$id},id_customer",
             'id_provinsi'       => 'required|exists:provinsis,id_provinsi',
             'id_kabupaten'      => 'required|exists:kabupatens,id_kabupaten',
             'postal_code'       => 'nullable|string|max:20',
