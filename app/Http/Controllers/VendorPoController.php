@@ -165,7 +165,9 @@ class VendorPoController extends Controller
     public function approve(Request $request, $id)
 {
     $po = VendorPo::findOrFail($id);
-    $po->disposisi_po      = 1;
+    $po->disposisi_po      = 2;
+    $po->cfo_result        = 1;
+    $po->cfo_tanggal       = now ();
     $po->lastupdate_time   = now();
     $po->lastupdate_by     = $request->user()->name;
     $po->save();
