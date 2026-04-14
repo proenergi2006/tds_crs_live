@@ -1010,7 +1010,12 @@
       const [cData, caData, pData] = await Promise.all([
         axios.get('/api/customers', { params: { per_page: 100 } }),
         axios.get('/api/cabangs'),
-        axios.get('/api/produks?with=ukuran'),
+        axios.get('/api/produks', {
+        params: {
+          with: 'ukuran',
+          per_page: 1000,
+        },
+      }),
       ]);
       customers.value = cData.data.data || cData.data;
       cabangs.value = caData.data.data || caData.data;
