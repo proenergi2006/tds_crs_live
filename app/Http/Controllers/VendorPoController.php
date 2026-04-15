@@ -167,7 +167,7 @@ class VendorPoController extends Controller
     $po = VendorPo::findOrFail($id);
     $po->disposisi_po      = 2;
     $po->cfo_result        = 1;
-    $po->cfo_tanggal       = now ();
+    $po->cfo_tgl       = now ();
     $po->lastupdate_time   = now();
     $po->lastupdate_by     = $request->user()->name;
     $po->save();
