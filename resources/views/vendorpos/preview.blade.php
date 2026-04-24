@@ -120,7 +120,7 @@
   if (class_exists('NumberFormatter')) {
     $fmt = new \NumberFormatter('en', \NumberFormatter::SPELLOUT);
     $d   = floor((float)$grand); $c = (int)round(((float)$grand - $d)*100);
-    $amountWords = ucfirst($fmt->format($d)).' dollars'.($c>0 ? ' and '.$fmt->format($c).' cents' : '');
+    $amountWords = ucfirst($fmt->format($d)).' rupiah'.($c>0 ? ' and '.$fmt->format($c).' cents' : '');
   }
 @endphp
 
@@ -139,7 +139,7 @@
         @if($logoRight)
           <img src="{{ $logoRight }}" style="height:auto; width:100px" alt="Crushed Stone">
         @else
-          <img src="{{ public_path('images/crs-1.png') }}" style="height:auto; width:100px" alt="Crushed Stone">
+          <img src="{{ public_path('images/logo-crs.png') }}" style="height:auto; width:100px" alt="Crushed Stone">
         @endif
       </td>
     </tr>
@@ -241,7 +241,7 @@
             <tr><td class="lbl">Sub Total</td><td class="colon">:</td><td class="val">{{ $rp0($subtotal) }}</td></tr>
             <tr><td class="lbl">DPP Nilai Lain</td><td class="colon">:</td><td class="val">{{ $rp0($dppLain) }}</td></tr>
             <tr><td class="lbl">Discount</td><td class="colon">:</td><td class="val">{{ $rp0($discount) }}</td></tr>
-            <tr><td class="lbl">PPN</td><td class="colon">:</td><td class="val">{{ $rp0($ppn) }}</td></tr>
+            <tr><td class="lbl">Tax</td><td class="colon">:</td><td class="val">{{ $rp0($ppn) }}</td></tr>
             <tr class="grand"><td class="lbl">Total Order</td><td class="colon">:</td><td class="val">{{ $rp0($grand) }}</td></tr>
           </table>
         </div>
