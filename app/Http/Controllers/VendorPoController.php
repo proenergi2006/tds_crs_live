@@ -272,7 +272,7 @@ public function preview($id)
     ])->findOrFail($id);
 
     $leftPath  = public_path('images/logo-new.png');
-    $rightPath = public_path('images/logo_prodiesel.png');
+    $rightPath = public_path('images/logo-crs.png');
 
     $logoLeft  = file_exists($leftPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))  : null;
     $logoRight = file_exists($rightPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath)) : null;
