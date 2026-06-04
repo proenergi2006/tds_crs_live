@@ -1,123 +1,19 @@
-<template>
-  <div class="p-6 intro-y">
-    <h2 class="text-lg font-medium">Master Produk</h2>
-
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center mt-5 intro-y sm:flex-nowrap">
-      <RouterLink :to="{ name: 'produks-create' }">
-    <Button variant="primary" class="inline-flex items-center gap-2">
-      <Lucide icon="Plus" class="w-4 h-4" aria-hidden="true" />
-      <span>Tambah Produk</span>
-    </Button>
-  </RouterLink>
-      <div class="mx-auto text-slate-500">
-        Page {{ currentPage }} of {{ totalPages }}
-      </div>
-      <FormInput
-        v-model="searchQuery"
-        placeholder="Search…"
-        class="w-56 ml-auto pr-10 !box"
-      >
-        <template #icon><Lucide icon="Search" /></template>
-      </FormInput>
-      <FormSelect v-model="perPage" class="w-20 ml-2 !box">
-        <option :value="5">5</option>
-        <option :value="10">10</option>
-        <option :value="25">25</option>
-      </FormSelect>
-    </div>
-
-    <!-- Data List -->
-    <div class="overflow-x-auto bg-white shadow rounded-lg mt-6">
-      <table class="min-w-full divide-y divide-slate-200">
-        <!-- Header -->
-        <thead class="bg-slate-50">
-          <tr>
-            <th class="px-4 py-2 text-xs font-medium text-left uppercase">No</th>
-            <th class="px-4 py-2 text-xs font-medium text-left uppercase">Nama Produk</th>
-            <th class="px-4 py-2 text-xs font-medium text-left uppercase">Merk Dagang</th>
-            <th class="px-4 py-2 text-xs font-medium text-left uppercase">Ukuran</th>
-            <th class="px-4 py-2 text-xs font-medium text-left uppercase">Jenis</th>
-            <th class="px-4 py-2 text-xs font-medium text-center uppercase">Status</th>
-            <th class="px-4 py-2 text-xs font-medium text-center uppercase">Actions</th>
-          </tr>
-        </thead>
-        <!-- Body -->
-        <tbody class="divide-y divide-slate-200">
-          <tr
-            v-for="(p, idx) in produks"
-            :key="p.id_produk"
-            class="hover:bg-slate-100 transition-colors"
-          >
-            <td class="px-4 py-3 whitespace-nowrap">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">{{ p.nama_produk }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">{{ p.merk_dagang || '-' }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">{{ p.ukuran?.nama_ukuran || '-' }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">{{ p.jenis?.nama || '-' }}</td>
-            <td class="px-4 py-3 whitespace-nowrap text-center">
-              <span :class="p.is_active ? 'text-green-600' : 'text-red-600'">
-                {{ p.is_active ? 'Active' : 'Inactive' }}
-              </span>
-            </td>
-            <td class="px-4 py-3 whitespace-nowrap text-center flex justify-center items-center">
-              <RouterLink
-                :to="{ name: 'produks-edit', params: { id: p.id_produk } }"
-                class="text-blue-600 hover:text-blue-800 mx-2"
-              >
-                <Lucide icon="Edit" class="w-5 h-5" />
-              </RouterLink>
-              <span class="text-slate-300">|</span>
-              <button
-                @click="confirmDelete(p.id_produk)"
-                class="text-red-600 hover:text-red-800 mx-2"
-              >
-                <Lucide icon="Trash2" class="w-5 h-5" />
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    <div class="flex justify-center mt-5 intro-y col-span-12">
-      <Pagination>
-        <Pagination.Link :disabled="currentPage===1" @click="fetchProduks(currentPage-1)">
-          <Lucide icon="ChevronLeft" />
-        </Pagination.Link>
-        <Pagination.Link
-          v-for="page in totalPages"
-          :key="page"
-          :active="page===currentPage"
-          @click="fetchProduks(page)"
-        >
-          {{ page }}
-        </Pagination.Link>
-        <Pagination.Link :disabled="currentPage===totalPages" @click="fetchProduks(currentPage+1)">
-          <Lucide icon="ChevronRight" />
-        </Pagination.Link>
-      </Pagination>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import Swal from 'sweetalert2';
-import { useRouter } from 'vue-router';
 
 import Button from '@/components/Base/Button';
-import Pagination from '@/components/Base/Pagination';
-import { FormInput, FormSelect } from '@/components/Base/Form';
+import Table from '@/components/Base/Table';
+import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue';
+import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue';
+import DataList from '@/components/SystemDesign/Data/DataList.vue';
 import Lucide from '@/components/Base/Lucide';
-
-const router = useRouter();
 
 const produks = ref<any[]>([]);
 const loading = ref(false);
-const error = ref<string|null>(null);
+const error = ref<string | null>(null);
 const searchQuery = ref('');
 const currentPage = ref(1);
 const perPage = ref(10);
@@ -144,6 +40,11 @@ async function fetchProduks(page = 1) {
   }
 }
 
+function goToPage(page: number) {
+  if (page < 1 || page > totalPages.value) return;
+  fetchProduks(page);
+}
+
 watch(searchQuery, debounce(() => fetchProduks(1), 300));
 watch(perPage, () => fetchProduks(1));
 
@@ -151,22 +52,86 @@ onMounted(() => {
   fetchProduks();
 });
 
-let produkToDelete: number|null = null;
+let produkToDelete: number | null = null;
 function confirmDelete(id: number) {
   produkToDelete = id;
   Swal.fire({
     title: 'Yakin ingin menghapus?',
-  icon: 'warning',
-  showCancelButton: true,
-  confirmButtonText: '🗑️ Hapus',
-  cancelButtonText: '↩️ Batal',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: '🗑️ Hapus',
+    cancelButtonText: '↩️ Batal',
   }).then(async (res) => {
     if (res.isConfirmed && produkToDelete) {
       await axios.delete(`/api/produks/${produkToDelete}`);
-      produks.value = produks.value.filter(p => p.id_produk !== produkToDelete);
-      Swal.fire({ icon:'success', title:'Produk dihapus', toast:true, position:'top-end', timer:1500 });
+      produks.value = produks.value.filter((p) => p.id_produk !== produkToDelete);
+      Swal.fire({ icon: 'success', title: 'Produk dihapus', toast: true, position: 'top-end', timer: 1500 });
     }
     produkToDelete = null;
   });
 }
 </script>
+
+<template>
+  <div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12 mt-4 intro-y">
+      <PageHeader title="Master Produk" description="Kelola daftar produk dan atributnya.">
+        <template #action>
+          <RouterLink :to="{ name: 'produks-create' }">
+            <Button variant="primary" class="inline-flex items-center gap-2">
+              <Lucide icon="Plus" class="h-4 w-4" />
+              Tambah Produk
+            </Button>
+          </RouterLink>
+        </template>
+      </PageHeader>
+
+      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
+        :active-filter-count="0" :total-pages="totalPages" search-placeholder="Cari produk..."
+        @page-change="goToPage" />
+
+      <DataList :loading="loading" :empty="produks.length === 0" :colspan="7" loading-text="Memuat data produk..."
+        empty-description="Belum ada produk untuk ditampilkan.">
+        <template #head>
+          <Table.Th class="w-16 text-center">No</Table.Th>
+          <Table.Th>Nama Produk</Table.Th>
+          <Table.Th>Merk Dagang</Table.Th>
+          <Table.Th>Ukuran</Table.Th>
+          <Table.Th>Jenis</Table.Th>
+          <Table.Th class="text-center">Status</Table.Th>
+          <Table.Th class="text-center">Aksi</Table.Th>
+        </template>
+
+        <template #body>
+          <Table.Tr v-for="(p, idx) in produks" :key="p.id_produk" class="transition hover:bg-slate-50">
+            <Table.Td class="text-center font-medium text-slate-700">
+              {{ (currentPage - 1) * perPage + idx + 1 }}
+            </Table.Td>
+            <Table.Td>
+              <div class="font-semibold text-slate-800">{{ p.nama_produk }}</div>
+            </Table.Td>
+            <Table.Td class="text-slate-600">{{ p.merk_dagang || '-' }}</Table.Td>
+            <Table.Td class="text-slate-600">{{ p.ukuran?.nama_ukuran || '-' }}</Table.Td>
+            <Table.Td class="text-slate-600">{{ p.jenis?.nama || '-' }}</Table.Td>
+            <Table.Td class="text-center">
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                :class="p.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+                {{ p.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </Table.Td>
+            <Table.Td class="text-center">
+              <RouterLink :to="{ name: 'produks-edit', params: { id: p.id_produk } }"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100">
+                <Lucide icon="Edit" class="h-4 w-4" />
+              </RouterLink>
+              <button type="button" @click="confirmDelete(p.id_produk)"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 ml-2">
+                <Lucide icon="Trash2" class="h-4 w-4" />
+              </button>
+            </Table.Td>
+          </Table.Tr>
+        </template>
+      </DataList>
+    </div>
+  </div>
+</template>

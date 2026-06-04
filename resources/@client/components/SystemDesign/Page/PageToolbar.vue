@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 
-import { FormInput, FormSelect } from '@/components/Base/Form';
-import Lucide from '@/components/Base/Lucide';
+import { FormInput, FormSelect } from "@/components/Base/Form";
+import Lucide from "@/components/Base/Lucide";
 
 withDefaults(
   defineProps<{
@@ -11,16 +11,18 @@ withDefaults(
     currentPage: number;
     totalPages: number;
     searchPlaceholder?: string;
+    activeFilterCount?: number;
   }>(),
   {
-    searchPlaceholder: 'Search...',
+    searchPlaceholder: "Search...",
+    activeFilterCount: 0,
   },
 );
 
 defineEmits<{
-  (e: 'update:search', value: string): void;
-  (e: 'update:perPage', value: number): void;
-  (e: 'page-change', page: number): void;
+  (e: "update:search", value: string): void;
+  (e: "update:perPage", value: number): void;
+  (e: "page-change", page: number): void;
 }>();
 
 const showFilters = ref(false);
@@ -42,13 +44,18 @@ const showFilters = ref(false);
           @click="showFilters = !showFilters">
           <Lucide icon="SlidersHorizontal" class="h-4 w-4" />
           Filter
+          <span v-if="activeFilterCount > 0"
+            class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-white">
+            {{ activeFilterCount }}
+          </span>
           <Lucide icon="ChevronDown" class="h-4 w-4 transition" :class="{ 'rotate-180': showFilters }" />
         </button>
       </div>
 
       <div class="flex items-center justify-between gap-3 sm:justify-end">
-        <FormSelect :model-value="perPage" class="w-20 !box"
-          @update:model-value="$emit('update:perPage', Number($event))">
+        <FormSelect :model-value="perPage" class="w-20 !box" @update:model-value="
+          $emit('update:perPage', Number($event))
+          ">
           <option :value="5">5</option>
           <option :value="10">10</option>
           <option :value="25">25</option>
@@ -82,7 +89,7 @@ const showFilters = ref(false);
     <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-1"
       enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-150 ease-in"
       leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-1">
-      <div v-if="showFilters && $slots.filters" class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+      <div v-if="$slots.filters && showFilters" class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
         <slot name="filters" />
       </div>
     </Transition>
