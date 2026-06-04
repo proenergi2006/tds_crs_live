@@ -65,9 +65,7 @@ async function onLogout() {
 </script>
 
 <template>
-  <div
-    class="relative z-[51] flex h-[67px] items-center border-b border-slate-200"
-  >
+  <div class="relative z-[51] flex h-[67px] items-center border-b border-slate-200">
     <!-- BEGIN: Breadcrumb -->
     <Breadcrumb class="hidden mr-auto -intro-x sm:flex">
       <Breadcrumb.Link to="/">Application</Breadcrumb.Link>
@@ -85,14 +83,8 @@ async function onLogout() {
 
     <!-- BEGIN: Account Menu -->
     <Menu>
-      <Menu.Button
-        class="flex items-center justify-center overflow-hidden rounded-full shadow-lg zoom-in intro-x"
-      >
-        <img
-          alt="Application Logo"
-          class="h-10 w-auto max-w-[42px] object-contain"
-          :src="currentLogo"
-        />
+      <Menu.Button class="flex items-center justify-center overflow-hidden rounded-full shadow-lg zoom-in intro-x">
+        <img alt="Application Logo" class="h-10 w-auto max-w-[42px] object-contain" :src="currentLogo" />
       </Menu.Button>
 
       <Menu.Items class="w-56 mt-px text-white bg-primary">
@@ -105,21 +97,13 @@ async function onLogout() {
 
         <Menu.Divider class="bg-white/[0.08]" />
 
-        <Menu.Item
-          as="button"
-          class="hover:bg-white/5"
-          @click="router.push({ name: 'profile-overview-1' })"
-        >
+        <Menu.Item as="button" class="hover:bg-white/5" @click="router.push({ name: 'profile-overview-1' })">
           <Lucide icon="User" class="w-4 h-4 mr-2" />
           Profile
         </Menu.Item>
 
-        <Menu.Item
-          v-if="auth.user?.id_role === 1"
-          as="button"
-          class="hover:bg-white/5"
-          @click="() => router.push({ name: 'users' })"
-        >
+        <Menu.Item v-if="auth.user?.id_role === 1" as="button" class="hover:bg-white/5"
+          @click="() => router.push({ name: 'users' })">
           <Lucide icon="Edit" class="w-4 h-4 mr-2" />
           Add Account
         </Menu.Item>
@@ -131,11 +115,7 @@ async function onLogout() {
 
         <Menu.Divider class="bg-white/[0.08]" />
 
-        <Menu.Item
-          as="button"
-          @click="onLogout"
-          class="w-full text-left hover:bg-white/5 flex items-center px-4 py-2"
-        >
+        <Menu.Item as="button" @click="onLogout" class="w-full text-left hover:bg-white/5 flex items-center px-4 py-2">
           <Lucide icon="ToggleRight" class="w-4 h-4 mr-2" />
           Logout
         </Menu.Item>

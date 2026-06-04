@@ -22,7 +22,7 @@ const agenRoles = [13, 14, 15, 16];
 
 const currentUser = computed(() => auth.user || {});
 const isAgenRole = computed(() =>
-  agenRoles.includes(Number(currentUser.value?.id_role))
+  agenRoles.includes(Number(currentUser.value?.id_role)),
 );
 
 const displayName = computed(() => currentUser.value?.name || "User");
@@ -32,9 +32,7 @@ const roleLabel = computed(() => {
 });
 
 const welcomeTitle = computed(() => {
-  return isAgenRole.value
-    ? "Selamat Datang, Agent TDS"
-    : "Dashboard Utama";
+  return isAgenRole.value ? "Selamat Datang, Agent TDS" : "Dashboard Utama";
 });
 
 const welcomeSubtitle = computed(() => {
@@ -133,7 +131,9 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:min-w-[420px]">
+              <div
+                class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:min-w-[420px]"
+              >
                 <div
                   class="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"
                 >
@@ -152,7 +152,10 @@ onMounted(async () => {
                 >
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-white/80">Portal</span>
-                    <Lucide icon="LayoutDashboard" class="h-5 w-5 text-white/80" />
+                    <Lucide
+                      icon="LayoutDashboard"
+                      class="h-5 w-5 text-white/80"
+                    />
                   </div>
                   <div class="mt-3 text-xl font-bold">Agent TDS</div>
                   <div class="mt-1 text-xs text-white/75">
@@ -188,7 +191,9 @@ onMounted(async () => {
                   >
                     <Lucide icon="FileSpreadsheet" class="h-6 w-6" />
                   </div>
-                  <span class="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                  <span
+                    class="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary"
+                  >
                     Total
                   </span>
                 </div>
@@ -210,7 +215,9 @@ onMounted(async () => {
                   >
                     <Lucide icon="FileEdit" class="h-6 w-6" />
                   </div>
-                  <span class="rounded-full bg-warning/10 px-2 py-1 text-xs text-warning">
+                  <span
+                    class="rounded-full bg-warning/10 px-2 py-1 text-xs text-warning"
+                  >
                     Draft
                   </span>
                 </div>
@@ -232,7 +239,9 @@ onMounted(async () => {
                   >
                     <Lucide icon="Clock3" class="h-6 w-6" />
                   </div>
-                  <span class="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-600">
+                  <span
+                    class="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-600"
+                  >
                     Pending
                   </span>
                 </div>
@@ -254,7 +263,9 @@ onMounted(async () => {
                   >
                     <Lucide icon="BadgeCheck" class="h-6 w-6" />
                   </div>
-                  <span class="rounded-full bg-success/10 px-2 py-1 text-xs text-success">
+                  <span
+                    class="rounded-full bg-success/10 px-2 py-1 text-xs text-success"
+                  >
                     Approved
                   </span>
                 </div>
@@ -280,9 +291,12 @@ onMounted(async () => {
                 <Lucide icon="Megaphone" class="h-6 w-6" />
               </div>
               <div>
-                <h2 class="text-lg font-semibold">Informasi Dashboard Agent TDS</h2>
+                <h2 class="text-lg font-semibold">
+                  Informasi Dashboard Agent TDS
+                </h2>
                 <p class="text-sm text-slate-500">
-                  Dashboard ini khusus untuk agent Tri Daya Selaras agar monitoring penawaran lebih mudah.
+                  Dashboard ini khusus untuk agent Tri Daya Selaras agar
+                  monitoring penawaran lebih mudah.
                 </p>
               </div>
             </div>
@@ -296,16 +310,21 @@ onMounted(async () => {
               </div>
 
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-medium text-slate-700">Monitoring Approval</div>
+                <div class="font-medium text-slate-700">
+                  Monitoring Approval
+                </div>
                 <p class="mt-2 text-sm text-slate-500">
                   Pantau draft, pending, dan approved dari satu halaman.
                 </p>
               </div>
 
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-medium text-slate-700">Dashboard Representatif</div>
+                <div class="font-medium text-slate-700">
+                  Dashboard Representatif
+                </div>
                 <p class="mt-2 text-sm text-slate-500">
-                  Tampilan telah disesuaikan untuk branding Agent Tri Daya Selaras.
+                  Tampilan telah disesuaikan untuk branding Agent Tri Daya
+                  Selaras.
                 </p>
               </div>
             </div>

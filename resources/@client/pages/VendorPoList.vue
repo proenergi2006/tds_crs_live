@@ -2,8 +2,7 @@
   <div class="p-6 intro-y">
     <!-- Header -->
     <div
-      class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-theme-1 via-theme-2 to-slate-700 px-6 py-6 text-white shadow-lg"
-    >
+      class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-theme-1 via-theme-2 to-slate-700 px-6 py-6 text-white shadow-lg">
       <div class="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
       <div class="absolute -bottom-8 left-10 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
 
@@ -11,7 +10,8 @@
         <div>
           <h2 class="text-2xl font-bold">Daftar Vendor PO</h2>
           <p class="mt-1 text-sm text-white/80">
-            Kelola Purchase Order vendor, filter data, dan akses aksi dengan cepat.
+            Kelola Purchase Order vendor, filter data, dan akses aksi dengan
+            cepat.
           </p>
         </div>
 
@@ -42,7 +42,9 @@
         <div class="flex items-center justify-between">
           <div>
             <div class="text-sm text-slate-500">Halaman</div>
-            <div class="mt-1 text-2xl font-bold">{{ currentPage }} / {{ totalPages }}</div>
+            <div class="mt-1 text-2xl font-bold">
+              {{ currentPage }} / {{ totalPages }}
+            </div>
           </div>
           <div class="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
             <Lucide icon="LayoutGrid" class="h-6 w-6" />
@@ -68,7 +70,9 @@
       <div class="mb-4 flex items-center justify-between">
         <div>
           <h3 class="text-base font-semibold text-slate-700">Filter PO</h3>
-          <p class="text-sm text-slate-500">Filter berdasarkan tanggal, terminal, vendor, dan pencarian umum.</p>
+          <p class="text-sm text-slate-500">
+            Filter berdasarkan tanggal, terminal, vendor, dan pencarian umum.
+          </p>
         </div>
 
         <Button variant="outline-secondary" @click="resetFilter">
@@ -110,11 +114,7 @@
 
         <div>
           <label class="mb-1 block text-sm font-medium text-slate-600">Search</label>
-          <FormInput
-            v-model="searchQuery"
-            placeholder="Nomor PO / keterangan..."
-            class="pr-10 !box"
-          >
+          <FormInput v-model="searchQuery" placeholder="Nomor PO / keterangan..." class="pr-10 !box">
             <template #icon>
               <Lucide icon="Search" />
             </template>
@@ -138,29 +138,38 @@
       <table class="min-w-full divide-y divide-slate-200">
         <thead class="bg-slate-50">
           <tr>
-            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">No</th>
-            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">Nomor PO</th>
-            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">Tanggal PO</th>
-            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">Vendor</th>
-            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">Terminal</th>
-            <th class="px-4 py-3 text-xs font-semibold text-center uppercase tracking-wider text-slate-600">Status</th>
-            <th class="px-4 py-3 text-xs font-semibold text-center uppercase tracking-wider text-slate-600">Actions</th>
+            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">
+              No
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">
+              Nomor PO
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">
+              Tanggal PO
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">
+              Vendor
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-left uppercase tracking-wider text-slate-600">
+              Terminal
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-center uppercase tracking-wider text-slate-600">
+              Status
+            </th>
+            <th class="px-4 py-3 text-xs font-semibold text-center uppercase tracking-wider text-slate-600">
+              Actions
+            </th>
           </tr>
         </thead>
 
         <tbody class="divide-y divide-slate-200">
-          <tr
-            v-for="(po, idx) in vendorPos"
-            :key="po.id_po"
-            class="transition-colors hover:bg-slate-50"
-          >
+          <tr v-for="(po, idx) in vendorPos" :key="po.id_po" class="transition-colors hover:bg-slate-50">
             <td class="px-4 py-4 whitespace-nowrap text-slate-700">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </td>
 
             <td class="px-4 py-4 whitespace-nowrap">
               <div class="font-semibold text-slate-700">{{ po.nomor_po }}</div>
-              
             </td>
 
             <td class="px-4 py-4 whitespace-nowrap text-slate-700">
@@ -168,18 +177,16 @@
             </td>
 
             <td class="px-4 py-4 whitespace-nowrap text-slate-700">
-              {{ po.vendor?.nama_vendor || '-' }}
+              {{ po.vendor?.nama_vendor || "-" }}
             </td>
 
             <td class="px-4 py-4 whitespace-nowrap text-slate-700">
-              {{ po.terminal?.nama_terminal || '-' }}
+              {{ po.terminal?.nama_terminal || "-" }}
             </td>
 
             <td class="px-4 py-4 text-center whitespace-nowrap">
-              <span
-                class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
-                :class="statusBadgeClass(po.disposisi_po)"
-              >
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                :class="statusBadgeClass(po.disposisi_po)">
                 {{ statusLabel(po.disposisi_po) }}
               </span>
             </td>
@@ -187,50 +194,37 @@
             <td class="px-4 py-4 whitespace-nowrap text-center">
               <div class="inline-flex items-center gap-2">
                 <!-- Cetak -->
-                <button
-                  v-if="po.disposisi_po === 4"
-                  @click="preview(po.id_po)"
+                <button v-if="po.disposisi_po === 4" @click="preview(po.id_po)"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 transition hover:bg-green-100 hover:text-green-800"
-                  title="Cetak"
-                >
+                  title="Cetak">
                   <Lucide icon="Printer" class="h-5 w-5" />
                 </button>
 
                 <!-- Receive Item -->
-                <button
-                  v-if="po.disposisi_po === 4"
-                  @click="goReceiveItem(po.id_po)"
+                <button v-if="po.disposisi_po === 4" @click="goReceiveItem(po.id_po)"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-800"
-                  title="Receive Item"
-                >
+                  title="Receive Item">
                   <Lucide icon="Package" class="h-5 w-5" />
                 </button>
 
                 <!-- Delete -->
-                <button
-                  v-if="po.disposisi_po === 0"
-                  @click="confirmDelete(po.nomor_po, po.id_po)"
+                <button v-if="po.disposisi_po === 0" @click="confirmDelete(po.nomor_po, po.id_po)"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-800"
-                  title="Delete"
-                >
+                  title="Delete">
                   <Lucide icon="Trash2" class="h-5 w-5" />
                 </button>
 
                 <!-- Detail -->
-                <RouterLink
-                  :to="{ name: 'vendor-pos-detail', params: { id: po.id_po } }"
+                <RouterLink :to="{ name: 'vendor-pos-detail', params: { id: po.id_po } }"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100 hover:text-blue-800"
-                  title="Detail"
-                >
+                  title="Detail">
                   <Lucide icon="Eye" class="h-5 w-5" />
                 </RouterLink>
 
                 <!-- Edit -->
-                <RouterLink
-                  :to="{ name: 'vendor-pos-edit', params: { id: po.id_po } }"
+                <RouterLink :to="{ name: 'vendor-pos-edit', params: { id: po.id_po } }"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-50 text-yellow-600 transition hover:bg-yellow-100 hover:text-yellow-800"
-                  title="Edit"
-                >
+                  title="Edit">
                   <Lucide icon="Edit" class="h-5 w-5" />
                 </RouterLink>
               </div>
@@ -249,26 +243,15 @@
     <!-- Pagination -->
     <div class="mt-5 flex justify-center intro-y">
       <Pagination>
-        <Pagination.Link
-          :disabled="currentPage === 1"
-          @click="fetchData(currentPage - 1)"
-        >
+        <Pagination.Link :disabled="currentPage === 1" @click="fetchData(currentPage - 1)">
           <Lucide icon="ChevronLeft" />
         </Pagination.Link>
 
-        <Pagination.Link
-          v-for="p in totalPages"
-          :key="p"
-          :active="p === currentPage"
-          @click="fetchData(p)"
-        >
+        <Pagination.Link v-for="p in totalPages" :key="p" :active="p === currentPage" @click="fetchData(p)">
           {{ p }}
         </Pagination.Link>
 
-        <Pagination.Link
-          :disabled="currentPage === totalPages"
-          @click="fetchData(currentPage + 1)"
-        >
+        <Pagination.Link :disabled="currentPage === totalPages" @click="fetchData(currentPage + 1)">
           <Lucide icon="ChevronRight" />
         </Pagination.Link>
       </Pagination>
@@ -277,95 +260,95 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import axios from 'axios'
-import { debounce } from 'lodash'
-import Swal from 'sweetalert2'
-import { useRouter, RouterLink } from 'vue-router'
-import Button from '@/components/Base/Button'
-import Pagination from '@/components/Base/Pagination'
-import { FormInput, FormSelect } from '@/components/Base/Form'
-import Lucide from '@/components/Base/Lucide'
+import { ref, onMounted, watch } from "vue";
+import axios from "axios";
+import { debounce } from "lodash";
+import Swal from "sweetalert2";
+import { useRouter, RouterLink } from "vue-router";
+import Button from "@/components/Base/Button";
+import Pagination from "@/components/Base/Pagination";
+import { FormInput, FormSelect } from "@/components/Base/Form";
+import Lucide from "@/components/Base/Lucide";
 
-const router = useRouter()
+const router = useRouter();
 
-const vendorPos = ref<any[]>([])
-const vendors = ref<any[]>([])
-const terminals = ref<any[]>([])
+const vendorPos = ref<any[]>([]);
+const vendors = ref<any[]>([]);
+const terminals = ref<any[]>([]);
 
-const searchQuery = ref('')
-const filterDateFrom = ref('')
-const filterDateTo = ref('')
-const filterTerminal = ref('')
-const filterVendor = ref('')
+const searchQuery = ref("");
+const filterDateFrom = ref("");
+const filterDateTo = ref("");
+const filterTerminal = ref("");
+const filterVendor = ref("");
 
-const perPage = ref(10)
-const currentPage = ref(1)
-const totalPages = ref(1)
-const totalRows = ref(0)
+const perPage = ref(10);
+const currentPage = ref(1);
+const totalPages = ref(1);
+const totalRows = ref(0);
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (isNaN(date.getTime())) return value
+  if (!value) return "-";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return value;
 
-  return date.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function statusLabel(disposisi: number) {
   return disposisi === 0
-    ? 'Draft'
+    ? "Draft"
     : disposisi === 1
-    ? 'Menunggu Verifikasi CFO'
-    : disposisi === 2
-    ? 'Menunggu Verifikasi CEO'
-    : disposisi === 4
-    ? 'Verified'
-    : '-'
+      ? "Menunggu Verifikasi CFO"
+      : disposisi === 2
+        ? "Menunggu Verifikasi CEO"
+        : disposisi === 4
+          ? "Verified"
+          : "-";
 }
 
 function statusBadgeClass(disposisi: number) {
   return disposisi === 0
-    ? 'bg-yellow-100 text-yellow-700'
+    ? "bg-yellow-100 text-yellow-700"
     : disposisi === 1
-    ? 'bg-orange-100 text-orange-700'
-    : disposisi === 2
-    ? 'bg-red-100 text-red-700'
-    : disposisi === 4
-    ? 'bg-green-100 text-green-700'
-    : 'bg-slate-100 text-slate-600'
+      ? "bg-orange-100 text-orange-700"
+      : disposisi === 2
+        ? "bg-red-100 text-red-700"
+        : disposisi === 4
+          ? "bg-green-100 text-green-700"
+          : "bg-slate-100 text-slate-600";
 }
 
 async function fetchVendors() {
   try {
-    const res = await axios.get('/api/vendors', {
-      params: { per_page: 200 }
-    })
-    vendors.value = res.data.data || res.data || []
+    const res = await axios.get("/api/vendors", {
+      params: { per_page: 200 },
+    });
+    vendors.value = res.data.data || res.data || [];
   } catch {
-    vendors.value = []
+    vendors.value = [];
   }
 }
 
 async function fetchTerminals() {
   try {
-    const res = await axios.get('/api/terminals', {
-      params: { per_page: 200 }
-    })
-    terminals.value = res.data.data || res.data || []
+    const res = await axios.get("/api/terminals", {
+      params: { per_page: 200 },
+    });
+    terminals.value = res.data.data || res.data || [];
   } catch {
-    terminals.value = []
+    terminals.value = [];
   }
 }
 
 /** Ambil data PO */
 async function fetchData(page = 1) {
   try {
-    const res = await axios.get('/api/vendor-pos', {
+    const res = await axios.get("/api/vendor-pos", {
       params: {
         page,
         per_page: perPage.value,
@@ -374,89 +357,94 @@ async function fetchData(page = 1) {
         tanggal_sampai: filterDateTo.value || undefined,
         id_terminal: filterTerminal.value || undefined,
         id_vendor: filterVendor.value || undefined,
-      }
-    })
+      },
+    });
 
-    vendorPos.value = res.data.data || []
-    currentPage.value = res.data.current_page || 1
-    totalPages.value = res.data.last_page || 1
-    totalRows.value = res.data.total || 0
+    vendorPos.value = res.data.data || [];
+    currentPage.value = res.data.current_page || 1;
+    totalPages.value = res.data.last_page || 1;
+    totalRows.value = res.data.total || 0;
   } catch (e: any) {
-    Swal.fire('Error', e.response?.data?.message || 'Gagal memuat data', 'error')
+    Swal.fire(
+      "Error",
+      e.response?.data?.message || "Gagal memuat data",
+      "error",
+    );
   }
 }
 
 function resetFilter() {
-  searchQuery.value = ''
-  filterDateFrom.value = ''
-  filterDateTo.value = ''
-  filterTerminal.value = ''
-  filterVendor.value = ''
-  fetchData(1)
+  searchQuery.value = "";
+  filterDateFrom.value = "";
+  filterDateTo.value = "";
+  filterTerminal.value = "";
+  filterVendor.value = "";
+  fetchData(1);
 }
 
 /** Buka PDF di tab baru */
 async function preview(id: number) {
   try {
     const response = await axios.get(`/vendor-pos/${id}/preview`, {
-      responseType: 'blob'
-    })
-    const blob = new Blob([response.data], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
+      responseType: "blob",
+    });
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch {
-    Swal.fire('Error', 'Gagal membuka PDF', 'error')
+    Swal.fire("Error", "Gagal membuka PDF", "error");
   }
 }
 
 function goReceiveItem(idPo: number) {
   router.push({
-    name: 'receive-item-list',
-    params: { id: idPo }
-  })
+    name: "receive-item-list",
+    params: { id: idPo },
+  });
 }
 
 function confirmDelete(nomorPo: string, id: number) {
   Swal.fire({
     title: `Hapus PO ${nomorPo}?`,
-    text: 'Data yang dihapus tidak dapat dikembalikan.',
-    icon: 'warning',
+    text: "Data yang dihapus tidak dapat dikembalikan.",
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonText: 'Ya, hapus',
-    cancelButtonText: 'Batal'
-  }).then(async res => {
-    if (!res.isConfirmed) return
+    confirmButtonText: "Ya, hapus",
+    cancelButtonText: "Batal",
+  }).then(async (res) => {
+    if (!res.isConfirmed) return;
 
     try {
-      await axios.delete(`/api/vendor-pos/${id}`)
+      await axios.delete(`/api/vendor-pos/${id}`);
       Swal.fire({
-        icon: 'success',
+        icon: "success",
         title: `PO ${nomorPo} terhapus`,
         toast: true,
-        position: 'top-end',
+        position: "top-end",
         timer: 1500,
-        showConfirmButton: false
-      })
-      fetchData(currentPage.value)
+        showConfirmButton: false,
+      });
+      fetchData(currentPage.value);
     } catch (e: any) {
-      Swal.fire('Error', e.response?.data?.message || 'Gagal menghapus PO', 'error')
+      Swal.fire(
+        "Error",
+        e.response?.data?.message || "Gagal menghapus PO",
+        "error",
+      );
     }
-  })
+  });
 }
 
 onMounted(async () => {
-  await Promise.all([
-    fetchVendors(),
-    fetchTerminals(),
-  ])
-  fetchData()
-})
+  await Promise.all([fetchVendors(), fetchTerminals()]);
+  fetchData();
+});
 
 watch(
   [searchQuery, filterDateFrom, filterDateTo, filterTerminal, filterVendor],
-  debounce(() => fetchData(1), 300)
-)
+  debounce(() => fetchData(1), 300),
+);
 
-watch(perPage, () => fetchData(1))
+watch(perPage, () => fetchData(1));
 </script>
