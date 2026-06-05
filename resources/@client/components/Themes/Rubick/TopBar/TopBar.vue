@@ -3,12 +3,14 @@ import { ref, computed } from 'vue'
 import Lucide from "@/components/Base/Lucide";
 import Breadcrumb from "@/components/Base/Breadcrumb";
 import { Menu } from "@/components/Base/Headless";
+import { type Menu as MenuItem } from "@/stores/menu";
 import defaultLogoUrl from "@/assets/images/logo-tds-1.png";
 import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useMenuStore } from '@/stores/menu'
 
 const searchDropdown = ref(false);
 const showSearchDropdown = () => {
@@ -19,7 +21,9 @@ const hideSearchDropdown = () => {
 };
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+const menuStore = useMenuStore()
 
 const userName = computed(() => auth.user?.name || 'Guest')
 const userEmail = computed(() => auth.user?.email || '-')
@@ -36,6 +40,104 @@ const currentLogo = computed(() => {
 
 const brandName = computed(() => {
   return isAgenRole.value ? 'Agen Tri Daya Selaras' : 'Tri Daya Selaras'
+})
+
+type BreadcrumbItem = {
+  title: string;
+  to: string | { name: string };
+  active?: boolean;
+  disabled?: boolean;
+}
+
+function isMenuActiveForRoute(item: MenuItem, routeName: string) {
+  return item.pageName === routeName || !!item.activePageNames?.includes(routeName)
+}
+
+function findMenuChain(menu: Array<MenuItem | 'divider'>, routeName: string): MenuItem[] {
+  for (const item of menu) {
+    if (item === 'divider') continue
+
+    if (isMenuActiveForRoute(item, routeName)) {
+      return [item]
+    }
+
+    if (item.subMenu) {
+      const childChain = findMenuChain(item.subMenu, routeName)
+
+      if (childChain.length > 0) {
+        return [item, ...childChain]
+      }
+    }
+  }
+
+  return []
+}
+
+function resolveMenuTo(item: MenuItem) {
+  if (item.pageName && router.hasRoute(item.pageName)) {
+    return { name: item.pageName }
+  }
+
+  return route.fullPath
+}
+
+function getInternalRouteTitle() {
+  if (typeof route.meta.breadcrumbTitle === 'string') {
+    return route.meta.breadcrumbTitle
+  }
+
+  if (typeof route.meta.title === 'string') {
+    return route.meta.title
+  }
+
+  const segments = route.path.replace(/\/+$/, '').split('/').filter(Boolean)
+  const lastSegment = segments[segments.length - 1]
+
+  if (lastSegment === 'create') return 'Tambah'
+  if (lastSegment === 'edit') return 'Edit'
+
+  return ''
+}
+
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+  const routeName = String(route.name || '')
+  const chain = findMenuChain(menuStore.menu('side-menu'), routeName)
+  const items: BreadcrumbItem[] = [
+    {
+      title: 'Application',
+      to: route.fullPath,
+      disabled: true,
+    },
+  ]
+
+  chain.forEach(item => {
+    items.push({
+      title: item.title,
+      to: resolveMenuTo(item),
+    })
+  })
+
+  const routeMatchesMenu = chain.some(item => item.pageName === routeName)
+  const internalRouteTitle = getInternalRouteTitle()
+
+  if (!routeMatchesMenu && internalRouteTitle) {
+    items.push({
+      title: internalRouteTitle,
+      to: route.fullPath,
+    })
+  }
+
+  if (items.length === 1) {
+    items.push({
+      title: brandName.value,
+      to: route.fullPath,
+    })
+  }
+
+  return items.map((item, index) => ({
+    ...item,
+    active: index === items.length - 1,
+  }))
 })
 
 async function onLogout() {
@@ -68,9 +170,9 @@ async function onLogout() {
   <div class="relative z-[51] flex h-[67px] items-center border-b border-slate-200">
     <!-- BEGIN: Breadcrumb -->
     <Breadcrumb class="hidden mr-auto -intro-x sm:flex">
-      <Breadcrumb.Link to="/">Application</Breadcrumb.Link>
-      <Breadcrumb.Link to="/" :active="true">
-        {{ brandName }}
+      <Breadcrumb.Link v-for="(item, index) in breadcrumbs" :key="`${item.title}-${index}`" :to="item.to"
+        :active="item.active" :disabled="item.disabled">
+        {{ item.title }}
       </Breadcrumb.Link>
     </Breadcrumb>
     <!-- END: Breadcrumb -->
