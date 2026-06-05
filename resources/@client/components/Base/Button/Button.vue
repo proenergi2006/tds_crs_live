@@ -159,44 +159,50 @@ const outlineDark = [
 ];
 
 // Soft Color
+// Soft Color
 const softPrimary = [
-  "bg-primary border-primary bg-opacity-20 border-opacity-5 text-primary", // Default
-  "dark:border-opacity-100 dark:bg-opacity-20 dark:border-primary", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-  "[&:hover:not(:disabled)]:dark:border-opacity-60", // On hover and not disabled in dark mode
-];
+  "bg-primary/10 border-primary/20 text-primary",
+  "dark:bg-primary/10 dark:border-primary/30",
+  "[&:hover:not(:disabled)]:bg-primary/25",
+]
+
 const softSecondary = [
-  "bg-slate-300 border-secondary bg-opacity-20 text-slate-500", // Default
-  "dark:bg-darkmode-100/20 dark:border-darkmode-100/30 dark:text-slate-300", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10", // On hover and not disabled
-  "[&:hover:not(:disabled)]:dark:bg-darkmode-100/10 [&:hover:not(:disabled)]:dark:border-darkmode-100/20", // On hover and not disabled in dark mode
-];
+  "bg-slate-100 border-slate-300 text-slate-500",
+  "dark:bg-darkmode-100/20 dark:border-darkmode-100/30 dark:text-slate-300",
+  "[&:hover:not(:disabled)]:bg-slate-200",
+  "[&:hover:not(:disabled)]:dark:bg-darkmode-100/10",
+]
+
 const softSuccess = [
-  "bg-success border-success bg-opacity-20 border-opacity-5 text-success", // Default
-  "dark:border-success dark:border-opacity-20", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-];
+  "bg-success/10 border-success/20 text-success",
+  "dark:bg-success/10 dark:border-success/30",
+  "[&:hover:not(:disabled)]:bg-success/25",
+]
+
 const softWarning = [
-  "bg-warning border-warning bg-opacity-20 border-opacity-5 text-warning", // Default
-  "dark:border-warning dark:border-opacity-20", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-];
+  "bg-warning/10 border-warning/20 text-warning",
+  "dark:bg-warning/10 dark:border-warning/30",
+  "[&:hover:not(:disabled)]:bg-warning/25",
+]
+
 const softPending = [
-  "bg-pending border-pending bg-opacity-20 border-opacity-5 text-pending", // Default
-  "dark:border-pending dark:border-opacity-20", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-];
+  "bg-pending/10 border-pending/20 text-pending",
+  "dark:bg-pending/10 dark:border-pending/30",
+  "[&:hover:not(:disabled)]:bg-pending/25",
+]
+
 const softDanger = [
-  "bg-danger border-danger bg-opacity-20 border-opacity-5 text-danger", // Default
-  "dark:border-danger dark:border-opacity-20", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-];
+  "bg-danger/10 border-danger/20 text-danger",
+  "dark:bg-danger/10 dark:border-danger/30",
+  "[&:hover:not(:disabled)]:bg-danger/25",
+]
+
 const softDark = [
-  "bg-dark border-dark bg-opacity-20 border-opacity-5 text-dark", // Default
-  "dark:bg-darkmode-800/30 dark:border-darkmode-800/60 dark:text-slate-300", // Dark mode
-  "[&:hover:not(:disabled)]:bg-opacity-10 [&:hover:not(:disabled)]:border-opacity-10", // On hover and not disabled
-  "[&:hover:not(:disabled)]:dark:bg-darkmode-800/50 [&:hover:not(:disabled)]:dark:border-darkmode-800", // On hover and not disabled in dark mode
-];
+  "bg-slate-100 border-slate-300 text-slate-700",
+  "dark:bg-darkmode-800/30 dark:border-darkmode-800/60 dark:text-slate-300",
+  "[&:hover:not(:disabled)]:bg-slate-200",
+  "[&:hover:not(:disabled)]:dark:bg-darkmode-800/50",
+]
 
 const computedClass = computed(() =>
   twMerge([

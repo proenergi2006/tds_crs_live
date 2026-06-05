@@ -8,11 +8,11 @@ defineProps<{
 <template>
   <div class="flex flex-col gap-4 mb-6 lg:flex-row lg:items-start lg:justify-between">
     <div>
-      <h2 class="text-2xl font-semibold text-slate-800">
+      <h2 class="text-2xl font-semibold">
         {{ title }}
       </h2>
 
-      <p v-if="description" class="mt-1 text-sm text-slate-500">
+      <p v-if="description" class="mt-1 text-sm ">
         {{ description }}
       </p>
     </div>

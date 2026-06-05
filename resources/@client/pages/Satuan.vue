@@ -216,19 +216,21 @@ async function submitDelete() {
             <Table.Td class="px-4 py-3 whitespace-nowrap">
               {{ s.deskripsi || '-' }}
             </Table.Td>
-            <Table.Td class="px-4 py-3 text-center whitespace-nowrap">
-              <span :class="s.is_active ? 'text-success' : 'text-danger'">
-                <Lucide icon="CheckSquare" class="w-4 h-4 inline-block mr-1" />
+            <Table.Td class="text-center">
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                :class="s.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                 {{ s.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
-            <Table.Td class="px-4 py-3 text-center whitespace-nowrap flex justify-center">
-              <a @click.prevent="openEdit(s)" class="text-blue-600 hover:text-blue-800 mx-2">
-                <Lucide icon="Edit" class="w-5 h-5" />
-              </a>
-              <a @click.prevent="confirmDelete(s.id_satuan)" class="text-red-600 hover:text-red-800 mx-2">
-                <Lucide icon="Trash2" class="w-5 h-5" />
-              </a>
+            <Table.Td class="text-center">
+              <button type="button" @click.prevent="openEdit(s)"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100">
+                <Lucide icon="Edit" class="h-4 w-4" />
+              </button>
+              <button type="button" @click="confirmDelete(s.id_satuan)"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 ml-2">
+                <Lucide icon="Trash2" class="h-4 w-4" />
+              </button>
             </Table.Td>
           </Table.Tr>
         </template>

@@ -40,13 +40,13 @@ class ProdukController extends Controller
     $data['created_by']   = $request->user()->name;
 
     $produk = Produk::create($data);
-    return response()->json($produk, 201);
+    return response()->json($produk->load('ukuran.satuan', 'jenis'), 201);
 }
 
 
     public function show($id)
     {
-        $produk = Produk::with('ukuran')->findOrFail($id);
+        $produk = Produk::with('ukuran.satuan', 'jenis')->findOrFail($id);
         return response()->json($produk);
     }
 
@@ -67,7 +67,7 @@ class ProdukController extends Controller
         $prod = Produk::findOrFail($id);
         $prod->update($data);
 
-        return response()->json($prod);
+        return response()->json($prod->load('ukuran.satuan', 'jenis'));
     }
 
     public function destroy($id)

@@ -18,6 +18,7 @@ const searchQuery = ref('');
 const currentPage = ref(1);
 const perPage = ref(10);
 const totalPages = ref(1);
+const totalRecords = ref(1);
 
 async function fetchProduks(page = 1) {
   loading.value = true;
@@ -33,6 +34,7 @@ async function fetchProduks(page = 1) {
     produks.value = res.data.data;
     currentPage.value = res.data.current_page;
     totalPages.value = res.data.last_page;
+    totalRecords.value = res.data.total;
   } catch (e: any) {
     error.value = e.response?.data?.message || 'Gagal memuat data produk';
   } finally {
@@ -90,7 +92,8 @@ function confirmDelete(id: number) {
         :active-filter-count="0" :total-pages="totalPages" search-placeholder="Cari produk..."
         @page-change="goToPage" />
 
-      <DataList :loading="loading" :empty="produks.length === 0" :colspan="7" loading-text="Memuat data produk..."
+      <DataList :loading="loading" :empty="produks.length === 0" :colspan="7" :show-footer="true" :total="totalRecords"
+        :current-page="currentPage" :per-page="perPage" loading-text="Memuat data produk..."
         empty-description="Belum ada produk untuk ditampilkan.">
         <template #head>
           <Table.Th class="w-16 text-center">No</Table.Th>
@@ -120,14 +123,16 @@ function confirmDelete(id: number) {
               </span>
             </Table.Td>
             <Table.Td class="text-center">
-              <RouterLink :to="{ name: 'produks-edit', params: { id: p.id_produk } }"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100">
-                <Lucide icon="Edit" class="h-4 w-4" />
-              </RouterLink>
-              <button type="button" @click="confirmDelete(p.id_produk)"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 ml-2">
-                <Lucide icon="Trash2" class="h-4 w-4" />
-              </button>
+              <div class="inline-flex items-center gap-2">
+                <RouterLink :to="{ name: 'produks-edit', params: { id: p.id_produk } }"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition hover:bg-orange-100">
+                  <Lucide icon="Edit" class="h-4 w-4" />
+                </RouterLink>
+                <button type="button" @click="confirmDelete(p.id_produk)"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100">
+                  <Lucide icon="Trash2" class="h-4 w-4" />
+                </button>
+              </div>
             </Table.Td>
           </Table.Tr>
         </template>
