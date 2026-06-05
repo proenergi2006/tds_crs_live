@@ -4,7 +4,6 @@ import { computed } from 'vue';
 import Button from '@/components/Base/Button';
 import Lucide from '@/components/Base/Lucide';
 import { Dialog } from '@/components/Base/Headless';
-import LoadingIcon from '@/components/Base/LoadingIcon';
 import { Icon } from '@/components/Base/Lucide/Lucide.vue';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -40,10 +39,10 @@ const emit = defineEmits<{
 
 const sizeClass = computed(() => {
   return {
-    sm: 'w-[420px]',
-    md: 'w-[560px]',
-    lg: 'w-[760px]',
-    xl: 'w-[960px]',
+    sm: 'sm:w-[420px]',
+    md: 'sm:w-[560px]',
+    lg: 'sm:w-[90%] lg:w-[760px]',
+    xl: 'sm:w-[90%] lg:w-[960px]',
   }[props.size];
 });
 
@@ -55,7 +54,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Dialog :open="open" @close="handleClose">
+  <Dialog :open="open" :size="size" @close="handleClose">
     <Dialog.Panel :class="['overflow-hidden p-0', sizeClass]">
       <Dialog.Title class="border-b border-slate-200 px-6 py-5">
         <div>
