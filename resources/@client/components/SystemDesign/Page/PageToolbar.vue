@@ -13,12 +13,14 @@ withDefaults(
     searchPlaceholder?: string;
     searchLabel?: string;
     perPageLabel?: string;
+    paginationLabel?: string;
     activeFilterCount?: number;
   }>(),
   {
     searchPlaceholder: "Search...",
     searchLabel: "Cari",
     perPageLabel: "Per Page",
+    paginationLabel: "Halaman",
     activeFilterCount: 0,
   },
 );
@@ -32,6 +34,7 @@ defineEmits<{
 const showFilters = ref(false);
 const searchInputId = "page-toolbar-search";
 const perPageSelectId = "page-toolbar-per-page";
+const paginationLabelId = "page-toolbar-pagination";
 </script>
 
 <template>
@@ -44,7 +47,7 @@ const perPageSelectId = "page-toolbar-per-page";
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="w-full sm:w-80">
-              <FormLabel :for="searchInputId" class="mb-1 text-xs font-medium text-slate-600">
+              <FormLabel :for="searchInputId" class="mb-1 text-sm font-medium text-slate-600">
                 {{ searchLabel }}
               </FormLabel>
 
@@ -70,8 +73,8 @@ const perPageSelectId = "page-toolbar-per-page";
           </div>
 
           <div class="flex items-end justify-between gap-3 sm:justify-end">
-            <div>
-              <FormLabel :for="perPageSelectId" class="mb-1 text-xs font-medium text-slate-600">
+            <div class="flex flex-col items-start">
+              <FormLabel :for="perPageSelectId" class="mb-1 text-sm font-medium text-slate-600">
                 {{ perPageLabel }}
               </FormLabel>
 
@@ -85,26 +88,32 @@ const perPageSelectId = "page-toolbar-per-page";
               </FormSelect>
             </div>
 
-            <div class="flex h-[38px] items-center gap-2">
-              <button type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="currentPage <= 1" @click="$emit('page-change', currentPage - 1)">
-                <Lucide icon="ChevronLeft" class="h-4 w-4" />
-              </button>
+            <div class="flex flex-col items-start">
+              <FormLabel :id="paginationLabelId" class="mb-1 text-sm font-medium text-slate-600">
+                {{ paginationLabel }}
+              </FormLabel>
 
-              <div class="min-w-[72px] text-center text-sm text-slate-600">
-                <span class="font-semibold text-slate-800">
-                  {{ currentPage }}
-                </span>
-                /
-                <span>{{ totalPages }}</span>
+              <div class="flex h-[38px] items-center gap-2" :aria-labelledby="paginationLabelId">
+                <button type="button"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="currentPage <= 1" @click="$emit('page-change', currentPage - 1)">
+                  <Lucide icon="ChevronLeft" class="h-4 w-4" />
+                </button>
+
+                <div class="min-w-[72px] text-center text-sm text-slate-600">
+                  <span class="font-semibold text-slate-800">
+                    {{ currentPage }}
+                  </span>
+                  /
+                  <span>{{ totalPages }}</span>
+                </div>
+
+                <button type="button"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="currentPage >= totalPages" @click="$emit('page-change', currentPage + 1)">
+                  <Lucide icon="ChevronRight" class="h-4 w-4" />
+                </button>
               </div>
-
-              <button type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="currentPage >= totalPages" @click="$emit('page-change', currentPage + 1)">
-                <Lucide icon="ChevronRight" class="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>

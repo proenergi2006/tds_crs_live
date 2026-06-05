@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue';
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue';
 import { FormInput, FormSelect, FormLabel } from '@/components/Base/Form'
 import { computed } from 'vue';
 
@@ -70,7 +71,7 @@ const updatedByInfo = computed(() => {
     <div class="space-y-3">
       <!-- Nama Satuan (required) -->
       <div>
-        <FormLabel htmlFor="edit-nama">Nama Satuan <span class="text-danger">*</span></FormLabel>
+        <FormLabel htmlFor="edit-nama">Nama Satuan <RequiredAsterisk /></FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_satuan" placeholder="Nama Satuan"
           :class="fieldErrors.nama_satuan ? 'border-rose-500' : ''" required />
         <small v-if="fieldErrors.nama_satuan" class="text-rose-600">{{ fieldErrors.nama_satuan
@@ -85,7 +86,7 @@ const updatedByInfo = computed(() => {
 
       <!-- Status (required) -->
       <div>
-        <FormLabel htmlFor="edit-status">Status <span class="text-danger">*</span></FormLabel>
+        <FormLabel htmlFor="edit-status">Status <RequiredAsterisk /></FormLabel>
         <FormSelect id="edit-status" v-model="form.is_active" :class="fieldErrors.is_active ? 'border-rose-500' : ''"
           required>
           <option :value="true">Active</option>

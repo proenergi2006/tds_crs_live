@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue';
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue';
 import { FormInput, FormSelect, FormLabel } from '@/components/Base/Form'
 import { computed } from 'vue';
 
@@ -74,7 +75,7 @@ const updatedByInfo = computed(() => {
     <div class="space-y-3">
       <!-- Nama Produk (required) -->
       <div>
-        <FormLabel htmlFor="edit-nama">Nama Produk <span class="text-danger">*</span></FormLabel>
+        <FormLabel htmlFor="edit-nama">Nama Produk <RequiredAsterisk /></FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_produk" placeholder="Nama Produk"
           :class="fieldErrors.nama_produk ? 'border-rose-500' : ''" required />
         <small v-if="fieldErrors.nama_produk" class="text-rose-600">{{ fieldErrors.nama_produk
@@ -83,7 +84,7 @@ const updatedByInfo = computed(() => {
 
       <!-- Merk Dagang (required) -->
       <div>
-        <FormLabel htmlFor="edit-merk">Merk Dagang <span class="text-danger">*</span></FormLabel>
+        <FormLabel htmlFor="edit-merk">Merk Dagang <RequiredAsterisk /></FormLabel>
         <FormInput id="edit-merk" v-model="form.merk_dagang" placeholder="Merk Dagang"
           :class="fieldErrors.merk_dagang ? 'border-rose-500' : ''" required />
         <small v-if="fieldErrors.merk_dagang" class="text-rose-600">{{ fieldErrors.merk_dagang
@@ -99,7 +100,7 @@ const updatedByInfo = computed(() => {
       <!-- Ukuran dan Jenis (required) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <FormLabel htmlFor="edit-ukuran">Ukuran <span class="text-danger">*</span></FormLabel>
+          <FormLabel htmlFor="edit-ukuran">Ukuran <RequiredAsterisk /></FormLabel>
           <FormSelect id="edit-ukuran" v-model="form.id_ukuran" :class="fieldErrors.id_ukuran ? 'border-rose-500' : ''"
             required>
             <option disabled value="">-- Pilih Ukuran --</option>
@@ -111,7 +112,7 @@ const updatedByInfo = computed(() => {
         </div>
 
         <div>
-          <FormLabel htmlFor="edit-jenis">Jenis Produk <span class="text-danger">*</span></FormLabel>
+          <FormLabel htmlFor="edit-jenis">Jenis Produk <RequiredAsterisk /></FormLabel>
           <FormSelect id="edit-jenis" v-model="form.id_jenis" :class="fieldErrors.id_jenis ? 'border-rose-500' : ''"
             required>
             <option disabled value="">-- Pilih Jenis Produk --</option>
@@ -125,7 +126,7 @@ const updatedByInfo = computed(() => {
 
       <!-- Status (required) -->
       <div>
-        <FormLabel htmlFor="edit-status">Status <span class="text-danger">*</span></FormLabel>
+        <FormLabel htmlFor="edit-status">Status <RequiredAsterisk /></FormLabel>
         <FormSelect id="edit-status" v-model="form.is_active" :class="fieldErrors.is_active ? 'border-rose-500' : ''"
           required>
           <option :value="true">Active</option>
