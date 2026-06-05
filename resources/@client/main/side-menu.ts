@@ -301,11 +301,12 @@ const menu: Array<Menu | "divider"> = [
         ],
       },
 
-      {
-        icon: "CreditCard",
-        pageName: "vendors-list",
-        title: "Vendor",
-      },
+        {
+          icon: "CreditCard",
+          pageName: "vendors-list",
+          activePageNames: ["vendors-create", "vendors-edit"],
+          title: "Vendor",
+        },
       {
         icon: "Terminal",
         pageName: "terminals-list",
@@ -336,11 +337,12 @@ const menu: Array<Menu | "divider"> = [
         pageName: "terminals-list",
         title: "Terminal",
       },
-      {
-        icon: "CreditCard",
-        pageName: "vendors-list",
-        title: "Vendor",
-      },
+        {
+          icon: "CreditCard",
+          pageName: "vendors-list",
+          activePageNames: ["vendors-create", "vendors-edit"],
+          title: "Vendor",
+        },
       {
         icon: "Archive",
         pageName: "products",

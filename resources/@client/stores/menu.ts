@@ -12,6 +12,7 @@ export interface Menu {
   icon: Icon;
   title: string;
   pageName?: string;
+  activePageNames?: string[];
   subMenu?: Menu[];
   ignore?: boolean;
   badge?: {
