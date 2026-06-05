@@ -128,6 +128,27 @@ class VendorController extends Controller
         $data['lastupdate_by']   = $request->user()->name ?? 'system';
 
         $vendor = Vendor::findOrFail($id);
+
+        $removeFlags = [
+            'npwp_file' => $request->boolean('remove_npwp_file'),
+            'nib_file' => $request->boolean('remove_nib_file'),
+            'sppkp_file' => $request->boolean('remove_sppkp_file'),
+            'bank_account_letter_file' => $request->boolean('remove_bank_account_letter_file'),
+            'company_profile_file' => $request->boolean('remove_company_profile_file'),
+        ];
+
+        foreach ($removeFlags as $field => $shouldRemove) {
+            if (!$shouldRemove || $request->hasFile($field)) {
+                continue;
+            }
+
+            if ($vendor->{$field}) {
+                Storage::disk('public')->delete($vendor->{$field});
+            }
+
+            $data[$field] = null;
+        }
+
         $vendor->update($data);
 
         return response()->json($vendor);
