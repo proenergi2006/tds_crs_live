@@ -243,12 +243,12 @@ async function submitDelete() {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6">
-    <div class="col-span-12 mt-4 intro-y">
+  <div class="grid grid-cols-12 gap-6 p-4">
+    <div class="col-span-12 intro-y">
       <!-- Page Header -->
       <PageHeader title="Master Ukuran" description="Kelola data ukuran produk">
         <template #action>
-          <Button variant="primary" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Data Baru
           </Button>

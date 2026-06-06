@@ -89,7 +89,8 @@ const paginationLabelId = "page-toolbar-pagination";
             </div>
 
             <div class="flex flex-col items-start">
-              <FormLabel :id="paginationLabelId" class="mb-1 text-sm font-medium text-slate-600">
+              <FormLabel :id="paginationLabelId"
+                class="block w-full mb-1 text-sm text-center font-medium text-slate-600">
                 {{ paginationLabel }}
               </FormLabel>
 

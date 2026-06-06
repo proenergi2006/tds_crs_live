@@ -6,19 +6,25 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 mb-6 lg:flex-row lg:items-start lg:justify-between">
-    <div>
-      <h2 class="text-2xl font-semibold">
-        {{ title }}
-      </h2>
+  <div
+    class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-theme-1 via-theme-2 to-slate-700 px-6 py-6 text-white shadow-lg">
+    <div class="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
+    <div class="absolute -bottom-8 left-10 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
 
-      <p v-if="description" class="mt-1 text-sm ">
-        {{ description }}
-      </p>
-    </div>
+    <div class="relative z-10 p-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h2 class="text-2xl font-bold">
+          {{ title }}
+        </h2>
 
-    <div v-if="$slots.action">
-      <slot name="action" />
+        <p v-if="description" class="mt-1 text-sm text-white/80">
+          {{ description }}
+        </p>
+      </div>
+
+      <div v-if="$slots.action">
+        <slot name="action" />
+      </div>
     </div>
   </div>
 </template>

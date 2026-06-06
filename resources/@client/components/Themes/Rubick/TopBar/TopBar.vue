@@ -12,6 +12,16 @@ import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
 
+withDefaults(defineProps<{
+  isSidebarCollapsed?: boolean
+}>(), {
+  isSidebarCollapsed: false,
+})
+
+const emit = defineEmits<{
+  (event: 'toggle-sidebar-collapse'): void
+}>()
+
 const searchDropdown = ref(false);
 const showSearchDropdown = () => {
   searchDropdown.value = true;
@@ -102,13 +112,7 @@ function getInternalRouteTitle() {
 const breadcrumbs = computed<BreadcrumbItem[]>(() => {
   const routeName = String(route.name || '')
   const chain = findMenuChain(menuStore.menu('side-menu'), routeName)
-  const items: BreadcrumbItem[] = [
-    {
-      title: 'Application',
-      to: route.fullPath,
-      disabled: true,
-    },
-  ]
+  const items: BreadcrumbItem[] = []
 
   chain.forEach(item => {
     items.push({
@@ -127,7 +131,7 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     })
   }
 
-  if (items.length === 1) {
+  if (items.length === 0) {
     items.push({
       title: brandName.value,
       to: route.fullPath,
@@ -168,6 +172,15 @@ async function onLogout() {
 
 <template>
   <div class="relative z-[51] flex h-[67px] items-center border-b border-slate-200">
+    <button
+      type="button"
+      class="mr-3 hidden h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/70 hover:text-slate-700 sm:flex"
+      :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      @click="emit('toggle-sidebar-collapse')"
+    >
+      <Lucide :icon="isSidebarCollapsed ? 'PanelRightOpen' : 'PanelLeftClose'" class="h-5 w-5" />
+    </button>
+
     <!-- BEGIN: Breadcrumb -->
     <Breadcrumb class="hidden mr-auto -intro-x sm:flex">
       <Breadcrumb.Link v-for="(item, index) in breadcrumbs" :key="`${item.title}-${index}`" :to="item.to"

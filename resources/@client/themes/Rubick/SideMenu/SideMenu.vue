@@ -33,6 +33,9 @@ const menuStore = useMenuStore();
 const authStore = useAuthStore();
 const menu = computed(() => nestedMenu(menuStore.menu("side-menu"), route));
 const windowWidth = ref(window.innerWidth);
+const isSidebarCollapsed = ref(
+  localStorage.getItem("rubick-sidebar-collapsed") === "true"
+);
 
 // Ambil user dari auth store
 const user = computed(() => authStore.user);
@@ -62,6 +65,28 @@ provide<ProvideForceActiveMenu>("forceActiveMenu", (pageName: string) => {
   setFormattedMenu(menu.value);
 });
 
+const toggleSidebarCollapse = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  localStorage.setItem(
+    "rubick-sidebar-collapsed",
+    String(isSidebarCollapsed.value)
+  );
+};
+
+const onCollapsedPanelItemClick = (
+  event: MouseEvent,
+  menuItem: FormattedMenu
+) => {
+  event.preventDefault();
+
+  if (menuItem.subMenu) {
+    return;
+  }
+
+  linkTo(menuItem, router);
+  setFormattedMenu([...formattedMenu]);
+};
+
 watch(menu, () => {
   setFormattedMenu(menu.value);
 });
@@ -84,29 +109,39 @@ onMounted(() => {
 
 <template>
   <div :class="[
-    'rubick px-5 sm:px-8 py-5',
+    'rubick px-5 py-5 sm:pl-4 sm:pr-6',
     'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
   ]">
     <MobileMenu />
     <div class="mt-[4.7rem] flex md:mt-0">
       <!-- BEGIN: Side Menu -->
-      <nav class="side-nav hidden w-[80px] overflow-x-hidden pb-16 pr-5 md:block xl:w-[230px]">
-        <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex items-center pt-4 pl-5 intro-x">
-          <img alt="Application Logo" class="w-16" :src="currentLogo" />
-          <span class="hidden ml-3 text-lg font-semibold xl:block" :class="isAgenRole
-            ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
-            : 'text-white'">
-            {{ appName }}
-          </span>
-        </RouterLink>
+      <nav :class="[
+        'side-nav hidden w-[80px] pb-16 pr-5 md:block xl:w-[230px]',
+        isSidebarCollapsed
+          ? 'side-nav--collapsed overflow-visible'
+          : 'overflow-x-hidden',
+      ]">
+        <div class="flex items-center pt-4 pl-5 intro-x">
+          <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex min-w-0 items-center">
+            <img alt="Application Logo" class="w-16" :src="currentLogo" />
+            <span class="hidden ml-3 text-lg font-semibold xl:block" :class="[
+              isSidebarCollapsed && 'xl:hidden',
+              isAgenRole
+                ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
+                : 'text-white',
+            ]">
+              {{ appName }}
+            </span>
+          </RouterLink>
+        </div>
         <div class="my-6 side-nav__divider"></div>
         <ul>
           <template v-for="(menu, menuKey) in formattedMenu">
             <li v-if="menu == 'divider'" type="li" class="my-6 side-nav__divider" :key="'divider-' + menuKey"></li>
-            <li v-else :key="menuKey">
+            <li v-else :key="menuKey" class="side-nav__item">
               <Tippy as="a" :content="menu.title" :options="{
                 placement: 'right',
-              }" :disable="windowWidth > 1260" :href="menu.subMenu
+              }" :disable="windowWidth > 1260 && (!isSidebarCollapsed || !!menu.subMenu)" :href="menu.subMenu
                 ? '#'
                 : ((pageName: string | undefined) => {
                   try {
@@ -137,7 +172,38 @@ onMounted(() => {
                   </div>
                 </div>
               </Tippy>
-              <Transition @enter="enter" @leave="leave">
+              <div v-if="isSidebarCollapsed && menu.subMenu" class="side-nav__collapsed-panel">
+                <div class="side-nav__collapsed-title">{{ menu.title }}</div>
+                <template v-for="(subMenu, subMenuKey) in menu.subMenu" :key="subMenuKey">
+                  <div v-if="subMenu.subMenu" :class="[
+                    'side-nav__collapsed-group',
+                    subMenu.active && 'side-nav__collapsed-item--active',
+                  ]">
+                    <div class="side-nav__collapsed-item">
+                      <Lucide :icon="subMenu.icon" />
+                      <span>{{ subMenu.title }}</span>
+                      <Lucide icon="CornerRightDown" class="side-nav__collapsed-chevron" />
+                    </div>
+                    <div class="side-nav__collapsed-children">
+                      <a v-for="(lastSubMenu, lastSubMenuKey) in subMenu.subMenu" :key="lastSubMenuKey" href="#" :class="[
+                        'side-nav__collapsed-item side-nav__collapsed-item--child',
+                        lastSubMenu.active && 'side-nav__collapsed-item--active',
+                      ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, lastSubMenu)">
+                        <Lucide :icon="lastSubMenu.icon" />
+                        <span>{{ lastSubMenu.title }}</span>
+                      </a>
+                    </div>
+                  </div>
+                  <a v-else href="#" :class="[
+                    'side-nav__collapsed-item',
+                    subMenu.active && 'side-nav__collapsed-item--active',
+                  ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, subMenu)">
+                    <Lucide :icon="subMenu.icon" />
+                    <span>{{ subMenu.title }}</span>
+                  </a>
+                </template>
+              </div>
+              <Transition v-if="!isSidebarCollapsed" @enter="enter" @leave="leave">
                 <ul v-if="menu.subMenu && menu.activeDropdown" :class="{ 'side-menu__sub-open': menu.activeDropdown }">
                   <li v-for="(subMenu, subMenuKey) in menu.subMenu" :key="subMenuKey">
                     <Tippy as="a" :content="subMenu.title" :options="{
@@ -222,8 +288,8 @@ onMounted(() => {
       <!-- END: Side Menu -->
       <!-- BEGIN: Content -->
       <div
-        class="md:max-w-auto min-h-screen min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]">
-        <TopBar />
+        class="md:max-w-auto min-h-[96vh] min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]">
+        <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
         <RouterView />
       </div>
       <!-- END: Content -->

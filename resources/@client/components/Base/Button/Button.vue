@@ -6,6 +6,7 @@ export default {
 type Variant =
   | "primary"
   | "secondary"
+  | "white"
   | "success"
   | "warning"
   | "pending"
@@ -103,6 +104,12 @@ const dark = [
   "bg-dark border-dark text-white", // Default
   "dark:bg-darkmode-800 dark:border-transparent dark:text-slate-300", // Dark mode
   "[&:hover:not(:disabled)]:dark:dark:bg-darkmode-800/70", // On hover and not disabled in dark mode
+];
+const white = [
+  "bg-white border-0 text-slate-800", // Default
+  "dark:bg-darkmode-100/20 dark:border-darkmode-100/30 dark:text-slate-300", // Dark mode
+  "[&:hover:not(:disabled)]:bg-slate-100", // On hover and not disabled
+  "[&:hover:not(:disabled)]:dark:bg-darkmode-100/10", // On hover and not disabled in dark mode
 ];
 
 // Social Media
@@ -216,6 +223,7 @@ const computedClass = computed(() =>
     variant == "pending" && pending,
     variant == "danger" && danger,
     variant == "dark" && dark,
+    variant == "white" && white,
     variant == "outline-primary" && outlinePrimary,
     variant == "outline-secondary" && outlineSecondary,
     variant == "outline-success" && outlineSuccess,
