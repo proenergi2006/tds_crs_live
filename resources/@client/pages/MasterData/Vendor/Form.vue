@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import { useVuelidate } from '@vuelidate/core'
+import { helpers, maxLength, required } from '@vuelidate/validators'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
-import { FormInput, FormLabel, FormSelect } from '@/components/Base/Form'
+import { FormInput, FormLabel, FormSwitch, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { createResourceApi } from '@/utils/resourceApi.js'
 
 type FileKey = 'npwp' | 'nib' | 'sppkp' | 'bank' | 'profile'
 type FileField =
@@ -28,6 +30,7 @@ type ExistingFile = {
 const router = useRouter()
 const route = useRoute()
 const { success, error: notifyError } = useNotification()
+const vendorApi = createResourceApi('/vendors')
 
 const vendorId = computed(() => Number(route.params.id || 0))
 const mode = computed<'create' | 'edit'>(() => vendorId.value ? 'edit' : 'create')
@@ -52,13 +55,51 @@ const form = reactive({
   lastupdate_by: '',
 })
 
-const fieldErrors = reactive({
+const serverErrors = reactive({
   nama_vendor: '',
   inisial: '',
   npwp_number: '',
   nib_number: '',
   sppkp_number: '',
 })
+
+const optionalLengthBetween = (min: number, max: number) =>
+  helpers.withParams(
+    { type: 'optionalLengthBetween', min, max },
+    (value: unknown) => {
+      if (!helpers.req(value)) return true
+
+      const length = String(value).length
+      return length >= min && length <= max
+    },
+  )
+
+const optionalExactLength = (length: number) =>
+  helpers.withParams(
+    { type: 'optionalExactLength', length },
+    (value: unknown) => !helpers.req(value) || String(value).length === length,
+  )
+
+const rules = {
+  nama_vendor: {
+    required: helpers.withMessage('Nama Vendor wajib diisi', required),
+  },
+  inisial: {
+    required: helpers.withMessage('Inisial wajib diisi', required),
+    maxLength: helpers.withMessage('Inisial maksimal 10 karakter', maxLength(10)),
+  },
+  npwp_number: {
+    exactLength: helpers.withMessage('NPWP harus 16 digit angka.', optionalExactLength(16)),
+  },
+  nib_number: {
+    lengthBetween: helpers.withMessage('Nomor NIB/TDP/SIUP harus 10-20 digit.', optionalLengthBetween(10, 20)),
+  },
+  sppkp_number: {
+    lengthBetween: helpers.withMessage('Nomor SPPKP harus 8-20 digit.', optionalLengthBetween(8, 20)),
+  },
+}
+
+const v$ = useVuelidate(rules, form)
 
 const files = reactive<Record<FileKey, File | null>>({
   npwp: null,
@@ -82,37 +123,37 @@ const fileConfigs: Array<{
   removeField: string;
   label: string;
 }> = [
-  {
-    key: 'npwp',
-    field: 'npwp_file',
-    removeField: 'remove_npwp_file',
-    label: 'Lampiran NPWP',
-  },
-  {
-    key: 'nib',
-    field: 'nib_file',
-    removeField: 'remove_nib_file',
-    label: 'Lampiran NIB/TDP/SIUP',
-  },
-  {
-    key: 'sppkp',
-    field: 'sppkp_file',
-    removeField: 'remove_sppkp_file',
-    label: 'Lampiran SPPKP',
-  },
-  {
-    key: 'bank',
-    field: 'bank_account_letter_file',
-    removeField: 'remove_bank_account_letter_file',
-    label: 'Surat Pernyataan / Rek Giro / Scan Buku Rekening',
-  },
-  {
-    key: 'profile',
-    field: 'company_profile_file',
-    removeField: 'remove_company_profile_file',
-    label: 'Company Profile',
-  },
-]
+    {
+      key: 'npwp',
+      field: 'npwp_file',
+      removeField: 'remove_npwp_file',
+      label: 'Lampiran NPWP',
+    },
+    {
+      key: 'nib',
+      field: 'nib_file',
+      removeField: 'remove_nib_file',
+      label: 'Lampiran NIB/TDP/SIUP',
+    },
+    {
+      key: 'sppkp',
+      field: 'sppkp_file',
+      removeField: 'remove_sppkp_file',
+      label: 'Lampiran SPPKP',
+    },
+    {
+      key: 'bank',
+      field: 'bank_account_letter_file',
+      removeField: 'remove_bank_account_letter_file',
+      label: 'Surat Pernyataan / Rek Giro / Scan Buku Rekening',
+    },
+    {
+      key: 'profile',
+      field: 'company_profile_file',
+      removeField: 'remove_company_profile_file',
+      label: 'Company Profile',
+    },
+  ]
 
 const pageTitle = computed(() => mode.value === 'create' ? 'Tambah Vendor' : 'Edit Vendor')
 const pageDescription = computed(() =>
@@ -158,7 +199,7 @@ async function fetchVendor() {
   pageLoading.value = true
 
   try {
-    const { data } = await axios.get(`/api/vendors/${vendorId.value}`)
+    const { data } = await vendorApi.getById(vendorId.value)
 
     Object.assign(form, {
       nama_vendor: data.nama_vendor || '',
@@ -194,7 +235,8 @@ function formatGroup4(value: string) {
 
 function resetErrors() {
   formError.value = null
-  Object.assign(fieldErrors, {
+  v$.value.$reset()
+  Object.assign(serverErrors, {
     nama_vendor: '',
     inisial: '',
     npwp_number: '',
@@ -203,40 +245,8 @@ function resetErrors() {
   })
 }
 
-function validateForm() {
-  resetErrors()
-
-  if (!form.nama_vendor.trim()) {
-    fieldErrors.nama_vendor = 'Nama Vendor wajib diisi'
-  }
-
-  if (!form.inisial.trim()) {
-    fieldErrors.inisial = 'Inisial wajib diisi'
-  }
-
-  if (form.npwp_number && form.npwp_number.length !== 16) {
-    fieldErrors.npwp_number = 'NPWP harus 16 digit angka.'
-  }
-
-  if (form.nib_number) {
-    const length = form.nib_number.length
-    if (length < 10 || length > 20) {
-      fieldErrors.nib_number = 'Nomor NIB/TDP/SIUP harus 10-20 digit.'
-    }
-  }
-
-  if (form.sppkp_number) {
-    const length = form.sppkp_number.length
-    if (length < 8 || length > 20) {
-      fieldErrors.sppkp_number = 'Nomor SPPKP harus 8-20 digit.'
-    }
-  }
-
-  return !fieldErrors.nama_vendor
-    && !fieldErrors.inisial
-    && !fieldErrors.npwp_number
-    && !fieldErrors.nib_number
-    && !fieldErrors.sppkp_number
+function getFieldError(field: keyof typeof serverErrors) {
+  return serverErrors[field] || v$.value[field].$errors[0]?.$message?.toString() || ''
 }
 
 function existingFile(config: typeof fileConfigs[number]): ExistingFile[] {
@@ -286,15 +296,17 @@ function buildPayload() {
     }
   })
 
-  if (mode.value === 'edit') {
-    fd.append('_method', 'PUT')
-  }
-
   return fd
 }
 
 async function submit() {
-  if (!validateForm()) return
+  resetErrors()
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
+    notifyError('Gagal', 'Periksa kembali data yang wajib diisi')
+    return
+  }
 
   loading.value = true
 
@@ -302,9 +314,9 @@ async function submit() {
     const payload = buildPayload()
 
     if (mode.value === 'create') {
-      await axios.post('/api/vendors', payload)
+      await vendorApi.store(payload)
     } else {
-      await axios.post(`/api/vendors/${vendorId.value}`, payload)
+      await vendorApi.updateMultipart(vendorId.value, payload)
     }
 
     success(
@@ -319,8 +331,8 @@ async function submit() {
 
     if (e.response?.status === 422 && errors) {
       Object.entries(errors).forEach(([key, value]: [string, any]) => {
-        if (key in fieldErrors) {
-          fieldErrors[key as keyof typeof fieldErrors] = value?.[0] || ''
+        if (key in serverErrors) {
+          serverErrors[key as keyof typeof serverErrors] = value?.[0] || ''
         }
       })
       formError.value = Object.values(errors).map((value: any) => value?.[0]).filter(Boolean).join('\n')
@@ -352,17 +364,21 @@ function cancel() {
     <div class="space-y-5">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <FormLabel htmlFor="vendor-nama">Nama Vendor <RequiredAsterisk /></FormLabel>
+          <FormLabel htmlFor="vendor-nama">Nama Vendor
+            <RequiredAsterisk />
+          </FormLabel>
           <FormInput id="vendor-nama" v-model="form.nama_vendor" placeholder="Nama Vendor"
-            :class="fieldErrors.nama_vendor ? 'border-rose-500' : ''" required />
-          <small v-if="fieldErrors.nama_vendor" class="text-rose-600">{{ fieldErrors.nama_vendor }}</small>
+            :class="getFieldError('nama_vendor') ? 'border-rose-500' : ''" />
+          <small v-if="getFieldError('nama_vendor')" class="text-rose-600">{{ getFieldError('nama_vendor') }}</small>
         </div>
 
         <div>
-          <FormLabel htmlFor="vendor-inisial">Inisial <RequiredAsterisk /></FormLabel>
+          <FormLabel htmlFor="vendor-inisial">Inisial
+            <RequiredAsterisk />
+          </FormLabel>
           <FormInput id="vendor-inisial" v-model="form.inisial" placeholder="Inisial" maxlength="10"
-            :class="fieldErrors.inisial ? 'border-rose-500' : ''" required />
-          <small v-if="fieldErrors.inisial" class="text-rose-600">{{ fieldErrors.inisial }}</small>
+            :class="getFieldError('inisial') ? 'border-rose-500' : ''" />
+          <small v-if="getFieldError('inisial')" class="text-rose-600">{{ getFieldError('inisial') }}</small>
         </div>
       </div>
 
@@ -371,8 +387,8 @@ function cancel() {
           <div>
             <FormLabel htmlFor="vendor-npwp">NPWP (16 digit)</FormLabel>
             <FormInput id="vendor-npwp" v-model="npwpInput" placeholder="Masukkan NPWP"
-              :class="fieldErrors.npwp_number ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="fieldErrors.npwp_number" class="text-rose-600">{{ fieldErrors.npwp_number }}</small>
+              :class="getFieldError('npwp_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
+            <small v-if="getFieldError('npwp_number')" class="text-rose-600">{{ getFieldError('npwp_number') }}</small>
             <small v-else class="text-slate-500">Disimpan sebagai 16 digit angka tanpa pemisah.</small>
           </div>
 
@@ -387,8 +403,8 @@ function cancel() {
           <div>
             <FormLabel htmlFor="vendor-nib">NIB / TDP / SIUP (10-20 digit)</FormLabel>
             <FormInput id="vendor-nib" v-model="nibInput" placeholder="Masukkan nomor NIB/TDP/SIUP"
-              :class="fieldErrors.nib_number ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="fieldErrors.nib_number" class="text-rose-600">{{ fieldErrors.nib_number }}</small>
+              :class="getFieldError('nib_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
+            <small v-if="getFieldError('nib_number')" class="text-rose-600">{{ getFieldError('nib_number') }}</small>
           </div>
 
           <FileUploadField v-model="files.nib" :existing-files="existingFile(fileConfigs[1])"
@@ -402,8 +418,9 @@ function cancel() {
           <div>
             <FormLabel htmlFor="vendor-sppkp">SPPKP (8-20 digit)</FormLabel>
             <FormInput id="vendor-sppkp" v-model="sppkpInput" placeholder="Masukkan nomor SPPKP"
-              :class="fieldErrors.sppkp_number ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="fieldErrors.sppkp_number" class="text-rose-600">{{ fieldErrors.sppkp_number }}</small>
+              :class="getFieldError('sppkp_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
+            <small v-if="getFieldError('sppkp_number')" class="text-rose-600">{{ getFieldError('sppkp_number')
+              }}</small>
           </div>
 
           <FileUploadField v-model="files.sppkp" :existing-files="existingFile(fileConfigs[2])"
@@ -420,17 +437,19 @@ function cancel() {
 
       <div>
         <FormLabel htmlFor="vendor-catatan">Catatan</FormLabel>
-        <textarea id="vendor-catatan" v-model="form.catatan" rows="3"
-          class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:ring-primary"
-          placeholder="Catatan (opsional)"></textarea>
+        <FormTextarea id="vendor-catatan" v-model="form.catatan" rows="3" placeholder="Catatan (opsional)" />
       </div>
 
       <div>
-        <FormLabel htmlFor="vendor-status">Status <RequiredAsterisk /></FormLabel>
-        <FormSelect id="vendor-status" v-model="form.is_active">
-          <option :value="true">Active</option>
-          <option :value="false">Inactive</option>
-        </FormSelect>
+        <FormLabel htmlFor="vendor-status">Status</FormLabel>
+        <div class="mt-2 flex items-center gap-3">
+          <FormSwitch>
+            <FormSwitch.Input id="vendor-status" v-model="form.is_active" type="checkbox" />
+          </FormSwitch>
+          <span class="text-sm text-slate-600">
+            {{ form.is_active ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
       </div>
 
       <div v-if="mode === 'edit'">

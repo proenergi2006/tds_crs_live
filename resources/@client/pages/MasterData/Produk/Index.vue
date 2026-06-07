@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch } from 'vue'
-import axios from 'axios'
+import { ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
@@ -16,47 +15,22 @@ import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 const produkApi = createResourceApi('/produks')
-const ukuranApi = createResourceApi('/ukurans')
-const jenisApi = createResourceApi('/jenis-produks')
 const { success, error } = useNotification()
 
 /* State: data & pagination */
 const produks = ref<any[]>([])
-const ukurans = ref<any[]>([])
-const jenisProduks = ref<any[]>([])
-const currentUserName = ref('')
 
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 const totalPages = ref(1)
-const totalRecords = ref(1);
+const totalRecords = ref(1)
 const loading = ref(false)
 
 /* State: form */
 const formModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
-const formLoading = ref(false)
-const formError = ref<string | null>(null)
-
-const form = reactive({
-  id_produk: 0,
-  nama_produk: '',
-  merk_dagang: '',
-  deskripsi: '',
-  id_ukuran: '',
-  id_jenis: '',
-  is_active: true,
-  created_by: '',
-  lastupdate_by: ''
-})
-
-const fieldErrors = reactive({
-  nama_produk: '',
-  merk_dagang: '',
-  id_ukuran: '',
-  id_jenis: '',
-})
+const selectedProduk = ref<any | null>(null)
 
 /* State: delete */
 const deleteModal = ref(false)
@@ -65,11 +39,6 @@ const deleteTarget = ref<number | null>(null)
 
 onMounted(() => {
   fetchData()
-  axios.get('/api/user')
-    .then(r => currentUserName.value = r.data.name)
-    .catch(() => { });
-  fetchUkurans()
-  fetchJenisProduks()
 })
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
@@ -98,26 +67,6 @@ async function fetchData(page = 1) {
   }
 }
 
-async function fetchUkurans() {
-  try {
-    const { data } = await ukuranApi.getAll({ per_page: 100 })
-    ukurans.value = data.data || data
-  } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Gagal memuat data')
-    console.error('Gagal memuat data ukuran:', e)
-  }
-}
-
-async function fetchJenisProduks() {
-  try {
-    const { data } = await jenisApi.getAll({ per_page: 100 })
-    jenisProduks.value = data.data || data
-  } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Gagal memuat data')
-    console.error('Gagal memuat data jenis produk:', e)
-  }
-}
-
 function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return
   fetchData(page)
@@ -126,120 +75,23 @@ function goToPage(page: number) {
 /* Form */
 function openCreate() {
   formMode.value = 'create'
-  setForm({
-    id_produk: 0,
-    nama_produk: '',
-    merk_dagang: '',
-    deskripsi: '',
-    id_ukuran: '',
-    id_jenis: '',
-    is_active: true,
-    created_by: currentUserName.value,
-    lastupdate_by: '',
-  })
-  openFormModal()
+  selectedProduk.value = null
+  formModal.value = true
 }
 
 function openEdit(target: any) {
   formMode.value = 'edit'
-  setForm({
-    id_produk: target.id_produk,
-    nama_produk: target.nama_produk,
-    merk_dagang: target.merk_dagang,
-    deskripsi: target.deskripsi,
-    id_ukuran: target.id_ukuran,
-    id_jenis: target.id_jenis,
-    is_active: target.is_active,
-    created_by: target.created_by,
-    lastupdate_by: target.lastupdate_by,
-  })
-  openFormModal()
-}
-
-function openFormModal() {
-  resetFormErrors()
+  selectedProduk.value = target
   formModal.value = true
 }
 
-function setForm(payload: Partial<typeof form>) {
-  Object.assign(form, payload)
+function handleFormSuccess(data: any, mode: 'create' | 'edit') {
+  syncProduk(data, mode)
+  formModal.value = false
 }
 
-function resetFormErrors() {
-  formError.value = null
-  Object.assign(fieldErrors, {
-    nama_produk: '',
-    merk_dagang: '',
-    id_ukuran: '',
-    id_jenis: '',
-  })
-}
-
-function validateForm() {
-  resetFormErrors()
-
-  if (!form.nama_produk.trim()) {
-    fieldErrors.nama_produk = 'Nama Produk wajib diisi'
-  }
-
-  if (!form.merk_dagang.trim()) {
-    fieldErrors.merk_dagang = 'Merk Dagang wajib diisi'
-  }
-
-  if (!form.id_ukuran) {
-    fieldErrors.id_ukuran = 'Ukuran wajib dipilih'
-  }
-
-  if (!form.id_jenis) {
-    fieldErrors.id_jenis = 'Jenis Produk wajib dipilih'
-  }
-
-  return !fieldErrors.nama_produk && !fieldErrors.merk_dagang && !fieldErrors.id_ukuran && !fieldErrors.id_jenis
-}
-
-function getFormPayload() {
-  return {
-    nama_produk: form.nama_produk,
-    merk_dagang: form.merk_dagang,
-    deskripsi: form.deskripsi,
-    id_ukuran: form.id_ukuran,
-    id_jenis: form.id_jenis,
-    is_active: form.is_active,
-    ...(formMode.value === 'create'
-      ? { created_by: form.created_by }
-      : { lastupdate_by: currentUserName.value }),
-  }
-}
-
-async function submitForm() {
-  if (!validateForm()) return
-
-  formLoading.value = true
-
-  try {
-    const response =
-      formMode.value === 'create'
-        ? await produkApi.store(getFormPayload())
-        : await produkApi.update(form.id_produk, getFormPayload())
-
-    syncProduk(response.data)
-    formModal.value = false
-
-    success(
-      'Berhasil',
-      formMode.value === 'create'
-        ? 'Produk berhasil ditambahkan'
-        : 'Produk berhasil diperbarui',
-    )
-  } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Terjadi kesalahan')
-  } finally {
-    formLoading.value = false
-  }
-}
-
-function syncProduk(data: any) {
-  if (formMode.value === 'create') {
+function syncProduk(data: any, mode: 'create' | 'edit') {
+  if (mode === 'create') {
     produks.value.unshift(data)
     return
   }
@@ -286,12 +138,12 @@ async function submitDelete() {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6">
-    <div class="col-span-12 mt-4 intro-y">
+  <div class="grid grid-cols-12 gap-6 p-4">
+    <div class="col-span-12 intro-y">
       <!-- Page Header -->
       <PageHeader title="Master Produk" description="Kelola data produk">
         <template #action>
-          <Button variant="primary" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Data Baru
           </Button>
@@ -318,37 +170,37 @@ async function submitDelete() {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(u, idx) in produks" :key="u.id_produk" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(item, idx) in produks" :key="item.id_produk" class="transition hover:bg-slate-50">
             <Table.Td class="text-center font-medium text-slate-700">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <span class="font-medium">{{ u.nama_produk }}</span>
-              <p v-if="u.deskripsi" class="text-sm text-slate-500">{{ u.deskripsi }}</p>
+              <span class="font-medium">{{ item.nama_produk }}</span>
+              <p v-if="item.deskripsi" class="text-sm text-slate-500">{{ item.deskripsi }}</p>
             </Table.Td>
             <Table.Td>
-              {{ u.merk_dagang || '-' }}
+              {{ item.merk_dagang || '-' }}
             </Table.Td>
             <Table.Td>
-              {{ u.ukuran?.nama_ukuran || '-' }}
+              {{ item.ukuran?.nama_ukuran || '-' }}
             </Table.Td>
             <Table.Td>
-              {{ u.jenis?.nama || '-' }}
+              {{ item.jenis?.nama || '-' }}
             </Table.Td>
             <Table.Td class="text-center">
               <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
-                :class="u.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
-                {{ u.is_active ? 'Active' : 'Inactive' }}
+                :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+                {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-9 !w-9 !p-0 !shadow-none" @click.prevent="openEdit(u)"
+                <Button variant="soft-pending" rounded class="!h-9 !w-9 !p-0 !shadow-none" @click.prevent="openEdit(item)"
                   title="Edit">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
                 <Button variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none"
-                  @click="confirmDelete(u.id_produk)" title="Hapus">
+                  @click="confirmDelete(item.id_produk)" title="Hapus">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>
@@ -358,9 +210,8 @@ async function submitDelete() {
       </DataList>
 
       <!-- Create Modal -->
-      <FormModal :open="formModal" :mode="formMode" :form="form" :ukurans="ukurans" :jenisProduks="jenisProduks"
-        :loading="formLoading" :error="formError" :field-errors="fieldErrors" @close="formModal = false"
-        @submit="submitForm" />
+      <FormModal :open="formModal" :mode="formMode" :item="selectedProduk" @close="formModal = false"
+        @success="handleFormSuccess" />
 
       <!-- Delete Confirmation Modal -->
       <DeleteRecordDialog :open="deleteModal" title="Hapus Produk" :loading="deleteLoading" @close="deleteModal = false"

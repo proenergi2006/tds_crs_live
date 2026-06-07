@@ -109,12 +109,12 @@ async function submitDelete() {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6">
-    <div class="col-span-12 mt-4 intro-y">
+  <div class="grid grid-cols-12 gap-6 p-4">
+    <div class="col-span-12 intro-y">
       <!-- Page Header -->
       <PageHeader title="Master Vendor" description="Kelola data vendor">
         <template #action>
-          <Button variant="primary" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Data Baru
           </Button>
@@ -140,33 +140,33 @@ async function submitDelete() {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(u, idx) in vendors" :key="u.id_vendor" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(item, idx) in vendors" :key="item.id_vendor" class="transition hover:bg-slate-50">
             <Table.Td class="text-center font-medium text-slate-700">
-              {{ (currentPage - 1) * perPage + idx + 1 }}
+              {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              {{ u.nama_vendor }}
+              {{ item.nama_vendor }}
             </Table.Td>
             <Table.Td>
-              {{ u.inisial }}
+              {{ item.inisial }}
             </Table.Td>
             <Table.Td>
-              {{ u.catatan || '-' }}
+              {{ item.catatan || '-' }}
             </Table.Td>
             <Table.Td class="text-center">
               <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
-                :class="u.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
-                {{ u.is_active ? 'Active' : 'Inactive' }}
+                :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+                {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-9 !w-9 !p-0 !shadow-none" @click.prevent="openEdit(u)"
+                <Button variant="soft-pending" rounded class="!h-9 !w-9 !p-0 !shadow-none" @click.prevent="openEdit(item)"
                   title="Edit">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
                 <Button variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none"
-                  @click="confirmDelete(u.id_vendor)" title="Hapus">
+                  @click="confirmDelete(item.id_vendor)" title="Hapus">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>

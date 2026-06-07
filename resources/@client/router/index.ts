@@ -97,19 +97,6 @@ const routes = [
                 component: () => import("@/pages/MasterData/Produk/Index.vue"),
                 meta: { roles: [2, 5] },
             },
-            // {
-            //   path: "produks/create",
-            //   name: "produks-create",
-            //   component: () => import("@/pages/ProdukCreate.vue"),
-            //   meta: { roles: [2, 5] },
-            // },
-            {
-                path: "produks/:id/edit",
-                name: "produks-edit",
-                component: () => import("@/pages/ProdukEdit.vue"),
-                meta: { roles: [2, 5] },
-                props: true,
-            },
             {
                 path: "produk-hargas/:id/detail",
                 name: "produk-hargas-detail",
@@ -118,19 +105,19 @@ const routes = [
             {
                 path: "produk-hargas",
                 name: "produk-hargas",
-                component: () => import("@/pages/ProdukHargaList.vue"),
+                component: () => import("@/pages/MasterData/HargaProduk/Index.vue"),
                 // meta: { roles: [2, 5] },
             },
             {
                 path: "produk-hargas/create",
                 name: "produk-hargas-create",
-                component: () => import("@/pages/ProdukHargaCreate.vue"),
+                component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
                 meta: { roles: [2, 5, 8] },
             },
             {
                 path: "produk-hargas/:id/edit",
                 name: "produk-hargas-edit",
-                component: () => import("@/pages/ProdukHargaEdit.vue"),
+                component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
                 meta: { roles: [2, 5, 8] },
             },
             {
@@ -174,6 +161,11 @@ const routes = [
                 path: "calendar",
                 name: "calendar",
                 component: () => import("@/pages/Calendar.vue"),
+            },
+            {
+                path: "validation",
+                name: "validation",
+                component: () => import("@/pages/Validation.vue"),
             },
 
             {
@@ -224,34 +216,22 @@ const routes = [
                 name: "vendors-list",
                 component: () => import("@/pages/MasterData/Vendor/Index.vue"),
             },
-              {
-                  path: "vendors/create",
-                  name: "vendors-create",
-                  component: () => import("@/pages/MasterData/Vendor/Form.vue"),
-                  meta: { roles: [5], breadcrumbTitle: "Tambah Vendor" },
-              },
-              {
-                  path: "vendors/:id/edit",
-                  name: "vendors-edit",
-                  component: () => import("@/pages/MasterData/Vendor/Form.vue"),
-                  meta: { roles: [5], breadcrumbTitle: "Edit Vendor" },
-              },
+            {
+                path: "vendors/create",
+                name: "vendors-create",
+                component: () => import("@/pages/MasterData/Vendor/Form.vue"),
+                meta: { roles: [5], breadcrumbTitle: "Tambah Vendor" },
+            },
+            {
+                path: "vendors/:id/edit",
+                name: "vendors-edit",
+                component: () => import("@/pages/MasterData/Vendor/Form.vue"),
+                meta: { roles: [5], breadcrumbTitle: "Edit Vendor" },
+            },
             {
                 path: "terminals",
                 name: "terminals-list",
-                component: () => import("@/pages/TerminalList.vue"),
-                meta: { roles: [5] },
-            },
-            {
-                path: "terminals/create",
-                name: "terminals-create",
-                component: () => import("@/pages/TerminalCreate.vue"),
-                meta: { roles: [5] },
-            },
-            {
-                path: "terminals/:id/edit",
-                name: "terminals-edit",
-                component: () => import("@/pages/TerminalEdit.vue"),
+                component: () => import("@/pages/MasterData/Terminal/Index.vue"),
                 meta: { roles: [5] },
             },
 
@@ -359,21 +339,6 @@ const routes = [
                 component: () =>
                     import("@/pages/MasterData/JenisProduk/Index.vue"),
             },
-            // {
-            //   path: "/jenis-produks/create",
-            //   name: "jenis-produk-create",
-            //   component: () => import("@/pages/JenisProdukForm.vue"),
-            // },
-            // {
-            //   path: "/jenis-produks/:id/edit",
-            //   name: "jenis-produk-edit",
-            //   component: () => import("@/pages/JenisProdukForm.vue"),
-            // },
-            // {
-            //   path: "/jenis-produks/:id",
-            //   name: "jenis-produk-detail",
-            //   component: () => import("@/pages/JenisProdukDetail.vue"),
-            // },
             {
                 path: "/transportir",
                 name: "transportir-list",
@@ -741,7 +706,7 @@ const routes = [
             {
                 path: "testing-page",
                 name: "testing-page",
-                component: () => import("@/pages/CrudForm.vue"),
+                component: () => import("@/pages/DashboardOverview3.vue"),
             },
             {
                 path: "/testing-page",

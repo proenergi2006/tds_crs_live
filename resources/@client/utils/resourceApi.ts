@@ -25,6 +25,14 @@ export function createResourceApi(endpoint: string) {
       return http.put(`${endpoint}/${id}`, payload);
     },
 
+    updateMultipart(id: number | string, payload: FormData) {
+      if (!payload.has("_method")) {
+        payload.append("_method", "PUT");
+      }
+
+      return http.post(`${endpoint}/${id}`, payload);
+    },
+
     destroy(id: number | string) {
       return http.delete(`${endpoint}/${id}`);
     },

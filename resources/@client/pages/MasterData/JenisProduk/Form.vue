@@ -1,103 +1,211 @@
 <script setup lang="ts">
-import FormModal from '@/components/SystemDesign/Form/FormModal.vue';
-import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue';
-import { FormInput, FormSelect, FormLabel } from '@/components/Base/Form'
-import { computed } from 'vue';
+import { computed, reactive, ref, watch } from 'vue'
+import { useVuelidate } from '@vuelidate/core'
+import { helpers, required } from '@vuelidate/validators'
+
+import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
+import { FormInput, FormLabel, FormSwitch } from '@/components/Base/Form'
+import { createResourceApi } from '@/utils/resourceApi.js'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
+
+const jenisProdukApi = createResourceApi('/jenis-produks')
+const { success, error } = useNotification()
+const auth = useAuthStore()
 
 const props = withDefaults(
   defineProps<{
-    open: boolean;
-    mode: 'create' | 'edit';
-    form: {
-      nama: string;
-      deskripsi: string;
-      is_active: boolean;
-      created_by?: string;
-      updated_by?: string;
-    };
-    jenisProduks: any[];
-    loading?: boolean;
-    error?: string | null;
-    fieldErrors?: any;
+    open: boolean
+    mode: 'create' | 'edit'
+    item?: {
+      id_jenis?: number
+      nama: string
+      deskripsi?: string
+      is_active: boolean
+      created_by?: string
+      updated_by?: string
+    } | null
   }>(),
   {
-    loading: false,
-    error: null,
-    fieldErrors: {},
+    item: null,
   },
-);
+)
 
 const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'submit'): void;
-}>();
+  (e: 'close'): void
+  (e: 'success', data: any, mode: 'create' | 'edit'): void
+}>()
+
+const loading = ref(false)
+const formError = ref<string | null>(null)
+
+const form = reactive({
+  id_jenis: 0,
+  nama: '',
+  deskripsi: '',
+  is_active: true,
+  created_by: '',
+  updated_by: '',
+})
+
+const rules = {
+  nama: {
+    required: helpers.withMessage('Nama Jenis Produk wajib diisi', required),
+  },
+}
+
+const v$ = useVuelidate(rules, form)
 
 const modalTitle = computed(() =>
-  props.mode === 'create'
-    ? 'Tambah Jenis Produk'
-    : 'Edit Jenis Produk',
-);
+  props.mode === 'create' ? 'Tambah Jenis Produk' : 'Edit Jenis Produk',
+)
 
 const modalDescription = computed(() =>
   props.mode === 'create'
     ? 'Tambahkan jenis produk baru ke sistem.'
     : 'Perbarui informasi jenis produk.',
-);
+)
 
 const submitText = computed(() =>
-  props.mode === 'create'
-    ? 'Tambah'
-    : 'Simpan',
-);
+  props.mode === 'create' ? 'Tambah' : 'Simpan',
+)
 
 const submitIcon = computed(() =>
-  props.mode === 'create'
-    ? 'PlusCircle'
-    : 'Save',
-);
+  props.mode === 'create' ? 'PlusCircle' : 'Save',
+)
+
+const currentUserName = computed(() => auth.user?.name || '')
 
 const updatedByInfo = computed(() => {
-  if (props.form.updated_by === null || props.form.updated_by === '') {
-    return `Created By ${props.form.created_by || 'N/A'}`;
-  } else {
-    return `Last Updated By ${props.form.updated_by || 'N/A'}`;
+  if (form.updated_by) {
+    return `Last Updated By ${form.updated_by}`
   }
-});
+
+  return `Created By ${form.created_by || 'N/A'}`
+})
+
+watch(
+  () => [props.open, props.mode, props.item],
+  () => {
+    if (props.open) {
+      resetForm()
+    }
+  },
+  { immediate: true },
+)
+
+function resetForm() {
+  resetFormErrors()
+
+  if (props.mode === 'edit' && props.item) {
+    Object.assign(form, {
+      id_jenis: props.item.id_jenis ?? 0,
+      nama: props.item.nama ?? '',
+      deskripsi: props.item.deskripsi ?? '',
+      is_active: props.item.is_active,
+      created_by: props.item.created_by ?? '',
+      updated_by: props.item.updated_by ?? '',
+    })
+    return
+  }
+
+  Object.assign(form, {
+    id_jenis: 0,
+    nama: '',
+    deskripsi: '',
+    is_active: true,
+    created_by: currentUserName.value,
+    updated_by: '',
+  })
+}
+
+function resetFormErrors() {
+  formError.value = null
+  v$.value.$reset()
+}
+
+function getFieldError(field: 'nama') {
+  return v$.value[field].$errors[0]?.$message?.toString() ?? ''
+}
+
+function getFormPayload() {
+  return {
+    nama: form.nama,
+    deskripsi: form.deskripsi,
+    is_active: form.is_active,
+    ...(props.mode === 'create'
+      ? { created_by: form.created_by || currentUserName.value }
+      : { updated_by: currentUserName.value }),
+  }
+}
+
+async function submitForm() {
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
+    error('Gagal', 'Periksa kembali data yang wajib diisi')
+    return
+  }
+
+  loading.value = true
+
+  try {
+    const response =
+      props.mode === 'create'
+        ? await jenisProdukApi.store(getFormPayload())
+        : await jenisProdukApi.update(form.id_jenis, getFormPayload())
+
+    success(
+      'Berhasil',
+      props.mode === 'create'
+        ? 'Jenis Produk berhasil ditambahkan'
+        : 'Jenis Produk berhasil diperbarui',
+    )
+
+    emit('success', response.data, props.mode)
+  } catch (e: any) {
+    const message = e.response?.data?.message ?? 'Terjadi kesalahan'
+    formError.value = message
+    error('Gagal', message)
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
-  <FormModal :open="open" :title="modalTitle" :description="modalDescription" :loading="loading" :error="error"
-    :submit-text="submitText" :submit-icon="submitIcon" @close="$emit('close')" @submit="$emit('submit')">
+  <FormModal :open="open" :title="modalTitle" :description="modalDescription" :loading="loading" :error="formError"
+    :submit-text="submitText" :submit-icon="submitIcon" @close="$emit('close')" @submit="submitForm">
     <div class="space-y-3">
-      <!-- Nama Jenis Produk (required) -->
       <div>
-        <FormLabel htmlFor="edit-nama">Nama Jenis Produk <RequiredAsterisk /></FormLabel>
+        <FormLabel htmlFor="edit-nama">Nama Jenis Produk
+          <RequiredAsterisk />
+        </FormLabel>
         <FormInput id="edit-nama" v-model="form.nama" placeholder="Nama Jenis Produk"
-          :class="fieldErrors.nama ? 'border-rose-500' : ''" required />
-        <small v-if="fieldErrors.nama" class="text-rose-600">{{ fieldErrors.nama
-        }}</small>
+          :class="v$.nama.$error ? 'border-rose-500' : ''" />
+        <small v-if="v$.nama.$error" class="text-rose-600">{{ getFieldError('nama') }}</small>
       </div>
 
-      <!-- Deskripsi (optional) -->
       <div>
         <FormLabel htmlFor="edit-deskripsi">Deskripsi</FormLabel>
         <FormInput id="edit-deskripsi" v-model="form.deskripsi" placeholder="Deskripsi" />
       </div>
 
-      <!-- Status (required) -->
       <div>
-        <FormLabel htmlFor="edit-status">Status <RequiredAsterisk /></FormLabel>
-        <FormSelect id="edit-status" v-model="form.is_active" :class="fieldErrors.is_active ? 'border-rose-500' : ''"
-          required>
-          <option :value="true">Active</option>
-          <option :value="false">Inactive</option>
-        </FormSelect>
-        <small v-if="fieldErrors.is_active" class="text-rose-600">{{ fieldErrors.is_active }}</small>
+        <FormLabel htmlFor="edit-status">Status</FormLabel>
+        <div class="mt-2 flex items-center gap-3">
+          <FormSwitch>
+            <FormSwitch.Input id="edit-status" v-model="form.is_active" type="checkbox" />
+          </FormSwitch>
+          <span class="text-sm text-slate-600">
+            {{ form.is_active ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
       </div>
 
-      <!-- Updated By -->
       <div v-if="props.mode === 'edit'">
-        <p class="text-sm text-right text-xs text-gray-500 mt-6">
+        <p class="text-right text-xs text-gray-500 mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

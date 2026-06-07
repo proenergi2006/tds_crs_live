@@ -9,6 +9,15 @@ class ProdukController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->boolean('as_list')) {
+            return response()->json(
+                Produk::with('ukuran.satuan', 'jenis')
+                    ->select('id_produk', 'nama_produk', 'id_ukuran')
+                    ->orderBy('nama_produk')
+                    ->get()
+            );
+        }
+
         $q = Produk::with('ukuran.satuan', 'jenis');
 
         if ($s = $request->query('search')) {

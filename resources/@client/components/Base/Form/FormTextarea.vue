@@ -7,7 +7,16 @@ export default {
 <script setup lang="ts">
 import _ from "lodash";
 import { twMerge } from "tailwind-merge";
-import { computed, type InputHTMLAttributes, useAttrs, inject } from "vue";
+import {
+  computed,
+  type InputHTMLAttributes,
+  useAttrs,
+  inject,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import { type ProvideFormInline } from "./FormInline.vue";
 import { type ProvideInputGroup } from "./InputGroup/InputGroup.vue";
 
@@ -16,6 +25,7 @@ interface FormTextareaProps extends /* @vue-ignore */ InputHTMLAttributes {
   modelValue?: InputHTMLAttributes["value"];
   formTextareaSize?: "sm" | "lg";
   rounded?: boolean;
+  autoResize?: boolean;
 }
 
 interface FormTextareaEmit {
@@ -26,6 +36,7 @@ const props = defineProps<FormTextareaProps>();
 const attrs = useAttrs();
 const formInline = inject<ProvideFormInline>("formInline", false);
 const inputGroup = inject<ProvideInputGroup>("inputGroup", false);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const computedClass = computed(() =>
   twMerge([
@@ -35,6 +46,7 @@ const computedClass = computed(() =>
     props.formTextareaSize == "sm" && "text-xs py-1.5 px-2",
     props.formTextareaSize == "lg" && "text-lg py-1.5 px-4",
     props.rounded && "rounded-full",
+    props.autoResize && "resize-none overflow-hidden",
     formInline && "flex-1",
     inputGroup &&
       "rounded-none [&:not(:first-child)]:border-l-transparent first:rounded-l last:rounded-r z-10",
@@ -52,13 +64,37 @@ const localValue = computed({
     emit("update:modelValue", newValue);
   },
 });
+
+function resizeTextarea() {
+  if (!props.autoResize || !textareaRef.value) return;
+
+  textareaRef.value.style.height = "auto";
+  textareaRef.value.style.height = `${textareaRef.value.scrollHeight}px`;
+}
+
+function handleInput() {
+  nextTick(resizeTextarea);
+}
+
+onMounted(() => {
+  nextTick(resizeTextarea);
+});
+
+watch(
+  () => localValue.value,
+  () => {
+    nextTick(resizeTextarea);
+  },
+);
 </script>
 
 <template>
   <textarea
+    ref="textareaRef"
     :type="props.type"
     :class="computedClass"
     v-bind="_.omit(attrs, 'class')"
     v-model="localValue"
+    @input="handleInput"
   />
 </template>

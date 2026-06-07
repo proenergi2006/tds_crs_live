@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Cabang;
@@ -8,37 +9,45 @@ class CabangController extends Controller
 {
     public function index(Request $request)
     {
-        $perPage = $request->query('per_page', 10);
         $query = Cabang::query();
+
+        if ($request->as_list === true) {
+            return response()->json(
+                $query->select('id_cabang', 'nama_cabang')
+                    ->orderBy('nama_cabang')
+                    ->get()
+            );
+        }
 
         if ($search = $request->query('search')) {
             $query->where('nama_cabang', 'like', "%{$search}%");
         }
 
+        $perPage = $request->query('per_page', 10);
         $data = $query->paginate($perPage);
         return response()->json($data);
     }
 
     public function suggest(Request $request)
-{
-    $q     = $request->query('q');
-    $limit = (int) $request->query('limit', 8);
+    {
+        $q     = $request->query('q');
+        $limit = (int) $request->query('limit', 8);
 
-    $query = Cabang::query()
-        ->select('id_cabang', 'nama_cabang', 'inisial_cabang', 'inisial_segel', 'is_active');
+        $query = Cabang::query()
+            ->select('id_cabang', 'nama_cabang', 'inisial_cabang', 'inisial_segel', 'is_active');
 
-    if ($q) {
-        $query->where(function ($w) use ($q) {
-            $w->where('nama_cabang', 'like', "%{$q}%")
-              ->orWhere('inisial_cabang', 'like', "%{$q}%")
-              ->orWhere('inisial_segel', 'like', "%{$q}%");
-        });
+        if ($q) {
+            $query->where(function ($w) use ($q) {
+                $w->where('nama_cabang', 'like', "%{$q}%")
+                    ->orWhere('inisial_cabang', 'like', "%{$q}%")
+                    ->orWhere('inisial_segel', 'like', "%{$q}%");
+            });
+        }
+
+        $list = $query->orderBy('nama_cabang')->limit($limit)->get();
+
+        return response()->json($list);
     }
-
-    $list = $query->orderBy('nama_cabang')->limit($limit)->get();
-
-    return response()->json($list);
-}
 
 
     public function store(Request $request)
