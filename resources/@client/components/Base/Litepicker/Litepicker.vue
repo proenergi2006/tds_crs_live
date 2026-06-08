@@ -24,6 +24,7 @@ export interface LitepickerProps extends /* @vue-ignore */ InputHTMLAttributes {
   } & LitepickerConfig;
   modelValue: string;
   refKey?: string;
+  autoDefault?: boolean;
 }
 
 export type ProvideLitepicker = (el: LitepickerElement) => void;

@@ -64,7 +64,7 @@ function handleSubmit() {
 </script>
 
 <template>
-  <form class="grid grid-cols-12 gap-6" @submit.prevent="handleSubmit">
+  <form class="grid grid-cols-12 gap-6 p-4" @submit.prevent="handleSubmit">
     <div class="col-span-12 mt-4 intro-y">
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -88,14 +88,16 @@ function handleSubmit() {
         </div>
 
         <div class="px-6 py-5">
-          <div v-if="error" class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div v-if="error"
+            class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {{ error }}
           </div>
 
           <slot />
         </div>
 
-        <div v-if="showFooter" class="flex flex-col-reverse gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+        <div v-if="showFooter"
+          class="flex flex-col-reverse gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
           <slot name="footer">
             <Button type="button" variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
               :disabled="loading || disableCancel" @click="handleCancel">

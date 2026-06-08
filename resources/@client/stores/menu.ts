@@ -7,6 +7,7 @@ import simpleMenu from "@/main/simple-menu";
 import sideMenu from "@/main/side-menu";
 import { useAuthStore } from "@/stores/auth";
 import { canAccessMenu } from "@/stores/roleMenuMapping";
+import router from "@/router";
 
 export interface Menu {
   icon: Icon;
@@ -25,6 +26,37 @@ export interface MenuState {
   menuValue: Array<Menu | "divider">;
 }
 
+const routeByName = () =>
+  new Map(router.getRoutes().map((route) => [String(route.name), route]));
+
+const canAccessRoute = (roleId: number | undefined, pageName?: string) => {
+  if (!pageName) return true;
+
+  const route = routeByName().get(pageName);
+  const allowedRoles = route?.meta.roles;
+
+  if (!Array.isArray(allowedRoles) || !allowedRoles.length) return true;
+
+  return allowedRoles.includes(roleId ?? -1);
+};
+
+const filterMenuItemByRole = (item: Menu, roleId: number | undefined): Menu | null => {
+  if (!canAccessRoute(roleId, item.pageName)) return null;
+
+  if (!item.subMenu?.length) return item;
+
+  const subMenu = item.subMenu
+    .map((subItem) => filterMenuItemByRole(subItem, roleId))
+    .filter((subItem): subItem is Menu => subItem !== null);
+
+  if (!subMenu.length && !item.pageName) return null;
+
+  return {
+    ...item,
+    subMenu,
+  };
+};
+
 export const useMenuStore = defineStore("menu", {
   state: (): MenuState => ({
     menuValue: [],
@@ -42,13 +74,15 @@ export const useMenuStore = defineStore("menu", {
       }
 
       // Filter side-menu berdasarkan role permissions
-      return sideMenu.filter((item) => {
-        if (item === "divider") return true;
-        if (typeof item !== "string") {
-          return canAccessMenu(roleId, item.title);
-        }
-        return true;
-      });
+      return sideMenu
+        .map((item) => {
+          if (item === "divider") return item;
+
+          if (!canAccessMenu(roleId, item.title)) return null;
+
+          return filterMenuItemByRole(item, roleId);
+        })
+        .filter((item): item is Menu | "divider" => item !== null);
     },
   },
 });

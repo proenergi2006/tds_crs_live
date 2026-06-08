@@ -5,6 +5,7 @@ import Swal from 'sweetalert2'
 import { useRoute, useRouter } from 'vue-router'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
+import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,11 +63,8 @@ onMounted(() => {
           Kembali
         </Button>
 
-        <Button
-          variant="primary"
-          v-if="detail"
-          @click="router.push({ name: 'produk-hargas-edit', params: { id: detail.id_produk_harga } })"
-        >
+        <Button variant="primary" v-if="detail"
+          @click="router.push({ name: 'produk-hargas-edit', params: { id: detail.id_produk_harga } })">
           <Lucide icon="Edit" class="mr-2 h-4 w-4" />
           Edit
         </Button>
@@ -80,9 +78,7 @@ onMounted(() => {
     <div v-else-if="detail" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
       <!-- LEFT -->
       <div class="xl:col-span-2 space-y-6">
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 class="mb-4 text-lg font-semibold text-slate-800">Informasi Utama</h3>
-
+        <CardSection title="Informasi Utama" description="Periode, cabang, dan data produk" icon="FileText">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-400">Periode Awal</div>
@@ -120,11 +116,10 @@ onMounted(() => {
               </div>
             </div>
           </div>
-        </div>
+        </CardSection>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 class="mb-4 text-lg font-semibold text-slate-800">Harga Utama</h3>
-
+        <CardSection title="Harga Utama" description="Harga referensi utama untuk produk" icon="Tags"
+          icon-class="bg-indigo-100 text-indigo-600">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
               <div class="text-xs uppercase tracking-wide text-slate-400">COGS</div>
@@ -146,21 +141,20 @@ onMounted(() => {
               <div class="mt-2 text-lg font-bold text-emerald-700">{{ formatNumber(detail.harga_price_list_pe) }}</div>
             </div>
           </div>
-        </div>
+        </CardSection>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 class="mb-4 text-lg font-semibold text-slate-800">Catatan</h3>
+        <CardSection title="Catatan" description="Catatan tambahan untuk harga produk" icon="StickyNote"
+          icon-class="bg-amber-100 text-amber-600">
           <p class="text-sm leading-6 text-slate-600">
             {{ detail.catatan || '-' }}
           </p>
-        </div>
+        </CardSection>
       </div>
 
       <!-- RIGHT -->
       <div class="space-y-6">
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 class="mb-4 text-lg font-semibold text-slate-800">Harga Approval</h3>
-
+        <CardSection title="Harga Approval" description="Harga berdasarkan level approval" icon="ShieldCheck"
+          icon-class="bg-emerald-100 text-emerald-600">
           <div class="space-y-4">
             <div class="rounded-xl border border-slate-200 p-4">
               <div class="text-xs uppercase tracking-wide text-slate-400">Harga BM</div>
@@ -177,11 +171,10 @@ onMounted(() => {
               <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_ceo) }}</div>
             </div>
           </div>
-        </div>
+        </CardSection>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 class="mb-4 text-lg font-semibold text-slate-800">Metadata</h3>
-
+        <CardSection title="Metadata" description="Jejak pembuatan dan perubahan data" icon="History"
+          icon-class="bg-slate-100 text-slate-600">
           <div class="space-y-3 text-sm">
             <div>
               <span class="text-slate-400">Created By:</span>
@@ -203,7 +196,7 @@ onMounted(() => {
               <div class="font-medium text-slate-700">{{ detail.lastupdate_time || '-' }}</div>
             </div>
           </div>
-        </div>
+        </CardSection>
       </div>
     </div>
   </div>

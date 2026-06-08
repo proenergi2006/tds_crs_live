@@ -8,7 +8,8 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
-import { FormInput, FormLabel, FormSelect, FormTextarea } from '@/components/Base/Form'
+import DateRangeInline from '@/components/SystemDesign/Form/DateRangeInline.vue'
+import { FormInput, FormSelect, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -51,12 +52,6 @@ type PriceRow = {
   catatan: string
 }
 
-type MoneyColumn = {
-  field: MoneyField
-  displayField: DisplayField
-  label: string
-}
-
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
@@ -81,6 +76,20 @@ const period = reactive({
   periode_akhir: '',
 })
 
+const periodRange = computed({
+  get() {
+    if (!period.periode_awal && !period.periode_akhir) return ''
+
+    return `${period.periode_awal || ''} - ${period.periode_akhir || ''}`
+  },
+  set(value: string) {
+    const [start = '', end = ''] = value.split(' - ')
+
+    period.periode_awal = start
+    period.periode_akhir = end
+  },
+})
+
 const rows = ref<PriceRow[]>([makeEmptyRow()])
 
 const currentUser = computed(() => auth.user)
@@ -99,16 +108,6 @@ const pageDescription = computed(() =>
 const submitText = computed(() => mode.value === 'create' ? 'Simpan Harga' : 'Simpan Perubahan')
 const canAddRows = computed(() => mode.value === 'create')
 
-const moneyColumns: MoneyColumn[] = [
-  { field: 'harga_cogs', displayField: 'displayCogs', label: 'COGS' },
-  { field: 'harga_margin', displayField: 'displayMargin', label: 'Margin' },
-  { field: 'harga_price_list', displayField: 'displayPriceList', label: 'Price List' },
-  { field: 'harga_price_list_pe', displayField: 'displayPriceListPe', label: 'Price List PE' },
-  { field: 'harga_bm', displayField: 'displayBm', label: 'BM' },
-  { field: 'harga_om', displayField: 'displayOm', label: 'OM' },
-  { field: 'harga_ceo', displayField: 'displayCeo', label: 'CEO' },
-]
-
 const visibleMoneyFields = computed<MoneyField[]>(() => {
   if (isRole5.value) return ['harga_cogs']
   if (isRole8.value) return ['harga_cogs', 'harga_bm']
@@ -125,19 +124,28 @@ const visibleMoneyFields = computed<MoneyField[]>(() => {
   ]
 })
 
-const visibleMoneyColumns = computed(() =>
-  moneyColumns.filter(column => visibleMoneyFields.value.includes(column.field)),
+const showRowNumber = computed(() => mode.value === 'create')
+const showCogsColumn = computed(() => visibleMoneyFields.value.includes('harga_cogs'))
+const showMarginColumn = computed(() => visibleMoneyFields.value.includes('harga_margin'))
+const showPriceListColumn = computed(() =>
+  visibleMoneyFields.value.includes('harga_price_list_pe')
+  || visibleMoneyFields.value.includes('harga_price_list'),
+)
+const showApprovalColumn = computed(() =>
+  visibleMoneyFields.value.includes('harga_bm')
+  || visibleMoneyFields.value.includes('harga_om')
+  || visibleMoneyFields.value.includes('harga_ceo'),
 )
 
 const rules = computed(() => ({
   period: {
     periode_awal: {
-      required: helpers.withMessage('Periode Awal wajib diisi', required),
+      required: helpers.withMessage('Periode Harga wajib diisi', required),
     },
     periode_akhir: {
-      required: helpers.withMessage('Periode Akhir wajib diisi', required),
+      required: helpers.withMessage('Periode Harga wajib diisi', required),
       afterStartDate: helpers.withMessage(
-        'Periode Akhir tidak boleh lebih awal dari Periode Awal',
+        'Tanggal akhir tidak boleh lebih awal dari tanggal awal',
         (value: string) => {
           if (!helpers.req(value) || !helpers.req(period.periode_awal)) return true
 
@@ -153,6 +161,42 @@ const rules = computed(() => ({
       },
       id_produk: {
         required: helpers.withMessage('Produk wajib dipilih', required),
+      },
+      harga_cogs: {
+        required: helpers.withMessage(
+          'COGS wajib diisi',
+          (value: number) => isReadonly('harga_cogs') || toIntMoney(value) > 0,
+        ),
+      },
+      harga_price_list_pe: {
+        required: helpers.withMessage(
+          'Price List PE wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
+      },
+      harga_price_list: {
+        required: helpers.withMessage(
+          'Price List TDS wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
+      },
+      harga_bm: {
+        required: helpers.withMessage(
+          'Approval BM wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
+      },
+      harga_om: {
+        required: helpers.withMessage(
+          'Approval OM wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
+      },
+      harga_ceo: {
+        required: helpers.withMessage(
+          'Approval CEO wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
       },
     }),
   },
@@ -274,7 +318,13 @@ function toIntMoney(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0
   if (typeof value === 'number') return Math.trunc(value)
 
-  const normalized = String(value).split(',')[0].replace(/[^\d]/g, '')
+  const text = String(value).trim()
+
+  if (/^\d+\.\d{1,2}$/.test(text)) {
+    return Math.trunc(Number.parseFloat(text))
+  }
+
+  const normalized = text.split(',')[0].replace(/[^\d]/g, '')
   return normalized ? parseInt(normalized, 10) : 0
 }
 
@@ -295,16 +345,14 @@ function updateMoney(row: PriceRow, field: MoneyField, displayField: DisplayFiel
   row[field] = value
   row[displayField] = formatID(value)
 
-  if (field === 'harga_cogs' || field === 'harga_margin') {
-    updatePriceList(row)
+  if (field === 'harga_cogs' || field === 'harga_price_list') {
+    updateMargin(row)
   }
 }
 
-function updatePriceList(row: PriceRow) {
-  if (isReadonly('harga_price_list')) return
-
-  row.harga_price_list = toIntMoney(row.harga_cogs) + toIntMoney(row.harga_margin)
-  row.displayPriceList = formatID(row.harga_price_list)
+function updateMargin(row: PriceRow) {
+  row.harga_margin = Math.max(toIntMoney(row.harga_price_list) - toIntMoney(row.harga_cogs), 0)
+  row.displayMargin = formatID(row.harga_margin)
 }
 
 function syncRowDisplays(row: PriceRow) {
@@ -321,7 +369,18 @@ function getPeriodFieldError(field: 'periode_awal' | 'periode_akhir') {
   return v$.value.period[field].$errors[0]?.$message?.toString() ?? ''
 }
 
-function getRowFieldError(index: number, field: 'id_cabang' | 'id_produk') {
+const periodRangeError = computed(() => {
+  const startError = getPeriodFieldError('periode_awal')
+  const endError = getPeriodFieldError('periode_akhir')
+
+  if (startError === 'Periode Harga wajib diisi' || endError === 'Periode Harga wajib diisi') {
+    return 'Periode Harga wajib diisi'
+  }
+
+  return startError || endError
+})
+
+function getRowFieldError(index: number, field: 'id_cabang' | 'id_produk' | MoneyField) {
   if (!validationSubmitted.value) return ''
 
   const errors = v$.value.rows.$each.$response.$errors[index]?.[field]
@@ -371,14 +430,32 @@ async function submitForm() {
       await hargaProdukApi.update(hargaId.value, buildPayload(rows.value[0]))
     }
 
-    success(
-      'Berhasil',
-      mode.value === 'create'
-        ? 'Harga produk berhasil ditambahkan'
-        : 'Harga produk berhasil diperbarui',
-    )
+    if (mode.value === 'create') {
+      success('Berhasil', 'Harga produk berhasil ditambahkan')
+      router.push({ name: 'produk-hargas' })
+      return
+    }
 
-    router.push({ name: 'produk-hargas' })
+    success(
+      'Perubahan berhasil disimpan',
+      'Data harga produk sudah diperbarui.',
+      {
+        withAction: true,
+        actions: [
+          {
+            id: 'stay-on-form',
+            label: 'Tetap di sini',
+            variant: 'secondary',
+          },
+          {
+            id: 'go-to-index',
+            label: 'Ke halaman utama',
+            variant: 'primary',
+            onClick: () => router.push({ name: 'produk-hargas' }),
+          },
+        ],
+      },
+    )
   } catch (e: any) {
     const message = e.response?.data?.message ?? 'Gagal menyimpan data harga produk'
     formError.value = message
@@ -398,27 +475,10 @@ function cancel() {
   <FormPage :title="pageTitle" :description="pageDescription" size="full" :loading="loading || pageLoading"
     :error="formError" :submit-text="submitText" submit-icon="Save" @cancel="cancel" @submit="submitForm">
     <template #header>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <FormLabel htmlFor="periode-awal">Periode Awal
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormInput id="periode-awal" v-model="period.periode_awal" type="date"
-            :class="v$.period.periode_awal.$error ? 'border-rose-500' : ''" />
-          <small v-if="v$.period.periode_awal.$error" class="text-rose-600">
-            {{ getPeriodFieldError('periode_awal') }}
-          </small>
-        </div>
-
-        <div>
-          <FormLabel htmlFor="periode-akhir">Periode Akhir
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormInput id="periode-akhir" v-model="period.periode_akhir" type="date"
-            :class="v$.period.periode_akhir.$error ? 'border-rose-500' : ''" />
-          <small v-if="v$.period.periode_akhir.$error" class="text-rose-600">
-            {{ getPeriodFieldError('periode_akhir') }}
-          </small>
+      <div class="grid grid-cols-12">
+        <div class="col-span-4">
+          <DateRangeInline v-model="periodRange" label="Periode Harga" required :error="periodRangeError"
+            :auto-default="false" />
         </div>
       </div>
     </template>
@@ -432,18 +492,23 @@ function cancel() {
           </p>
         </div>
 
-        <Button v-if="canAddRows" type="button" variant="outline-primary" class="inline-flex items-center gap-2"
-          @click="addRow">
-          <Lucide icon="Plus" class="h-4 w-4" />
-          Tambah Baris
-        </Button>
+        <div v-if="canAddRows" class="flex flex-col items-end">
+          <Button type="button" variant="outline-primary" class="inline-flex items-center gap-2" @click="addRow">
+            <Lucide icon="Plus" class="h-4 w-4" />
+            Tambah Baris
+          </Button>
+          <div class="mt-1 text-sm text-slate-500">
+            Tambahkan baris baru untuk input harga produk lain.
+          </div>
+        </div>
       </div>
 
       <div class="overflow-x-auto rounded-lg border border-slate-200">
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-14 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th v-if="showRowNumber"
+                class="w-14 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                 No
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -452,9 +517,22 @@ function cancel() {
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Produk
               </th>
-              <th v-for="column in visibleMoneyColumns" :key="column.field"
+              <th v-if="showCogsColumn"
                 class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
-                {{ column.label }}
+                Harga COGS
+                <RequiredAsterisk v-if="!isReadonly('harga_cogs')" />
+              </th>
+              <th v-if="showMarginColumn"
+                class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Margin
+              </th>
+              <th v-if="showPriceListColumn"
+                class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Price List
+              </th>
+              <th v-if="showApprovalColumn"
+                class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Harga Approval
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Catatan
@@ -468,7 +546,7 @@ function cancel() {
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(row, index) in rows" :key="index" class="transition hover:bg-slate-50">
-              <td class="px-4 py-3 align-top text-sm font-medium text-slate-700">
+              <td v-if="showRowNumber" class="px-4 py-3 align-top text-sm font-medium text-slate-700">
                 {{ index + 1 }}.
               </td>
 
@@ -498,10 +576,112 @@ function cancel() {
                 </small>
               </td>
 
-              <td v-for="column in visibleMoneyColumns" :key="column.field" class="px-4 py-3 align-top">
-                <FormInput :value="row[column.displayField]" class="min-w-[120px] text-right" placeholder="0"
-                  :readonly="isReadonly(column.field)"
-                  @input="updateMoney(row, column.field, column.displayField, $event)" />
+              <td v-if="showCogsColumn" class="px-4 py-3 align-top">
+                <FormInput :value="row.displayCogs" class="min-w-[130px] text-right" placeholder="0"
+                  :readonly="isReadonly('harga_cogs')" :class="getRowFieldError(index, 'harga_cogs')
+                    ? 'border-rose-500'
+                    : ''" @input="updateMoney(row, 'harga_cogs', 'displayCogs', $event)" />
+                <small v-if="getRowFieldError(index, 'harga_cogs')" class="text-rose-600">
+                  {{ getRowFieldError(index, 'harga_cogs') }}
+                </small>
+              </td>
+
+              <td v-if="showMarginColumn" class="px-4 py-3 align-top">
+                <FormInput :value="row.displayMargin" class="min-w-[130px] bg-slate-50 text-right" readonly
+                  placeholder="0" />
+              </td>
+
+              <td v-if="showPriceListColumn" class="px-4 py-3 align-top">
+                <div class="min-w-[190px] space-y-2">
+                  <div v-if="visibleMoneyFields.includes('harga_price_list_pe')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">
+                      PE
+                      <RequiredAsterisk v-if="isRole2" />
+                    </span>
+                    <div>
+                      <FormInput :value="row.displayPriceListPe" class="text-right" placeholder="0"
+                        :readonly="isReadonly('harga_price_list_pe')"
+                        :class="getRowFieldError(index, 'harga_price_list_pe') ? 'border-rose-500' : ''"
+                        @input="updateMoney(row, 'harga_price_list_pe', 'displayPriceListPe', $event)" />
+                      <small v-if="getRowFieldError(index, 'harga_price_list_pe')" class="text-rose-600">
+                        {{ getRowFieldError(index, 'harga_price_list_pe') }}
+                      </small>
+                    </div>
+                  </div>
+
+                  <div v-if="visibleMoneyFields.includes('harga_price_list')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">
+                      TDS
+                      <RequiredAsterisk v-if="isRole2" />
+                    </span>
+                    <div>
+                      <FormInput :value="row.displayPriceList" class="text-right" placeholder="0"
+                        :readonly="isReadonly('harga_price_list')"
+                        :class="getRowFieldError(index, 'harga_price_list') ? 'border-rose-500' : ''"
+                        @input="updateMoney(row, 'harga_price_list', 'displayPriceList', $event)" />
+                      <small v-if="getRowFieldError(index, 'harga_price_list')" class="text-rose-600">
+                        {{ getRowFieldError(index, 'harga_price_list') }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <td v-if="showApprovalColumn" class="px-4 py-3 align-top">
+                <div class="min-w-[190px] space-y-2">
+                  <div v-if="visibleMoneyFields.includes('harga_bm')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">
+                      BM
+                      <RequiredAsterisk v-if="isRole2" />
+                    </span>
+                    <div>
+                      <FormInput :value="row.displayBm" class="text-right" placeholder="0"
+                        :readonly="isReadonly('harga_bm')"
+                        :class="getRowFieldError(index, 'harga_bm') ? 'border-rose-500' : ''"
+                        @input="updateMoney(row, 'harga_bm', 'displayBm', $event)" />
+                      <small v-if="getRowFieldError(index, 'harga_bm')" class="text-rose-600">
+                        {{ getRowFieldError(index, 'harga_bm') }}
+                      </small>
+                    </div>
+                  </div>
+
+                  <div v-if="visibleMoneyFields.includes('harga_om')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">
+                      OM
+                      <RequiredAsterisk v-if="isRole2" />
+                    </span>
+                    <div>
+                      <FormInput :value="row.displayOm" class="text-right" placeholder="0"
+                        :readonly="isReadonly('harga_om')"
+                        :class="getRowFieldError(index, 'harga_om') ? 'border-rose-500' : ''"
+                        @input="updateMoney(row, 'harga_om', 'displayOm', $event)" />
+                      <small v-if="getRowFieldError(index, 'harga_om')" class="text-rose-600">
+                        {{ getRowFieldError(index, 'harga_om') }}
+                      </small>
+                    </div>
+                  </div>
+
+                  <div v-if="visibleMoneyFields.includes('harga_ceo')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">
+                      CEO
+                      <RequiredAsterisk v-if="isRole2" />
+                    </span>
+                    <div>
+                      <FormInput :value="row.displayCeo" class="text-right" placeholder="0"
+                        :readonly="isReadonly('harga_ceo')"
+                        :class="getRowFieldError(index, 'harga_ceo') ? 'border-rose-500' : ''"
+                        @input="updateMoney(row, 'harga_ceo', 'displayCeo', $event)" />
+                      <small v-if="getRowFieldError(index, 'harga_ceo')" class="text-rose-600">
+                        {{ getRowFieldError(index, 'harga_ceo') }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
               </td>
 
               <td class="px-4 py-3 align-top">
@@ -519,9 +699,6 @@ function cancel() {
             </tr>
           </tbody>
         </table>
-      </div>
-      <div class="text-xs text-slate-500">
-        Field harga yang tampil disesuaikan dengan role login. COGS tetap ditampilkan sebagai referensi approval.
       </div>
     </div>
   </FormPage>
