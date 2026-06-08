@@ -222,12 +222,11 @@ function rowNumber(row: any) {
       <PageHeader title="Master Harga Produk"
         description="Kelola data harga produk, filter berdasarkan cabang, produk, dan periode.">
         <template #action>
-          <RouterLink v-if="isRole5" :to="{ name: 'produk-hargas-create' }">
-            <Button variant="white" class="inline-flex items-center gap-2">
-              <Lucide icon="Plus" class="h-4 w-4" />
-              Tambah Harga
-            </Button>
-          </RouterLink>
+          <Button v-if="isRole5" :as="RouterLink" :to="{ name: 'produk-hargas-create' }" variant="white"
+            class="inline-flex items-center gap-2">
+            <Lucide icon="Plus" class="h-4 w-4" />
+            Tambah Harga
+          </Button>
         </template>
       </PageHeader>
 
@@ -346,17 +345,15 @@ function rowNumber(row: any) {
 
               <Table.Td class="text-center">
                 <div class="inline-flex items-center justify-center gap-2">
-                  <RouterLink :to="{ name: 'produk-hargas-detail', params: { id: item.id_produk_harga } }"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
-                    title="Detail">
+                  <Button :as="RouterLink" :to="{ name: 'produk-hargas-detail', params: { id: item.id_produk_harga } }"
+                    variant="soft-info" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Detail">
                     <Lucide icon="Eye" class="h-4 w-4" />
-                  </RouterLink>
+                  </Button>
 
-                  <RouterLink :to="{ name: 'produk-hargas-edit', params: { id: item.id_produk_harga } }"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 transition hover:bg-blue-100"
-                    title="Edit">
+                  <Button :as="RouterLink" :to="{ name: 'produk-hargas-edit', params: { id: item.id_produk_harga } }"
+                    variant="soft-warning" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Edit">
                     <Lucide icon="Edit" class="h-4 w-4" />
-                  </RouterLink>
+                  </Button>
 
                   <Button v-if="isRole5" variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus"
                     @click="confirmDelete(item.id_produk_harga)">

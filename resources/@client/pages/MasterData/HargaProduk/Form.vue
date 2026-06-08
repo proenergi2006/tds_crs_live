@@ -430,32 +430,25 @@ async function submitForm() {
       await hargaProdukApi.update(hargaId.value, buildPayload(rows.value[0]))
     }
 
-    if (mode.value === 'create') {
-      success('Berhasil', 'Harga produk berhasil ditambahkan')
-      router.push({ name: 'produk-hargas' })
-      return
-    }
-
     success(
-      'Perubahan berhasil disimpan',
-      'Data harga produk sudah diperbarui.',
-      {
-        withAction: true,
-        actions: [
-          {
-            id: 'stay-on-form',
-            label: 'Tetap di sini',
-            variant: 'secondary',
-          },
-          {
-            id: 'go-to-index',
-            label: 'Ke halaman utama',
-            variant: 'primary',
-            onClick: () => router.push({ name: 'produk-hargas' }),
-          },
-        ],
-      },
+      'Berhasil',
+      mode.value === 'create'
+        ? 'Harga produk berhasil ditambahkan'
+        : 'Harga produk berhasil diperbarui',
+      mode.value === 'edit'
+        ? {
+            action: {
+              label: 'Ke daftar',
+              variant: 'primary',
+              onClick: () => router.push({ name: 'produk-hargas' }),
+            },
+          }
+        : undefined,
     )
+
+    if (mode.value === 'create') {
+      router.push({ name: 'produk-hargas' })
+    }
   } catch (e: any) {
     const message = e.response?.data?.message ?? 'Gagal menyimpan data harga produk'
     formError.value = message
@@ -474,6 +467,13 @@ function cancel() {
 <template>
   <FormPage :title="pageTitle" :description="pageDescription" size="full" :loading="loading || pageLoading"
     :error="formError" :submit-text="submitText" submit-icon="Save" @cancel="cancel" @submit="submitForm">
+    <template #action>
+      <Button type="button" variant="outline-secondary" class="inline-flex items-center gap-2" @click="cancel">
+        <Lucide icon="ArrowLeft" class="h-4 w-4" />
+        Kembali
+      </Button>
+    </template>
+
     <template #header>
       <div class="grid grid-cols-12">
         <div class="col-span-4">

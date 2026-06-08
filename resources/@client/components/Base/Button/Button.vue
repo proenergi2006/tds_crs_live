@@ -22,6 +22,7 @@ type Variant =
   | "soft-primary"
   | "soft-secondary"
   | "soft-success"
+  | "soft-info"
   | "soft-warning"
   | "soft-pending"
   | "soft-danger"
@@ -186,6 +187,12 @@ const softSuccess = [
   "[&:hover:not(:disabled)]:bg-success/25",
 ]
 
+const softInfo = [
+  "bg-info/10 border-info/20 text-info",
+  "dark:bg-info/10 dark:border-info/30",
+  "[&:hover:not(:disabled)]:bg-info/25",
+]
+
 const softWarning = [
   "bg-warning/10 border-warning/20 text-warning",
   "dark:bg-warning/10 dark:border-warning/30",
@@ -234,6 +241,7 @@ const computedClass = computed(() =>
     variant == "soft-primary" && softPrimary,
     variant == "soft-secondary" && softSecondary,
     variant == "soft-success" && softSuccess,
+    variant == "soft-info" && softInfo,
     variant == "soft-warning" && softWarning,
     variant == "soft-pending" && softPending,
     variant == "soft-danger" && softDanger,

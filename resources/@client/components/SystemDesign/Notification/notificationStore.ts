@@ -13,6 +13,5 @@ export const notificationPayload = ref({
   type: "success",
   title: "",
   message: "",
-  sticky: false,
-  actions: [] as NotificationAction[],
+  action: null as NotificationAction | null,
 });

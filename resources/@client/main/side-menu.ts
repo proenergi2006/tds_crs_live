@@ -233,6 +233,7 @@ const menu: Array<Menu | "divider"> = [
       {
         icon: "ClipboardList",
         pageName: "procurement-delivery-requests", // <- sama dgn name router
+        activePageNames: ["procurement-dr-detail"],
         title: "Delivery Request",
       },
     ],
@@ -291,6 +292,11 @@ const menu: Array<Menu | "divider"> = [
           {
             icon: "ShoppingBag",
             pageName: "produk-hargas",
+            activePageNames: [
+              "produk-hargas-create",
+              "produk-hargas-edit",
+              "produk-hargas-detail",
+            ],
             title: "Produks Harga",
           },
           {
@@ -379,6 +385,11 @@ const menu: Array<Menu | "divider"> = [
           {
             icon: "ShoppingBag",
             pageName: "produk-hargas",
+            activePageNames: [
+              "produk-hargas-create",
+              "produk-hargas-edit",
+              "produk-hargas-detail",
+            ],
             title: "Produks Harga",
           },
           {
@@ -417,6 +428,11 @@ const menu: Array<Menu | "divider"> = [
       {
         icon: "ShoppingBag",
         pageName: "produk-hargas",
+        activePageNames: [
+          "produk-hargas-create",
+          "produk-hargas-edit",
+          "produk-hargas-detail",
+        ],
         title: "Produks Harga",
       },
       {

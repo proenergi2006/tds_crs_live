@@ -1,28 +1,17 @@
-import {
-  notificationRef,
-  notificationPayload,
-  type NotificationAction,
-} from "./notificationStore";
 import { nextTick } from "vue";
-
-type ActionNotification = {
-  type?: "success" | "error" | "warning" | "info";
-  title: string;
-  message?: string;
-  actions: Array<NotificationAction & {
-    onClick?: () => void;
-  }>;
-};
+import { notificationRef, notificationPayload } from "./notificationStore";
 
 type NotificationOptions = {
-  withAction?: boolean;
-  actions?: Array<NotificationAction & {
-    onClick?: () => void;
-  }>;
+  action?: {
+    label: string;
+    variant?: "primary" | "secondary";
+    onClick: () => void;
+  };
 };
 
 const actionHandlers = new Map<string, () => void>();
 let actionListenerRegistered = false;
+let notificationActionId = 0;
 let notificationRenderId = 0;
 
 function ensureActionListener() {
@@ -53,52 +42,26 @@ export function useNotification() {
     message?: string,
     options: NotificationOptions = {},
   ) {
-    if (options.withAction) {
-      showWithActions({
-        type,
-        title,
-        message,
-        actions: options.actions ?? [],
-      });
-      return;
-    }
+    actionHandlers.clear();
 
-    notificationRef.value?.hideToast();
+    const action = options.action
+      ? {
+          id: `notification-action-${++notificationActionId}`,
+          label: options.action.label,
+          variant: options.action.variant ?? "secondary",
+        }
+      : null;
+
+    if (options.action && action) {
+      ensureActionListener();
+      actionHandlers.set(action.id, options.action.onClick);
+    }
 
     notificationPayload.value = {
       type,
       title,
       message: message ?? "",
-      sticky: false,
-      actions: [],
-    };
-
-    renderNotification();
-  }
-
-  function showWithActions(options: ActionNotification) {
-    ensureActionListener();
-    actionHandlers.clear();
-    notificationRef.value?.hideToast();
-
-    const actions = options.actions.map((action) => {
-      if (action.onClick) {
-        actionHandlers.set(action.id, action.onClick);
-      }
-
-      return {
-        id: action.id,
-        label: action.label,
-        variant: action.variant ?? "secondary",
-      };
-    });
-
-    notificationPayload.value = {
-      type: options.type ?? "success",
-      title: options.title,
-      message: options.message ?? "",
-      sticky: true,
-      actions,
+      action,
     };
 
     renderNotification();
@@ -119,10 +82,6 @@ export function useNotification() {
 
     info(title: string, message?: string, options?: NotificationOptions) {
       show("info", title, message, options);
-    },
-
-    action(options: ActionNotification) {
-      showWithActions(options);
     },
   };
 }
