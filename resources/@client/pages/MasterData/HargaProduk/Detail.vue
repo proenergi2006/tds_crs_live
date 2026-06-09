@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
-import Swal from 'sweetalert2'
 import { useRoute, useRouter } from 'vue-router'
+
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { createResourceApi } from '@/utils/resourceApi.js'
 
 const route = useRoute()
 const router = useRouter()
+const { error } = useNotification()
+const hargaProdukApi = createResourceApi('/produk-hargas')
 const id = route.params.id
 
 const loading = ref(false)
@@ -16,11 +19,12 @@ const detail = ref<any>(null)
 
 async function fetchDetail() {
   loading.value = true
+
   try {
-    const { data } = await axios.get(`/api/produk-hargas/${id}`)
+    const { data } = await hargaProdukApi.getById(id as string)
     detail.value = data
   } catch (e: any) {
-    Swal.fire('Error', e.response?.data?.message || 'Gagal memuat detail data', 'error')
+    error('Gagal', e.response?.data?.message || 'Gagal memuat detail data')
     router.push({ name: 'produk-hargas' })
   } finally {
     loading.value = false

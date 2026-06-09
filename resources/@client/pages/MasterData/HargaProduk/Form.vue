@@ -8,8 +8,9 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
+import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateRangeInline from '@/components/SystemDesign/Form/DateRangeInline.vue'
-import { FormInput, FormSelect, FormTextarea } from '@/components/Base/Form'
+import { FormSelect, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -23,32 +24,16 @@ type MoneyField =
   | 'harga_om'
   | 'harga_ceo'
 
-type DisplayField =
-  | 'displayPriceList'
-  | 'displayPriceListPe'
-  | 'displayBm'
-  | 'displayCogs'
-  | 'displayMargin'
-  | 'displayOm'
-  | 'displayCeo'
-
 type PriceRow = {
   id_cabang: number | string
   id_produk: number | string
   harga_price_list: number
-  displayPriceList: string
   harga_price_list_pe: number
-  displayPriceListPe: string
   harga_bm: number
-  displayBm: string
   harga_cogs: number
-  displayCogs: string
   harga_margin: number
-  displayMargin: string
   harga_om: number
-  displayOm: string
   harga_ceo: number
-  displayCeo: string
   catatan: string
 }
 
@@ -256,19 +241,12 @@ function makeEmptyRow(): PriceRow {
     id_cabang: '',
     id_produk: '',
     harga_price_list: 0,
-    displayPriceList: '0',
     harga_price_list_pe: 0,
-    displayPriceListPe: '0',
     harga_bm: 0,
-    displayBm: '0',
     harga_cogs: 0,
-    displayCogs: '0',
     harga_margin: 0,
-    displayMargin: '0',
     harga_om: 0,
-    displayOm: '0',
     harga_ceo: 0,
-    displayCeo: '0',
     catatan: '',
   }
 }
@@ -289,7 +267,6 @@ function rowFromData(data: any): PriceRow {
     catatan: data.catatan ?? '',
   })
 
-  syncRowDisplays(row)
   return row
 }
 
@@ -328,22 +305,10 @@ function toIntMoney(value: unknown): number {
   return normalized ? parseInt(normalized, 10) : 0
 }
 
-function formatID(value: number) {
-  return Number(value || 0).toLocaleString('id-ID')
-}
-
-function parseMoney(event: Event) {
-  return (event.target as HTMLInputElement).value.replace(/[^\d]/g, '')
-}
-
-function updateMoney(row: PriceRow, field: MoneyField, displayField: DisplayField, event: Event) {
+function updateMoney(row: PriceRow, field: MoneyField, value: number) {
   if (isReadonly(field)) return
 
-  const raw = parseMoney(event)
-  const value = raw ? parseInt(raw, 10) : 0
-
-  row[field] = value
-  row[displayField] = formatID(value)
+  row[field] = toIntMoney(value)
 
   if (field === 'harga_cogs' || field === 'harga_price_list') {
     updateMargin(row)
@@ -352,17 +317,6 @@ function updateMoney(row: PriceRow, field: MoneyField, displayField: DisplayFiel
 
 function updateMargin(row: PriceRow) {
   row.harga_margin = Math.max(toIntMoney(row.harga_price_list) - toIntMoney(row.harga_cogs), 0)
-  row.displayMargin = formatID(row.harga_margin)
-}
-
-function syncRowDisplays(row: PriceRow) {
-  row.displayPriceList = formatID(row.harga_price_list)
-  row.displayPriceListPe = formatID(row.harga_price_list_pe)
-  row.displayBm = formatID(row.harga_bm)
-  row.displayCogs = formatID(row.harga_cogs)
-  row.displayMargin = formatID(row.harga_margin)
-  row.displayOm = formatID(row.harga_om)
-  row.displayCeo = formatID(row.harga_ceo)
 }
 
 function getPeriodFieldError(field: 'periode_awal' | 'periode_akhir') {
@@ -577,18 +531,13 @@ function cancel() {
               </td>
 
               <td v-if="showCogsColumn" class="px-4 py-3 align-top">
-                <FormInput :value="row.displayCogs" class="min-w-[130px] text-right" placeholder="0"
-                  :readonly="isReadonly('harga_cogs')" :class="getRowFieldError(index, 'harga_cogs')
-                    ? 'border-rose-500'
-                    : ''" @input="updateMoney(row, 'harga_cogs', 'displayCogs', $event)" />
-                <small v-if="getRowFieldError(index, 'harga_cogs')" class="text-rose-600">
-                  {{ getRowFieldError(index, 'harga_cogs') }}
-                </small>
+                <CurrencyField :model-value="row.harga_cogs" class="min-w-[150px]" placeholder="0"
+                  :readonly="isReadonly('harga_cogs')" :error="getRowFieldError(index, 'harga_cogs')"
+                  @update:model-value="updateMoney(row, 'harga_cogs', $event)" />
               </td>
 
               <td v-if="showMarginColumn" class="px-4 py-3 align-top">
-                <FormInput :value="row.displayMargin" class="min-w-[130px] bg-slate-50 text-right" readonly
-                  placeholder="0" />
+                <CurrencyField :model-value="row.harga_margin" class="min-w-[150px]" readonly placeholder="0" />
               </td>
 
               <td v-if="showPriceListColumn" class="px-4 py-3 align-top">
@@ -600,13 +549,10 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <FormInput :value="row.displayPriceListPe" class="text-right" placeholder="0"
+                      <CurrencyField :model-value="row.harga_price_list_pe" placeholder="0"
                         :readonly="isReadonly('harga_price_list_pe')"
-                        :class="getRowFieldError(index, 'harga_price_list_pe') ? 'border-rose-500' : ''"
-                        @input="updateMoney(row, 'harga_price_list_pe', 'displayPriceListPe', $event)" />
-                      <small v-if="getRowFieldError(index, 'harga_price_list_pe')" class="text-rose-600">
-                        {{ getRowFieldError(index, 'harga_price_list_pe') }}
-                      </small>
+                        :error="getRowFieldError(index, 'harga_price_list_pe')"
+                        @update:model-value="updateMoney(row, 'harga_price_list_pe', $event)" />
                     </div>
                   </div>
 
@@ -617,13 +563,10 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <FormInput :value="row.displayPriceList" class="text-right" placeholder="0"
+                      <CurrencyField :model-value="row.harga_price_list" placeholder="0"
                         :readonly="isReadonly('harga_price_list')"
-                        :class="getRowFieldError(index, 'harga_price_list') ? 'border-rose-500' : ''"
-                        @input="updateMoney(row, 'harga_price_list', 'displayPriceList', $event)" />
-                      <small v-if="getRowFieldError(index, 'harga_price_list')" class="text-rose-600">
-                        {{ getRowFieldError(index, 'harga_price_list') }}
-                      </small>
+                        :error="getRowFieldError(index, 'harga_price_list')"
+                        @update:model-value="updateMoney(row, 'harga_price_list', $event)" />
                     </div>
                   </div>
                 </div>
@@ -638,13 +581,9 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <FormInput :value="row.displayBm" class="text-right" placeholder="0"
-                        :readonly="isReadonly('harga_bm')"
-                        :class="getRowFieldError(index, 'harga_bm') ? 'border-rose-500' : ''"
-                        @input="updateMoney(row, 'harga_bm', 'displayBm', $event)" />
-                      <small v-if="getRowFieldError(index, 'harga_bm')" class="text-rose-600">
-                        {{ getRowFieldError(index, 'harga_bm') }}
-                      </small>
+                      <CurrencyField :model-value="row.harga_bm" placeholder="0"
+                        :readonly="isReadonly('harga_bm')" :error="getRowFieldError(index, 'harga_bm')"
+                        @update:model-value="updateMoney(row, 'harga_bm', $event)" />
                     </div>
                   </div>
 
@@ -655,13 +594,9 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <FormInput :value="row.displayOm" class="text-right" placeholder="0"
-                        :readonly="isReadonly('harga_om')"
-                        :class="getRowFieldError(index, 'harga_om') ? 'border-rose-500' : ''"
-                        @input="updateMoney(row, 'harga_om', 'displayOm', $event)" />
-                      <small v-if="getRowFieldError(index, 'harga_om')" class="text-rose-600">
-                        {{ getRowFieldError(index, 'harga_om') }}
-                      </small>
+                      <CurrencyField :model-value="row.harga_om" placeholder="0"
+                        :readonly="isReadonly('harga_om')" :error="getRowFieldError(index, 'harga_om')"
+                        @update:model-value="updateMoney(row, 'harga_om', $event)" />
                     </div>
                   </div>
 
@@ -672,13 +607,9 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <FormInput :value="row.displayCeo" class="text-right" placeholder="0"
-                        :readonly="isReadonly('harga_ceo')"
-                        :class="getRowFieldError(index, 'harga_ceo') ? 'border-rose-500' : ''"
-                        @input="updateMoney(row, 'harga_ceo', 'displayCeo', $event)" />
-                      <small v-if="getRowFieldError(index, 'harga_ceo')" class="text-rose-600">
-                        {{ getRowFieldError(index, 'harga_ceo') }}
-                      </small>
+                      <CurrencyField :model-value="row.harga_ceo" placeholder="0"
+                        :readonly="isReadonly('harga_ceo')" :error="getRowFieldError(index, 'harga_ceo')"
+                        @update:model-value="updateMoney(row, 'harga_ceo', $event)" />
                     </div>
                   </div>
                 </div>
@@ -691,7 +622,7 @@ function cancel() {
 
               <td v-if="canAddRows" class="px-4 py-3 text-center align-top">
                 <Button v-if="rows.length > 1" type="button" variant="soft-danger" rounded
-                  class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus" @click="removeRow(index)">
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus" @click="removeRow(index)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
                 <span v-else class="text-slate-300">-</span>

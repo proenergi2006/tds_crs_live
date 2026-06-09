@@ -159,7 +159,7 @@ async function submitDelete() {
           <Table.Th>Nama Terminal</Table.Th>
           <Table.Th>Cabang</Table.Th>
           <Table.Th>Kategori</Table.Th>
-          <Table.Th>Inisial</Table.Th>
+          <Table.Th class="min-w-[100px]">Inisial</Table.Th>
           <Table.Th>Lokasi</Table.Th>
           <Table.Th>Telepon</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
@@ -191,11 +191,11 @@ async function submitDelete() {
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-9 !w-9 !p-0 !shadow-none"
+                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
                   @click.prevent="openEdit(item)" title="Edit">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
-                <Button variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none"
+                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
                   @click="confirmDelete(item.id_terminal)" title="Hapus">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>

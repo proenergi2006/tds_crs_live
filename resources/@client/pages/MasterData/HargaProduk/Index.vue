@@ -7,10 +7,11 @@ import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
-import { FormInput, FormLabel, FormSelect } from '@/components/Base/Form'
+import { FormLabel, FormSelect } from '@/components/Base/Form'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
@@ -256,15 +257,16 @@ function rowNumber(row: any) {
             </div>
 
             <div>
-              <FormLabel for="filter-periode-awal">Periode Awal</FormLabel>
-              <FormInput id="filter-periode-awal" v-model="filterPeriodeAwal" type="date" class="!box" />
+              <DateField v-model="filterPeriodeAwal" label="Periode Awal" placeholder="Pilih periode awal" />
             </div>
 
             <div>
-              <FormLabel for="filter-periode-akhir">Periode Akhir</FormLabel>
               <div class="flex gap-2">
-                <FormInput id="filter-periode-akhir" v-model="filterPeriodeAkhir" type="date" class="!box" />
-                <Button variant="outline-secondary" class="inline-flex items-center gap-2" @click="resetFilter">
+                <div class="min-w-0 flex-1">
+                  <DateField v-model="filterPeriodeAkhir" label="Periode Akhir" placeholder="Pilih periode akhir" />
+                </div>
+
+                <Button variant="outline-secondary" class="mt-6 inline-flex items-center gap-2" @click="resetFilter">
                   <Lucide icon="RotateCcw" class="h-4 w-4" />
                   Reset
                 </Button>
@@ -346,16 +348,16 @@ function rowNumber(row: any) {
               <Table.Td class="text-center">
                 <div class="inline-flex items-center justify-center gap-2">
                   <Button :as="RouterLink" :to="{ name: 'produk-hargas-detail', params: { id: item.id_produk_harga } }"
-                    variant="soft-info" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Detail">
+                    variant="soft-dark" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Detail">
                     <Lucide icon="Eye" class="h-4 w-4" />
                   </Button>
 
                   <Button :as="RouterLink" :to="{ name: 'produk-hargas-edit', params: { id: item.id_produk_harga } }"
-                    variant="soft-warning" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Edit">
+                    variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit">
                     <Lucide icon="Edit" class="h-4 w-4" />
                   </Button>
 
-                  <Button v-if="isRole5" variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus"
+                  <Button v-if="isRole5" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
                     @click="confirmDelete(item.id_produk_harga)">
                     <Lucide icon="Trash2" class="h-4 w-4" />
                   </Button>

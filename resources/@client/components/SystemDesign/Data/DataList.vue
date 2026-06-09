@@ -18,7 +18,7 @@ const props = withDefaults(
     showFooter?: boolean;
   }>(),
   {
-    loading: false,
+    loading: true,
     empty: false,
     loadingText: 'Memuat data...',
     emptyTitle: 'Data tidak ditemukan',
@@ -46,9 +46,9 @@ const endRecord = computed(() => {
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-2xl border box">
-    <Table class="min-w-full">
-      <Table.Thead class="bg-slate-50 uppercase text-xs font-bold">
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <Table bordered class="min-w-full border-collapse">
+      <Table.Thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
         <Table.Tr>
           <slot name="head" />
         </Table.Tr>

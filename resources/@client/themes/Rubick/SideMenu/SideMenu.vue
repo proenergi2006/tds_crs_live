@@ -288,7 +288,7 @@ onMounted(() => {
       <!-- END: Side Menu -->
       <!-- BEGIN: Content -->
       <div
-        class="md:max-w-auto min-h-[96vh] min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]">
+        class="md:max-w-auto min-h-[95vh] min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]">
         <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
         <RouterView />
       </div>
