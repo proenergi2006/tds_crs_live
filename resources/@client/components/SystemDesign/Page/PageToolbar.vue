@@ -15,6 +15,7 @@ withDefaults(
     paginationLabel?: string;
     activeFilterCount?: number;
     embedded?: boolean;
+    showFilters?: boolean;
   }>(),
   {
     searchPlaceholder: "Search...",
@@ -23,6 +24,7 @@ withDefaults(
     paginationLabel: "Halaman",
     activeFilterCount: 0,
     embedded: false,
+    showFilters: true,
   },
 );
 
@@ -58,7 +60,7 @@ const paginationLabelId = "page-toolbar-pagination";
               </FormInput>
             </div>
 
-            <Popover v-if="$slots.filters" class="inline-block" v-slot="{ close }">
+            <Popover v-if="showFilters && $slots.filters" class="inline-block" v-slot="{ close }">
               <Popover.Button as="button" type="button"
                 class="inline-flex h-[38px] items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 focus:ring-4 focus:ring-primary focus:ring-opacity-20 focus-visible:outline-none">
                 <Lucide icon="SlidersHorizontal" class="h-4 w-4" />

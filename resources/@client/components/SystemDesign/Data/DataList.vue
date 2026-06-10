@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import Table from '@/components/Base/Table';
 import Lucide from '@/components/Base/Lucide';
 import LoadingIcon from '@/components/Base/LoadingIcon';
-import { computed } from 'vue';
+import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -16,6 +18,14 @@ const props = withDefaults(
     currentPage?: number;
     perPage?: number;
     showFooter?: boolean;
+    showToolbar?: boolean;
+    search?: string;
+    totalPages?: number;
+    searchPlaceholder?: string;
+    searchLabel?: string;
+    perPageLabel?: string;
+    paginationLabel?: string;
+    activeFilterCount?: number;
   }>(),
   {
     loading: true,
@@ -26,8 +36,22 @@ const props = withDefaults(
     total: 0,
     currentPage: 1,
     perPage: 10,
+    showToolbar: false,
+    search: '',
+    totalPages: 1,
+    searchPlaceholder: 'Search...',
+    searchLabel: 'Cari',
+    perPageLabel: 'Per Page',
+    paginationLabel: 'Halaman',
+    activeFilterCount: 0,
   },
 );
+
+defineEmits<{
+  (e: 'update:search', value: string): void;
+  (e: 'update:perPage', value: number): void;
+  (e: 'page-change', page: number): void;
+}>();
 
 const startRecord = computed(() => {
   if (!props.total) return 0;
@@ -47,7 +71,30 @@ const endRecord = computed(() => {
 
 <template>
   <div class="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
-    <div v-if="$slots.toolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">
+    <div v-if="showToolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">
+      <PageToolbar
+        :search="search"
+        :per-page="perPage"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :search-placeholder="searchPlaceholder"
+        :search-label="searchLabel"
+        :per-page-label="perPageLabel"
+        :pagination-label="paginationLabel"
+        :active-filter-count="activeFilterCount"
+        :show-filters="$slots.filters ? true : false"
+        embedded
+        @update:search="$emit('update:search', $event)"
+        @update:per-page="$emit('update:perPage', $event)"
+        @page-change="$emit('page-change', $event)"
+      >
+        <template #filters="{ close }">
+          <slot name="filters" :close="close" />
+        </template>
+      </PageToolbar>
+    </div>
+
+    <div v-else-if="$slots.toolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">
       <slot name="toolbar" />
     </div>
 

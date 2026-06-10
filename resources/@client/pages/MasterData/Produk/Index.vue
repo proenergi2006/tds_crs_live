@@ -3,12 +3,12 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
+import { FormSelect } from '@/components/Base/Form'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
 import FormModal from './Form.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -21,6 +21,8 @@ const { success, error } = useNotification()
 const allProduks = ref<any[]>([])
 
 const searchQuery = ref('')
+const filterJenis = ref('')
+const filterUkuran = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 const loading = ref(false)
@@ -39,24 +41,75 @@ onMounted(() => {
   fetchData()
 })
 
-watch(searchQuery, debounce(resetToFirstPage, 300))
+watch([searchQuery, filterJenis, filterUkuran], debounce(resetToFirstPage, 300))
 watch(perPage, resetToFirstPage)
+
+const jenisOptions = computed(() => {
+  const options = new Map<string, string>()
+
+  allProduks.value.forEach(item => {
+    const id = item.jenis?.id_jenis
+    const name = item.jenis?.nama
+
+    if (id && name) {
+      options.set(String(id), name)
+    }
+  })
+
+  return Array.from(options.entries()).map(([id, name]) => ({
+    id,
+    name,
+  }))
+})
+
+const ukuranOptions = computed(() => {
+  const options = new Map<string, string>()
+
+  allProduks.value.forEach(item => {
+    const id = item.ukuran?.id_ukuran
+    const name = item.ukuran?.nama_ukuran
+    const satuan = item.ukuran?.satuan?.nama_satuan
+
+    if (id && name) {
+      options.set(String(id), satuan ? `${name} ${satuan}` : name)
+    }
+  })
+
+  return Array.from(options.entries()).map(([id, name]) => ({
+    id,
+    name,
+  }))
+})
+
+const activeFilterCount = computed(() => {
+  return [filterJenis.value, filterUkuran.value].filter(Boolean).length
+})
 
 const filteredProduks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
-  if (!query) return allProduks.value
-
   return allProduks.value.filter(item => {
-    return [
-      item.nama_produk,
-      item.merk_dagang,
-      item.deskripsi,
-      item.ukuran?.nama_ukuran,
-      item.ukuran?.satuan?.nama_satuan,
-      item.jenis?.nama,
-      item.is_active ? 'active' : 'inactive',
-    ].some(value => String(value || '').toLowerCase().includes(query))
+    const matchesJenis =
+      !filterJenis.value ||
+      String(item.jenis?.id_jenis || '') === filterJenis.value
+
+    const matchesUkuran =
+      !filterUkuran.value ||
+      String(item.ukuran?.id_ukuran || '') === filterUkuran.value
+
+    const matchesSearch =
+      !query ||
+      [
+        item.nama_produk,
+        item.merk_dagang,
+        item.deskripsi,
+        item.ukuran?.nama_ukuran,
+        item.ukuran?.satuan?.nama_satuan,
+        item.jenis?.nama,
+        item.is_active ? 'active' : 'inactive',
+      ].some(value => String(value || '').toLowerCase().includes(query))
+
+    return matchesJenis && matchesUkuran && matchesSearch
   })
 })
 
@@ -97,6 +150,11 @@ function goToPage(page: number) {
 
 function resetToFirstPage() {
   currentPage.value = 1
+}
+
+function resetFilters() {
+  filterJenis.value = ''
+  filterUkuran.value = ''
 }
 
 /* Form */
@@ -170,7 +228,7 @@ async function submitDelete() {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <!-- Page Header -->
       <PageHeader title="Master Produk" description="Kelola data produk">
         <template #action>
@@ -181,15 +239,54 @@ async function submitDelete() {
         </template>
       </PageHeader>
 
-      <!-- Toolbar: Search, Filter, Pagination -->
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :active-filter-count="0" :total-pages="totalPages" search-placeholder="Cari produk..."
-        @page-change="goToPage" />
-
       <!-- Data Table List -->
-      <DataList :loading="loading" :empty="produks.length === 0" :colspan="7" :show-footer="true" :total="totalRecords"
-        :current-page="currentPage" :per-page="perPage" loading-text="Memuat data produk..."
-        empty-description="Belum ada produk untuk ditampilkan.">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="produks.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
+        search-placeholder="Cari produk..." loading-text="Memuat data produk..."
+        empty-description="Belum ada produk untuk ditampilkan." @page-change="goToPage">
+        <template #filters>
+          <div class="space-y-4 p-1">
+            <div>
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
+                Jenis
+              </div>
+
+              <FormSelect v-model="filterJenis">
+                <option value="">Semua Jenis</option>
+                <option v-for="jenis in jenisOptions" :key="jenis.id" :value="jenis.id">
+                  {{ jenis.name }}
+                </option>
+              </FormSelect>
+            </div>
+
+            <div>
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">
+                Ukuran
+              </div>
+
+              <FormSelect v-model="filterUkuran">
+                <option value="">Semua Ukuran</option>
+                <option v-for="ukuran in ukuranOptions" :key="ukuran.id" :value="ukuran.id">
+                  {{ ukuran.name }}
+                </option>
+              </FormSelect>
+            </div>
+
+            <div class="border-t border-slate-100 pt-3">
+              <Button
+                type="button"
+                variant="outline-secondary"
+                class="w-full"
+                :disabled="activeFilterCount === 0"
+                @click="resetFilters"
+              >
+                Clear Filter
+              </Button>
+            </div>
+          </div>
+        </template>
+
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nama Produk</Table.Th>

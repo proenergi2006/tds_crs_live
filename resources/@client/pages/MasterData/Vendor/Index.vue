@@ -9,7 +9,6 @@ import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -139,7 +138,7 @@ async function submitDelete() {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <!-- Page Header -->
       <PageHeader title="Master Vendor" description="Kelola data vendor">
         <template #action>
@@ -150,15 +149,12 @@ async function submitDelete() {
         </template>
       </PageHeader>
 
-      <!-- Toolbar: Search, Filter, Pagination -->
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :active-filter-count="0" :total-pages="totalPages" search-placeholder="Cari vendor..."
-        @page-change="goToPage" />
-
       <!-- Data Table List -->
-      <DataList :loading="loading" :empty="vendors.length === 0" :colspan="6" :show-footer="true" :total="totalRecords"
-        :current-page="currentPage" :per-page="perPage" loading-text="Memuat data vendor..."
-        empty-description="Belum ada vendor untuk ditampilkan.">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="vendors.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari vendor..."
+        loading-text="Memuat data vendor..." empty-description="Belum ada vendor untuk ditampilkan."
+        @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nama Vendor</Table.Th>

@@ -8,7 +8,6 @@ import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
 import UkuranFormModal from './Form.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -197,7 +196,7 @@ async function submitDelete() {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <!-- Page Header -->
       <PageHeader title="Master Ukuran" description="Kelola data ukuran produk">
         <template #action>
@@ -209,40 +208,37 @@ async function submitDelete() {
       </PageHeader>
 
       <!-- Data Table List -->
-      <div class="mt-6">
-        <DataList :loading="loading" :empty="ukurans.length === 0" :colspan="4" :show-footer="true"
-          :total="totalRecords" :current-page="currentPage" :per-page="perPage" loading-text="Memuat data ukuran..."
-          empty-description="Belum ada ukuran untuk ditampilkan.">
-          <template #toolbar>
-            <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-              :active-filter-count="activeFilterCount" :total-pages="totalPages" search-placeholder="Cari ukuran..."
-              embedded @page-change="goToPage">
-              <template #filters="{ close }">
-                <div>
-                  <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
-                    Satuan
-                  </div>
+      <div>
+        <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+          :empty="ukurans.length === 0" :colspan="4" :show-footer="true" :show-toolbar="true"
+          :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+          :active-filter-count="activeFilterCount" search-placeholder="Cari ukuran..."
+          loading-text="Memuat data ukuran..." empty-description="Belum ada ukuran untuk ditampilkan."
+          @page-change="goToPage">
+          <template #filters="{ close }">
+            <div>
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
+                Satuan
+              </div>
 
-                  <div class="space-y-1">
-                    <button type="button"
-                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
-                      :class="filterSatuan === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
-                      @click="setFilterSatuan(''); close()">
-                      Semua Satuan
-                      <Lucide v-if="filterSatuan === ''" icon="Check" class="h-4 w-4" />
-                    </button>
+              <div class="space-y-1">
+                <button type="button"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                  :class="filterSatuan === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
+                  @click="setFilterSatuan(''); close()">
+                  Semua Satuan
+                  <Lucide v-if="filterSatuan === ''" icon="Check" class="h-4 w-4" />
+                </button>
 
-                    <button v-for="satuan in satuanOptions" :key="satuan.id" type="button"
-                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
-                      :class="filterSatuan === satuan.id ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
-                      @click="setFilterSatuan(satuan.id); close()">
-                      {{ satuan.name }}
-                      <Lucide v-if="filterSatuan === satuan.id" icon="Check" class="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </template>
-            </PageToolbar>
+                <button v-for="satuan in satuanOptions" :key="satuan.id" type="button"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                  :class="filterSatuan === satuan.id ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
+                  @click="setFilterSatuan(satuan.id); close()">
+                  {{ satuan.name }}
+                  <Lucide v-if="filterSatuan === satuan.id" icon="Check" class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           </template>
 
           <template #head>
