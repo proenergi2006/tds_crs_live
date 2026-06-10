@@ -75,7 +75,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-if="loading" class="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
+    <div v-if="loading" class="rounded-lg border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
       Memuat detail...
     </div>
 

@@ -699,7 +699,7 @@ const routes = [
       {
         path: "testing-page",
         name: "testing-page",
-        component: () => import("@/pages/RegularForm.vue"),
+        component: () => import("@/pages/Dropdown.vue"),
       },
       {
         path: "/testing-page",

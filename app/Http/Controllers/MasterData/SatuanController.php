@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Satuan;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,10 @@ class SatuanController extends Controller
         $query = Satuan::query();
         if ($search) {
             $query->where('nama_satuan', 'like', "%{$search}%");
+        }
+
+        if ($request->boolean('as_list')) {
+            return response()->json($query->get());
         }
 
         return response()->json($query->paginate($perPage));

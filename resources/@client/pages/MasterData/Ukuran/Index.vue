@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
@@ -18,13 +18,12 @@ const ukuranApi = createResourceApi('/ukurans')
 const { success, error } = useNotification()
 
 /* State: data & pagination */
-const ukurans = ref<any[]>([])
+const allUkurans = ref<any[]>([])
 
 const searchQuery = ref('')
+const filterSatuan = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
-const totalPages = ref(1)
-const totalRecords = ref(1)
 const loading = ref(false)
 
 /* State: form */
@@ -41,23 +40,72 @@ onMounted(() => {
   fetchData()
 })
 
-watch(searchQuery, debounce(() => fetchData(1), 300))
-watch(perPage, () => fetchData(1))
+watch([searchQuery, filterSatuan], debounce(resetToFirstPage, 300))
+watch(perPage, resetToFirstPage)
 
-async function fetchData(page = 1) {
+const satuanOptions = computed(() => {
+  const options = new Map<string, string>()
+
+  allUkurans.value.forEach(item => {
+    const id = item.satuan?.id_satuan
+    const name = item.satuan?.nama_satuan
+
+    if (id && name) {
+      options.set(String(id), name)
+    }
+  })
+
+  return Array.from(options.entries()).map(([id, name]) => ({
+    id,
+    name,
+  }))
+})
+
+const activeFilterCount = computed(() => {
+  return filterSatuan.value ? 1 : 0
+})
+
+const filteredUkurans = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+
+  return allUkurans.value.filter(item => {
+    const matchesSatuan =
+      !filterSatuan.value ||
+      String(item.satuan?.id_satuan || '') === filterSatuan.value
+
+    const matchesSearch =
+      !query ||
+      [
+        item.nama_ukuran,
+        item.satuan?.nama_satuan,
+      ].some(value => String(value || '').toLowerCase().includes(query))
+
+    return matchesSatuan && matchesSearch
+  })
+})
+
+const totalRecords = computed(() => filteredUkurans.value.length)
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(totalRecords.value / perPage.value))
+})
+
+const ukurans = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value
+
+  return filteredUkurans.value.slice(start, start + perPage.value)
+})
+
+async function fetchData() {
   loading.value = true
 
   try {
     const { data } = await ukuranApi.getAll({
-      page,
-      per_page: perPage.value,
-      search: searchQuery.value || undefined,
+      as_list: true,
     })
 
-    ukurans.value = data.data
-    currentPage.value = data.current_page
-    totalPages.value = data.last_page
-    totalRecords.value = data.total
+    allUkurans.value = Array.isArray(data) ? data : []
+    currentPage.value = 1
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data')
   } finally {
@@ -67,7 +115,15 @@ async function fetchData(page = 1) {
 
 function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return
-  fetchData(page)
+  currentPage.value = page
+}
+
+function resetToFirstPage() {
+  currentPage.value = 1
+}
+
+function setFilterSatuan(value: string) {
+  filterSatuan.value = value
 }
 
 /* Form */
@@ -90,16 +146,16 @@ function handleFormSuccess(data: any, mode: 'create' | 'edit') {
 
 function syncUkuran(data: any, mode: 'create' | 'edit') {
   if (mode === 'create') {
-    ukurans.value.unshift(data)
+    allUkurans.value.unshift(data)
     return
   }
 
-  const index = ukurans.value.findIndex(
+  const index = allUkurans.value.findIndex(
     item => item.id_ukuran === data.id_ukuran,
   )
 
   if (index !== -1) {
-    ukurans.value[index] = data
+    allUkurans.value[index] = data
   }
 }
 
@@ -117,9 +173,13 @@ async function submitDelete() {
   try {
     await ukuranApi.destroy(deleteTarget.value)
 
-    ukurans.value = ukurans.value.filter(
+    allUkurans.value = allUkurans.value.filter(
       item => item.id_ukuran !== deleteTarget.value,
     )
+
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
 
     deleteModal.value = false
     success('Berhasil', 'Ukuran berhasil dihapus.')
@@ -148,48 +208,77 @@ async function submitDelete() {
         </template>
       </PageHeader>
 
-      <!-- Toolbar: Search, Filter, Pagination -->
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :active-filter-count="0" :total-pages="totalPages" search-placeholder="Cari ukuran..."
-        @page-change="goToPage" />
-
       <!-- Data Table List -->
-      <DataList :loading="loading" :empty="ukurans.length === 0" :colspan="4" :show-footer="true" :total="totalRecords"
-        :current-page="currentPage" :per-page="perPage" loading-text="Memuat data ukuran..."
-        empty-description="Belum ada ukuran untuk ditampilkan.">
-        <template #head>
-          <Table.Th class="w-12">No</Table.Th>
-          <Table.Th>Nama Ukuran</Table.Th>
-          <Table.Th>Satuan</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
-        </template>
+      <div class="mt-6">
+        <DataList :loading="loading" :empty="ukurans.length === 0" :colspan="4" :show-footer="true"
+          :total="totalRecords" :current-page="currentPage" :per-page="perPage" loading-text="Memuat data ukuran..."
+          empty-description="Belum ada ukuran untuk ditampilkan.">
+          <template #toolbar>
+            <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
+              :active-filter-count="activeFilterCount" :total-pages="totalPages" search-placeholder="Cari ukuran..."
+              embedded @page-change="goToPage">
+              <template #filters="{ close }">
+                <div>
+                  <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
+                    Satuan
+                  </div>
 
-        <template #body>
-          <Table.Tr v-for="(item, idx) in ukurans" :key="item.id_ukuran" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
-              {{ (currentPage - 1) * perPage + idx + 1 }}.
-            </Table.Td>
-            <Table.Td>
-              {{ item.nama_ukuran }}
-            </Table.Td>
-            <Table.Td class="text-slate-600">
-              {{ item.satuan?.nama_satuan || '-' }}
-            </Table.Td>
-            <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" @click.prevent="openEdit(item)"
-                  title="Edit">
-                  <Lucide icon="Edit" class="h-4 w-4" />
-                </Button>
-                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
-                  @click="confirmDelete(item.id_ukuran)">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
-              </div>
-            </Table.Td>
-          </Table.Tr>
-        </template>
-      </DataList>
+                  <div class="space-y-1">
+                    <button type="button"
+                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                      :class="filterSatuan === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
+                      @click="setFilterSatuan(''); close()">
+                      Semua Satuan
+                      <Lucide v-if="filterSatuan === ''" icon="Check" class="h-4 w-4" />
+                    </button>
+
+                    <button v-for="satuan in satuanOptions" :key="satuan.id" type="button"
+                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                      :class="filterSatuan === satuan.id ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
+                      @click="setFilterSatuan(satuan.id); close()">
+                      {{ satuan.name }}
+                      <Lucide v-if="filterSatuan === satuan.id" icon="Check" class="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </PageToolbar>
+          </template>
+
+          <template #head>
+            <Table.Th class="w-12">No</Table.Th>
+            <Table.Th>Nama Ukuran</Table.Th>
+            <Table.Th>Satuan</Table.Th>
+            <Table.Th class="text-center">Aksi</Table.Th>
+          </template>
+
+          <template #body>
+            <Table.Tr v-for="(item, idx) in ukurans" :key="item.id_ukuran" class="transition hover:bg-slate-50">
+              <Table.Td class="text-center font-medium text-slate-700">
+                {{ (currentPage - 1) * perPage + idx + 1 }}.
+              </Table.Td>
+              <Table.Td>
+                {{ item.nama_ukuran }}
+              </Table.Td>
+              <Table.Td class="text-slate-600">
+                {{ item.satuan?.nama_satuan || '-' }}
+              </Table.Td>
+              <Table.Td class="text-center">
+                <div class="inline-flex items-center justify-center gap-2">
+                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                    @click.prevent="openEdit(item)" title="Edit">
+                    <Lucide icon="Edit" class="h-4 w-4" />
+                  </Button>
+                  <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
+                    @click="confirmDelete(item.id_ukuran)">
+                    <Lucide icon="Trash2" class="h-4 w-4" />
+                  </Button>
+                </div>
+              </Table.Td>
+            </Table.Tr>
+          </template>
+        </DataList>
+      </div>
 
       <!-- Create Modal -->
       <UkuranFormModal :open="formModal" :mode="formMode" :item="selectedUkuran" @close="formModal = false"

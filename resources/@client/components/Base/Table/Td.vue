@@ -22,7 +22,7 @@ const attrs = useAttrs();
 
 const computedClass = computed(() =>
   twMerge([
-    "px-5 py-3 border-b dark:border-darkmode-300",
+    "px-4 py-2 border-b dark:border-darkmode-300",
     table?.dark && "border-slate-600 dark:border-darkmode-300",
     table?.bordered && "border-l border-r border-t",
     table?.sm && "px-4 py-2",

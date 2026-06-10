@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Terminal;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,11 @@ class TerminalController extends Controller
             $q->where('nama_terminal', 'like', "%{$s}%")
               ->orWhere('kategori_terminal', 'like', "%{$s}%");
         }
+
+        if ($request->boolean('as_list')) {
+            return response()->json($q->get());
+        }
+
         $perPage = $request->query('per_page', 10);
         return response()->json($q->paginate($perPage));
     }
@@ -34,7 +40,7 @@ class TerminalController extends Controller
         $data['created_time'] = now();
         $data['created_by']   = $request->user()->name;
         $terminal = Terminal::create($data);
-        return response()->json($terminal, 201);
+        return response()->json($terminal->load('cabang'), 201);
     }
 
     public function show($id)
@@ -60,7 +66,7 @@ class TerminalController extends Controller
         $data['lastupdate_by']   = $request->user()->name;
         $terminal = Terminal::findOrFail($id);
         $terminal->update($data);
-        return response()->json($terminal);
+        return response()->json($terminal->fresh('cabang'));
     }
 
     public function destroy($id)

@@ -79,7 +79,7 @@ function handleSubmit() {
 
 <template>
   <form class="grid grid-cols-12 gap-6 p-4" @submit.prevent="handleSubmit">
-    <div class="col-span-12 mt-4 intro-x">
+    <div class="col-span-12 intro-x">
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="text-2xl font-semibold text-slate-800">
@@ -143,7 +143,7 @@ function handleSubmit() {
           <slot />
 
           <div v-if="showFooter && useBottomFooter"
-            class="mt-6 flex flex-col-reverse gap-2 rounded-2xl bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
+            class="mt-6 flex flex-col-reverse gap-2 rounded-lg bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
             <slot name="footer">
               <Button type="button" variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
                 :disabled="loading || disableCancel" @click="handleCancel">
@@ -182,8 +182,9 @@ function handleSubmit() {
               <div v-if="showFooter && useBottomFooter"
                 class="flex flex-col-reverse gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
                 <slot name="footer">
-                  <Button type="button" variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
-                    :disabled="loading || disableCancel" @click="handleCancel">
+                  <Button type="button" variant="outline-secondary"
+                    class="inline-flex items-center justify-center gap-2" :disabled="loading || disableCancel"
+                    @click="handleCancel">
                     <Lucide :icon="cancelIcon" class="h-4 w-4" />
                     {{ cancelText }}
                   </Button>
@@ -212,7 +213,7 @@ function handleSubmit() {
             <slot />
 
             <div v-if="showFooter && useBottomFooter"
-              class="flex flex-col-reverse gap-2 rounded-2xl bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
+              class="flex flex-col-reverse gap-2 rounded-lg bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
               <slot name="footer">
                 <Button type="button" variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
                   :disabled="loading || disableCancel" @click="handleCancel">
@@ -235,7 +236,7 @@ function handleSubmit() {
           <div class="sticky top-4 space-y-6">
             <slot name="sidebar" />
 
-            <div v-if="showFooter && useSidebarFooter" class="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm">
+            <div v-if="showFooter && useSidebarFooter" class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
               <slot name="footer">
                 <Button type="submit" variant="primary" class="inline-flex items-center justify-center gap-2"
                   :disabled="loading || disableSubmit">

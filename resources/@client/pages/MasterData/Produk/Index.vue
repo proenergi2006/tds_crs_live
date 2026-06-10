@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
@@ -18,13 +18,11 @@ const produkApi = createResourceApi('/produks')
 const { success, error } = useNotification()
 
 /* State: data & pagination */
-const produks = ref<any[]>([])
+const allProduks = ref<any[]>([])
 
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
-const totalPages = ref(1)
-const totalRecords = ref(1)
 const loading = ref(false)
 
 /* State: form */
@@ -41,27 +39,52 @@ onMounted(() => {
   fetchData()
 })
 
-watch(searchQuery, debounce(() => fetchData(1), 300))
-watch(perPage, () => fetchData(1))
+watch(searchQuery, debounce(resetToFirstPage, 300))
+watch(perPage, resetToFirstPage)
+
+const filteredProduks = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+
+  if (!query) return allProduks.value
+
+  return allProduks.value.filter(item => {
+    return [
+      item.nama_produk,
+      item.merk_dagang,
+      item.deskripsi,
+      item.ukuran?.nama_ukuran,
+      item.ukuran?.satuan?.nama_satuan,
+      item.jenis?.nama,
+      item.is_active ? 'active' : 'inactive',
+    ].some(value => String(value || '').toLowerCase().includes(query))
+  })
+})
+
+const totalRecords = computed(() => filteredProduks.value.length)
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(totalRecords.value / perPage.value))
+})
+
+const produks = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value
+
+  return filteredProduks.value.slice(start, start + perPage.value)
+})
 
 /* Data */
-async function fetchData(page = 1) {
+async function fetchData() {
   loading.value = true
 
   try {
     const { data } = await produkApi.getAll({
-      page,
-      per_page: perPage.value,
-      search: searchQuery.value || undefined,
+      as_list: true,
     })
 
-    produks.value = data.data
-    currentPage.value = data.current_page
-    totalPages.value = data.last_page
-    totalRecords.value = data.total
+    allProduks.value = Array.isArray(data) ? data : []
+    currentPage.value = 1
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data')
-    console.error('Gagal memuat data produk:', e)
   } finally {
     loading.value = false
   }
@@ -69,7 +92,11 @@ async function fetchData(page = 1) {
 
 function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return
-  fetchData(page)
+  currentPage.value = page
+}
+
+function resetToFirstPage() {
+  currentPage.value = 1
 }
 
 /* Form */
@@ -92,16 +119,16 @@ function handleFormSuccess(data: any, mode: 'create' | 'edit') {
 
 function syncProduk(data: any, mode: 'create' | 'edit') {
   if (mode === 'create') {
-    produks.value.unshift(data)
+    allProduks.value.unshift(data)
     return
   }
 
-  const index = produks.value.findIndex(
+  const index = allProduks.value.findIndex(
     item => item.id_produk === data.id_produk,
   )
 
   if (index !== -1) {
-    produks.value[index] = data
+    allProduks.value[index] = data
   }
 }
 
@@ -119,9 +146,13 @@ async function submitDelete() {
   try {
     await produkApi.destroy(deleteTarget.value)
 
-    produks.value = produks.value.filter(
+    allProduks.value = allProduks.value.filter(
       item => item.id_produk !== deleteTarget.value,
     )
+
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
 
     deleteModal.value = false
     success('Berhasil', 'Produk berhasil dihapus.')

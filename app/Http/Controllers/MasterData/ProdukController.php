@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Produk;
 use Illuminate\Http\Request;
 
@@ -12,7 +13,6 @@ class ProdukController extends Controller
         if ($request->boolean('as_list')) {
             return response()->json(
                 Produk::with('ukuran.satuan', 'jenis')
-                    ->select('id_produk', 'nama_produk', 'id_ukuran')
                     ->orderBy('nama_produk')
                     ->get()
             );

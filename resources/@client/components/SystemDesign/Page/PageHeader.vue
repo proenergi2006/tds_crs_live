@@ -7,7 +7,7 @@ defineProps<{
 
 <template>
   <div
-    class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-theme-1 via-theme-2 to-slate-700 px-6 py-6 text-white shadow-lg">
+    class="relative overflow-hidden rounded-lg bg-gradient-to-r from-theme-1 via-theme-2 to-slate-700 px-6 py-6 text-white shadow-lg">
     <div class="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
     <div class="absolute -bottom-8 left-10 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
 

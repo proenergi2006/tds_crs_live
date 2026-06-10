@@ -288,7 +288,7 @@ function confirmDelete(nomorPo: string, id: number) {
           <Table.Th>Tanggal PO</Table.Th>
           <Table.Th>Vendor</Table.Th>
           <Table.Th>Terminal</Table.Th>
-          <Table.Th class="text-center">Status</Table.Th>
+          <Table.Th>Status</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
 
@@ -314,7 +314,7 @@ function confirmDelete(nomorPo: string, id: number) {
               {{ po.terminal?.nama_terminal || "-" }}
             </Table.Td>
 
-            <Table.Td class="whitespace-nowrap text-center">
+            <Table.Td class="whitespace-nowrap">
               <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
                 :class="statusBadgeClass(po.disposisi_po)">
                 {{ statusLabel(po.disposisi_po) }}

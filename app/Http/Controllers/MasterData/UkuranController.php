@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Ukuran;
 use Illuminate\Http\Request;
 
@@ -10,9 +11,15 @@ class UkuranController extends Controller
     public function index(Request $request)
     {
         $q = Ukuran::with('satuan');
+
         if ($s = $request->query('search')) {
             $q->where('nama_ukuran', 'like', "%{$s}%");
         }
+
+        if ($request->boolean('as_list')) {
+            return response()->json($q->get());
+        }
+
         $perPage = $request->query('per_page', 10);
         return response()->json($q->paginate($perPage));
     }

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\JenisProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -16,6 +17,10 @@ class JenisProdukController extends Controller
         $query = JenisProduk::query();
         if ($search) {
             $query->where('nama', 'like', "%{$search}%");
+        }
+
+        if ($request->boolean('as_list')) {
+            return response()->json($query->orderBy('nama')->get());
         }
 
         return response()->json($query->orderBy('nama')->paginate($perPage));

@@ -138,9 +138,9 @@ async function fetchPo() {
 
   form.items = (items || []).map((item: any) => ({
     id_produk: item.id_produk,
-    volume_po: toInt(item.volume_po),
-    harga_tebus: toInt(item.harga_tebus),
-    total_harga: toInt(item.jumlah_harga),
+    volume_po: toDbInt(item.volume_po),
+    harga_tebus: toDbInt(item.harga_tebus),
+    total_harga: toDbInt(item.jumlah_harga),
   }))
 
   if (form.items.length === 0) {
@@ -197,6 +197,19 @@ function toInt(value: unknown): number {
   return normalized ? Number.parseInt(normalized, 10) : 0
 }
 
+function toDbInt(value: unknown): number {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return Math.trunc(value)
+
+  const text = String(value).trim()
+
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    return Math.trunc(Number.parseFloat(text))
+  }
+
+  return toInt(value)
+}
+
 function formatNumber(value: number) {
   return toInt(value).toLocaleString('id-ID')
 }
@@ -213,7 +226,7 @@ function buildHeaderPayload() {
   return {
     id_vendor: Number(form.id_vendor),
     id_terminal: Number(form.id_terminal),
-    nomor_po: form.nomor_po,
+    ...(mode.value === 'edit' ? { nomor_po: form.nomor_po } : {}),
     tanggal_inven: form.tanggal_inven,
     kd_tax: form.kd_tax,
     terms: form.terms,
@@ -316,9 +329,16 @@ function cancel() {
           </FormSelect>
         </div>
 
-        <div class="col-span-12 md:col-span-4">
+        <div v-if="mode === 'edit'" class="col-span-12 md:col-span-4">
           <FormLabel for="nomor_po">Nomor PO</FormLabel>
-          <FormInput id="nomor_po" v-model="form.nomor_po" placeholder="Nomor PO" />
+          <FormInput id="nomor_po" v-model="form.nomor_po" placeholder="Nomor PO" disabled />
+        </div>
+
+        <div v-else class="col-span-12 md:col-span-4">
+          <FormLabel>Nomor PO</FormLabel>
+          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+            *<i>Generate</i> otomatis saat data disimpan.
+          </div>
         </div>
 
         <div class="col-span-12 md:col-span-3">

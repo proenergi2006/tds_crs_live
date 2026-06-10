@@ -7,9 +7,10 @@ import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import { FormLabel, FormSelect } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import BarChart from '@/components/SystemDesign/Data/BarChart.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
-import StockChart from '@/components/StockChart.vue'
+// import StockChart from '@/components/StockChart.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -136,6 +137,13 @@ const chartData = computed(() => {
   }))
 })
 
+const systemChartData = computed(() => {
+  return chartData.value.map(row => ({
+    label: row.nama_produk,
+    value: row.volume,
+  }))
+})
+
 async function fetchStocks() {
   loading.value = true
 
@@ -202,16 +210,9 @@ function formatDateTime(value: string) {
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
     <div class="col-span-12 intro-y">
-      <PageHeader
-        title="Stock Inventory"
-        description="Pantau stok masuk berdasarkan PO dan produk"
-      >
+      <PageHeader title="Stock Inventory" description="Pantau stok masuk berdasarkan PO dan produk">
         <template #action>
-          <Button
-            variant="white"
-            class="inline-flex items-center gap-2"
-            @click="fetchStocks"
-          >
+          <Button variant="white" class="inline-flex items-center gap-2" @click="fetchStocks">
             <Lucide icon="RefreshCw" class="h-4 w-4" />
             Refresh
           </Button>
@@ -219,7 +220,7 @@ function formatDateTime(value: string) {
       </PageHeader>
 
       <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div class="box rounded-2xl border p-5">
+        <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-slate-500">Total Volume</p>
@@ -233,7 +234,7 @@ function formatDateTime(value: string) {
           </div>
         </div>
 
-        <div class="box rounded-2xl border p-5">
+        <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-slate-500">Nilai Stok</p>
@@ -247,7 +248,7 @@ function formatDateTime(value: string) {
           </div>
         </div>
 
-        <div class="box rounded-2xl border p-5">
+        <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-slate-500">Stok Terbaru</p>
@@ -262,53 +263,29 @@ function formatDateTime(value: string) {
         </div>
       </div>
 
-      <PageToolbar
-        v-model:search="searchQuery"
-        v-model:per-page="perPage"
-        :current-page="currentPage"
-        :active-filter-count="activeFilterCount"
-        :total-pages="totalPages"
-        search-placeholder="Cari nomor PO atau produk..."
-        @page-change="goToPage"
-      >
+      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
+        :active-filter-count="activeFilterCount" :total-pages="totalPages"
+        search-placeholder="Cari nomor PO atau produk..." @page-change="goToPage">
         <template #filters>
           <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <FormLabel
-                for="filter-produk"
-                class="mb-1 text-sm font-medium text-slate-600"
-              >
+              <FormLabel for="filter-produk" class="mb-1 text-sm font-medium text-slate-600">
                 Produk
               </FormLabel>
-              <FormSelect
-                id="filter-produk"
-                :model-value="String(selectedProductId)"
-                class="w-full !box"
-                @update:model-value="selectedProductId = Number($event)"
-              >
+              <FormSelect id="filter-produk" :model-value="String(selectedProductId)" class="w-full !box"
+                @update:model-value="selectedProductId = Number($event)">
                 <option value="0">Semua Produk</option>
-                <option
-                  v-for="product in productList"
-                  :key="product.produk_id"
-                  :value="String(product.produk_id)"
-                >
+                <option v-for="product in productList" :key="product.produk_id" :value="String(product.produk_id)">
                   {{ product.nama_produk }}
                 </option>
               </FormSelect>
-              <p
-                v-if="selectedProductLabel"
-                class="mt-2 text-xs text-slate-500"
-              >
+              <p v-if="selectedProductLabel" class="mt-2 text-xs text-slate-500">
                 {{ selectedProductLabel }}
               </p>
             </div>
 
-            <Button
-              variant="outline-secondary"
-              class="inline-flex items-center justify-center gap-2"
-              :disabled="selectedProductId === 0"
-              @click="resetFilter"
-            >
+            <Button variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
+              :disabled="selectedProductId === 0" @click="resetFilter">
               <Lucide icon="RotateCcw" class="h-4 w-4" />
               Reset Filter
             </Button>
@@ -316,10 +293,7 @@ function formatDateTime(value: string) {
         </template>
       </PageToolbar>
 
-      <div
-        v-if="chartData.length > 0"
-        class="box mb-6 rounded-2xl border p-5"
-      >
+      <div v-if="chartData.length > 0" class="box mb-6 rounded-lg border p-5">
         <div class="mb-4 flex items-center justify-between">
           <div>
             <h3 class="text-base font-semibold text-slate-800">
@@ -331,20 +305,14 @@ function formatDateTime(value: string) {
           </div>
         </div>
 
-        <StockChart :data="chartData" />
+        <!-- <StockChart :data="chartData" /> -->
+        <BarChart :data="systemChartData" dataset-label="Volume Stok" value-suffix=" L" :height="320"
+          :y-axis-label-count="7" />
       </div>
 
-      <DataList
-        :loading="loading"
-        :empty="filteredStocks.length === 0"
-        :colspan="6"
-        :show-footer="true"
-        :total="totalRecords"
-        :current-page="currentPage"
-        :per-page="perPage"
-        loading-text="Memuat data stok..."
-        empty-description="Belum ada data stok untuk ditampilkan."
-      >
+      <DataList :loading="loading" :empty="filteredStocks.length === 0" :colspan="6" :show-footer="true"
+        :total="totalRecords" :current-page="currentPage" :per-page="perPage" loading-text="Memuat data stok..."
+        empty-description="Belum ada data stok untuk ditampilkan.">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Waktu Masuk</Table.Th>
@@ -355,11 +323,7 @@ function formatDateTime(value: string) {
         </template>
 
         <template #body>
-          <Table.Tr
-            v-for="(row, idx) in paginatedStocks"
-            :key="row.id"
-            class="transition hover:bg-slate-50"
-          >
+          <Table.Tr v-for="(row, idx) in paginatedStocks" :key="row.id" class="transition hover:bg-slate-50">
             <Table.Td class="text-center font-medium text-slate-700">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>

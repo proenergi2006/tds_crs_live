@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,10 @@ class VendorController extends Controller
                 $x->where('nama_vendor', 'like', "%{$s}%")
                   ->orWhere('inisial', 'like', "%{$s}%");
             });
+        }
+
+        if ($request->boolean('as_list')) {
+            return response()->json($q->get());
         }
 
         $perPage = $request->query('per_page', 10);

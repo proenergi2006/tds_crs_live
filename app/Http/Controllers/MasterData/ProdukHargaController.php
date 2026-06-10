@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\ProdukHarga;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

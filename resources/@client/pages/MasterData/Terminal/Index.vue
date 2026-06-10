@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
@@ -18,13 +18,11 @@ const terminalApi = createResourceApi('/terminals')
 const { success, error } = useNotification()
 
 /* State: data & pagination */
-const terminals = ref<any[]>([])
+const allTerminals = ref<any[]>([])
 
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
-const totalPages = ref(1)
-const totalRecords = ref(1)
 const loading = ref(false)
 
 /* State: form */
@@ -41,23 +39,49 @@ onMounted(() => {
   fetchData()
 })
 
-watch(searchQuery, debounce(() => fetchData(1), 300))
-watch(perPage, () => fetchData(1))
+watch(searchQuery, debounce(resetToFirstPage, 300))
+watch(perPage, resetToFirstPage)
 
-async function fetchData(page = 1) {
+const filteredTerminals = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+
+  if (!query) return allTerminals.value
+
+  return allTerminals.value.filter(item => {
+    return [
+      item.nama_terminal,
+      item.cabang?.nama_cabang,
+      item.kategori_terminal,
+      item.inisial,
+      item.lokasi,
+      item.telp_terminal,
+      item.alamat,
+    ].some(value => String(value || '').toLowerCase().includes(query))
+  })
+})
+
+const totalRecords = computed(() => filteredTerminals.value.length)
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(totalRecords.value / perPage.value))
+})
+
+const terminals = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value
+
+  return filteredTerminals.value.slice(start, start + perPage.value)
+})
+
+async function fetchData() {
   loading.value = true
 
   try {
     const { data } = await terminalApi.getAll({
-      page,
-      per_page: perPage.value,
-      search: searchQuery.value || undefined,
+      as_list: true,
     })
 
-    terminals.value = data.data
-    currentPage.value = data.current_page
-    totalPages.value = data.last_page
-    totalRecords.value = data.total
+    allTerminals.value = Array.isArray(data) ? data : []
+    currentPage.value = 1
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data terminal')
   } finally {
@@ -67,7 +91,11 @@ async function fetchData(page = 1) {
 
 function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return
-  fetchData(page)
+  currentPage.value = page
+}
+
+function resetToFirstPage() {
+  currentPage.value = 1
 }
 
 /* Form */
@@ -90,16 +118,16 @@ function handleFormSuccess(data: any, mode: 'create' | 'edit') {
 
 function syncTerminal(data: any, mode: 'create' | 'edit') {
   if (mode === 'create') {
-    terminals.value.unshift(data)
+    allTerminals.value.unshift(data)
     return
   }
 
-  const index = terminals.value.findIndex(
+  const index = allTerminals.value.findIndex(
     item => item.id_terminal === data.id_terminal,
   )
 
   if (index !== -1) {
-    terminals.value[index] = data
+    allTerminals.value[index] = data
   }
 }
 
@@ -117,9 +145,13 @@ async function submitDelete() {
   try {
     await terminalApi.destroy(deleteTarget.value)
 
-    terminals.value = terminals.value.filter(
+    allTerminals.value = allTerminals.value.filter(
       item => item.id_terminal !== deleteTarget.value,
     )
+
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
 
     deleteModal.value = false
     success('Berhasil', 'Terminal berhasil dihapus.')
