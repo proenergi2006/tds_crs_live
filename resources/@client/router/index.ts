@@ -113,13 +113,19 @@ const routes = [
         path: "produk-hargas/create",
         name: "produk-hargas-create",
         component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
-        meta: { roles: [2, 5, 8], breadcrumbTitle: "Tambah Harga Produk" },
+        meta: {
+          roles: [2, 5, 8],
+          breadcrumbTitle: "Tambah Harga Produk",
+        },
       },
       {
         path: "produk-hargas/:id/edit",
         name: "produk-hargas-edit",
         component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
-        meta: { roles: [2, 5, 8], breadcrumbTitle: "Edit Harga Produk" },
+        meta: {
+          roles: [2, 5, 8],
+          breadcrumbTitle: "Edit Harga Produk",
+        },
       },
       {
         path: "attachment-harga-dasar",
@@ -256,7 +262,7 @@ const routes = [
       {
         path: "vendor-pos/:id",
         name: "vendor-pos-detail",
-        component: () => import("@/pages/VendorPoDetail.vue"),
+        component: () => import("@/pages/Transactions/PoSupplier/Detail.vue"),
         meta: { roles: [5] },
       },
       {

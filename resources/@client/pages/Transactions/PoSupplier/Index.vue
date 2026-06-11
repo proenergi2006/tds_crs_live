@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash";
-import Swal from "sweetalert2";
 import { RouterLink, useRouter } from "vue-router";
 
 import Button from "@/components/Base/Button";
@@ -12,12 +11,20 @@ import Table from "@/components/Base/Table";
 import DataList from "@/components/SystemDesign/Data/DataList.vue";
 import DateField from "@/components/SystemDesign/Form/DateField.vue";
 import PageHeader from "@/components/SystemDesign/Page/PageHeader.vue";
+import DeleteRecordDialog from "@/components/SystemDesign/Dialog/DeleteRecordDialog.vue";
+import { useNotification } from "@/components/SystemDesign/Notification/useNotification";
 
 const router = useRouter();
+const { success, error } = useNotification();
 
 const vendorPos = ref<any[]>([]);
 const vendors = ref<any[]>([]);
 const terminals = ref<any[]>([]);
+
+const deleteDialogOpen = ref(false);
+const deleteTargetId = ref<number | null>(null);
+const deleteTargetNomor = ref("");
+const deleting = ref(false);
 
 const searchQuery = ref("");
 const filterDateFrom = ref("");
@@ -134,11 +141,7 @@ async function fetchData(page = 1) {
     totalPages.value = res.data.last_page || 1;
     totalRows.value = res.data.total || 0;
   } catch (e: any) {
-    Swal.fire(
-      "Error",
-      e.response?.data?.message || "Gagal memuat data",
-      "error",
-    );
+    error("Gagal", e.response?.data?.message || "Gagal memuat data");
   } finally {
     loading.value = false;
   }
@@ -168,7 +171,7 @@ async function preview(id: number) {
     window.open(url, "_blank");
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch {
-    Swal.fire("Error", "Gagal membuka PDF", "error");
+    error("Gagal", "Gagal membuka PDF");
   }
 }
 
@@ -180,35 +183,24 @@ function goReceiveItem(idPo: number) {
 }
 
 function confirmDelete(nomorPo: string, id: number) {
-  Swal.fire({
-    title: `Hapus PO ${nomorPo}?`,
-    text: "Data yang dihapus tidak dapat dikembalikan.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Ya, hapus",
-    cancelButtonText: "Batal",
-  }).then(async (res) => {
-    if (!res.isConfirmed) return;
+  deleteTargetId.value = id;
+  deleteTargetNomor.value = nomorPo;
+  deleteDialogOpen.value = true;
+}
 
-    try {
-      await axios.delete(`/api/vendor-pos/${id}`);
-      Swal.fire({
-        icon: "success",
-        title: `PO ${nomorPo} terhapus`,
-        toast: true,
-        position: "top-end",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-      fetchData(currentPage.value);
-    } catch (e: any) {
-      Swal.fire(
-        "Error",
-        e.response?.data?.message || "Gagal menghapus PO",
-        "error",
-      );
-    }
-  });
+async function doDelete() {
+  if (!deleteTargetId.value) return;
+  deleting.value = true;
+  try {
+    await axios.delete(`/api/vendor-pos/${deleteTargetId.value}`);
+    success("Terhapus", `PO ${deleteTargetNomor.value} berhasil dihapus`);
+    deleteDialogOpen.value = false;
+    fetchData(currentPage.value);
+  } catch (e: any) {
+    error("Gagal", e.response?.data?.message || "Gagal menghapus PO");
+  } finally {
+    deleting.value = false;
+  }
 }
 </script>
 
@@ -350,4 +342,14 @@ function confirmDelete(nomorPo: string, id: number) {
       </DataList>
     </div>
   </div>
+
+  <DeleteRecordDialog
+    :open="deleteDialogOpen"
+    :title="`Hapus PO ${deleteTargetNomor}?`"
+    description="Data yang dihapus tidak dapat dikembalikan."
+    confirm-text="Ya, hapus"
+    :loading="deleting"
+    @close="deleteDialogOpen = false"
+    @confirm="doDelete"
+  />
 </template>
