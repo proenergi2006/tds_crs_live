@@ -10,8 +10,7 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
-import { FormLabel, FormSelect } from '@/components/Base/Form'
+import { FormSelect } from '@/components/Base/Form'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
@@ -219,7 +218,7 @@ function rowNumber(row: any) {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <PageHeader title="Master Harga Produk"
         description="Kelola data harga produk, filter berdasarkan cabang, produk, dan periode.">
         <template #action>
@@ -231,14 +230,17 @@ function rowNumber(row: any) {
         </template>
       </PageHeader>
 
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :total-pages="totalPages" :active-filter-count="activeFilterCount" search-placeholder="Cari produk / cabang..."
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="hargaList.length === 0" :colspan="9" :show-footer="true" :show-toolbar="true"
+        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+        :active-filter-count="activeFilterCount" search-placeholder="Cari produk / cabang..."
+        loading-text="Memuat data harga produk..." empty-description="Belum ada harga produk untuk ditampilkan."
         @page-change="goToPage">
         <template #filters>
-          <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+          <div class="space-y-4 p-1">
             <div>
-              <FormLabel for="filter-cabang">Cabang</FormLabel>
-              <FormSelect id="filter-cabang" v-model="filterCabang" class="!box">
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Cabang</div>
+              <FormSelect v-model="filterCabang">
                 <option value="">Semua Cabang</option>
                 <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="cabang.id_cabang">
                   {{ cabang.nama_cabang }}
@@ -247,8 +249,8 @@ function rowNumber(row: any) {
             </div>
 
             <div>
-              <FormLabel for="filter-produk">Produk</FormLabel>
-              <FormSelect id="filter-produk" v-model="filterProduk" class="!box">
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Produk</div>
+              <FormSelect v-model="filterProduk">
                 <option value="">Semua Produk</option>
                 <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
                   {{ produk.nama_produk }} ({{ produk.ukuran?.nama_ukuran }} {{ produk.ukuran?.satuan?.nama_satuan }})
@@ -257,28 +259,23 @@ function rowNumber(row: any) {
             </div>
 
             <div>
-              <DateField v-model="filterPeriodeAwal" label="Periode Awal" placeholder="Pilih periode awal" />
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Periode Awal</div>
+              <DateField v-model="filterPeriodeAwal" placeholder="Pilih periode awal" />
             </div>
 
             <div>
-              <div class="flex gap-2">
-                <div class="min-w-0 flex-1">
-                  <DateField v-model="filterPeriodeAkhir" label="Periode Akhir" placeholder="Pilih periode akhir" />
-                </div>
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Periode Akhir</div>
+              <DateField v-model="filterPeriodeAkhir" placeholder="Pilih periode akhir" />
+            </div>
 
-                <Button variant="outline-secondary" class="mt-6 inline-flex items-center gap-2" @click="resetFilter">
-                  <Lucide icon="RotateCcw" class="h-4 w-4" />
-                  Reset
-                </Button>
-              </div>
+            <div class="border-t border-slate-100 pt-3">
+              <Button type="button" variant="outline-secondary" class="w-full"
+                :disabled="activeFilterCount === 0" @click="resetFilter">
+                Clear Filter
+              </Button>
             </div>
           </div>
         </template>
-      </PageToolbar>
-
-      <DataList :loading="loading" :empty="hargaList.length === 0" :colspan="9" :show-footer="true"
-        :total="totalRecords" :current-page="currentPage" :per-page="perPage" loading-text="Memuat data harga produk..."
-        empty-description="Belum ada harga produk untuk ditampilkan.">
         <template #head>
           <Table.Th class="w-16">No</Table.Th>
           <Table.Th>Cabang</Table.Th>

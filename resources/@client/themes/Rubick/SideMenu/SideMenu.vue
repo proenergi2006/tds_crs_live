@@ -228,8 +228,8 @@ onMounted(() => {
                         linkTo(subMenu, router);
                         setFormattedMenu([...formattedMenu]);
                       }">
-                      <div class="side-menu__icon">
-                        <Lucide :icon="subMenu.icon" />
+                      <div class="side-menu__icon side-menu__icon--tree">
+                        <Lucide :icon="subMenu.active ? 'ChevronsRight' : 'CornerDownRight'" />
                       </div>
                       <div class="side-menu__title">
                         {{ subMenu.title }}
@@ -268,8 +268,8 @@ onMounted(() => {
                               linkTo(lastSubMenu, router);
                               setFormattedMenu([...formattedMenu]);
                             }">
-                            <div class="side-menu__icon">
-                              <Lucide :icon="lastSubMenu.icon" />
+                            <div class="side-menu__icon side-menu__icon--tree">
+                              <Lucide :icon="lastSubMenu.active ? 'ChevronsRight' : 'CornerDownRight'" />
                             </div>
                             <div class="side-menu__title">
                               {{ lastSubMenu.title }}

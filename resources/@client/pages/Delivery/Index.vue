@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
@@ -9,7 +10,6 @@ import Lucide from '@/components/Base/Lucide'
 import { FormInput, FormLabel } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 const { success, error } = useNotification()
@@ -28,11 +28,11 @@ const stockFilter = ref<any>({ min: 0, q: '' })
 const saving = ref(false)
 const allocError = ref('')
 
+const searchQuery = ref('')
+const perPage = ref(25)
 const activeFilterCount = computed(() => [from.value, to.value].filter(Boolean).length)
-const perPage = computed({
-  get: () => 25,
-  set: () => {},
-})
+
+watch(perPage, debounce(() => fetchList(1), 300))
 
 const totalAlloc = computed(() =>
   stocks.value.reduce((amount, stock) => amount + Number(stock._qty || 0), 0),
@@ -271,7 +271,7 @@ function exportCsv() {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <PageHeader title="Delivery Request"
         description="Daftar delivery request procurement untuk persiapan alokasi stok dan pemenuhan permintaan.">
         <template #action>
@@ -282,40 +282,36 @@ function exportCsv() {
         </template>
       </PageHeader>
 
-      <PageToolbar v-model:search="from" v-model:per-page="perPage" :current-page="meta.current_page"
-        :total-pages="meta.last_page" :active-filter-count="activeFilterCount" search-placeholder="Tanggal DR dari..."
-        @page-change="goToPage">
-        <template #filters>
-          <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="list.length === 0" :colspan="9" :show-footer="true" :show-toolbar="true" :total="meta.total"
+        :current-page="meta.current_page" :total-pages="meta.last_page" :active-filter-count="activeFilterCount"
+        search-placeholder="Cari delivery request..." loading-text="Memuat delivery request..."
+        empty-description="Belum ada delivery request untuk ditampilkan." @page-change="goToPage">
+        <template #filters="{ close }">
+          <div class="space-y-4 p-1">
             <div>
-              <FormLabel for="delivery-from">Tanggal DR Dari</FormLabel>
-              <FormInput id="delivery-from" v-model="from" type="date" class="!box" />
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal DR Dari</div>
+              <FormInput v-model="from" type="date" class="!box" />
             </div>
 
             <div>
-              <FormLabel for="delivery-to">Sampai</FormLabel>
-              <FormInput id="delivery-to" v-model="to" type="date" class="!box" />
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Sampai</div>
+              <FormInput v-model="to" type="date" class="!box" />
             </div>
 
-            <div class="flex items-end gap-2">
-              <Button variant="primary" class="inline-flex items-center gap-2" :disabled="loading" @click="fetchList(1)">
+            <div class="flex gap-2 border-t border-slate-100 pt-3">
+              <Button type="button" variant="primary" class="inline-flex flex-1 items-center justify-center gap-2"
+                :disabled="loading" @click="() => { fetchList(1); close() }">
                 <Lucide icon="Search" class="h-4 w-4" />
-                {{ loading ? 'Memuat...' : 'Search' }}
+                Cari
               </Button>
-
-              <Button variant="outline-secondary" class="inline-flex items-center gap-2" :disabled="loading"
-                @click="resetFilter">
-                <Lucide icon="RotateCcw" class="h-4 w-4" />
+              <Button type="button" variant="outline-secondary" class="flex-1"
+                :disabled="activeFilterCount === 0" @click="() => { resetFilter(); close() }">
                 Reset
               </Button>
             </div>
           </div>
         </template>
-      </PageToolbar>
-
-      <DataList :loading="loading" :empty="list.length === 0" :colspan="9" :show-footer="true" :total="meta.total"
-        :current-page="meta.current_page" :per-page="perPage" loading-text="Memuat delivery request..."
-        empty-description="Belum ada delivery request untuk ditampilkan.">
         <template #head>
           <Table.Th class="w-14"></Table.Th>
           <Table.Th>Tanggal DR</Table.Th>

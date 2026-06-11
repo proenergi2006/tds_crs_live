@@ -12,7 +12,6 @@ import Table from "@/components/Base/Table";
 import DataList from "@/components/SystemDesign/Data/DataList.vue";
 import DateField from "@/components/SystemDesign/Form/DateField.vue";
 import PageHeader from "@/components/SystemDesign/Page/PageHeader.vue";
-import PageToolbar from "@/components/SystemDesign/Page/PageToolbar.vue";
 
 const router = useRouter();
 
@@ -215,50 +214,38 @@ function confirmDelete(nomorPo: string, id: number) {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <PageHeader title="PO Supplier"
         description="Kelola Purchase Order vendor, filter data, dan akses aksi dengan cepat.">
         <template #action>
-          <!-- <RouterLink :to="{ name: 'vendor-pos-create' }"> -->
           <Button as="RouterLink" :to="{ name: 'vendor-pos-create' }" variant="white"
             class="inline-flex items-center gap-2">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah PO
           </Button>
-          <!-- </RouterLink> -->
         </template>
       </PageHeader>
 
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :total-pages="totalPages" :active-filter-count="activeFilterCount" search-placeholder="Nomor PO / keterangan..."
-        search-label="Cari PO" @page-change="goToPage">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="vendorPos.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRows"
+        :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
+        search-placeholder="Nomor PO / keterangan..." loading-text="Memuat data PO supplier..."
+        empty-description="Tidak ada data PO ditemukan." @page-change="goToPage">
         <template #filters>
-          <div class="mb-4 flex items-center justify-between gap-3">
+          <div class="space-y-4 p-1">
             <div>
-              <h3 class="text-base font-semibold text-slate-700">Filter PO</h3>
-              <p class="text-sm text-slate-500">
-                Filter berdasarkan tanggal, terminal, dan vendor.
-              </p>
-            </div>
-
-            <Button variant="outline-secondary" class="inline-flex items-center gap-2" @click="resetFilter">
-              <Lucide icon="RotateCcw" class="h-4 w-4" />
-              Reset
-            </Button>
-          </div>
-
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <DateField v-model="filterDateFrom" label="Tanggal Dari" placeholder="Pilih tanggal awal" />
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal Dari</div>
+              <DateField v-model="filterDateFrom" placeholder="Pilih tanggal awal" />
             </div>
 
             <div>
-              <DateField v-model="filterDateTo" label="Tanggal Sampai" placeholder="Pilih tanggal akhir" />
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Tanggal Sampai</div>
+              <DateField v-model="filterDateTo" placeholder="Pilih tanggal akhir" />
             </div>
 
             <div>
-              <label class="mb-1 block text-sm font-medium text-slate-600">Terminal</label>
-              <FormSelect v-model="filterTerminal" class="!box">
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Terminal</div>
+              <FormSelect v-model="filterTerminal">
                 <option value="">Semua Terminal</option>
                 <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
                   {{ terminal.nama_terminal }}
@@ -267,21 +254,28 @@ function confirmDelete(nomorPo: string, id: number) {
             </div>
 
             <div>
-              <label class="mb-1 block text-sm font-medium text-slate-600">Vendor</label>
-              <FormSelect v-model="filterVendor" class="!box">
+              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Vendor</div>
+              <FormSelect v-model="filterVendor">
                 <option value="">Semua Vendor</option>
                 <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
                   {{ vendor.nama_vendor }}
                 </option>
               </FormSelect>
             </div>
+
+            <div class="border-t border-slate-100 pt-3">
+              <Button
+                type="button"
+                variant="outline-secondary"
+                class="w-full"
+                :disabled="activeFilterCount === 0"
+                @click="resetFilter"
+              >
+                Clear Filter
+              </Button>
+            </div>
           </div>
         </template>
-      </PageToolbar>
-
-      <DataList :loading="loading" :empty="vendorPos.length === 0" :colspan="7" :show-footer="true" :total="totalRows"
-        :current-page="currentPage" :per-page="perPage" loading-text="Memuat data PO supplier..."
-        empty-description="Tidak ada data PO ditemukan.">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nomor PO</Table.Th>

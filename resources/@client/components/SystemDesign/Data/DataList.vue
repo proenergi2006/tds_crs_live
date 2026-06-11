@@ -4,7 +4,7 @@ import { computed } from 'vue';
 import Table from '@/components/Base/Table';
 import Lucide from '@/components/Base/Lucide';
 import LoadingIcon from '@/components/Base/LoadingIcon';
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue';
+import DataListToolbar from '@/components/SystemDesign/Page/DataListToolbar.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -72,7 +72,7 @@ const endRecord = computed(() => {
 <template>
   <div class="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
     <div v-if="showToolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">
-      <PageToolbar
+      <DataListToolbar
         :search="search"
         :per-page="perPage"
         :current-page="currentPage"
@@ -91,7 +91,7 @@ const endRecord = computed(() => {
         <template #filters="{ close }">
           <slot name="filters" :close="close" />
         </template>
-      </PageToolbar>
+      </DataListToolbar>
     </div>
 
     <div v-else-if="$slots.toolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">

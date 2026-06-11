@@ -5,11 +5,10 @@ import { debounce } from 'lodash'
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
-import { FormLabel, FormSelect } from '@/components/Base/Form'
+import { FormSelect } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import BarChart from '@/components/SystemDesign/Data/BarChart.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import PageToolbar from '@/components/SystemDesign/Page/PageToolbar.vue'
 // import StockChart from '@/components/StockChart.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -209,7 +208,7 @@ function formatDateTime(value: string) {
 
 <template>
   <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y">
+    <div class="col-span-12 intro-y flex flex-col gap-4">
       <PageHeader title="Stock Inventory" description="Pantau stok masuk berdasarkan PO dan produk">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="fetchStocks">
@@ -219,7 +218,7 @@ function formatDateTime(value: string) {
         </template>
       </PageHeader>
 
-      <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
@@ -263,37 +262,7 @@ function formatDateTime(value: string) {
         </div>
       </div>
 
-      <PageToolbar v-model:search="searchQuery" v-model:per-page="perPage" :current-page="currentPage"
-        :active-filter-count="activeFilterCount" :total-pages="totalPages"
-        search-placeholder="Cari nomor PO atau produk..." @page-change="goToPage">
-        <template #filters>
-          <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <FormLabel for="filter-produk" class="mb-1 text-sm font-medium text-slate-600">
-                Produk
-              </FormLabel>
-              <FormSelect id="filter-produk" :model-value="String(selectedProductId)" class="w-full !box"
-                @update:model-value="selectedProductId = Number($event)">
-                <option value="0">Semua Produk</option>
-                <option v-for="product in productList" :key="product.produk_id" :value="String(product.produk_id)">
-                  {{ product.nama_produk }}
-                </option>
-              </FormSelect>
-              <p v-if="selectedProductLabel" class="mt-2 text-xs text-slate-500">
-                {{ selectedProductLabel }}
-              </p>
-            </div>
-
-            <Button variant="outline-secondary" class="inline-flex items-center justify-center gap-2"
-              :disabled="selectedProductId === 0" @click="resetFilter">
-              <Lucide icon="RotateCcw" class="h-4 w-4" />
-              Reset Filter
-            </Button>
-          </div>
-        </template>
-      </PageToolbar>
-
-      <div v-if="chartData.length > 0" class="box mb-6 rounded-lg border p-5">
+      <div v-if="chartData.length > 0" class="box rounded-lg border p-5">
         <div class="mb-4 flex items-center justify-between">
           <div>
             <h3 class="text-base font-semibold text-slate-800">
@@ -310,9 +279,36 @@ function formatDateTime(value: string) {
           :y-axis-label-count="7" />
       </div>
 
-      <DataList :loading="loading" :empty="filteredStocks.length === 0" :colspan="6" :show-footer="true"
-        :total="totalRecords" :current-page="currentPage" :per-page="perPage" loading-text="Memuat data stok..."
-        empty-description="Belum ada data stok untuk ditampilkan.">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="filteredStocks.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true"
+        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+        :active-filter-count="activeFilterCount" search-placeholder="Cari nomor PO atau produk..."
+        loading-text="Memuat data stok..." empty-description="Belum ada data stok untuk ditampilkan."
+        @page-change="goToPage">
+        <template #filters>
+          <div class="space-y-4 p-1">
+            <div>
+              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Produk</div>
+              <FormSelect :model-value="String(selectedProductId)"
+                @update:model-value="selectedProductId = Number($event)">
+                <option value="0">Semua Produk</option>
+                <option v-for="product in productList" :key="product.produk_id" :value="String(product.produk_id)">
+                  {{ product.nama_produk }}
+                </option>
+              </FormSelect>
+              <p v-if="selectedProductLabel" class="mt-2 px-3 text-xs text-slate-500">
+                {{ selectedProductLabel }}
+              </p>
+            </div>
+
+            <div class="border-t border-slate-100 pt-3">
+              <Button type="button" variant="outline-secondary" class="w-full"
+                :disabled="activeFilterCount === 0" @click="resetFilter">
+                Clear Filter
+              </Button>
+            </div>
+          </div>
+        </template>
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Waktu Masuk</Table.Th>
