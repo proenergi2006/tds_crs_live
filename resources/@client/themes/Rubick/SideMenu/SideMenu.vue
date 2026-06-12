@@ -33,8 +33,15 @@ const menuStore = useMenuStore();
 const authStore = useAuthStore();
 const menu = computed(() => nestedMenu(menuStore.menu("side-menu"), route));
 const windowWidth = ref(window.innerWidth);
-const isSidebarCollapsed = ref(
+
+// Manual user preference — persisted to localStorage
+const userCollapsedPref = ref(
   localStorage.getItem("rubick-sidebar-collapsed") === "true"
+);
+
+// Auto-collapse below xl (< 1280px); at xl+ use the user's stored preference
+const isSidebarCollapsed = computed(
+  () => windowWidth.value < 1280 || userCollapsedPref.value
 );
 
 // Ambil user dari auth store
@@ -66,10 +73,10 @@ provide<ProvideForceActiveMenu>("forceActiveMenu", (pageName: string) => {
 });
 
 const toggleSidebarCollapse = () => {
-  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  userCollapsedPref.value = !userCollapsedPref.value;
   localStorage.setItem(
     "rubick-sidebar-collapsed",
-    String(isSidebarCollapsed.value)
+    String(userCollapsedPref.value)
   );
 };
 
@@ -141,7 +148,7 @@ onMounted(() => {
             <li v-else :key="menuKey" class="side-nav__item">
               <Tippy as="a" :content="menu.title" :options="{
                 placement: 'right',
-              }" :disable="windowWidth > 1260 && (!isSidebarCollapsed || !!menu.subMenu)" :href="menu.subMenu
+              }" :disable="isSidebarCollapsed ? !!menu.subMenu : windowWidth > 1260" :href="menu.subMenu
                 ? '#'
                 : ((pageName: string | undefined) => {
                   try {

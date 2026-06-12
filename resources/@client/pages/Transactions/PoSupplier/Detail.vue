@@ -39,22 +39,18 @@ const approvalSteps = computed<StepItem[]>(() => {
   return [
     {
       title: 'Drafting',
-      icon: 'FileText',
       status: s(d >= 1, d === 0),
     },
     {
       title: 'Verifikasi CFO',
-      icon: 'UserCheck',
       status: s(d >= 2, d === 1),
     },
     {
       title: 'Verifikasi CEO',
-      icon: 'ShieldCheck',
       status: s(d === 4, d === 2),
     },
     {
       title: 'Disetujui',
-      icon: 'BadgeCheck',
       status: s(d === 4, false),
     },
   ]
@@ -220,17 +216,17 @@ function statusBadgeClass(disposisi: number) {
                   </Table.Td>
                 </Table.Tr>
 
-                <Table.Tr class="border-t border-slate-200 bg-slate-50">
+                <Table.Tr>
                   <Table.Td :colspan="3" class="py-2.5 pr-6 text-right text-sm text-slate-500">Subtotal</Table.Td>
                   <Table.Td class="py-2.5 text-right text-sm font-medium text-slate-700">{{ formatNumber(po.subtotal) }}
                   </Table.Td>
                 </Table.Tr>
-                <Table.Tr class="bg-slate-50">
+                <Table.Tr>
                   <Table.Td :colspan="3" class="py-2.5 pr-6 text-right text-sm text-slate-500">PPN 11%</Table.Td>
                   <Table.Td class="py-2.5 text-right text-sm font-medium text-slate-700">{{ formatNumber(po.ppn11) }}
                   </Table.Td>
                 </Table.Tr>
-                <Table.Tr class="border-t-2 border-slate-300 bg-emerald-50">
+                <Table.Tr class="bg-emerald-50">
                   <Table.Td :colspan="3" class="py-3.5 pr-6 text-right text-sm font-semibold text-slate-800">Total Order
                   </Table.Td>
                   <Table.Td class="py-3.5 text-right text-base font-bold text-emerald-700">{{
@@ -294,16 +290,8 @@ function statusBadgeClass(disposisi: number) {
     </div>
   </div>
 
-  <ConfirmDialog
-    :open="approveDialogOpen"
-    title="Kirim untuk Persetujuan?"
-    description="PO akan diteruskan ke proses approval. Pastikan seluruh data sudah benar."
-    confirm-text="Ya, kirim"
-    icon="Send"
-    icon-class="bg-primary/10 text-primary"
-    variant="primary"
-    :loading="approving"
-    @close="approveDialogOpen = false"
-    @confirm="approve"
-  />
+  <ConfirmDialog :open="approveDialogOpen" title="Kirim untuk Persetujuan?"
+    description="PO akan diteruskan ke proses approval. Pastikan seluruh data sudah benar." confirm-text="Ya, kirim"
+    icon="Send" icon-class="bg-primary/10 text-primary" variant="primary" :loading="approving"
+    @close="approveDialogOpen = false" @confirm="approve" />
 </template>

@@ -41,9 +41,9 @@
             min-width: 230px;
             max-width: 260px;
             display: none;
-            position: fixed;
+            position: absolute;
             top: 0;
-            left: 112px;
+            left: calc(100%);
             z-index: 9999;
             padding: theme("spacing.3");
             color: theme("colors.white");
@@ -113,6 +113,7 @@
             width: 116px;
             padding-right: 16px;
             z-index: 60;
+            overflow: visible;
             .side-menu {
                 justify-content: center;
                 padding-left: 0;
@@ -126,11 +127,6 @@
                 }
                 & > li:hover > .side-nav__collapsed-panel {
                     display: block;
-                }
-                @for $i from 1 through 80 {
-                    & > li:nth-child($i):hover > .side-nav__collapsed-panel {
-                        top: calc(145px + (($i - 1) * 54px));
-                    }
                 }
                 & > li > .side-menu {
                     &.side-menu--active {
