@@ -227,8 +227,8 @@ async function submitDelete() {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y flex flex-col gap-4">
+  <div class="page-content-wrapper">
+    <div class="intro-y flex flex-col gap-4">
       <!-- Page Header -->
       <PageHeader title="Master Produk" description="Kelola data produk">
         <template #action>

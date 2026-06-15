@@ -133,8 +133,8 @@ function statusBadgeClass(disposisi: number) {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-x">
+  <div class="page-content-wrapper">
+    <div class="intro-x flex flex-col gap-4">
 
       <!-- HEADER -->
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -164,12 +164,8 @@ function statusBadgeClass(disposisi: number) {
                 <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.nomor_po || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Tanggal Inven</div>
+                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Tanggal PO</div>
                 <div class="mt-1 text-sm font-semibold text-slate-800">{{ formatDate(po.tanggal_inven) }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Kode Tax</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.kd_tax || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Vendor</div>
@@ -178,6 +174,10 @@ function statusBadgeClass(disposisi: number) {
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Terminal</div>
                 <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.terminal?.nama_terminal || '-' }}</div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Kode Tax</div>
+                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.kd_tax || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Terms</div>
@@ -257,7 +257,7 @@ function statusBadgeClass(disposisi: number) {
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-4 space-y-4">
+          <div class="sticky top-20 space-y-4">
             <!-- Status Approval -->
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">

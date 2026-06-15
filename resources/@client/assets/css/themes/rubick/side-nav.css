@@ -222,7 +222,7 @@
                 margin-top: 0.5rem;
                 margin-bottom: 1rem;
                 margin-left: 0.4rem;
-                background-color: theme("colors.black" / 10%);
+                background: linear-gradient(to top right, rgb(0 0 0 / 20%), transparent);
                 border-radius: 1.25rem;
                 padding: 10px 0;
             }
@@ -365,6 +365,31 @@
                     }
                 }
             }
+        }
+    }
+}
+
+.rubick {
+    .content-area-scroll {
+        &::-webkit-scrollbar {
+            width: 8px;
+        }
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        &::-webkit-scrollbar-thumb {
+            background-image: linear-gradient(to bottom, rgb(var(--color-theme-2)), #059669);
+            background-clip: padding-box;
+            border: 2px solid transparent;
+            border-radius: 99px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        &.is-scrolling::-webkit-scrollbar-thumb {
+            opacity: 1;
+        }
+        &.is-scrolling::-webkit-scrollbar-thumb:hover {
+            background-image: linear-gradient(to bottom, rgb(var(--color-theme-1)), #10b981);
         }
     }
 }

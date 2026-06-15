@@ -171,13 +171,11 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="relative z-[51] flex h-[67px] items-center border-b border-slate-200">
-    <button
-      type="button"
+  <div
+    class="relative z-[51] flex h-[67px] items-center border-b border-slate-200 bg-slate-100 dark:bg-darkmode-700 md:px-6">
+    <button type="button"
       class="mr-3 hidden h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/70 hover:text-slate-700 xl:flex"
-      :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-      @click="emit('toggle-sidebar-collapse')"
-    >
+      :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="emit('toggle-sidebar-collapse')">
       <Lucide :icon="isSidebarCollapsed ? 'PanelRightOpen' : 'PanelLeftClose'" class="h-5 w-5" />
     </button>
 

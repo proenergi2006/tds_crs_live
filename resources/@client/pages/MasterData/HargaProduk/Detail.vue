@@ -52,7 +52,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 intro-y">
+  <div class="page-content-wrapper">
+    <div class="intro-x flex flex-col gap-4">
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h2 class="text-2xl font-semibold text-slate-800">Detail Harga Produk</h2>
@@ -202,6 +203,7 @@ onMounted(() => {
           </div>
         </CardSection>
       </div>
+    </div>
     </div>
   </div>
 </template>

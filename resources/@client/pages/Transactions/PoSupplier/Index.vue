@@ -1,217 +1,206 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import axios from "axios";
-import { debounce } from "lodash";
-import { RouterLink, useRouter } from "vue-router";
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { debounce } from 'lodash'
 
-import Button from "@/components/Base/Button";
-import { FormSelect } from "@/components/Base/Form";
-import Lucide from "@/components/Base/Lucide";
-import Table from "@/components/Base/Table";
-import DataList from "@/components/SystemDesign/Data/DataList.vue";
-import DateField from "@/components/SystemDesign/Form/DateField.vue";
-import PageHeader from "@/components/SystemDesign/Page/PageHeader.vue";
-import DeleteRecordDialog from "@/components/SystemDesign/Dialog/DeleteRecordDialog.vue";
-import { useNotification } from "@/components/SystemDesign/Notification/useNotification";
+import Button from '@/components/Base/Button'
+import Table from '@/components/Base/Table'
+import Lucide from '@/components/Base/Lucide'
+import { FormInput, FormSelect, FormLabel } from '@/components/Base/Form'
+import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
+import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { createResourceApi } from '@/utils/resourceApi.js'
 
-const router = useRouter();
-const { success, error } = useNotification();
+// Composables
+const router = useRouter()
+const { success, error } = useNotification()
+const vendorPoApi = createResourceApi('/vendor-pos')
 
-const vendorPos = ref<any[]>([]);
-const vendors = ref<any[]>([]);
-const terminals = ref<any[]>([]);
+// State: data & pagination
+const vendorPos = ref<any[]>([])
+const vendors = ref<any[]>([])
+const terminals = ref<any[]>([])
+const loading = ref(false)
+const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 
-const deleteDialogOpen = ref(false);
-const deleteTargetId = ref<number | null>(null);
-const deleteTargetNomor = ref("");
-const deleting = ref(false);
+// State: filters
+const searchQuery = ref('')
+const filterDateFrom = ref('')
+const filterDateTo = ref('')
+const filterTerminal = ref('')
+const filterVendor = ref('')
+const perPage = ref(10)
 
-const searchQuery = ref("");
-const filterDateFrom = ref("");
-const filterDateTo = ref("");
-const filterTerminal = ref("");
-const filterVendor = ref("");
+// State: delete
+const deleteModal = ref(false)
+const deleteLoading = ref(false)
+const deleteTarget = ref<{ id: number; label: string } | null>(null)
 
-const perPage = ref(10);
-const currentPage = ref(1);
-const totalPages = ref(1);
-const totalRows = ref(0);
-const loading = ref(false);
-
+// Computed
 const activeFilterCount = computed(() =>
   [
     filterDateFrom.value,
     filterDateTo.value,
     filterTerminal.value,
-    filterVendor.value,
+    filterVendor.value
   ].filter(Boolean).length,
-);
+)
 
+// Lifecycle / watch
 onMounted(async () => {
-  await Promise.all([fetchVendors(), fetchTerminals()]);
-  fetchData();
-});
+  await Promise.all([fetchVendors(), fetchTerminals()])
+  fetchData(1)
+})
 
-watch(
-  [searchQuery, filterDateFrom, filterDateTo, filterTerminal, filterVendor],
-  debounce(() => fetchData(1), 300),
-);
+watch(searchQuery, debounce(() => fetchData(1), 300))
+watch(perPage, () => fetchData(1))
 
-watch(perPage, () => fetchData(1));
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function statusLabel(disposisi: number) {
-  return disposisi === 0
-    ? "Draft"
-    : disposisi === 1
-      ? "Menunggu Verifikasi CFO"
-      : disposisi === 2
-        ? "Menunggu Verifikasi CEO"
-        : disposisi === 4
-          ? "Verified"
-          : "-";
-}
-
-function statusBadgeClass(disposisi: number) {
-  return disposisi === 0
-    ? "bg-yellow-100 text-yellow-700"
-    : disposisi === 1
-      ? "bg-orange-100 text-orange-700"
-      : disposisi === 2
-        ? "bg-red-100 text-red-700"
-        : disposisi === 4
-          ? "bg-green-100 text-green-700"
-          : "bg-slate-100 text-slate-600";
+// Fetch
+async function fetchData(page = 1) {
+  loading.value = true
+  try {
+    const { data } = await vendorPoApi.getAll({
+      page,
+      per_page: perPage.value,
+      search: searchQuery.value || undefined,
+      tanggal_dari: filterDateFrom.value || undefined,
+      tanggal_sampai: filterDateTo.value || undefined,
+      id_terminal: filterTerminal.value || undefined,
+      id_vendor: filterVendor.value || undefined,
+    })
+    vendorPos.value = data.data || []
+    meta.value = {
+      current_page: data.current_page || 1,
+      last_page: data.last_page || 1,
+      total: data.total || 0,
+    }
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message || 'Gagal memuat data')
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchVendors() {
   try {
-    const res = await axios.get("/api/vendors", {
-      params: { per_page: 200 },
-    });
-
-    vendors.value = res.data.data || res.data || [];
+    const { data } = await axios.get('/api/vendors', { params: { per_page: 200 } })
+    vendors.value = data.data || data || []
   } catch {
-    vendors.value = [];
+    vendors.value = []
   }
 }
 
 async function fetchTerminals() {
   try {
-    const res = await axios.get("/api/terminals", {
-      params: { per_page: 200 },
-    });
-
-    terminals.value = res.data.data || res.data || [];
+    const { data } = await axios.get('/api/terminals', { params: { per_page: 200 } })
+    terminals.value = data.data || data || []
   } catch {
-    terminals.value = [];
+    terminals.value = []
   }
 }
 
-async function fetchData(page = 1) {
-  loading.value = true;
-
-  try {
-    const res = await axios.get("/api/vendor-pos", {
-      params: {
-        page,
-        per_page: perPage.value,
-        search: searchQuery.value || undefined,
-        tanggal_dari: filterDateFrom.value || undefined,
-        tanggal_sampai: filterDateTo.value || undefined,
-        id_terminal: filterTerminal.value || undefined,
-        id_vendor: filterVendor.value || undefined,
-      },
-    });
-
-    vendorPos.value = res.data.data || [];
-    currentPage.value = res.data.current_page || 1;
-    totalPages.value = res.data.last_page || 1;
-    totalRows.value = res.data.total || 0;
-  } catch (e: any) {
-    error("Gagal", e.response?.data?.message || "Gagal memuat data");
-  } finally {
-    loading.value = false;
-  }
-}
-
+// Action handlers
 function goToPage(page: number) {
-  if (page < 1 || page > totalPages.value) return;
-  fetchData(page);
+  if (page < 1 || page > meta.value.last_page) return
+  fetchData(page)
 }
 
 function resetFilter() {
-  searchQuery.value = "";
-  filterDateFrom.value = "";
-  filterDateTo.value = "";
-  filterTerminal.value = "";
-  filterVendor.value = "";
-  fetchData(1);
+  filterDateFrom.value = ''
+  filterDateTo.value = ''
+  filterTerminal.value = ''
+  filterVendor.value = ''
+  fetchData(1)
 }
 
-async function preview(id: number) {
+function goCreate() {
+  router.push({ name: 'vendor-pos-create' })
+}
+
+function goDetail(id: number) {
+  router.push({ name: 'vendor-pos-detail', params: { id } })
+}
+
+function goEdit(id: number) {
+  router.push({ name: 'vendor-pos-edit', params: { id } })
+}
+
+function goReceive(id: number) {
+  router.push({ name: 'vendor-pos-receive', params: { id } })
+}
+
+async function previewPdf(id: number) {
   try {
-    const response = await axios.get(`/vendor-pos/${id}/preview`, {
-      responseType: "blob",
-    });
-    const blob = new Blob([response.data], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    const response = await axios.get(`/vendor-pos/${id}/preview`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
   } catch {
-    error("Gagal", "Gagal membuka PDF");
+    error('Gagal', 'Gagal membuka preview PDF')
   }
 }
 
-function goReceiveItem(idPo: number) {
-  router.push({
-    name: "receive-item-list",
-    params: { id: idPo },
-  });
+function confirmDelete(id: number, label: string) {
+  deleteTarget.value = { id, label }
+  deleteModal.value = true
 }
 
-function confirmDelete(nomorPo: string, id: number) {
-  deleteTargetId.value = id;
-  deleteTargetNomor.value = nomorPo;
-  deleteDialogOpen.value = true;
-}
-
-async function doDelete() {
-  if (!deleteTargetId.value) return;
-  deleting.value = true;
+async function submitDelete() {
+  if (!deleteTarget.value) return
+  deleteLoading.value = true
   try {
-    await axios.delete(`/api/vendor-pos/${deleteTargetId.value}`);
-    success("Terhapus", `PO ${deleteTargetNomor.value} berhasil dihapus`);
-    deleteDialogOpen.value = false;
-    fetchData(currentPage.value);
+    await vendorPoApi.destroy(deleteTarget.value.id)
+    vendorPos.value = vendorPos.value.filter(po => po.id_po !== deleteTarget.value!.id)
+    meta.value.total = Math.max(0, meta.value.total - 1)
+    deleteModal.value = false
+    success('Berhasil', `PO ${deleteTarget.value.label} berhasil dihapus`)
   } catch (e: any) {
-    error("Gagal", e.response?.data?.message || "Gagal menghapus PO");
+    error('Gagal', e.response?.data?.message || 'Gagal menghapus PO')
   } finally {
-    deleting.value = false;
+    deleteLoading.value = false
+    deleteTarget.value = null
   }
+}
+
+// Helpers
+function formatDate(value?: string) {
+  return value
+    ? new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '-'
+}
+
+function statusLabel(disposisi: number) {
+  const map: Record<number, string> = {
+    0: 'Draft',
+    1: 'Menunggu Verifikasi CFO',
+    2: 'Menunggu Verifikasi CEO',
+    4: 'Verified',
+  }
+  return map[disposisi] ?? '-'
+}
+
+function statusBadgeClass(disposisi: number) {
+  const map: Record<number, string> = {
+    0: 'bg-yellow-100 text-yellow-700',
+    1: 'bg-orange-100 text-orange-700',
+    2: 'bg-red-100 text-red-700',
+    4: 'bg-green-100 text-green-700',
+  }
+  return map[disposisi] ?? 'bg-slate-100 text-slate-600'
 }
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y flex flex-col gap-4">
-      <PageHeader title="PO Supplier"
+  <div class="page-content-wrapper">
+    <div class="intro-y flex flex-col gap-4">
+
+      <PageHeader title="Daftar PO Supplier"
         description="Kelola Purchase Order vendor, filter data, dan akses aksi dengan cepat.">
         <template #action>
-          <Button as="RouterLink" :to="{ name: 'vendor-pos-create' }" variant="white"
-            class="inline-flex items-center gap-2">
+          <Button variant="white" class="inline-flex items-center gap-2" @click="goCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah PO
           </Button>
@@ -219,120 +208,99 @@ async function doDelete() {
       </PageHeader>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="vendorPos.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRows"
-        :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
-        search-placeholder="Nomor PO / keterangan..." loading-text="Memuat data PO supplier..."
-        empty-description="Tidak ada data PO ditemukan." @page-change="goToPage">
-        <template #filters>
+        :empty="vendorPos.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="meta.total"
+        :current-page="meta.current_page" :total-pages="meta.last_page" :active-filter-count="activeFilterCount"
+        search-placeholder="Cari Nomor PO..." loading-text="Memuat data PO..."
+        empty-description="Belum ada data PO untuk ditampilkan." @page-change="goToPage">
+        <template #filters="{ close }">
           <div class="space-y-4 p-1">
             <div>
               <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal Dari</div>
-              <DateField v-model="filterDateFrom" placeholder="Pilih tanggal awal" />
+              <FormInput v-model="filterDateFrom" type="date" class="!box" />
             </div>
-
             <div>
               <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Tanggal Sampai</div>
-              <DateField v-model="filterDateTo" placeholder="Pilih tanggal akhir" />
+              <FormInput v-model="filterDateTo" type="date" class="!box" />
             </div>
-
             <div>
               <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Terminal</div>
-              <FormSelect v-model="filterTerminal">
-                <option value="">Semua Terminal</option>
-                <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
-                  {{ terminal.nama_terminal }}
+              <FormSelect v-model="filterTerminal" class="!box">
+                <option value="">— Semua Terminal —</option>
+                <option v-for="t in terminals" :key="t.id_terminal" :value="t.id_terminal">
+                  {{ t.nama_terminal }}
                 </option>
               </FormSelect>
             </div>
-
             <div>
               <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Vendor</div>
-              <FormSelect v-model="filterVendor">
-                <option value="">Semua Vendor</option>
-                <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
-                  {{ vendor.nama_vendor }}
+              <FormSelect v-model="filterVendor" class="!box">
+                <option value="">— Semua Vendor —</option>
+                <option v-for="v in vendors" :key="v.id_vendor" :value="v.id_vendor">
+                  {{ v.nama_vendor }}
                 </option>
               </FormSelect>
             </div>
-
-            <div class="border-t border-slate-100 pt-3">
-              <Button
-                type="button"
-                variant="outline-secondary"
-                class="w-full"
-                :disabled="activeFilterCount === 0"
-                @click="resetFilter"
-              >
-                Clear Filter
+            <div class="flex gap-2 border-t border-slate-100 pt-3">
+              <Button type="button" variant="primary" class="inline-flex flex-1 items-center justify-center gap-2"
+                :disabled="loading" @click="() => { fetchData(1); close() }">
+                <Lucide icon="Search" class="h-4 w-4" />
+                Cari
+              </Button>
+              <Button type="button" variant="outline-secondary" class="flex-1" :disabled="activeFilterCount === 0"
+                @click="() => { resetFilter(); close() }">
+                Reset
               </Button>
             </div>
           </div>
         </template>
+
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nomor PO</Table.Th>
           <Table.Th>Tanggal PO</Table.Th>
           <Table.Th>Vendor</Table.Th>
           <Table.Th>Terminal</Table.Th>
-          <Table.Th>Status</Table.Th>
+          <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
 
         <template #body>
           <Table.Tr v-for="(po, idx) in vendorPos" :key="po.id_po" class="transition hover:bg-slate-50">
-            <Table.Td class="whitespace-nowrap text-slate-700">
-              {{ (currentPage - 1) * perPage + idx + 1 }}
+            <Table.Td class="text-center font-medium text-slate-700">
+              {{ (meta.current_page - 1) * perPage + idx + 1 }}.
             </Table.Td>
-
-            <Table.Td class="whitespace-nowrap">
-              <div class="font-semibold text-slate-700">{{ po.nomor_po }}</div>
+            <Table.Td>
+              <div class="font-semibold text-slate-800">{{ po.nomor_po }}</div>
             </Table.Td>
-
-            <Table.Td class="whitespace-nowrap text-slate-700">
-              {{ formatDate(po.tanggal_inven) }}
-            </Table.Td>
-
-            <Table.Td class="whitespace-nowrap text-slate-700">
-              {{ po.vendor?.nama_vendor || "-" }}
-            </Table.Td>
-
-            <Table.Td class="whitespace-nowrap text-slate-700">
-              {{ po.terminal?.nama_terminal || "-" }}
-            </Table.Td>
-
-            <Table.Td class="whitespace-nowrap">
+            <Table.Td class="whitespace-nowrap text-slate-700">{{ formatDate(po.tanggal_inven) }}</Table.Td>
+            <Table.Td class="text-slate-700">{{ po.vendor?.nama_vendor || '-' }}</Table.Td>
+            <Table.Td class="text-slate-700">{{ po.terminal?.nama_terminal || '-' }}</Table.Td>
+            <Table.Td class="text-center">
               <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
                 :class="statusBadgeClass(po.disposisi_po)">
                 {{ statusLabel(po.disposisi_po) }}
               </span>
             </Table.Td>
-
-            <Table.Td class="whitespace-nowrap text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <RouterLink :to="{ name: 'vendor-pos-detail', params: { id: po.id_po } }" title="Detail">
-                  <Button variant="soft-dark" rounded class="!h-8 !w-8 !p-0 !shadow-none">
-                    <Lucide icon="Eye" class="h-4 w-4" />
-                  </Button>
-                </RouterLink>
-
-                <RouterLink :to="{ name: 'vendor-pos-edit', params: { id: po.id_po } }" title="Edit">
-                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none">
-                    <Lucide icon="Edit" class="h-4 w-4" />
-                  </Button>
-                </RouterLink>
-
+            <Table.Td class="text-center">
+              <div class="inline-flex items-center justify-center gap-1">
+                <Button variant="soft-dark" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Detail"
+                  @click="goDetail(po.id_po)">
+                  <Lucide icon="Eye" class="h-4 w-4" />
+                </Button>
+                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
+                  @click="goEdit(po.id_po)">
+                  <Lucide icon="Edit" class="h-4 w-4" />
+                </Button>
                 <Button v-if="po.disposisi_po === 0" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Delete" @click="confirmDelete(po.nomor_po, po.id_po)">
+                  title="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
-
-                <Button v-if="po.disposisi_po === 4" variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Receive Item" @click="goReceiveItem(po.id_po)">
-                  <Lucide icon="Package" class="h-4 w-4" />
-                </Button>
-
                 <Button v-if="po.disposisi_po === 4" variant="soft-success" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Cetak" @click="preview(po.id_po)">
+                  title="Good Receipt" @click="goReceive(po.id_po)">
+                  <Lucide icon="PackageCheck" class="h-4 w-4" />
+                </Button>
+                <Button v-if="po.disposisi_po === 4" variant="soft-secondary" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Cetak" @click="previewPdf(po.id_po)">
                   <Lucide icon="Printer" class="h-4 w-4" />
                 </Button>
               </div>
@@ -340,16 +308,10 @@ async function doDelete() {
           </Table.Tr>
         </template>
       </DataList>
+
+      <DeleteRecordDialog :open="deleteModal" :title="`Hapus PO ${deleteTarget?.label ?? ''}?`" :loading="deleteLoading"
+        @close="deleteModal = false" @confirm="submitDelete" />
+
     </div>
   </div>
-
-  <DeleteRecordDialog
-    :open="deleteDialogOpen"
-    :title="`Hapus PO ${deleteTargetNomor}?`"
-    description="Data yang dihapus tidak dapat dikembalikan."
-    confirm-text="Ya, hapus"
-    :loading="deleting"
-    @close="deleteDialogOpen = false"
-    @confirm="doDelete"
-  />
 </template>

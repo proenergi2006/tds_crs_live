@@ -167,8 +167,8 @@ async function submitDelete() {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y flex flex-col gap-4">
+  <div class="page-content-wrapper">
+    <div class="intro-y flex flex-col gap-4">
       <PageHeader title="Master Terminal" description="Kelola data terminal">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">

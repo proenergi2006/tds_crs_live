@@ -78,8 +78,8 @@ function handleSubmit() {
 </script>
 
 <template>
-  <form class="grid grid-cols-12 gap-6 p-4" @submit.prevent="handleSubmit">
-    <div class="col-span-12 intro-x">
+  <div class="page-content-wrapper">
+    <form class="intro-x flex flex-col gap-4" @submit.prevent="handleSubmit">
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="text-2xl font-semibold text-slate-800">
@@ -233,7 +233,7 @@ function handleSubmit() {
         </div>
 
         <div class="xl:col-span-1">
-          <div class="sticky top-4 space-y-6">
+          <div class="sticky top-20 space-y-6">
             <slot name="sidebar" />
 
             <div v-if="showFooter && useSidebarFooter" class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
@@ -255,6 +255,6 @@ function handleSubmit() {
           </div>
         </div>
       </div>
-    </div>
-  </form>
+    </form>
+  </div>
 </template>

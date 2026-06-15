@@ -19,7 +19,7 @@ import {
   enter,
   leave,
 } from "./side-menu";
-import { watch, reactive, ref, computed, onMounted, provide } from "vue";
+import { watch, reactive, ref, computed, onMounted, onUnmounted, provide } from "vue";
 
 const route: Route = useRoute();
 const router = useRouter();
@@ -72,6 +72,17 @@ provide<ProvideForceActiveMenu>("forceActiveMenu", (pageName: string) => {
   setFormattedMenu(menu.value);
 });
 
+const contentScrollRef = ref<HTMLElement | null>(null);
+let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+const onContentScroll = () => {
+  contentScrollRef.value?.classList.add("is-scrolling");
+  if (scrollTimer) clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    contentScrollRef.value?.classList.remove("is-scrolling");
+  }, 1000);
+};
+
 const toggleSidebarCollapse = () => {
   userCollapsedPref.value = !userCollapsedPref.value;
   localStorage.setItem(
@@ -111,16 +122,23 @@ onMounted(() => {
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
   });
+
+  contentScrollRef.value?.addEventListener("scroll", onContentScroll);
+});
+
+onUnmounted(() => {
+  contentScrollRef.value?.removeEventListener("scroll", onContentScroll);
+  if (scrollTimer) clearTimeout(scrollTimer);
 });
 </script>
 
 <template>
   <div :class="[
-    'rubick px-5 py-2 sm:pl-2 sm:pr-2',
+    'rubick px-5 py-2 sm:pl-2 sm:pr-2 h-screen overflow-hidden',
     'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
   ]">
     <MobileMenu />
-    <div class="mt-[4.7rem] flex md:mt-0">
+    <div class="mt-[4.7rem] flex md:mt-0 h-full">
       <!-- BEGIN: Side Menu -->
       <nav :class="[
         'side-nav hidden w-[80px] pb-16 pr-5 md:block xl:w-[230px]',
@@ -295,9 +313,13 @@ onMounted(() => {
       <!-- END: Side Menu -->
       <!-- BEGIN: Content -->
       <div
-        class="md:max-w-auto min-h-[98vh] min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]">
-        <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
-        <RouterView />
+        class="md:max-w-auto min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 flex flex-col overflow-hidden">
+        <div ref="contentScrollRef" class="content-area-scroll flex-1 overflow-y-auto">
+          <div class="sticky top-0 z-[51]">
+            <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
+          </div>
+          <RouterView />
+        </div>
       </div>
       <!-- END: Content -->
     </div>

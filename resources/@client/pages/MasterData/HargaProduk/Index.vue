@@ -217,8 +217,8 @@ function rowNumber(row: any) {
 </script>
 
 <template>
-  <div class="grid grid-cols-12 gap-6 p-4">
-    <div class="col-span-12 intro-y flex flex-col gap-4">
+  <div class="page-content-wrapper">
+    <div class="intro-y flex flex-col gap-4">
       <PageHeader title="Master Harga Produk"
         description="Kelola data harga produk, filter berdasarkan cabang, produk, dan periode.">
         <template #action>

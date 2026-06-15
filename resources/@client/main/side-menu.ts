@@ -228,7 +228,18 @@ const menu: Array<Menu | "divider"> = [
       {
         icon: "Inbox",
         pageName: "vendor-pos-list",
+        activePageNames: [
+          "vendor-pos-create",
+          "vendor-pos-edit",
+          "vendor-pos-detail",
+          "vendor-pos-receive",
+        ],
         title: "PO Supplier",
+      },
+      {
+        icon: "FileCheck",
+        pageName: "good-receipt-list",
+        title: "Good Receipts",
       },
       {
         icon: "ClipboardList",
@@ -307,12 +318,12 @@ const menu: Array<Menu | "divider"> = [
         ],
       },
 
-        {
-          icon: "CreditCard",
-          pageName: "vendors-list",
-          activePageNames: ["vendors-create", "vendors-edit"],
-          title: "Vendor",
-        },
+      {
+        icon: "CreditCard",
+        pageName: "vendors-list",
+        activePageNames: ["vendors-create", "vendors-edit"],
+        title: "Vendor",
+      },
       {
         icon: "Terminal",
         pageName: "terminals-list",
@@ -343,12 +354,12 @@ const menu: Array<Menu | "divider"> = [
         pageName: "terminals-list",
         title: "Terminal",
       },
-        {
-          icon: "CreditCard",
-          pageName: "vendors-list",
-          activePageNames: ["vendors-create", "vendors-edit"],
-          title: "Vendor",
-        },
+      {
+        icon: "CreditCard",
+        pageName: "vendors-list",
+        activePageNames: ["vendors-create", "vendors-edit"],
+        title: "Vendor",
+      },
       {
         icon: "Archive",
         pageName: "products",

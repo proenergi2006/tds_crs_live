@@ -266,6 +266,20 @@ const routes = [
         meta: { roles: [5] },
       },
       {
+        path: "vendor-pos/:id/receive",
+        name: "vendor-pos-receive",
+        component: () => import("@/pages/Transactions/PoSupplier/Receive.vue"),
+        meta: { roles: [5] },
+      },
+
+      {
+        path: "good-receipt",
+        name: "good-receipt-list",
+        component: () => import("@/pages/Transactions/GoodReceipt/Index.vue"),
+        meta: { roles: [5] },
+      },
+
+      {
         path: "/po-verification",
         name: "po-verification-list",
         component: () => import("@/pages/PoVerificationList.vue"),
@@ -276,13 +290,6 @@ const routes = [
         name: "po-verification-detail",
         component: () => import("@/pages/PoVerificationDetail.vue"),
         props: true,
-      },
-
-      {
-        path: "/vendor-pos/:id/receive",
-        name: "receive-item-list",
-        component: () => import("@/pages/ReceiveItem.vue"),
-        meta: { roles: [5] },
       },
 
       {
@@ -705,7 +712,7 @@ const routes = [
       {
         path: "testing-page",
         name: "testing-page",
-        component: () => import("@/pages/Dropdown.vue"),
+        component: () => import("@/pages/LoadingIcon.vue"),
       },
       {
         path: "/testing-page",
