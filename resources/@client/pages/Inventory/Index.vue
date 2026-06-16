@@ -20,6 +20,7 @@ interface StockRow {
   receive_item_id?: number
   produk_id: number
   produk_label: string
+  no_gr: string
   nomor_po: string
   volume: number
   harga_tebus: number
@@ -280,11 +281,10 @@ function formatDateTime(value: string) {
       </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="filteredStocks.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true"
-        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
-        :active-filter-count="activeFilterCount" search-placeholder="Cari nomor PO atau produk..."
-        loading-text="Memuat data stok..." empty-description="Belum ada data stok untuk ditampilkan."
-        @page-change="goToPage">
+        :empty="filteredStocks.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
+        search-placeholder="Cari nomor PO atau produk..." loading-text="Memuat data stok..."
+        empty-description="Belum ada data stok untuk ditampilkan." @page-change="goToPage">
         <template #filters>
           <div class="space-y-4 p-1">
             <div>
@@ -302,8 +302,8 @@ function formatDateTime(value: string) {
             </div>
 
             <div class="border-t border-slate-100 pt-3">
-              <Button type="button" variant="outline-secondary" class="w-full"
-                :disabled="activeFilterCount === 0" @click="resetFilter">
+              <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
+                @click="resetFilter">
                 Clear Filter
               </Button>
             </div>
@@ -312,6 +312,7 @@ function formatDateTime(value: string) {
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Waktu Masuk</Table.Th>
+          <Table.Th>Nomor GR</Table.Th>
           <Table.Th>Nomor PO</Table.Th>
           <Table.Th>Produk</Table.Th>
           <Table.Th class="text-right">Volume</Table.Th>
@@ -325,6 +326,11 @@ function formatDateTime(value: string) {
             </Table.Td>
             <Table.Td class="whitespace-nowrap text-slate-600">
               {{ formatDateTime(row.created_at) }}
+            </Table.Td>
+            <Table.Td>
+              <span class="font-medium text-slate-800">
+                {{ row.no_gr || '-' }}
+              </span>
             </Table.Td>
             <Table.Td>
               <span class="font-medium text-slate-800">

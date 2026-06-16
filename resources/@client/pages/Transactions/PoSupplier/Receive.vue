@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
+import Progress from '@/components/Base/Progress'
 import Table from '@/components/Base/Table'
 import { FormInput, FormLabel } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 // Types
 interface DetailForm {
-  volume_bl: string
   volume_terima: string
 }
 
@@ -32,6 +34,9 @@ const loading = ref(true)
 const showModal = ref(false)
 const submitLoading = ref(false)
 const uploadProgress = ref(0)
+const cancelTargetId = ref<number | null>(null)
+const showCancelDialog = ref(false)
+const cancelLoading = ref(false)
 
 const form = reactive({
   received_at: '',
@@ -43,19 +48,37 @@ const form = reactive({
 // Computed
 const poProducts = computed<any[]>(() => Array.isArray(po.value.produks) ? po.value.produks : [])
 
-const latestReceive = computed(() => {
-  if (!receives.value.length) return null
-  return [...receives.value].sort((a: any, b: any) =>
-    new Date(b.received_at || b.created_at || 0).getTime() -
-    new Date(a.received_at || a.created_at || 0).getTime()
-  )[0]
+const totalTerimaMap = computed(() => {
+  const map: Record<number, number> = {}
+  receives.value.flatMap((r: any) => r.details ?? []).forEach((d: any) => {
+    map[d.po_produk_id] = (map[d.po_produk_id] ?? 0) + Number(d.volume_terima ?? 0)
+  })
+  return map
 })
 
-const canAddReceive = computed(() => {
-  const last = latestReceive.value
-  if (!last || !Array.isArray(last.details)) return true
-  return last.details.some((d: any) => Number(d.selisih ?? 0) !== 0)
+const volumeSisaMap = computed(() => {
+  const map: Record<number, number> = {}
+  poProducts.value.forEach((item: any) => {
+    map[item.id_po_produk] = Math.max(0, Number(item.volume_po) - (totalTerimaMap.value[item.id_po_produk] ?? 0))
+  })
+  return map
 })
+
+const persenTerimaMap = computed(() => {
+  const map: Record<number, number> = {}
+  poProducts.value.forEach((item: any) => {
+    const total = Number(item.volume_po)
+    const terima = totalTerimaMap.value[item.id_po_produk] ?? 0
+    map[item.id_po_produk] = total > 0
+      ? Math.min(100, Math.round((terima / total) * 100))
+      : 0
+  })
+  return map
+})
+
+const canAddReceive = computed(() =>
+  poProducts.value.some((item: any) => volumeSisaMap.value[item.id_po_produk] > 0)
+)
 
 // Lifecycle
 onMounted(fetchData)
@@ -72,7 +95,7 @@ async function fetchData() {
     receives.value = recData
 
     poData.produks.forEach((item: any) => {
-      form.details[item.id_po_produk] = { volume_bl: '', volume_terima: '' }
+      form.details[item.id_po_produk] = { volume_terima: '' }
     })
   } catch (e: any) {
     error('Gagal', e.response?.data?.message || 'Gagal memuat data')
@@ -87,14 +110,11 @@ function goBack() {
 }
 
 function openModal() {
-  form.received_at = new Date().toISOString().substr(0, 10)
+  form.received_at = new Date().toISOString().slice(0, 10)
   form.nama_pic = ''
   form.file = null
   uploadProgress.value = 0
-  Object.values(form.details).forEach(d => {
-    d.volume_bl = ''
-    d.volume_terima = ''
-  })
+  Object.values(form.details).forEach(d => { d.volume_terima = '' })
   showModal.value = true
 }
 
@@ -102,10 +122,10 @@ function closeModal() {
   showModal.value = false
 }
 
-function onNumberInput(idProduk: number, field: keyof DetailForm, e: Event) {
+function onNumberInput(idProduk: number, e: Event) {
   const raw = (e.target as HTMLInputElement).value.replace(/[^\d]/g, '')
   const num = parseInt(raw, 10)
-  form.details[idProduk][field] = isNaN(num) ? '' : num.toLocaleString('id-ID')
+  form.details[idProduk].volume_terima = isNaN(num) ? '' : num.toLocaleString('id-ID')
 }
 
 async function submitReceive() {
@@ -119,12 +139,9 @@ async function submitReceive() {
     po.value.produks.forEach((item: any) => {
       const key = item.id_po_produk
       const d = form.details[key]
-      const rawBl = d.volume_bl.replace(/\./g, '')
       const rawTerima = d.volume_terima.replace(/\./g, '')
-      const selisih = parseInt(rawTerima || '0', 10) - (item.volume_po || 0)
-      payload.append(`details[${key}][volume_bl]`, rawBl)
       payload.append(`details[${key}][volume_terima]`, rawTerima)
-      payload.append(`details[${key}][selisih]`, String(selisih))
+      payload.append(`details[${key}][volume_bl]`, rawTerima)
     })
 
     if (form.file) payload.append('file', form.file)
@@ -146,24 +163,28 @@ async function submitReceive() {
   }
 }
 
+function openCancelDialog(receiveId: number) {
+  cancelTargetId.value = receiveId
+  showCancelDialog.value = true
+}
+
+async function confirmCancel() {
+  if (!cancelTargetId.value) return
+  cancelLoading.value = true
+  try {
+    await axios.delete(`/api/good-receipts/${cancelTargetId.value}`)
+    success('Berhasil', 'GR berhasil dibatalkan')
+    showCancelDialog.value = false
+    cancelTargetId.value = null
+    fetchData()
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message || 'Gagal membatalkan GR')
+  } finally {
+    cancelLoading.value = false
+  }
+}
+
 // Helpers
-function computeSelisih(item: any): number {
-  const rawTerima = parseInt(
-    String(form.details[item.id_po_produk]?.volume_terima || '').replace(/\./g, ''),
-    10,
-  ) || 0
-  return rawTerima - (item.volume_po || 0)
-}
-
-function formatSignedSelisih(item: any): string {
-  return formatSigned(computeSelisih(item))
-}
-
-function formatSigned(value: number): string {
-  if (value === 0) return '0'
-  return `${value > 0 ? '+' : ''}${Math.abs(value).toLocaleString('id-ID')}`
-}
-
 function formatDate(d: string) {
   return d
     ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -300,23 +321,29 @@ function formatCurrency(v: number | string = 0) {
                           </div>
                           <div class="text-xs text-slate-500">PIC: {{ receive.nama_pic || '-' }}</div>
                         </div>
-                        <a v-if="receive.file_url" :href="receive.file_url" target="_blank"
-                          class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                          <Lucide icon="Download" class="h-3.5 w-3.5" />
-                          File
-                        </a>
+                        <div class="flex items-center gap-2">
+                          <a v-if="receive.file_url" :href="receive.file_url" target="_blank"
+                            class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                            <Lucide icon="Download" class="h-3.5 w-3.5" />
+                            File
+                          </a>
+                          <Button variant="soft-danger" class="!h-6 !px-2 !text-xs"
+                            :disabled="cancelLoading && cancelTargetId === receive.id"
+                            @click.stop="openCancelDialog(receive.id)">
+                            Batal
+                          </Button>
+                        </div>
                       </div>
 
                       <div class="mt-3 space-y-2">
                         <div v-for="detail in receive.details" :key="detail.id"
                           class="rounded-md bg-white px-3 py-2 text-xs">
                           <div class="font-medium text-slate-700">{{ detail.produk?.nama_produk || '-' }}</div>
-                          <div class="mt-1 grid grid-cols-3 gap-2 text-slate-500">
-                            <span>BL {{ formatNumber(detail.volume_bl) }}</span>
+                          <div class="mt-1 flex justify-between gap-2 text-slate-500">
                             <span>Terima {{ formatNumber(detail.volume_terima) }}</span>
-                            <span class="text-right font-semibold"
-                              :class="Number(detail.selisih || 0) === 0 ? 'text-emerald-600' : 'text-amber-600'">
-                              {{ formatSigned(Number(detail.selisih || 0)) }}
+                            <span class="font-semibold"
+                              :class="Number(detail.selisih) === 0 ? 'text-emerald-600' : Number(detail.selisih) > 0 ? 'text-amber-600' : 'text-red-600'">
+                              Sisa {{ formatNumber(detail.selisih) }}
                             </span>
                           </div>
                         </div>
@@ -354,8 +381,7 @@ function formatCurrency(v: number | string = 0) {
     @submit="submitReceive">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div>
-        <FormLabel for="received_at">Tanggal Terima</FormLabel>
-        <FormInput id="received_at" v-model="form.received_at" type="date" required />
+        <DateField v-model="form.received_at" label="Tanggal Terima" required />
       </div>
       <div>
         <FormLabel for="nama_pic">Nama PIC</FormLabel>
@@ -367,53 +393,48 @@ function formatCurrency(v: number | string = 0) {
       <div v-for="item in poProducts" :key="item.id_po_produk"
         class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
         <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="font-semibold text-slate-800">{{ item.produk?.nama_produk || '-' }}</p>
-            <p class="text-sm text-slate-500">Volume PO: {{ formatNumber(item.volume_po) }}</p>
-          </div>
+          <p class="font-semibold text-slate-800">{{ item.produk?.nama_produk || '-' }}</p>
           <div class="text-sm font-medium text-slate-600">Harga Tebus: {{ formatCurrency(item.harga_tebus) }}</div>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <FormLabel :for="`harga_tebus_${item.id_po_produk}`">Harga Tebus</FormLabel>
-            <FormInput :id="`harga_tebus_${item.id_po_produk}`" :value="formatNumber(item.harga_tebus)" readonly
-              class="bg-slate-100 text-right" />
+            <FormLabel>Volume PO: {{ formatNumber(item.volume_po) }}</FormLabel>
+            <Progress class="h-8 mt-1">
+              <Progress.Bar :style="{ width: persenTerimaMap[item.id_po_produk] + '%' }" role="progressbar"
+                :aria-valuenow="persenTerimaMap[item.id_po_produk]" aria-valuemin="0" aria-valuemax="100">
+                {{ persenTerimaMap[item.id_po_produk] }}%
+              </Progress.Bar>
+            </Progress>
+            <p class="mt-1 text-xs text-slate-400">Sudah diterima: {{ formatNumber(totalTerimaMap[item.id_po_produk] ??
+              0) }} dari {{ formatNumber(item.volume_po) }}</p>
           </div>
-          <div>
-            <FormLabel :for="`volume_bl_${item.id_po_produk}`">Volume BL</FormLabel>
-            <FormInput :id="`volume_bl_${item.id_po_produk}`" v-model="form.details[item.id_po_produk].volume_bl"
-              type="text" inputmode="numeric" class="text-right" placeholder="0" required
-              @input="onNumberInput(item.id_po_produk, 'volume_bl', $event)" />
-          </div>
+
           <div>
             <FormLabel :for="`volume_terima_${item.id_po_produk}`">Volume Terima</FormLabel>
             <FormInput :id="`volume_terima_${item.id_po_produk}`"
               v-model="form.details[item.id_po_produk].volume_terima" type="text" inputmode="numeric" class="text-right"
-              placeholder="0" required @input="onNumberInput(item.id_po_produk, 'volume_terima', $event)" />
-          </div>
-          <div>
-            <FormLabel :for="`selisih_${item.id_po_produk}`">Selisih</FormLabel>
-            <FormInput :id="`selisih_${item.id_po_produk}`" :value="formatSignedSelisih(item)" readonly
-              class="bg-slate-100 text-right font-semibold" />
+              placeholder="0" required @input="onNumberInput(item.id_po_produk, $event)" />
+            <p class="mt-1 text-xs text-slate-400">Sisa dapat diterima: {{
+              formatNumber(volumeSisaMap[item.id_po_produk])
+              }}</p>
           </div>
         </div>
+
       </div>
     </div>
 
     <div class="mt-5">
-      <FileUploadField
-        v-model="form.file"
-        label="Upload File"
-        hint="Format file: PDF, JPG, atau PNG. Maks 5MB."
-        accept=".pdf,.jpg,.png"
-        choose-text="Pilih File"
-        :max-size-mb="5"
-      />
+      <FileUploadField v-model="form.file" label="Upload File" hint="Format file: PDF, JPG, atau PNG. Maks 5MB."
+        accept=".pdf,.jpg,.png" choose-text="Pilih File" :max-size-mb="5" />
     </div>
 
     <div v-if="uploadProgress > 0" class="mt-4 overflow-hidden rounded-full bg-slate-200">
       <div class="h-2 bg-primary transition-[width] duration-300" :style="{ width: uploadProgress + '%' }" />
     </div>
   </FormModal>
+
+  <DeleteRecordDialog :open="showCancelDialog" title="Batalkan GR ini?"
+    description="Stok yang masuk dari penerimaan ini akan dibatalkan." :loading="cancelLoading"
+    @close="showCancelDialog = false; cancelTargetId = null" @confirm="confirmCancel" />
 </template>

@@ -130,8 +130,12 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::get('po-verification', [PoVerificationController::class, 'index']);
   Route::post('po-verification/{id}', [PoVerificationController::class, 'verify']);
 
-  // Receive Item
-  Route::get('vendor-pos/{poId}/receives',  [ReceiveItemController::class, 'index'])->whereNumber('poId');
+  // Receive Item — global list
+  Route::get('good-receipts/pending', [ReceiveItemController::class, 'pendingGr']);
+  Route::get('good-receipts', [ReceiveItemController::class, 'index']);
+  Route::delete('good-receipts/{id}', [ReceiveItemController::class, 'destroy'])->whereNumber('id');
+  // Receive Item — per PO
+  Route::get('vendor-pos/{poId}/receives',  [ReceiveItemController::class, 'indexByPo'])->whereNumber('poId');
   Route::post('vendor-pos/{poId}/receives', [ReceiveItemController::class, 'store'])->whereNumber('poId');
 
   // Stock, Penawaran, dsb.

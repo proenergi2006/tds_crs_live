@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ReceiveItem extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'receive_items';
 
     protected $fillable = [
@@ -16,19 +21,23 @@ class ReceiveItem extends Model
         'file_path',
     ];
 
-    /**
-     * Relasi “one‐to‐many” ke table receive_item_produks.
-     */
+    protected $appends = ['no_gr'];
+
+    public function vendorPo(): BelongsTo
+    {
+        return $this->belongsTo(VendorPo::class, 'po_id', 'id_po');
+    }
+
     public function details(): HasMany
     {
         return $this->hasMany(ReceiveItemProduk::class, 'receive_item_id', 'id');
     }
 
-    /**
-     * Jika ingin memanggil PO-header (opsional)
-     */
-    public function po()
+    public function getNoGrAttribute(): string
     {
-        return $this->belongsTo(VendorPo::class, 'po_id', 'id_po');
+        $year = $this->received_at
+            ? Carbon::parse($this->received_at)->year
+            : now()->year;
+        return 'GR-' . $year . '-' . str_pad($this->id, 3, '0', STR_PAD_LEFT);
     }
 }

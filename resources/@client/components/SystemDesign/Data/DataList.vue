@@ -70,24 +70,13 @@ const endRecord = computed(() => {
 </script>
 
 <template>
-  <div class="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
+  <div class="overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm">
     <div v-if="showToolbar" class="rounded-t-xl border-b border-slate-200 bg-white p-4">
-      <DataListToolbar
-        :search="search"
-        :per-page="perPage"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :search-placeholder="searchPlaceholder"
-        :search-label="searchLabel"
-        :per-page-label="perPageLabel"
-        :pagination-label="paginationLabel"
-        :active-filter-count="activeFilterCount"
-        :show-filters="$slots.filters ? true : false"
-        embedded
-        @update:search="$emit('update:search', $event)"
-        @update:per-page="$emit('update:perPage', $event)"
-        @page-change="$emit('page-change', $event)"
-      >
+      <DataListToolbar :search="search" :per-page="perPage" :current-page="currentPage" :total-pages="totalPages"
+        :search-placeholder="searchPlaceholder" :search-label="searchLabel" :per-page-label="perPageLabel"
+        :pagination-label="paginationLabel" :active-filter-count="activeFilterCount"
+        :show-filters="$slots.filters ? true : false" embedded @update:search="$emit('update:search', $event)"
+        @update:per-page="$emit('update:perPage', $event)" @page-change="$emit('page-change', $event)">
         <template #filters="{ close }">
           <slot name="filters" :close="close" />
         </template>
