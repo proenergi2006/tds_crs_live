@@ -86,7 +86,7 @@ const secondary = [
   "[&:hover:not(:disabled)]:dark:border-darkmode-300/80 [&:hover:not(:disabled)]:dark:bg-darkmode-300/80", // On hover and not disabled in dark mode
 ];
 const success = [
-  "bg-success border-success text-slate-900", // Default
+  "bg-success border-success text-white", // Default
   "dark:border-success", // Dark mode
 ];
 const warning = [

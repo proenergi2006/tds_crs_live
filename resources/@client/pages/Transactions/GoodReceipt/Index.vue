@@ -163,110 +163,112 @@ function formatSigned(v: number) {
         </template> -->
       </PageHeader>
 
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_400px]">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <!-- Kolom kiri: konten utama -->
-        <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading" :empty="rows.length === 0"
-          :colspan="9" :show-footer="true" :show-toolbar="true" :total="totalRows" :current-page="currentPage"
-          :total-pages="totalPages" :active-filter-count="activeFilterCount" search-placeholder="Cari no GR atau PO..."
-          loading-text="Memuat data GR..." empty-description="Belum ada data penerimaan barang."
-          @page-change="goToPage">
-          <template #filters>
-            <div class="space-y-4 p-1">
-              <div>
-                <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal Dari</div>
-                <DateField v-model="filterDateFrom" placeholder="Pilih tanggal awal" />
+        <div class="col-span-8">
+          <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+            :empty="rows.length === 0" :colspan="9" :show-footer="true" :show-toolbar="true" :total="totalRows"
+            :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
+            search-placeholder="Cari no GR atau PO..." loading-text="Memuat data GR..."
+            empty-description="Belum ada data penerimaan barang." @page-change="goToPage">
+            <template #filters>
+              <div class="space-y-4 p-1">
+                <div>
+                  <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal Dari</div>
+                  <DateField v-model="filterDateFrom" placeholder="Pilih tanggal awal" />
+                </div>
+
+                <div>
+                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Tanggal Sampai</div>
+                  <DateField v-model="filterDateTo" placeholder="Pilih tanggal akhir" />
+                </div>
+
+                <div>
+                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Terminal</div>
+                  <FormSelect v-model="filterTerminal">
+                    <option value="">Semua Terminal</option>
+                    <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
+                      {{ terminal.nama_terminal }}
+                    </option>
+                  </FormSelect>
+                </div>
+
+                <div>
+                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Vendor</div>
+                  <FormSelect v-model="filterVendor">
+                    <option value="">Semua Vendor</option>
+                    <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
+                      {{ vendor.nama_vendor }}
+                    </option>
+                  </FormSelect>
+                </div>
+
+                <div>
+                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Status</div>
+                  <FormSelect v-model="filterStatus">
+                    <option value="">Semua Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="selesai">Selesai</option>
+                  </FormSelect>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                  <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
+                    @click="resetFilter">
+                    Clear Filter
+                  </Button>
+                </div>
               </div>
+            </template>
 
-              <div>
-                <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Tanggal Sampai</div>
-                <DateField v-model="filterDateTo" placeholder="Pilih tanggal akhir" />
-              </div>
+            <template #head>
+              <Table.Th class="w-32">No GR</Table.Th>
+              <Table.Th class="w-40">No PO</Table.Th>
+              <Table.Th>Vendor</Table.Th>
+              <Table.Th class="text-right">Qty Dok</Table.Th>
+              <Table.Th class="text-right">Qty Aktual</Table.Th>
+              <Table.Th class="text-right">Selisih</Table.Th>
+              <Table.Th>Terminal</Table.Th>
+              <Table.Th class="w-32">Tgl Terima</Table.Th>
+            </template>
 
-              <div>
-                <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Terminal</div>
-                <FormSelect v-model="filterTerminal">
-                  <option value="">Semua Terminal</option>
-                  <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
-                    {{ terminal.nama_terminal }}
-                  </option>
-                </FormSelect>
-              </div>
-
-              <div>
-                <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Vendor</div>
-                <FormSelect v-model="filterVendor">
-                  <option value="">Semua Vendor</option>
-                  <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
-                    {{ vendor.nama_vendor }}
-                  </option>
-                </FormSelect>
-              </div>
-
-              <div>
-                <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Status</div>
-                <FormSelect v-model="filterStatus">
-                  <option value="">Semua Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="selesai">Selesai</option>
-                </FormSelect>
-              </div>
-
-              <div class="border-t border-slate-100 pt-3">
-                <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
-                  @click="resetFilter">
-                  Clear Filter
-                </Button>
-              </div>
-            </div>
-          </template>
-
-          <template #head>
-            <Table.Th class="w-32">No GR</Table.Th>
-            <Table.Th class="w-40">No PO</Table.Th>
-            <Table.Th>Vendor</Table.Th>
-            <Table.Th class="text-right">Qty Dok</Table.Th>
-            <Table.Th class="text-right">Qty Aktual</Table.Th>
-            <Table.Th class="text-right">Selisih</Table.Th>
-            <Table.Th>Terminal</Table.Th>
-            <Table.Th class="w-32">Tgl Terima</Table.Th>
-          </template>
-
-          <template #body>
-            <Table.Tr v-for="row in rows" :key="row.id" class="transition hover:bg-slate-50 cursor-pointer"
-              @click="$router.push({ name: 'vendor-pos-receive', params: { id: row.id_po } })">
-              <Table.Td>
-                <span class="font-mono text-sm font-medium text-primary">{{ row.no_gr }}</span>
-              </Table.Td>
-              <Table.Td>
-                <span class="text-sm text-slate-600">{{ row.no_po }}</span>
-              </Table.Td>
-              <Table.Td>
-                <span class="text-sm text-slate-700">{{ row.vendor }}</span>
-              </Table.Td>
-              <Table.Td class="text-right text-sm text-slate-600">
-                {{ formatNumber(row.qty_dok) }}
-              </Table.Td>
-              <Table.Td class="text-right text-sm font-medium text-slate-800">
-                {{ row.qty_aktual != null ? formatNumber(row.qty_aktual) : '—' }}
-              </Table.Td>
-              <Table.Td class="text-right text-sm font-semibold" :class="row.selisih == null ? 'text-slate-400'
-                : row.selisih === 0 ? 'text-emerald-600'
-                  : row.selisih > 0 ? 'text-blue-600'
-                    : 'text-red-500'">
-                {{ row.selisih != null ? formatSigned(row.selisih) : '—' }}
-              </Table.Td>
-              <Table.Td>
-                <span class="text-sm text-slate-500">{{ row.terminal }}</span>
-              </Table.Td>
-              <Table.Td>
-                <span class="text-sm text-slate-600">{{ formatDate(row.tgl_terima) }}</span>
-              </Table.Td>
-            </Table.Tr>
-          </template>
-        </DataList>
+            <template #body>
+              <Table.Tr v-for="row in rows" :key="row.id" class="transition hover:bg-slate-50 cursor-pointer"
+                @click="$router.push({ name: 'vendor-pos-receive', params: { id: row.id_po } })">
+                <Table.Td>
+                  <span class="font-mono text-sm font-medium text-primary">{{ row.no_gr }}</span>
+                </Table.Td>
+                <Table.Td>
+                  <span class="text-sm text-slate-600">{{ row.no_po }}</span>
+                </Table.Td>
+                <Table.Td>
+                  <span class="text-sm text-slate-700">{{ row.vendor }}</span>
+                </Table.Td>
+                <Table.Td class="text-right text-sm text-slate-600">
+                  {{ formatNumber(row.qty_dok) }}
+                </Table.Td>
+                <Table.Td class="text-right text-sm font-medium text-slate-800">
+                  {{ row.qty_aktual != null ? formatNumber(row.qty_aktual) : '—' }}
+                </Table.Td>
+                <Table.Td class="text-right text-sm font-semibold" :class="row.selisih == null ? 'text-slate-400'
+                  : row.selisih === 0 ? 'text-emerald-600'
+                    : row.selisih > 0 ? 'text-blue-600'
+                      : 'text-red-500'">
+                  {{ row.selisih != null ? formatSigned(row.selisih) : '—' }}
+                </Table.Td>
+                <Table.Td>
+                  <span class="text-sm text-slate-500">{{ row.terminal }}</span>
+                </Table.Td>
+                <Table.Td>
+                  <span class="text-sm text-slate-600">{{ formatDate(row.tgl_terima) }}</span>
+                </Table.Td>
+              </Table.Tr>
+            </template>
+          </DataList>
+        </div>
 
         <!-- Kolom kanan: sidebar pending -->
-        <div class="xl:pt-0">
+        <div class="col-span-4 xl:pt-0">
           <div class="sticky top-4">
             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
 

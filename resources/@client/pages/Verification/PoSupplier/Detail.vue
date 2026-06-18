@@ -21,11 +21,12 @@ const vendorPoApi = createResourceApi('/vendor-pos')
 const id = Number(route.params.id)
 const po = ref<any>({})
 const loading = ref(true)
-const approving = ref(false)
+const approveLoading = ref(false)
+const rejectLoading = ref(false)
 const approveDialogOpen = ref(false)
+const rejectDialogOpen = ref(false)
 
 const produks = computed<any[]>(() => po.value.produks || [])
-const isApprovalDisabled = computed(() => po.value.disposisi_po !== 0)
 
 const approvalSteps = computed<StepItem[]>(() => {
   const d: number = po.value.disposisi_po ?? -1
@@ -70,18 +71,29 @@ async function fetchPo() {
   }
 }
 
-async function approve() {
-  approving.value = true
+async function handleApprove() {
+  approveLoading.value = true
   try {
-    const { data } = await axios.patch(`/api/vendor-pos/${id}/approve`)
-    po.value = data
-    success('Berhasil', 'PO berhasil dikirim untuk persetujuan')
-    approveDialogOpen.value = false
-    router.push({ name: 'vendor-pos-list' })
+    await axios.post(`/api/po-verification/${id}`, { action: 'approve' })
+    success('Berhasil', 'PO berhasil disetujui')
+    router.push({ name: 'po-verification-list' })
   } catch (e: any) {
-    error('Gagal', e.response?.data?.message || 'Gagal mengirim persetujuan')
+    error('Gagal', e.response?.data?.message || 'Gagal menyetujui PO')
   } finally {
-    approving.value = false
+    approveLoading.value = false
+  }
+}
+
+async function handleReject() {
+  rejectLoading.value = true
+  try {
+    await axios.post(`/api/po-verification/${id}`, { action: 'reject' })
+    success('Berhasil', 'PO berhasil ditolak')
+    router.push({ name: 'po-verification-list' })
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message || 'Gagal menolak PO')
+  } finally {
+    rejectLoading.value = false
   }
 }
 
@@ -97,11 +109,7 @@ async function preview() {
 }
 
 function goBack() {
-  router.push({ name: 'vendor-pos-list' })
-}
-
-function goToEdit() {
-  router.push({ name: 'vendor-pos-edit', params: { id } });
+  router.push({ name: 'po-verification-list' })
 }
 
 function formatDate(d: string) {
@@ -114,6 +122,7 @@ function formatNumber(v: number | string = 0) {
   const n = typeof v === 'string' ? parseFloat(v) : v
   return !isNaN(n) ? n.toLocaleString('id-ID') : '-'
 }
+
 </script>
 
 <template>
@@ -123,24 +132,18 @@ function formatNumber(v: number | string = 0) {
       <!-- HEADER -->
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="text-2xl font-semibold text-slate-800">Detail PO Supplier</h2>
+          <h2 class="text-2xl font-semibold text-slate-800">Detail Verifikasi PO</h2>
           <p class="mt-1 text-sm text-slate-500">
             Informasi lengkap Purchase Order <code>{{ po.nomor_po }}</code>
           </p>
         </div>
-        <div>
-          <Button variant="outline-secondary" @click="goBack">
-            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
-            Kembali
-          </Button>
-          <Button v-if="po.disposisi_po === 0" class="ml-2" variant="soft-pending" @click="goToEdit">
-            <Lucide icon="Edit" class="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </div>
+        <Button variant="outline-secondary" @click="goBack">
+          <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+          Kembali
+        </Button>
       </div>
 
-      <!-- 2-COLUMN LAYOUT (mirip FormPage sidebar) -->
+      <!-- 2-COLUMN LAYOUT -->
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
         <!-- KIRI: Konten utama -->
@@ -248,14 +251,13 @@ function formatNumber(v: number | string = 0) {
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
           <div class="sticky top-20 space-y-4">
-            <!-- Status Approval -->
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5">
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
                 <p class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                  Pastikan seluruh data PO sudah benar sebelum dikirim untuk persetujuan.
+                  Tinjau seluruh data PO sebelum memberikan keputusan verifikasi.
                 </p>
 
                 <div class="flex flex-col gap-2">
@@ -264,15 +266,19 @@ function formatNumber(v: number | string = 0) {
                     <Lucide icon="Printer" class="h-4 w-4" />
                     Preview PDF
                   </Button>
-                  <Button :disabled="isApprovalDisabled" variant="primary"
-                    class="w-full inline-flex items-center justify-center gap-2" @click="approveDialogOpen = true">
-                    <Lucide icon="Send" class="h-4 w-4" />
-                    Kirim Persetujuan
+                  <Button variant="danger" class="inline-flex items-center justify-center gap-2 w-full"
+                    @click="rejectDialogOpen = true">
+                    <Lucide icon="X" class="h-4 w-4" />
+                    Tolak
+                  </Button>
+                  <Button variant="success" class="inline-flex items-center justify-center gap-2 w-full"
+                    @click="approveDialogOpen = true">
+                    <Lucide icon="Check" class="h-4 w-4" />
+                    Setujui
                   </Button>
                 </div>
               </div>
             </CardSection>
-
           </div>
         </div>
 
@@ -280,8 +286,13 @@ function formatNumber(v: number | string = 0) {
     </div>
   </div>
 
-  <ConfirmDialog :open="approveDialogOpen" title="Kirim untuk Persetujuan?"
-    description="PO akan diteruskan ke proses approval. Pastikan seluruh data sudah benar." confirm-text="Ya, kirim"
-    icon="Send" icon-class="bg-primary/10 text-primary" variant="primary" :loading="approving"
-    @close="approveDialogOpen = false" @confirm="approve" />
+  <ConfirmDialog :open="approveDialogOpen" title="Setujui PO?"
+    description="PO akan disetujui dan diteruskan ke tahap berikutnya. Pastikan seluruh data sudah benar."
+    confirm-text="Ya, Setujui" icon="CheckCircle" icon-class="bg-success/10 text-success" variant="success"
+    :loading="approveLoading" @close="approveDialogOpen = false" @confirm="handleApprove" />
+
+  <ConfirmDialog :open="rejectDialogOpen" title="Tolak PO?"
+    description="PO akan ditolak dan dikembalikan ke status draft. Tindakan ini tidak dapat dibatalkan."
+    confirm-text="Ya, Tolak" icon="XCircle" icon-class="bg-danger/10 text-danger" variant="danger"
+    :loading="rejectLoading" @close="rejectDialogOpen = false" @confirm="handleReject" />
 </template>

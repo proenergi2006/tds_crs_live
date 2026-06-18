@@ -30,6 +30,8 @@ class VendorPo extends Model
         'lastupdate_by',
     ];
 
+    protected $appends = ['status_po'];
+
     public function vendor()
     {
         return $this->belongsTo(Vendor::class, 'id_vendor', 'id_vendor');
@@ -50,6 +52,28 @@ class VendorPo extends Model
     {
         // relasi ke header receive (ReceiveItem)
         return $this->hasMany(ReceiveItem::class, 'po_id', 'id_po');
+    }
+
+    // Helpers
+    public function getStatusPoAttribute(): array
+    {
+        $disposisi = (int) $this->disposisi_po;
+        $cfoResult = (int) ($this->cfo_result ?? -1);
+        $ceoResult = (int) ($this->ceo_result ?? -1);
+
+        if ($disposisi === 4 && $ceoResult === 1) {
+            return ['key' => 'approved', 'label' => 'Disetujui'];
+        }
+
+        if ($disposisi === 2 && $ceoResult !== 1) {
+            return ['key' => 'waiting_ceo', 'label' => 'Menunggu Verifikasi CEO'];
+        }
+
+        if ($disposisi === 0 && ($cfoResult === 2 || $ceoResult === 2)) {
+            return ['key' => 'rejected', 'label' => 'Ditolak'];
+        }
+
+        return ['key' => 'draft', 'label' => 'Draft'];
     }
 
     public function getTotalVolumePo(): float

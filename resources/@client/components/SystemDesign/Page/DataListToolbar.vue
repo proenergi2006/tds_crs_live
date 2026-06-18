@@ -81,7 +81,7 @@ const paginationLabelId = "page-toolbar-pagination";
 
           <div class="flex items-end justify-between gap-3 sm:justify-end">
             <div class="flex items-center">
-              <FormSelect :id="perPageSelectId" :model-value="perPage" class="w-28 !box" @update:model-value="
+              <FormSelect :id="perPageSelectId" :model-value="perPage" class="w-16 !box" @update:model-value="
                 $emit('update:perPage', Number($event))
                 " :aria-label="perPageLabel">
                 <option :value="5">5</option>
@@ -103,7 +103,7 @@ const paginationLabelId = "page-toolbar-pagination";
                   <Lucide icon="ChevronLeft" class="h-4 w-4" />
                 </button>
 
-                <div class="min-w-[72px] text-center text-sm text-slate-600">
+                <div class="min-w-[48px] text-center text-sm text-slate-600">
                   <span class="font-semibold text-slate-800">
                     {{ currentPage }}
                   </span>
