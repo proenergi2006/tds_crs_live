@@ -102,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::apiResource('satuans', SatuanController::class);
   Route::apiResource('ukurans', UkuranController::class);
   Route::apiResource('produks', ProdukController::class);
+  Route::get('/produk-hargas/periode', [ProdukHargaController::class, 'periode']);
   Route::apiResource('produk-hargas', ProdukHargaController::class);
   Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
 

@@ -51,8 +51,8 @@ export const ROLE_MENU_MAPPING: Record<number, string[]> = {
   // OM (Operations Manager)
   10: ["Verifikasi-om", "Review Data Customer OM"],
 
-  // Marketing Proenergi
-  12: ["Customer "],
+  // Marketing
+  12: ["Customer"],
 
   // Marketing Proenergi
   13: ["Customer "],

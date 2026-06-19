@@ -114,7 +114,7 @@ const routes = [
         name: "produk-hargas-create",
         component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
         meta: {
-          roles: [2, 5, 8],
+          roles: [5],
           breadcrumbTitle: "Tambah Harga Produk",
         },
       },
@@ -301,22 +301,22 @@ const routes = [
       {
         path: "/penawarans",
         name: "penawarans-list",
-        component: () => import("@/pages/PenawaranList.vue"),
+        component: () => import("@/pages/Penawaran/Index.vue"),
       },
       {
         path: "/penawarans-proenergi",
         name: "penawarans-list-proenergi",
-        component: () => import("@/pages/PenawaranListProenergi.vue"),
+        component: () => import("@/pages/Penawaran/IndexProenergi.vue"),
       },
       {
         path: "/penawarans/create",
         name: "penawarans-create",
-        component: () => import("@/pages/PenawaranForm.vue"),
+        component: () => import("@/pages/Penawaran/Form.vue"),
       },
       {
         path: "/penawarans-proenergi/create",
         name: "penawarans-create-proenergi",
-        component: () => import("@/pages/PenawaranFormProenergi.vue"),
+        component: () => import("@/pages/Penawaran/FormProenergi.vue"),
       },
 
       {
@@ -328,13 +328,13 @@ const routes = [
       {
         path: "/penawarans/:id/edit",
         name: "penawarans-edit",
-        component: () => import("@/pages/PenawaranForm.vue"),
+        component: () => import("@/pages/Penawaran/Form.vue"),
       },
 
       {
         path: "/penawarans-proenergi/:id/edit",
         name: "penawarans-edit-proenergi",
-        component: () => import("@/pages/PenawaranFormProenergi.vue"),
+        component: () => import("@/pages/Penawaran/FormProenergi.vue"),
       },
       {
         path: "/penawarans/:id",

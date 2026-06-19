@@ -153,6 +153,12 @@ const rules = computed(() => ({
           (value: number) => isReadonly('harga_cogs') || toIntMoney(value) > 0,
         ),
       },
+      harga_margin: {
+        required: helpers.withMessage(
+          'Margin wajib diisi',
+          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+        ),
+      },
       harga_price_list_pe: {
         required: helpers.withMessage(
           'Price List PE wajib diisi',
@@ -226,10 +232,11 @@ async function fetchDropdowns() {
 async function fetchHarga() {
   try {
     const { data } = await hargaProdukApi.getById(hargaId.value)
+    const item = data.data ?? data
 
-    period.periode_awal = data.periode_awal || ''
-    period.periode_akhir = data.periode_akhir || ''
-    rows.value = [rowFromData(data)]
+    period.periode_awal = item.periode_awal || ''
+    period.periode_akhir = item.periode_akhir || ''
+    rows.value = [rowFromData(item)]
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data harga')
     router.push({ name: 'produk-hargas' })
@@ -286,7 +293,7 @@ function isReadonly(field: MoneyField) {
   if (isRole5.value && field !== 'harga_cogs') return true
   if (isRole8.value && field !== 'harga_bm') return true
   if (isRole10.value && field !== 'harga_om') return true
-  if (isRole2.value && field === 'harga_cogs') return true
+  if (isRole2.value && (field === 'harga_cogs' || field === 'harga_price_list')) return true
 
   return false
 }
@@ -310,13 +317,15 @@ function updateMoney(row: PriceRow, field: MoneyField, value: number) {
 
   row[field] = toIntMoney(value)
 
-  if (field === 'harga_cogs' || field === 'harga_price_list') {
-    updateMargin(row)
+  if (field === 'harga_cogs' || field === 'harga_margin') {
+    recalculatePriceList(row)
   }
 }
 
-function updateMargin(row: PriceRow) {
-  row.harga_margin = Math.max(toIntMoney(row.harga_price_list) - toIntMoney(row.harga_cogs), 0)
+function recalculatePriceList(row: PriceRow) {
+  const total = toIntMoney(row.harga_cogs) + toIntMoney(row.harga_margin)
+  row.harga_price_list = total
+  row.harga_price_list_pe = total
 }
 
 function getPeriodFieldError(field: 'periode_awal' | 'periode_akhir') {
@@ -391,12 +400,12 @@ async function submitForm() {
         : 'Harga produk berhasil diperbarui',
       mode.value === 'edit'
         ? {
-            action: {
-              label: 'Ke daftar',
-              variant: 'primary',
-              onClick: () => router.push({ name: 'produk-hargas' }),
-            },
-          }
+          action: {
+            label: 'Ke daftar',
+            variant: 'primary',
+            onClick: () => router.push({ name: 'produk-hargas' }),
+          },
+        }
         : undefined,
     )
 
@@ -432,7 +441,7 @@ function cancel() {
       <div class="grid grid-cols-12">
         <div class="col-span-4">
           <DateRangeInline v-model="periodRange" label="Periode Harga" required :error="periodRangeError"
-            :auto-default="false" />
+            :auto-default="false" :disabled="!isRole5" />
         </div>
       </div>
     </template>
@@ -479,6 +488,7 @@ function cancel() {
               <th v-if="showMarginColumn"
                 class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Margin
+                <RequiredAsterisk v-if="!isReadonly('harga_margin')" />
               </th>
               <th v-if="showPriceListColumn"
                 class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -506,7 +516,7 @@ function cancel() {
 
               <td class="px-4 py-3 align-top">
                 <FormSelect :id="`cabang-${index}`" v-model="row.id_cabang" class="min-w-[180px]"
-                  :class="getRowFieldError(index, 'id_cabang') ? 'border-rose-500' : ''">
+                  :class="getRowFieldError(index, 'id_cabang') ? 'border-rose-500' : ''" :disabled="!isRole5">
                   <option disabled value="">-- Pilih Cabang --</option>
                   <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="cabang.id_cabang">
                     {{ cabang.nama_cabang }}
@@ -519,7 +529,7 @@ function cancel() {
 
               <td class="px-4 py-3 align-top">
                 <FormSelect :id="`produk-${index}`" v-model="row.id_produk" class="min-w-[280px]"
-                  :class="getRowFieldError(index, 'id_produk') ? 'border-rose-500' : ''">
+                  :class="getRowFieldError(index, 'id_produk') ? 'border-rose-500' : ''" :disabled="!isRole5">
                   <option disabled value="">-- Pilih Produk --</option>
                   <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
                     {{ produk.nama_produk }} ({{ produk.ukuran?.nama_ukuran }} {{ produk.ukuran?.satuan?.nama_satuan }})
@@ -537,11 +547,21 @@ function cancel() {
               </td>
 
               <td v-if="showMarginColumn" class="px-4 py-3 align-top">
-                <CurrencyField :model-value="row.harga_margin" class="min-w-[150px]" readonly placeholder="0" />
+                <CurrencyField :model-value="row.harga_margin" class="min-w-[150px]" placeholder="0"
+                  :readonly="isReadonly('harga_margin')" :error="getRowFieldError(index, 'harga_margin')"
+                  @update:model-value="updateMoney(row, 'harga_margin', $event)" />
               </td>
 
               <td v-if="showPriceListColumn" class="px-4 py-3 align-top">
                 <div class="min-w-[190px] space-y-2">
+                  <div v-if="visibleMoneyFields.includes('harga_price_list')"
+                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
+                    <span class="text-xs font-semibold uppercase text-slate-500">TDS</span>
+                    <div>
+                      <CurrencyField :model-value="row.harga_price_list" placeholder="0" readonly />
+                    </div>
+                  </div>
+
                   <div v-if="visibleMoneyFields.includes('harga_price_list_pe')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
                     <span class="text-xs font-semibold uppercase text-slate-500">
@@ -553,20 +573,6 @@ function cancel() {
                         :readonly="isReadonly('harga_price_list_pe')"
                         :error="getRowFieldError(index, 'harga_price_list_pe')"
                         @update:model-value="updateMoney(row, 'harga_price_list_pe', $event)" />
-                    </div>
-                  </div>
-
-                  <div v-if="visibleMoneyFields.includes('harga_price_list')"
-                    class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">
-                      TDS
-                      <RequiredAsterisk v-if="isRole2" />
-                    </span>
-                    <div>
-                      <CurrencyField :model-value="row.harga_price_list" placeholder="0"
-                        :readonly="isReadonly('harga_price_list')"
-                        :error="getRowFieldError(index, 'harga_price_list')"
-                        @update:model-value="updateMoney(row, 'harga_price_list', $event)" />
                     </div>
                   </div>
                 </div>
@@ -581,8 +587,8 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <CurrencyField :model-value="row.harga_bm" placeholder="0"
-                        :readonly="isReadonly('harga_bm')" :error="getRowFieldError(index, 'harga_bm')"
+                      <CurrencyField :model-value="row.harga_bm" placeholder="0" :readonly="isReadonly('harga_bm')"
+                        :error="getRowFieldError(index, 'harga_bm')"
                         @update:model-value="updateMoney(row, 'harga_bm', $event)" />
                     </div>
                   </div>
@@ -594,8 +600,8 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <CurrencyField :model-value="row.harga_om" placeholder="0"
-                        :readonly="isReadonly('harga_om')" :error="getRowFieldError(index, 'harga_om')"
+                      <CurrencyField :model-value="row.harga_om" placeholder="0" :readonly="isReadonly('harga_om')"
+                        :error="getRowFieldError(index, 'harga_om')"
                         @update:model-value="updateMoney(row, 'harga_om', $event)" />
                     </div>
                   </div>
@@ -607,8 +613,8 @@ function cancel() {
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
                     <div>
-                      <CurrencyField :model-value="row.harga_ceo" placeholder="0"
-                        :readonly="isReadonly('harga_ceo')" :error="getRowFieldError(index, 'harga_ceo')"
+                      <CurrencyField :model-value="row.harga_ceo" placeholder="0" :readonly="isReadonly('harga_ceo')"
+                        :error="getRowFieldError(index, 'harga_ceo')"
                         @update:model-value="updateMoney(row, 'harga_ceo', $event)" />
                     </div>
                   </div>
