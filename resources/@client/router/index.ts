@@ -195,27 +195,32 @@ const routes = [
       {
         path: "customers",
         name: "customers-list",
-        component: () => import("@/pages/CustomersList.vue"),
+        component: () => import("@/pages/Customer/Index.vue"),
       },
       {
         path: "customers-proenergi",
         name: "customers-list-proenergi",
-        component: () => import("@/pages/CustomersListProenergi.vue"),
+        component: () => import("@/pages/Customer/IndexProenergi.vue"),
       },
       {
         path: "customers/create",
         name: "customers-create",
-        component: () => import("@/pages/CustomersCreate.vue"),
+        component: () => import("@/pages/Customer/Form.vue"),
       },
       {
         path: "customers-proenergi/create",
         name: "customers-create-proenergi",
-        component: () => import("@/pages/CustomersCreateProenergi.vue"),
+        component: () => import("@/pages/Customer/Form.vue"),
       },
       {
         path: "customers/:id/edit",
         name: "customers-edit",
-        component: () => import("@/pages/CustomersEdit.vue"),
+        component: () => import("@/pages/Customer/Form.vue"),
+      },
+      {
+        path: "customers-proenergi/:id/edit",
+        name: "customers-edit-proenergi",
+        component: () => import("@/pages/Customer/Form.vue"),
       },
       {
         path: "vendors",

@@ -1,8 +1,7 @@
 <?php
-// app/Http/Controllers/LinkCustomerController.php
+namespace App\Http\Controllers\Customer;
 
-namespace App\Http\Controllers;
-
+use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\CustomerVerification;
 use Illuminate\Http\Request;
