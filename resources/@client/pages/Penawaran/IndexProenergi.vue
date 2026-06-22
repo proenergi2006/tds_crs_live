@@ -12,6 +12,7 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const { success, error } = useNotification()
@@ -138,12 +139,6 @@ function getDisposisiTanggal(pen: any): string {
   if (d === '5' && pen.bm_tanggal)  return `Rejected BM: ${formatDateTime(pen.bm_tanggal)}`
   if (d === '6' && pen.om_tanggal)  return `Rejected OM: ${formatDateTime(pen.om_tanggal)}`
   return ''
-}
-
-function formatDate(d: string) {
-  return d
-    ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
 }
 
 function formatDateTime(d: string) {

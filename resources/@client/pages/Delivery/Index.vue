@@ -11,6 +11,7 @@ import { FormInput, FormLabel } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { formatDate } from '@/utils/format'
 
 const { success, error } = useNotification()
 
@@ -73,16 +74,6 @@ function resetFilter() {
   from.value = ''
   to.value = ''
   fetchList(1)
-}
-
-function formatDate(value?: string) {
-  return value
-    ? new Date(value).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : '-'
 }
 
 function formatDateTime(value?: string) {

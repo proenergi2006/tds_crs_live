@@ -12,6 +12,7 @@ import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Steppe
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()
@@ -102,12 +103,6 @@ function goBack() {
 
 function goToEdit() {
   router.push({ name: 'vendor-pos-edit', params: { id } });
-}
-
-function formatDate(d: string) {
-  return d
-    ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
 }
 
 function formatNumber(v: number | string = 0) {

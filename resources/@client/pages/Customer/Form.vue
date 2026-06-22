@@ -276,14 +276,9 @@ function cancel() {
             Provinsi
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect
-            id="id_provinsi"
-            v-model="form.id_provinsi"
-            class="w-full"
-            :class="getFieldError('id_provinsi') ? 'border-rose-500' : ''"
-            @change="v$.id_provinsi.$touch()"
-          >
-            <option value="">-- Pilih Provinsi --</option>
+          <TomSelect id="id_provinsi" v-model="form.id_provinsi" class="w-full"
+            :class="getFieldError('id_provinsi') ? 'border-rose-500' : ''" @change="v$.id_provinsi.$touch()">
+            <option value="">Cari Provinsi</option>
             <option v-for="p in provinsis" :key="p.id_provinsi" :value="String(p.id_provinsi)">
               {{ p.nama_provinsi }}
             </option>
@@ -298,15 +293,10 @@ function cancel() {
             Kabupaten
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect
-            id="id_kabupaten"
-            v-model="form.id_kabupaten"
-            class="w-full"
-            :class="getFieldError('id_kabupaten') ? 'border-rose-500' : ''"
-            @change="v$.id_kabupaten.$touch()"
-          >
+          <TomSelect id="id_kabupaten" v-model="form.id_kabupaten" class="w-full"
+            :class="getFieldError('id_kabupaten') ? 'border-rose-500' : ''" @change="v$.id_kabupaten.$touch()">
             <option value="">
-              {{ form.id_provinsi ? '-- Pilih Kabupaten --' : '-- Pilih Provinsi dulu --' }}
+              {{ form.id_provinsi ? 'Cari Kabupaten' : '-- Pilih Provinsi dulu --' }}
             </option>
             <option v-for="k in kabupatens" :key="k.id_kabupaten" :value="String(k.id_kabupaten)">
               {{ k.nama_kabupaten }}

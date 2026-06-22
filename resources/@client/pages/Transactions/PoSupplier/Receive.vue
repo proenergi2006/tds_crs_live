@@ -15,6 +15,7 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { formatDate } from '@/utils/format'
 
 // Types
 interface DetailForm {
@@ -185,12 +186,6 @@ async function confirmCancel() {
 }
 
 // Helpers
-function formatDate(d: string) {
-  return d
-    ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
-}
-
 function formatNumber(v: number | string = 0) {
   const n = typeof v === 'string' ? parseFloat(v) : v
   return isNaN(n) ? '-' : n.toLocaleString('id-ID')

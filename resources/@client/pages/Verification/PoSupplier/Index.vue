@@ -12,6 +12,7 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const { error } = useNotification()
@@ -105,12 +106,6 @@ function resetFilter() {
 
 function goDetail(id: number) {
   router.push({ name: 'po-verification-detail', params: { id } })
-}
-
-function formatDate(value?: string) {
-  return value
-    ? new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
 }
 
 function statusLabel(statusPo?: { key: string; label: string }) {

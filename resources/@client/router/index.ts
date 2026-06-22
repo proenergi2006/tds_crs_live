@@ -344,12 +344,12 @@ const routes = [
       {
         path: "/penawarans/:id",
         name: "penawarans-detail",
-        component: () => import("@/pages/PenawaranDetail.vue"),
+        component: () => import("@/pages/Penawaran/Detail.vue"),
       },
       {
         path: "/penawarans-proenergi/:id",
         name: "penawarans-detail-proenergi",
-        component: () => import("@/pages/PenawaranDetailProenergi.vue"),
+        component: () => import("@/pages/Penawaran/DetailProenergi.vue"),
       },
 
       {

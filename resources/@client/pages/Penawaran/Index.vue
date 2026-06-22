@@ -12,6 +12,7 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const { success, error } = useNotification()
@@ -131,11 +132,6 @@ function disposisiClass(v: string | number) {
   }
 }
 
-function formatDate(d: string) {
-  return d
-    ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
-}
 </script>
 
 <template>

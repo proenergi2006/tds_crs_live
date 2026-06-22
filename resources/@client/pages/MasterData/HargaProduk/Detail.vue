@@ -7,6 +7,7 @@ import Lucide from '@/components/Base/Lucide'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { formatDate } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,15 +30,6 @@ async function fetchDetail() {
   } finally {
     loading.value = false
   }
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 function formatNumber(value: number | string | null = 0) {

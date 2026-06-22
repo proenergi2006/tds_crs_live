@@ -13,6 +13,7 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { formatDate } from '@/utils/format'
 
 // Composables
 const router = useRouter()
@@ -166,12 +167,6 @@ async function submitDelete() {
 }
 
 // Helpers
-function formatDate(value?: string) {
-  return value
-    ? new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '-'
-}
-
 function statusLabel(statusPo?: { key: string; label: string }) {
   return statusPo?.label ?? '-'
 }
