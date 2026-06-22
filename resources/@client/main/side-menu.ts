@@ -70,11 +70,21 @@ const menu: Array<Menu | "divider"> = [
         icon: "User",
         pageName: "customers-list",
         title: "customer",
+        activePageNames: [
+          "customers-create",
+          "customers-edit",
+          "customers-detail",
+        ],
       },
       {
         icon: "File",
         pageName: "penawarans-list",
         title: "penawaran",
+        activePageNames: [
+          "penawarans-create",
+          "penawarans-edit",
+          "penawarans-detail",
+        ],
       },
       // {
       //   icon: 'MapPin',

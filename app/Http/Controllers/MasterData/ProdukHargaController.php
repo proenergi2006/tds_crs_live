@@ -88,6 +88,42 @@ class ProdukHargaController extends Controller
         ]);
     }
 
+    // Mengembalikan map {id_produk: harga_price_list} untuk produk yang harganya ter-cover
+    // oleh rentang periode pengiriman. Jika satu produk punya >1 harga di rentang itu,
+    // ambil yang paling baru (periode_akhir paling lama).
+    public function byDate(Request $request)
+    {
+        $awal  = $request->query('periode_awal');
+        $akhir = $request->query('periode_akhir') ?: $awal;
+
+        if (!$awal) {
+            return response()->json([]);
+        }
+
+        // Overlap: harga berlaku selama rentang pengiriman bila
+        // periode_awal harga <= akhir pengiriman DAN periode_akhir harga >= awal pengiriman.
+        $q = DB::table('produk_hargas')
+            ->whereDate('periode_awal', '<=', $akhir)
+            ->whereDate('periode_akhir', '>=', $awal)
+            ->orderByDesc('periode_akhir');
+
+        if ($cabangId = $request->query('id_cabang')) {
+            $q->where('id_cabang', $cabangId);
+        }
+
+        $rows = $q->get(['id_produk', 'harga_price_list']);
+
+        $map = [];
+        foreach ($rows as $row) {
+            // Karena sudah di-order periode_akhir desc, baris pertama per produk = harga terbaru.
+            if (!array_key_exists($row->id_produk, $map)) {
+                $map[$row->id_produk] = $row->harga_price_list;
+            }
+        }
+
+        return response()->json($map);
+    }
+
     public function store(Request $request)
     {
         $request->merge(array_map(fn($v) => $v === '' ? null : $v, $request->all()));

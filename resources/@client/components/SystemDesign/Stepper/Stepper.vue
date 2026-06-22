@@ -133,7 +133,7 @@ function circleClass(status: StepItem['status'], wrapSize: string): string {
     'flex shrink-0 items-center justify-center rounded-full border-2',
     wrapSize,
     status === 'completed' && 'border-success bg-success text-white',
-    status === 'active' && 'border-success bg-white text-success ring-4 ring-success/15',
+    status === 'active' && 'relative border-success bg-white text-success',
     status === 'pending' && 'border-slate-200 bg-white text-slate-400',
   );
 }
@@ -179,9 +179,11 @@ function badgeClass(status: StepItem['status']): string {
       <!-- Icon -->
       <div class="shrink-0">
         <div :class="circleClass(step.status, sz.iconWrapV)">
+          <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
-          <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
+          <span v-else-if="step.status === 'active'"
+            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
           <span v-else :class="twMerge('font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
       </div>
@@ -189,7 +191,8 @@ function badgeClass(status: StepItem['status']): string {
       <!-- Content -->
       <div :class="['flex flex-1 items-start justify-between gap-3', sz.contentPt]">
         <div class="min-w-0">
-          <p v-if="showLabel" :class="twMerge('mb-0.5 font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+          <p v-if="showLabel"
+            :class="twMerge('mb-0.5 font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
             {{ getStepLabel(step, index) }}
           </p>
 
@@ -208,8 +211,7 @@ function badgeClass(status: StepItem['status']): string {
           </p>
         </div>
 
-        <span v-if="step.timestamp"
-          :class="twMerge('shrink-0 whitespace-nowrap pt-0.5 text-slate-400', sz.descText)">
+        <span v-if="step.timestamp" :class="twMerge('shrink-0 whitespace-nowrap pt-0.5 text-slate-400', sz.descText)">
           {{ step.timestamp }}
         </span>
       </div>
@@ -231,6 +233,7 @@ function badgeClass(status: StepItem['status']): string {
 
     <div v-for="(step, index) in steps" :key="index" class="relative z-10 flex flex-col items-center">
       <div :class="circleClass(step.status, sz.iconWrapH)">
+        <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
         <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
         <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
         <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
@@ -257,3 +260,29 @@ function badgeClass(status: StepItem['status']): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Ring parsial (busur ~70%) untuk step aktif — kesan "sedang berlangsung".
+   conic-gradient mewarnai busur, mask radial menyisakannya jadi cincin tipis. */
+.step-arc {
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: conic-gradient(currentColor 0deg 250deg, transparent 250deg 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  animation: step-arc-spin 1.4s linear infinite;
+}
+
+@keyframes step-arc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-arc {
+    animation: none;
+  }
+}
+</style>

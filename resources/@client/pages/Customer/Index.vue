@@ -112,22 +112,11 @@ function getStatusClass(status?: number) {
         </template>
       </PageHeader>
 
-      <DataList
-        v-model:search="searchQuery"
-        v-model:per-page="perPage"
-        :loading="loading"
-        :empty="customers.length === 0"
-        :colspan="7"
-        :show-footer="true"
-        :show-toolbar="true"
-        :total="totalRecords"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        search-placeholder="Cari nama perusahaan atau email..."
-        loading-text="Memuat data customer..."
-        empty-description="Belum ada customer yang ditambahkan."
-        @page-change="goToPage"
-      >
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="customers.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nama perusahaan atau email..."
+        loading-text="Memuat data customer..." empty-description="Belum ada customer yang ditambahkan."
+        @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nama Customer</Table.Th>
@@ -139,17 +128,13 @@ function getStatusClass(status?: number) {
         </template>
 
         <template #body>
-          <Table.Tr
-            v-for="(item, idx) in customers"
-            :key="item.id_customer"
-            class="transition hover:bg-slate-50"
-          >
+          <Table.Tr v-for="(item, idx) in customers" :key="item.id_customer" class="transition hover:bg-slate-50">
             <Table.Td class="text-center font-medium text-slate-700">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
               <div class="font-medium text-slate-800">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">{{ item.user?.name || '-' }}</div>
+              <div class="mt-0.5 text-xs text-slate-500">{{ item.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
               <div class="text-slate-700">{{ item.alamat_perusahaan || '-' }}</div>
@@ -162,39 +147,23 @@ function getStatusClass(status?: number) {
               <div class="mt-0.5 text-xs text-slate-500">Fax: {{ item.fax || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
-              <span
-                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                :class="getStatusClass(item.status_customer)"
-              >
+              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                :class="getStatusClass(item.status_customer)">
                 {{ getStatusLabel(item.status_customer) }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
-              <Lucide
-                v-if="item.has_lcr"
-                icon="CheckCircle"
-                class="mx-auto h-5 w-5 text-emerald-600"
-              />
+              <Lucide v-if="item.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-2">
-                <Button
-                  variant="soft-pending"
-                  rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Edit"
-                  @click="openEdit(item.id_customer)"
-                >
+                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
+                  @click="openEdit(item.id_customer)">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="soft-danger"
-                  rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Hapus"
-                  @click="confirmDelete(item.id_customer)"
-                >
+                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
+                  @click="confirmDelete(item.id_customer)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>
@@ -203,13 +172,8 @@ function getStatusClass(status?: number) {
         </template>
       </DataList>
 
-      <DeleteRecordDialog
-        :open="deleteModal"
-        title="Hapus Customer"
-        :loading="deleteLoading"
-        @close="deleteModal = false"
-        @confirm="submitDelete"
-      />
+      <DeleteRecordDialog :open="deleteModal" title="Hapus Customer" :loading="deleteLoading"
+        @close="deleteModal = false" @confirm="submitDelete" />
     </div>
   </div>
 </template>

@@ -27,6 +27,69 @@ const ajukanDialogOpen = ref(false)
 
 const items = computed<any[]>(() => penawaran.value.items || [])
 
+const dash = (v: any) => (v === null || v === undefined || v === '' ? '-' : v)
+
+/* Informasi umum dikelompokkan agar bisa dirender sebagai definition-list datar */
+const infoGroups = computed(() => {
+  const p = penawaran.value
+  return [
+    {
+      label: 'Identitas & Pengiriman',
+      fields: [
+        { label: 'Customer', value: p.customer?.nama_perusahaan },
+        { label: 'Cabang', value: p.cabang?.nama_cabang },
+        { label: 'Nomor Penawaran', value: p.nomor_penawaran },
+        { label: 'Type Pengiriman', value: p.type_pengiriman },
+        { label: 'Metode Pengiriman', value: p.metode },
+        {
+          label: 'Masa Berlaku',
+          value: p.masa_berlaku ? `${formatDate(p.masa_berlaku)} – ${formatDate(p.sampai_dengan)}` : null,
+        },
+        { label: 'Lokasi Pengiriman', value: p.lokasi_pengiriman },
+      ],
+    },
+    {
+      label: 'Kontak Tujuan',
+      fields: [
+        { label: 'Kepada', value: p.kepada },
+        { label: 'Nama (UP.)', value: p.nama },
+        { label: 'Jabatan', value: p.jabatan },
+        { label: 'Telepon', value: p.telepon },
+        { label: 'Alamat', value: p.alamat, span: 2 },
+      ],
+    },
+    {
+      label: 'Pembayaran & Ketentuan',
+      fields: [
+        { label: 'Tipe Pembayaran', value: p.tipe_pembayaran },
+        { label: 'Ketentuan Order', value: p.order_method },
+        {
+          label: 'Down Payment',
+          value: p.dp_persen ? `${p.dp_persen}%${p.dp_keterangan ? ' — ' + p.dp_keterangan : ''}` : null,
+        },
+        {
+          label: 'Repayment',
+          value: p.repayment_persen ? `${p.repayment_persen}% / ${p.repayment_hari || 0} hari` : null,
+        },
+        { label: 'Toleransi Penyusutan', value: `${p.toleransi_penyusutan ?? 0}%` },
+        { label: 'Abrasi', value: p.abrasi },
+      ],
+    },
+  ]
+})
+
+/* Komponen harga sebagai daftar datar */
+const hargaFields = computed(() => {
+  const p = penawaran.value
+  return [
+    { label: 'Harga Dasar', value: formatCurrency(p.harga_dasar) },
+    { label: 'Other Cost', value: formatCurrency(p.other_cost) },
+    { label: 'OAT per Volume', value: `${formatCurrency(p.oat)} / volume` },
+    { label: 'Diskon', value: `- ${formatCurrency(p.discount)}`, tone: 'red' },
+    { label: 'Refund', value: `- ${formatCurrency(p.refund)}`, tone: 'red' },
+  ]
+})
+
 const approvalSteps = computed<StepItem[]>(() => {
   const s = penawaran.value.status
   const step = s === 'approved_om' ? 4 : s === 'approved_bm' ? 3 : s === 'waiting_branch_manager' ? 2 : 1
@@ -148,40 +211,17 @@ function formatNumber(v: number | string = 0) {
 
           <!-- Informasi Umum -->
           <CardSection title="Informasi Umum" description="Data utama penawaran" icon="FileText">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Customer</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.customer?.nama_perusahaan || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Cabang</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.cabang?.nama_cabang || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Metode Pengiriman</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.metode || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Ketentuan Order</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.order_method || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Tipe Pembayaran</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.tipe_pembayaran || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Toleransi Penyusutan</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.toleransi_penyusutan ?? 0 }}%</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2 lg:col-span-3">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Masa Berlaku</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">
-                  {{ formatDate(penawaran.masa_berlaku) }} &ndash; {{ formatDate(penawaran.sampai_dengan) }}
-                </div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2 lg:col-span-3">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Lokasi Pengiriman</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ penawaran.lokasi_pengiriman || '-' }}</div>
+            <div class="space-y-6">
+              <div v-for="(group, gi) in infoGroups" :key="group.label"
+                :class="gi > 0 ? 'border-t border-slate-100 pt-6' : ''">
+                <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ group.label }}</h3>
+                <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div v-for="f in group.fields" :key="f.label"
+                    :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
+                    <dd class="mt-1 whitespace-pre-line text-sm font-semibold text-slate-800">{{ dash(f.value) }}</dd>
+                  </div>
+                </dl>
               </div>
             </div>
           </CardSection>
@@ -189,37 +229,24 @@ function formatNumber(v: number | string = 0) {
           <!-- Rincian Harga -->
           <CardSection title="Rincian Harga" description="Komponen harga penawaran" icon="Wallet"
             icon-class="bg-emerald-100 text-emerald-600">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Harga Dasar</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ formatCurrency(penawaran.harga_dasar) }}</div>
+            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div v-for="f in hargaFields" :key="f.label">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
+                <dd class="mt-1 text-sm font-semibold" :class="f.tone === 'red' ? 'text-red-600' : 'text-slate-800'">
+                  {{ f.value }}
+                </dd>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Other Cost</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ formatCurrency(penawaran.other_cost) }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">OAT per Volume</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ formatCurrency(penawaran.oat) }} / volume</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Diskon</div>
-                <div class="mt-1 text-sm font-semibold text-red-600">- {{ formatCurrency(penawaran.discount) }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Refund</div>
-                <div class="mt-1 text-sm font-semibold text-red-600">- {{ formatCurrency(penawaran.refund) }}</div>
-              </div>
-            </div>
+            </dl>
           </CardSection>
 
           <!-- Rincian Item -->
           <CardSection title="Rincian Item" description="Daftar produk pada penawaran" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
-            <DataList :loading="loading" :empty="items.length === 0" :colspan="2" :show-footer="false">
+            <DataList :loading="loading" :empty="items.length === 0" :colspan="3" :show-footer="false">
               <template #head>
                 <Table.Th>Produk</Table.Th>
-                <Table.Th class="text-right">Volume</Table.Th>
+                <Table.Th class="w-28 text-right">Persen</Table.Th>
+                <Table.Th class="w-40 text-right">Volume</Table.Th>
               </template>
               <template #body>
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item" class="transition hover:bg-slate-50">
@@ -231,7 +258,9 @@ function formatNumber(v: number | string = 0) {
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.volume_order) }}</Table.Td>
+                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.persen) }}%</Table.Td>
+                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.volume_order) }}
+                  </Table.Td>
                 </Table.Tr>
               </template>
             </DataList>
@@ -251,7 +280,8 @@ function formatNumber(v: number | string = 0) {
                 </div>
                 <div>
                   <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Syarat &amp; Ketentuan</dt>
-                  <dd class="mt-1 whitespace-pre-line font-medium text-slate-700">{{ penawaran.syarat_ketentuan || '-' }}</dd>
+                  <dd class="mt-1 whitespace-pre-line font-medium text-slate-700">{{ penawaran.syarat_ketentuan || '-'
+                    }}</dd>
                 </div>
               </dl>
             </CardSection>
@@ -260,7 +290,8 @@ function formatNumber(v: number | string = 0) {
               <div class="space-y-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan Verifikasi BM</div>
-                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_verifikasi || '-' }}</p>
+                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_verifikasi || '-' }}
+                  </p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan Verifikasi OM</div>
@@ -277,7 +308,7 @@ function formatNumber(v: number | string = 0) {
           <div class="sticky top-20 space-y-4">
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
-              <div class="space-y-5">
+              <div class="space-y-5 px-2">
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
                 <p v-if="penawaran.status === 'draft'"

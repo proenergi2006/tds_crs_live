@@ -30,6 +30,10 @@ class CustomerController extends Controller
             });
         }
 
+        if ($request->boolean('as_list')) {
+            return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
+        }
+
         $perPage = min((int) $request->query('per_page', 10), 100);
 
         return response()->json($q->paginate($perPage));
