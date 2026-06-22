@@ -334,3 +334,6 @@ Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('thro
 
 // Public PO detail (contoh)
 Route::get('public/vendor-pos/{id}', [VendorPoController::class, 'publicShow'])->whereNumber('id');
+
+// ====== Dev only: testing kirim email (nonaktif di production) ======
+Route::get('dev/test-email', [\App\Http\Controllers\Dev\MailTestController::class, 'send']);

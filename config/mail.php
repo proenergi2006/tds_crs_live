@@ -114,6 +114,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Dev Redirect Address
+    |--------------------------------------------------------------------------
+    | Timpa email tujuan dari MailBuilder
+    | Pakai ini kalo lagi development, matiin kalo dah di production
+    |
+    */
+
+    'dev_redirect' => env('MAIL_DEV_REDIRECT'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Markdown Mail Settings
     |--------------------------------------------------------------------------
     |

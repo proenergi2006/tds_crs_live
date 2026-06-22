@@ -19,6 +19,5 @@ yarn-error.log
 /.vscode
 resources/\@client//main.ts
 Dockerfile
-/app/Providers/AppServiceProvider.php
 Dockerfile
 docker-compose.yml
