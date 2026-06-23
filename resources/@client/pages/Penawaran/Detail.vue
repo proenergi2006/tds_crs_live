@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
@@ -190,8 +190,8 @@ function formatNumber(v: number | string = 0) {
       <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="text-2xl font-semibold text-slate-800">Detail Penawaran</h2>
-          <p class="mt-1 text-sm text-slate-500">
+          <h2 class="font-display">Detail Penawaran</h2>
+          <p class="font-lead mt-1">
             Informasi lengkap penawaran <code>{{ penawaran.nomor_penawaran || '-' }}</code>
           </p>
         </div>
@@ -245,11 +245,11 @@ function formatNumber(v: number | string = 0) {
             <div class="space-y-6">
               <div v-for="(group, gi) in infoGroups" :key="group.label"
                 :class="gi > 0 ? 'border-t border-slate-100 pt-6' : ''">
-                <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ group.label }}</h3>
+                <h3 class="mb-4 font-section">{{ group.label }}</h3>
                 <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
                   <div v-for="f in group.fields" :key="f.label" :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
-                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
-                    <dd class="mt-1 whitespace-pre-line text-sm font-semibold text-slate-800">{{ dash(f.value) }}</dd>
+                    <dt class="font-label">{{ f.label }}</dt>
+                    <dd class="font-strong mt-1 whitespace-pre-line">{{ dash(f.value) }}</dd>
                   </div>
                 </dl>
               </div>
@@ -261,8 +261,8 @@ function formatNumber(v: number | string = 0) {
             icon-class="bg-emerald-100 text-emerald-600">
             <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
               <div v-for="f in hargaFields" :key="f.label">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
-                <dd class="mt-1 text-sm font-semibold" :class="f.tone === 'red' ? 'text-red-600' : 'text-slate-800'">
+                <dt class="font-label">{{ f.label }}</dt>
+                <dd class="font-num mt-1" :class="f.tone === 'red' ? '!text-red-600' : '!text-slate-800'">
                   {{ f.value }}
                 </dd>
               </div>
@@ -281,15 +281,15 @@ function formatNumber(v: number | string = 0) {
               <template #body>
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item" class="transition hover:bg-slate-50">
                   <Table.Td>
-                    <div class="font-medium text-slate-800">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="mt-0.5 text-xs text-slate-400">
+                    <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                    <div class="font-caption mt-0.5">
                       {{ item.produk?.jenis?.nama || '-' }}
                       <span class="mx-1">·</span>
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.persen) }}%</Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.volume_order) }}
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.persen) }}%</Table.Td>
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.volume_order) }}
                   </Table.Td>
                 </Table.Tr>
               </template>
@@ -299,18 +299,18 @@ function formatNumber(v: number | string = 0) {
           <!-- Catatan & Keterangan -->
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <CardSection title="Catatan & Keterangan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
-              <dl class="space-y-3 text-sm">
+              <dl class="space-y-3 font-body">
                 <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Keterangan</dt>
-                  <dd class="mt-1 font-medium text-slate-700">{{ penawaran.keterangan || '-' }}</dd>
+                  <dt class="font-label">Keterangan</dt>
+                  <dd class="font-strong mt-1">{{ penawaran.keterangan || '-' }}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan</dt>
-                  <dd class="mt-1 font-medium text-slate-700">{{ penawaran.catatan || '-' }}</dd>
+                  <dt class="font-label">Catatan</dt>
+                  <dd class="font-strong mt-1">{{ penawaran.catatan || '-' }}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Syarat &amp; Ketentuan</dt>
-                  <dd class="mt-1 whitespace-pre-line font-medium text-slate-700">{{ penawaran.syarat_ketentuan || '-'
+                  <dt class="font-label">Syarat &amp; Ketentuan</dt>
+                  <dd class="font-strong mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-'
                     }}</dd>
                 </div>
               </dl>
@@ -319,13 +319,13 @@ function formatNumber(v: number | string = 0) {
             <CardSection title="Catatan Verifikasi" icon="MessageSquare" icon-class="bg-blue-100 text-blue-600">
               <div class="space-y-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan Verifikasi BM</div>
-                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_verifikasi || '-' }}
+                  <div class="font-label">Catatan Verifikasi BM</div>
+                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}
                   </p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan Verifikasi OM</div>
-                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_om || '-' }}</p>
+                  <div class="font-label">Catatan Verifikasi OM</div>
+                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
                 </div>
               </div>
             </CardSection>
@@ -342,7 +342,7 @@ function formatNumber(v: number | string = 0) {
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
                 <p v-if="penawaran.status === 'draft'"
-                  class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                  class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
                   Pastikan seluruh data penawaran sudah benar sebelum diajukan ke Branch Manager.
                 </p>
 

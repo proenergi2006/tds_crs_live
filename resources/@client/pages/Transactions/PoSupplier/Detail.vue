@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
@@ -118,8 +118,8 @@ function formatNumber(v: number | string = 0) {
       <!-- HEADER -->
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="text-2xl font-semibold text-slate-800">Detail PO Supplier</h2>
-          <p class="mt-1 text-sm text-slate-500">
+          <h2 class="font-display">Detail PO Supplier</h2>
+          <p class="font-lead mt-1">
             Informasi lengkap Purchase Order <code>{{ po.nomor_po }}</code>
           </p>
         </div>
@@ -145,28 +145,28 @@ function formatNumber(v: number | string = 0) {
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Nomor PO</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.nomor_po || '-' }}</div>
+                <div class="font-label">Nomor PO</div>
+                <div class="font-strong mt-1">{{ po.nomor_po || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Tanggal PO</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ formatDate(po.tanggal_inven) }}</div>
+                <div class="font-label">Tanggal PO</div>
+                <div class="font-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Vendor</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.vendor?.nama_vendor || '-' }}</div>
+                <div class="font-label">Vendor</div>
+                <div class="font-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Terminal</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.terminal?.nama_terminal || '-' }}</div>
+                <div class="font-label">Terminal</div>
+                <div class="font-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Kode Tax</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">{{ po.kd_tax || '-' }}</div>
+                <div class="font-label">Kode Tax</div>
+                <div class="font-strong mt-1">{{ po.kd_tax || '-' }}</div>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Terms</div>
-                <div class="mt-1 text-sm font-semibold text-slate-800">
+                <div class="font-label">Terms</div>
+                <div class="font-strong mt-1">
                   {{ po.terms || '-' }}
                   <span class="text-slate-400">&nbsp;·&nbsp;{{ po.terms_day || 0 }} hari</span>
                 </div>
@@ -187,34 +187,34 @@ function formatNumber(v: number | string = 0) {
               <template #body>
                 <Table.Tr v-for="item in produks" :key="item.id_po_produk" class="transition hover:bg-slate-50">
                   <Table.Td>
-                    <div class="font-medium text-slate-800">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="mt-0.5 text-xs text-slate-400">
+                    <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                    <div class="font-caption mt-0.5">
                       {{ item.produk?.jenis?.nama || '-' }}
                       <span class="mx-1">·</span>
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.volume_po) }}</Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.harga_tebus) }}
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.harga_tebus) }}
                   </Table.Td>
-                  <Table.Td class="text-right font-semibold text-slate-800">{{ formatNumber(item.jumlah_harga) }}
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.jumlah_harga) }}
                   </Table.Td>
                 </Table.Tr>
 
                 <Table.Tr>
-                  <Table.Td :colspan="3" class="py-2.5 pr-6 text-right text-sm text-slate-500">Subtotal</Table.Td>
-                  <Table.Td class="py-2.5 text-right text-sm font-medium text-slate-700">{{ formatNumber(po.subtotal) }}
+                  <Table.Td :colspan="3" class="py-2.5 pr-6 text-right font-body">Subtotal</Table.Td>
+                  <Table.Td class="py-2.5 font-num text-right">{{ formatNumber(po.subtotal) }}
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td :colspan="3" class="py-2.5 pr-6 text-right text-sm text-slate-500">PPN 11%</Table.Td>
-                  <Table.Td class="py-2.5 text-right text-sm font-medium text-slate-700">{{ formatNumber(po.ppn11) }}
+                  <Table.Td :colspan="3" class="py-2.5 pr-6 text-right font-body">PPN 11%</Table.Td>
+                  <Table.Td class="py-2.5 font-num text-right">{{ formatNumber(po.ppn11) }}
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr class="bg-emerald-50">
-                  <Table.Td :colspan="3" class="py-3.5 pr-6 text-right text-sm font-semibold text-slate-800">Total Order
+                  <Table.Td :colspan="3" class="py-3.5 pr-6 font-num text-right">Total Order
                   </Table.Td>
-                  <Table.Td class="py-3.5 text-right text-base font-bold text-emerald-700">{{
+                  <Table.Td class="py-3.5 font-num-lg text-right !text-emerald-700">{{
                     formatNumber(po.total_order) }}</Table.Td>
                 </Table.Tr>
               </template>
@@ -225,14 +225,14 @@ function formatNumber(v: number | string = 0) {
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <CardSection title="Catatan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div
-                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 whitespace-pre-line min-h-[5rem]">
+                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
                 {{ po.keterangan || '-' }}
               </div>
             </CardSection>
 
             <CardSection title="Terms & Condition" icon="ScrollText" icon-class="bg-blue-100 text-blue-600">
               <div
-                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 whitespace-pre-line min-h-[5rem]">
+                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
                 {{ po.terms_condition || '-' }}
               </div>
             </CardSection>
@@ -249,7 +249,7 @@ function formatNumber(v: number | string = 0) {
               <div class="space-y-5">
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
-                <p class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                <p class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
                   Pastikan seluruh data PO sudah benar sebelum dikirim untuk persetujuan.
                 </p>
 

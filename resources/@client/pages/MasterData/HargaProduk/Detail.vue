@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -48,8 +48,8 @@ onMounted(() => {
     <div class="intro-x flex flex-col gap-4">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-semibold text-slate-800">Detail Harga Produk</h2>
-        <p class="mt-1 text-sm text-slate-500">
+        <h2 class="font-display">Detail Harga Produk</h2>
+        <p class="font-body mt-1">
           Informasi lengkap harga produk termasuk BM, OM, dan CEO.
         </p>
       </div>
@@ -78,37 +78,37 @@ onMounted(() => {
         <CardSection title="Informasi Utama" description="Periode, cabang, dan data produk" icon="FileText">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Periode Awal</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">{{ formatDate(detail.periode_awal) }}</div>
+              <div class="font-label">Periode Awal</div>
+              <div class="font-strong mt-1">{{ formatDate(detail.periode_awal) }}</div>
             </div>
 
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Periode Akhir</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">{{ formatDate(detail.periode_akhir) }}</div>
+              <div class="font-label">Periode Akhir</div>
+              <div class="font-strong mt-1">{{ formatDate(detail.periode_akhir) }}</div>
             </div>
 
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Cabang</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">{{ detail.cabang?.nama_cabang || '-' }}</div>
+              <div class="font-label">Cabang</div>
+              <div class="font-strong mt-1">{{ detail.cabang?.nama_cabang || '-' }}</div>
             </div>
 
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Produk</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">
+              <div class="font-label">Produk</div>
+              <div class="font-strong mt-1">
                 {{ detail.produk?.nama_produk || '-' }}
               </div>
             </div>
 
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Ukuran</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">
+              <div class="font-label">Ukuran</div>
+              <div class="font-strong mt-1">
                 {{ detail.produk?.ukuran?.nama_ukuran || '-' }}
               </div>
             </div>
 
             <div>
-              <div class="text-xs uppercase tracking-wide text-slate-400">Satuan</div>
-              <div class="mt-1 text-sm font-medium text-slate-700">
+              <div class="font-label">Satuan</div>
+              <div class="font-strong mt-1">
                 {{ detail.produk?.ukuran?.satuan?.nama_satuan || '-' }}
               </div>
             </div>
@@ -119,30 +119,30 @@ onMounted(() => {
           icon-class="bg-indigo-100 text-indigo-600">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">COGS</div>
-              <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_cogs) }}</div>
+              <div class="font-label">COGS</div>
+              <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_cogs) }}</div>
             </div>
 
             <div class="rounded-xl bg-slate-50 p-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Margin</div>
-              <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_margin) }}</div>
+              <div class="font-label">Margin</div>
+              <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_margin) }}</div>
             </div>
 
             <div class="rounded-xl bg-blue-50 p-4">
-              <div class="text-xs uppercase tracking-wide text-blue-400">Price List TDS</div>
-              <div class="mt-2 text-lg font-bold text-blue-700">{{ formatNumber(detail.harga_price_list) }}</div>
+              <div class="font-label !text-blue-400">Price List TDS</div>
+              <div class="font-num-lg mt-2 !text-blue-700">{{ formatNumber(detail.harga_price_list) }}</div>
             </div>
 
             <div class="rounded-xl bg-emerald-50 p-4">
-              <div class="text-xs uppercase tracking-wide text-emerald-400">Price List PE</div>
-              <div class="mt-2 text-lg font-bold text-emerald-700">{{ formatNumber(detail.harga_price_list_pe) }}</div>
+              <div class="font-label !text-emerald-400">Price List PE</div>
+              <div class="font-num-lg mt-2 !text-emerald-700">{{ formatNumber(detail.harga_price_list_pe) }}</div>
             </div>
           </div>
         </CardSection>
 
         <CardSection title="Catatan" description="Catatan tambahan untuk harga produk" icon="StickyNote"
           icon-class="bg-amber-100 text-amber-600">
-          <p class="text-sm leading-6 text-slate-600">
+          <p class="font-body leading-6">
             {{ detail.catatan || '-' }}
           </p>
         </CardSection>
@@ -154,43 +154,43 @@ onMounted(() => {
           icon-class="bg-emerald-100 text-emerald-600">
           <div class="space-y-4">
             <div class="rounded-xl border border-slate-200 p-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Harga BM</div>
-              <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_bm) }}</div>
+              <div class="font-label">Harga BM</div>
+              <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_bm) }}</div>
             </div>
 
             <div class="rounded-xl border border-slate-200 p-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Harga OM</div>
-              <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_om) }}</div>
+              <div class="font-label">Harga OM</div>
+              <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_om) }}</div>
             </div>
 
             <div class="rounded-xl border border-slate-200 p-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Harga CEO</div>
-              <div class="mt-2 text-lg font-bold text-slate-800">{{ formatNumber(detail.harga_ceo) }}</div>
+              <div class="font-label">Harga CEO</div>
+              <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_ceo) }}</div>
             </div>
           </div>
         </CardSection>
 
         <CardSection title="Metadata" description="Jejak pembuatan dan perubahan data" icon="History"
           icon-class="bg-slate-100 text-slate-600">
-          <div class="space-y-3 text-sm">
+          <div class="space-y-3 font-body">
             <div>
               <span class="text-slate-400">Created By:</span>
-              <div class="font-medium text-slate-700">{{ detail.created_by || '-' }}</div>
+              <div class="font-strong">{{ detail.created_by || '-' }}</div>
             </div>
 
             <div>
               <span class="text-slate-400">Created Time:</span>
-              <div class="font-medium text-slate-700">{{ detail.created_time || '-' }}</div>
+              <div class="font-strong">{{ detail.created_time || '-' }}</div>
             </div>
 
             <div>
               <span class="text-slate-400">Last Update By:</span>
-              <div class="font-medium text-slate-700">{{ detail.lastupdate_by || '-' }}</div>
+              <div class="font-strong">{{ detail.lastupdate_by || '-' }}</div>
             </div>
 
             <div>
               <span class="text-slate-400">Last Update Time:</span>
-              <div class="font-medium text-slate-700">{{ detail.lastupdate_time || '-' }}</div>
+              <div class="font-strong">{{ detail.lastupdate_time || '-' }}</div>
             </div>
           </div>
         </CardSection>

@@ -159,11 +159,11 @@ function formatSize(bytes?: number) {
 <template>
   <div class="space-y-2">
     <div v-if="label || hint" class="flex flex-col gap-1">
-      <label v-if="label" class="text-sm font-medium text-slate-700">
+      <label v-if="label" class="font-strong">
         {{ label }}
       </label>
 
-      <p v-if="hint" class="text-xs text-slate-500">
+      <p v-if="hint" class="font-caption">
         {{ hint }}
       </p>
     </div>
@@ -185,7 +185,7 @@ function formatSize(bytes?: number) {
             :disabled="disabled" @change="onFileChange" />
         </div>
 
-        <div class="text-xs text-slate-500">
+        <div class="font-caption">
           {{ acceptedText }} - Maks {{ maxSizeMb }}MB
         </div>
       </div>
@@ -199,13 +199,13 @@ function formatSize(bytes?: number) {
 
           <div class="min-w-0 flex-1">
             <a v-if="file.url" :href="file.url" target="_blank"
-              class="block truncate text-sm font-medium text-primary underline">
+              class="block truncate font-body !text-primary underline">
               {{ file.name }}
             </a>
-            <p v-else class="truncate text-sm font-medium text-slate-700">
+            <p v-else class="truncate font-strong">
               {{ file.name }}
             </p>
-            <p class="text-xs text-slate-500">
+            <p class="font-caption">
               File tersimpan <span v-if="formatSize(file.size)">- {{ formatSize(file.size) }}</span>
             </p>
           </div>
@@ -224,10 +224,10 @@ function formatSize(bytes?: number) {
           </div>
 
           <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium text-slate-700">
+            <p class="truncate font-strong">
               {{ file.name }}
             </p>
-            <p class="text-xs text-slate-500">
+            <p class="font-caption">
               File baru <span v-if="formatSize(file.size)">- {{ formatSize(file.size) }}</span>
             </p>
           </div>
@@ -240,12 +240,13 @@ function formatSize(bytes?: number) {
         </div>
       </div>
 
-      <p v-else class="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+      <p v-else
+        class="font-body mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
         {{ emptyText }}
       </p>
     </div>
 
-    <p v-if="displayError" class="text-xs text-rose-600">
+    <p v-if="displayError" class="font-caption !text-rose-600">
       {{ displayError }}
     </p>
   </div>

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { helpers, required } from '@vuelidate/validators';
@@ -204,7 +204,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_ukuran" placeholder="Nama Ukuran"
           :class="v$.nama_ukuran.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.nama_ukuran.$error" class="text-rose-600">{{ getFieldError('nama_ukuran')
+        <small v-if="v$.nama_ukuran.$error" class="font-caption !text-rose-600">{{ getFieldError('nama_ukuran')
           }}</small>
       </div>
 
@@ -219,12 +219,12 @@ async function submitForm() {
             {{ s.nama_satuan }}
           </option>
         </FormSelect>
-        <small v-if="v$.id_satuan.$error" class="text-rose-600">{{ getFieldError('id_satuan') }}</small>
+        <small v-if="v$.id_satuan.$error" class="font-caption !text-rose-600">{{ getFieldError('id_satuan') }}</small>
       </div>
 
       <!-- Updated By -->
       <div v-if="props.mode === 'edit'">
-        <p class="text-right text-xs text-gray-500 mt-6">
+        <p class="font-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

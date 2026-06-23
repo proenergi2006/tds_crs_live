@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
@@ -331,7 +331,7 @@ function cancel() {
 
         <div v-else class="col-span-12 md:col-span-4">
           <FormLabel>Nomor PO</FormLabel>
-          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 font-body">
             *<i>Generate</i> otomatis saat data disimpan.
           </div>
         </div>
@@ -379,19 +379,19 @@ function cancel() {
         <table class="min-w-[920px] w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-12 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">No</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-600">Produk</th>
-              <th class="w-32 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Volume PO</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Harga Tebus</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Total Harga</th>
-              <th class="wpx-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Tax Amount</th>
-              <th class="w-16 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">Aksi</th>
+              <th class="w-12 px-4 py-3 font-label text-center">No</th>
+              <th class="px-4 py-3 font-label text-left">Produk</th>
+              <th class="w-32 px-4 py-3 font-label text-right">Volume PO</th>
+              <th class="px-4 py-3 font-label text-right">Harga Tebus</th>
+              <th class="px-4 py-3 font-label text-right">Total Harga</th>
+              <th class="wpx-4 py-3 font-label text-right">Tax Amount</th>
+              <th class="w-16 px-4 py-3 font-label text-center">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(item, index) in form.items" :key="index" class="transition hover:bg-slate-50">
-              <td class="px-4 py-3 text-center font-medium text-slate-700">
+              <td class="px-4 py-3 font-num text-center">
                 {{ index + 1 }}.
               </td>
 
@@ -434,8 +434,8 @@ function cancel() {
 
           <tfoot class="border-t border-slate-200 bg-slate-50">
             <tr>
-              <td colspan="4" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Subtotal</td>
-              <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">
+              <td colspan="4" class="px-4 py-3 font-strong text-right">Subtotal</td>
+              <td class="px-4 py-3 font-num text-right">
                 {{ formatNumber(calcSubtotal) }}
               </td>
               <td></td>
@@ -443,8 +443,8 @@ function cancel() {
             </tr>
 
             <tr>
-              <td colspan="4" class="px-4 py-3 text-right text-sm font-medium text-slate-600">PPN 11%</td>
-              <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">
+              <td colspan="4" class="px-4 py-3 font-strong text-right">PPN 11%</td>
+              <td class="px-4 py-3 font-num text-right">
                 {{ formatNumber(calcPPN) }}
               </td>
               <td></td>
@@ -452,8 +452,8 @@ function cancel() {
             </tr>
 
             <tr>
-              <td colspan="4" class="px-4 py-4 text-right text-base font-semibold text-slate-800">Total Order</td>
-              <td class="px-4 py-4 text-right text-base font-bold text-emerald-700">
+              <td colspan="4" class="px-4 py-4 text-right font-header">Total Order</td>
+              <td class="px-4 py-4 font-num-lg text-right !text-emerald-700">
                 {{ formatNumber(calcTotalOrder) }}
               </td>
               <td></td>
@@ -474,7 +474,7 @@ function cancel() {
               placeholder="(opsional)" />
           </div>
 
-          <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          <label class="inline-flex items-center gap-2 font-strong">
             <input v-model="termsChecked" type="checkbox"
               class="rounded border-slate-300 text-primary focus:ring-primary" />
             Terms & Condition

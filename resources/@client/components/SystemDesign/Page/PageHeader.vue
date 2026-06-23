@@ -13,11 +13,11 @@ defineProps<{
 
     <div class="relative z-10 p-2 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <h2 class="text-2xl font-bold">
+        <h2 class="font-display !text-white">
           {{ title }}
         </h2>
 
-        <p v-if="description" class="mt-1 text-sm text-white/80">
+        <p v-if="description" class="font-lead mt-1 !text-white/80">
           {{ description }}
         </p>
       </div>

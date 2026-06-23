@@ -218,7 +218,7 @@ function cancel() {
         <div class="md:col-span-2">
           <FormLabel>User</FormLabel>
           <FormInput :value="auth.user?.name || '-'" disabled class="bg-slate-50" />
-          <small class="text-slate-500">Otomatis sesuai user yang login</small>
+          <small class="font-caption">Otomatis sesuai user yang login</small>
         </div>
 
         <div class="md:col-span-2">
@@ -228,7 +228,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="nama_perusahaan" v-model="form.nama_perusahaan" placeholder="Nama Perusahaan" class="uppercase"
             :class="getFieldError('nama_perusahaan') ? 'border-rose-500' : ''" @blur="v$.nama_perusahaan.$touch()" />
-          <small v-if="getFieldError('nama_perusahaan')" class="text-rose-600">
+          <small v-if="getFieldError('nama_perusahaan')" class="font-caption !text-rose-600">
             {{ getFieldError('nama_perusahaan') }}
           </small>
         </div>
@@ -244,7 +244,7 @@ function cancel() {
             <option value="Retail">Retail</option>
             <option value="Project">Project</option>
           </FormSelect>
-          <small v-if="getFieldError('jenis_customer')" class="text-rose-600">
+          <small v-if="getFieldError('jenis_customer')" class="font-caption !text-rose-600">
             {{ getFieldError('jenis_customer') }}
           </small>
         </div>
@@ -256,7 +256,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="telepon" v-model="form.telepon" placeholder="Telepon"
             :class="getFieldError('telepon') ? 'border-rose-500' : ''" @blur="v$.telepon.$touch()" />
-          <small v-if="getFieldError('telepon')" class="text-rose-600">
+          <small v-if="getFieldError('telepon')" class="font-caption !text-rose-600">
             {{ getFieldError('telepon') }}
           </small>
         </div>
@@ -283,7 +283,7 @@ function cancel() {
               {{ p.nama_provinsi }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('id_provinsi')" class="text-rose-600">
+          <small v-if="getFieldError('id_provinsi')" class="font-caption !text-rose-600">
             {{ getFieldError('id_provinsi') }}
           </small>
         </div>
@@ -302,7 +302,7 @@ function cancel() {
               {{ k.nama_kabupaten }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('id_kabupaten')" class="text-rose-600">
+          <small v-if="getFieldError('id_kabupaten')" class="font-caption !text-rose-600">
             {{ getFieldError('id_kabupaten') }}
           </small>
         </div>
@@ -335,22 +335,22 @@ function cancel() {
       <CardSection title="Ringkasan" description="Informasi singkat customer">
         <div class="space-y-3">
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Nama</p>
-            <p class="mt-0.5 font-medium text-slate-800">
+            <p class="font-label">Nama</p>
+            <p class="font-strong mt-0.5">
               {{ form.nama_perusahaan || '-' }}
             </p>
           </div>
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Jenis</p>
-            <p class="mt-0.5 text-slate-700">{{ form.jenis_customer || '-' }}</p>
+            <p class="font-label">Jenis</p>
+            <p class="font-body mt-0.5">{{ form.jenis_customer || '-' }}</p>
           </div>
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Telepon</p>
-            <p class="mt-0.5 text-slate-700">{{ form.telepon || '-' }}</p>
+            <p class="font-label">Telepon</p>
+            <p class="font-body mt-0.5">{{ form.telepon || '-' }}</p>
           </div>
           <div v-if="form.email">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Email</p>
-            <p class="mt-0.5 text-slate-700">{{ form.email }}</p>
+            <p class="font-label">Email</p>
+            <p class="font-body mt-0.5">{{ form.email }}</p>
           </div>
         </div>
       </CardSection>

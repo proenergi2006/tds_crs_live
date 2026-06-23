@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
@@ -284,8 +284,8 @@ onMounted(fetchPenawaran)
       <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="text-2xl font-semibold text-slate-800">{{ config.title }}</h2>
-          <p class="mt-1 text-sm text-slate-500">
+          <h2 class="font-display">{{ config.title }}</h2>
+          <p class="font-lead mt-1">
             Informasi lengkap penawaran <code>{{ penawaran.nomor_penawaran || '-' }}</code>
           </p>
         </div>
@@ -297,15 +297,15 @@ onMounted(fetchPenawaran)
 
       <div v-if="loading" class="flex min-h-[320px] items-center justify-center gap-3 text-slate-500">
         <Lucide icon="Loader" class="h-6 w-6 animate-spin" />
-        <span class="text-sm">Memuat data penawaran...</span>
+        <span class="font-body">Memuat data penawaran...</span>
       </div>
 
       <div v-else-if="notFound" class="flex min-h-[320px] flex-col items-center justify-center gap-2 text-center">
         <div class="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
           <Lucide icon="AlertTriangle" class="h-7 w-7 text-rose-500" />
         </div>
-        <h3 class="text-base font-semibold text-slate-700">Data penawaran tidak ditemukan</h3>
-        <p class="text-sm text-slate-500">Silakan kembali ke halaman sebelumnya.</p>
+        <h3 class="font-header">Data penawaran tidak ditemukan</h3>
+        <p class="font-body">Silakan kembali ke halaman sebelumnya.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -317,8 +317,8 @@ onMounted(fetchPenawaran)
             icon="Tag" icon-class="bg-indigo-100 text-indigo-600">
             <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
               <div v-for="f in hargaProdukFields" :key="f.label">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
-                <dd class="mt-1 text-sm font-semibold text-slate-800">{{ dash(f.value) }}</dd>
+                <dt class="font-label">{{ f.label }}</dt>
+                <dd class="font-strong mt-1">{{ dash(f.value) }}</dd>
               </div>
             </dl>
           </CardSection>
@@ -327,11 +327,11 @@ onMounted(fetchPenawaran)
             <div class="space-y-6">
               <div v-for="(group, gi) in infoGroups" :key="group.label"
                 :class="gi > 0 ? 'border-t border-slate-100 pt-6' : ''">
-                <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ group.label }}</h3>
+                <h3 class="mb-4 font-section">{{ group.label }}</h3>
                 <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
                   <div v-for="f in group.fields" :key="f.label" :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
-                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
-                    <dd class="mt-1 whitespace-pre-line text-sm font-semibold text-slate-800">{{ dash(f.value) }}</dd>
+                    <dt class="font-label">{{ f.label }}</dt>
+                    <dd class="font-strong mt-1 whitespace-pre-line">{{ dash(f.value) }}</dd>
                   </div>
                 </dl>
               </div>
@@ -342,8 +342,8 @@ onMounted(fetchPenawaran)
             icon-class="bg-emerald-100 text-emerald-600">
             <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
               <div v-for="f in hargaFields" :key="f.label">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
-                <dd class="mt-1 text-sm font-semibold"
+                <dt class="font-label">{{ f.label }}</dt>
+                <dd class="font-num mt-1"
                   :class="f.tone === 'red' ? 'text-red-600' : f.tone === 'green' ? 'text-emerald-600' : 'text-slate-800'">
                   {{ f.value }}
                 </dd>
@@ -362,15 +362,15 @@ onMounted(fetchPenawaran)
               <template #body>
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item" class="transition hover:bg-slate-50">
                   <Table.Td>
-                    <div class="font-medium text-slate-800">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="mt-0.5 text-xs text-slate-400">
+                    <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                    <div class="font-caption mt-0.5">
                       {{ item.produk?.jenis?.nama || '-' }}
                       <span class="mx-1">·</span>
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.persen) }}%</Table.Td>
-                  <Table.Td class="text-right font-medium text-slate-700">{{ formatNumber(item.volume_order) }}
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.persen) }}%</Table.Td>
+                  <Table.Td class="font-num text-right">{{ formatNumber(item.volume_order) }}
                   </Table.Td>
                 </Table.Tr>
               </template>
@@ -380,21 +380,21 @@ onMounted(fetchPenawaran)
           <CardSection title="Catatan & Keterangan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Keterangan</div>
-                <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.keterangan || '-' }}</p>
+                <div class="font-label">Keterangan</div>
+                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.keterangan || '-' }}</p>
               </div>
-              <div class="space-y-3 text-sm">
+              <div class="space-y-3 font-body">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan</div>
-                  <p v-if="penawaran.catatan" class="mt-1 whitespace-pre-line text-sm text-slate-700">{{
+                  <div class="font-label">Catatan</div>
+                  <p v-if="penawaran.catatan" class="font-body mt-1 whitespace-pre-line">{{
                     penawaran.catatan }}</p>
-                  <p v-else="penawaran.catatan" class="mt-1 whitespace-pre-line text-sm text-slate-300">-</p>
+                  <p v-else="penawaran.catatan" class="mt-1 font-body whitespace-pre-line !text-slate-300">-</p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Syarat & Ketentuan</div>
-                  <p v-if="penawaran.syarat_ketentuan" class="mt-1 whitespace-pre-line text-sm text-slate-700">{{
+                  <div class="font-label">Syarat & Ketentuan</div>
+                  <p v-if="penawaran.syarat_ketentuan" class="font-body mt-1 whitespace-pre-line">{{
                     penawaran.syarat_ketentuan }}</p>
-                  <p v-else="penawaran.catatan" class="mt-1 whitespace-pre-line text-sm text-slate-300">-</p>
+                  <p v-else="penawaran.catatan" class="mt-1 font-body whitespace-pre-line !text-slate-300">-</p>
                 </div>
               </div>
             </div>
@@ -415,15 +415,15 @@ onMounted(fetchPenawaran)
             <CardSection title="Catatan Verifikasi" icon="MessageSquare" icon-class="bg-blue-100 text-blue-600">
               <div class="space-y-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">{{
+                  <div class="font-label">{{
                     config.catatanVerifikasiLabel }}
                   </div>
-                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_verifikasi || '-' }}
+                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}
                   </p>
                 </div>
                 <div v-if="config.showOmCatatan" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Catatan Verifikasi OM</div>
-                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ penawaran.catatan_om || '-' }}</p>
+                  <div class="font-label">Catatan Verifikasi OM</div>
+                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
                 </div>
 
                 <div v-if="penawaran.status === config.actionWaitingStatus" class="flex flex-row gap-2">
@@ -438,7 +438,7 @@ onMounted(fetchPenawaran)
                   </Button>
                 </div>
 
-                <p v-else class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                <p v-else class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
                   Tidak ada aksi yang bisa dilakukan pada status penawaran saat ini.
                 </p>
               </div>

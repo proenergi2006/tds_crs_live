@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
@@ -217,13 +217,13 @@ async function submitDelete() {
           @page-change="goToPage">
           <template #filters="{ close }">
             <div>
-              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
+              <div class="font-section px-3 pb-2 pt-1">
                 Satuan
               </div>
 
               <div class="space-y-1">
                 <button type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
                   :class="filterSatuan === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="setFilterSatuan(''); close()">
                   Semua Satuan
@@ -231,7 +231,7 @@ async function submitDelete() {
                 </button>
 
                 <button v-for="satuan in satuanOptions" :key="satuan.id" type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
                   :class="filterSatuan === satuan.id ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="setFilterSatuan(satuan.id); close()">
                   {{ satuan.name }}
@@ -250,7 +250,7 @@ async function submitDelete() {
 
           <template #body>
             <Table.Tr v-for="(item, idx) in ukurans" :key="item.id_ukuran" class="transition hover:bg-slate-50">
-              <Table.Td class="text-center font-medium text-slate-700">
+              <Table.Td class="font-num text-center">
                 {{ (currentPage - 1) * perPage + idx + 1 }}.
               </Table.Td>
               <Table.Td>

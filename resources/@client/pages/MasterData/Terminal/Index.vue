@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
@@ -196,12 +196,12 @@ async function submitDelete() {
 
         <template #body>
           <Table.Tr v-for="(item, idx) in terminals" :key="item.id_terminal" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <span class="font-medium">{{ item.nama_terminal }}</span>
-              <p v-if="item.alamat" class="text-sm text-slate-500">{{ item.alamat }}</p>
+              <span class="font-strong">{{ item.nama_terminal }}</span>
+              <p v-if="item.alamat" class="font-body">{{ item.alamat }}</p>
             </Table.Td>
             <Table.Td>
               {{ item.cabang?.nama_cabang || '-' }}

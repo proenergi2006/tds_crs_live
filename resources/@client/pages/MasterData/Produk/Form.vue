@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required } from '@vuelidate/validators'
@@ -232,7 +232,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_produk" placeholder="Nama Produk"
           :class="v$.nama_produk.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.nama_produk.$error" class="text-rose-600">{{ getFieldError('nama_produk') }}</small>
+        <small v-if="v$.nama_produk.$error" class="font-caption !text-rose-600">{{ getFieldError('nama_produk') }}</small>
       </div>
 
       <div>
@@ -241,7 +241,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="edit-merk" v-model="form.merk_dagang" placeholder="Merk Dagang"
           :class="v$.merk_dagang.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.merk_dagang.$error" class="text-rose-600">{{ getFieldError('merk_dagang') }}</small>
+        <small v-if="v$.merk_dagang.$error" class="font-caption !text-rose-600">{{ getFieldError('merk_dagang') }}</small>
       </div>
 
       <div>
@@ -260,7 +260,7 @@ async function submitForm() {
               {{ u.nama_ukuran }} ({{ u.satuan?.nama_satuan || '-' }})
             </option>
           </FormSelect>
-          <small v-if="v$.id_ukuran.$error" class="text-rose-600">{{ getFieldError('id_ukuran') }}</small>
+          <small v-if="v$.id_ukuran.$error" class="font-caption !text-rose-600">{{ getFieldError('id_ukuran') }}</small>
         </div>
 
         <div>
@@ -273,7 +273,7 @@ async function submitForm() {
               {{ j.nama }}
             </option>
           </FormSelect>
-          <small v-if="v$.id_jenis.$error" class="text-rose-600">{{ getFieldError('id_jenis') }}</small>
+          <small v-if="v$.id_jenis.$error" class="font-caption !text-rose-600">{{ getFieldError('id_jenis') }}</small>
         </div>
       </div>
 
@@ -283,14 +283,14 @@ async function submitForm() {
           <FormSwitch>
             <FormSwitch.Input id="edit-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="text-sm text-slate-600">
+          <span class="font-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
       </div>
 
       <div v-if="props.mode === 'edit'">
-        <p class="text-right text-xs text-gray-500 mt-6">
+        <p class="font-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

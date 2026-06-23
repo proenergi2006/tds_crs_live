@@ -62,11 +62,11 @@ const paginationLabelId = "page-toolbar-pagination";
 
             <Popover v-if="showFilters && $slots.filters" class="inline-block" v-slot="{ close }">
               <Popover.Button as="button" type="button"
-                class="inline-flex h-[38px] items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 focus:ring-4 focus:ring-primary focus:ring-opacity-20 focus-visible:outline-none">
+                class="font-body inline-flex h-[38px] items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 shadow-sm transition hover:bg-slate-50 focus:ring-4 focus:ring-primary focus:ring-opacity-20 focus-visible:outline-none">
                 <Lucide icon="SlidersHorizontal" class="h-4 w-4" />
                 Filter
                 <span v-if="activeFilterCount > 0"
-                  class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-white">
+                  class="font-num-sm inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 !text-white">
                   {{ activeFilterCount }}
                 </span>
                 <Lucide icon="ChevronDown" class="h-4 w-4" />
@@ -103,8 +103,8 @@ const paginationLabelId = "page-toolbar-pagination";
                   <Lucide icon="ChevronLeft" class="h-4 w-4" />
                 </button>
 
-                <div class="min-w-[48px] text-center text-sm text-slate-600">
-                  <span class="font-semibold text-slate-800">
+                <div class="font-num min-w-[48px] text-center">
+                  <span class="!text-slate-800">
                     {{ currentPage }}
                   </span>
                   /

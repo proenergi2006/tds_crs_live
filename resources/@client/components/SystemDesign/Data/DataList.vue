@@ -89,7 +89,7 @@ const endRecord = computed(() => {
 
     <div class="overflow-x-auto" :class="showFooter && total > 0 ? '' : 'rounded-b-xl'">
       <Table bordered class="min-w-full border-collapse">
-        <Table.Thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+        <Table.Thead class="bg-slate-50 font-label">
           <Table.Tr>
             <slot name="head" />
           </Table.Tr>
@@ -101,7 +101,7 @@ const endRecord = computed(() => {
               <slot name="loading">
                 <div class="flex flex-col items-center gap-3">
                   <LoadingIcon icon="three-dots" class="w-8 h-8" />
-                  <span class="text-sm">{{ loadingText }}</span>
+                  <span class="font-body">{{ loadingText }}</span>
                 </div>
               </slot>
             </Table.Td>
@@ -115,11 +115,11 @@ const endRecord = computed(() => {
                     <Lucide icon="Inbox" class="h-7 w-7" />
                   </div>
 
-                  <div class="text-base font-medium">
+                  <div class="font-strong">
                     {{ emptyTitle }}
                   </div>
 
-                  <div class="text-sm">
+                  <div class="font-body">
                     {{ emptyDescription }}
                   </div>
                 </div>
@@ -132,17 +132,18 @@ const endRecord = computed(() => {
       </Table>
     </div>
 
-    <div v-if="showFooter && total > 0" class="rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+    <div v-if="showFooter && total > 0"
+      class="font-body rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3">
       Menampilkan
-      <span class="font-medium text-semibold">
+      <span class="font-num">
         {{ startRecord }}
       </span>
       -
-      <span class="font-medium text-semibold">
+      <span class="font-num">
         {{ endRecord }}
       </span>
       dari total
-      <span class="font-medium text-semibold">
+      <span class="font-num">
         {{ total }}
       </span>
       data

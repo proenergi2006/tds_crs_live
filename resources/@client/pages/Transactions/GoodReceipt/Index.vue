@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash";
@@ -174,17 +174,17 @@ function formatSigned(v: number) {
             <template #filters>
               <div class="space-y-4 p-1">
                 <div>
-                  <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Tanggal Dari</div>
+                  <div class="font-section px-3 pb-2 pt-1">Tanggal Dari</div>
                   <DateField v-model="filterDateFrom" placeholder="Pilih tanggal awal" />
                 </div>
 
                 <div>
-                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Tanggal Sampai</div>
+                  <div class="font-section px-3 pb-2">Tanggal Sampai</div>
                   <DateField v-model="filterDateTo" placeholder="Pilih tanggal akhir" />
                 </div>
 
                 <div>
-                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Terminal</div>
+                  <div class="font-section px-3 pb-2">Terminal</div>
                   <FormSelect v-model="filterTerminal">
                     <option value="">Semua Terminal</option>
                     <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
@@ -194,7 +194,7 @@ function formatSigned(v: number) {
                 </div>
 
                 <div>
-                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Vendor</div>
+                  <div class="font-section px-3 pb-2">Vendor</div>
                   <FormSelect v-model="filterVendor">
                     <option value="">Semua Vendor</option>
                     <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
@@ -204,7 +204,7 @@ function formatSigned(v: number) {
                 </div>
 
                 <div>
-                  <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Status</div>
+                  <div class="font-section px-3 pb-2">Status</div>
                   <FormSelect v-model="filterStatus">
                     <option value="">Semua Status</option>
                     <option value="draft">Draft</option>
@@ -236,31 +236,31 @@ function formatSigned(v: number) {
               <Table.Tr v-for="row in rows" :key="row.id" class="transition hover:bg-slate-50 cursor-pointer"
                 @click="$router.push({ name: 'vendor-pos-receive', params: { id: row.id_po } })">
                 <Table.Td>
-                  <span class="font-mono text-sm font-medium text-primary">{{ row.no_gr }}</span>
+                  <span class="font-num !text-primary">{{ row.no_gr }}</span>
                 </Table.Td>
                 <Table.Td>
-                  <span class="text-sm text-slate-600">{{ row.no_po }}</span>
+                  <span class="font-body">{{ row.no_po }}</span>
                 </Table.Td>
                 <Table.Td>
-                  <span class="text-sm text-slate-700">{{ row.vendor }}</span>
+                  <span class="font-body">{{ row.vendor }}</span>
                 </Table.Td>
-                <Table.Td class="text-right text-sm text-slate-600">
+                <Table.Td class="text-right font-body">
                   {{ formatNumber(row.qty_dok) }}
                 </Table.Td>
-                <Table.Td class="text-right text-sm font-medium text-slate-800">
+                <Table.Td class="text-right font-strong">
                   {{ row.qty_aktual != null ? formatNumber(row.qty_aktual) : '—' }}
                 </Table.Td>
-                <Table.Td class="text-right text-sm font-semibold" :class="row.selisih == null ? 'text-slate-400'
+                <Table.Td class="font-num text-right" :class="row.selisih == null ? 'text-slate-400'
                   : row.selisih === 0 ? 'text-emerald-600'
                     : row.selisih > 0 ? 'text-blue-600'
                       : 'text-red-500'">
                   {{ row.selisih != null ? formatSigned(row.selisih) : '—' }}
                 </Table.Td>
                 <Table.Td>
-                  <span class="text-sm text-slate-500">{{ row.terminal }}</span>
+                  <span class="font-body">{{ row.terminal }}</span>
                 </Table.Td>
                 <Table.Td>
-                  <span class="text-sm text-slate-600">{{ formatDate(row.tgl_terima) }}</span>
+                  <span class="font-body">{{ formatDate(row.tgl_terima) }}</span>
                 </Table.Td>
               </Table.Tr>
             </template>
@@ -273,37 +273,37 @@ function formatSigned(v: number) {
             <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
 
               <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                <div class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <div class="flex items-center gap-2 font-strong">
                   <Lucide icon="AlertCircle" class="h-4 w-4 text-amber-500" />
                   Belum Terealisasi
                 </div>
-                <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                <span class="rounded-full bg-amber-50 font-label px-2 py-0.5 !text-amber-700">
                   {{ pendingPos.length }}
                 </span>
               </div>
 
-              <div v-if="loadingPending" class="px-4 py-6 text-center text-sm text-slate-400">
+              <div v-if="loadingPending" class="px-4 py-6 font-body text-center">
                 Memuat...
               </div>
 
               <div v-else-if="pendingPos.length === 0" class="px-4 py-8 text-center">
                 <Lucide icon="CheckCircle" class="mx-auto h-8 w-8 text-emerald-400" />
-                <p class="mt-2 text-sm font-medium text-slate-600">Semua PO sudah terealisasi</p>
+                <p class="mt-2 font-body">Semua PO sudah terealisasi</p>
               </div>
 
               <div v-else class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
                 <div v-for="po in pendingPos" :key="po.id_po"
                   class="cursor-pointer px-4 py-3 transition hover:bg-slate-50"
                   @click="$router.push({ name: 'vendor-pos-receive', params: { id: po.id_po } })">
-                  <p class="font-mono text-xs font-medium text-primary">{{ po.nomor_po }}</p>
-                  <p class="mt-0.5 text-xs text-slate-500">{{ po.vendor }}</p>
+                  <p class="font-num !text-primary">{{ po.nomor_po }}</p>
+                  <p class="mt-0.5 font-caption">{{ po.vendor }}</p>
                   <div class="mt-2 flex items-center justify-between">
-                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="po.status === 'belum'
+                    <span class="rounded-full font-label px-2 py-0.5" :class="po.status === 'belum'
                       ? 'bg-amber-50 text-amber-700'
                       : 'bg-blue-50 text-blue-700'">
                       {{ po.status === 'belum' ? 'Belum ada GR' : `Parsial ${po.persen}%` }}
                     </span>
-                    <span class="text-xs text-slate-400">{{ formatNumber(po.volume_po) }} ton</span>
+                    <span class="font-caption">{{ formatNumber(po.volume_po) }} ton</span>
                   </div>
                 </div>
               </div>

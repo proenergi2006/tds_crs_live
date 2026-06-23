@@ -146,10 +146,10 @@ onUnmounted(() => {
           ? 'side-nav--collapsed overflow-visible'
           : 'overflow-x-hidden',
       ]">
-        <div class="flex items-center pt-4 pl-5 intro-x">
+        <div class="flex items-center pt-2 pl-8 intro-x">
           <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex min-w-0 items-center">
-            <img alt="Application Logo" class="w-16" :src="currentLogo" />
-            <span class="hidden ml-3 text-lg font-semibold xl:block" :class="[
+            <img alt="Application Logo" class="w-12" :src="currentLogo" />
+            <span class="hidden ml-3 font-semibold xl:block" :class="[
               isSidebarCollapsed && 'xl:hidden',
               isAgenRole
                 ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
@@ -159,7 +159,7 @@ onUnmounted(() => {
             </span>
           </RouterLink>
         </div>
-        <div class="my-6 side-nav__divider"></div>
+        <div class="my-3 side-nav__divider"></div>
         <ul>
           <template v-for="(menu, menuKey) in formattedMenu">
             <li v-if="menu == 'divider'" type="li" class="my-6 side-nav__divider" :key="'divider-' + menuKey"></li>

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
@@ -449,8 +449,8 @@ function cancel() {
     <div class="space-y-5">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-800">Daftar Harga Produk</h3>
-          <p class="mt-1 text-sm text-slate-500">
+          <h3 class="font-header">Daftar Harga Produk</h3>
+          <p class="font-body mt-1">
             Semua baris akan memakai periode yang sama dari bagian atas.
           </p>
         </div>
@@ -460,7 +460,7 @@ function cancel() {
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Baris
           </Button>
-          <div class="mt-1 text-sm text-slate-500">
+          <div class="font-body mt-1">
             Tambahkan baris baru untuk input harga produk lain.
           </div>
         </div>
@@ -471,38 +471,38 @@ function cancel() {
           <thead class="bg-slate-50">
             <tr>
               <th v-if="showRowNumber"
-                class="w-14 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="w-14 px-4 py-3 font-label text-left">
                 No
               </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-4 py-3 font-label text-left">
                 Cabang
               </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-4 py-3 font-label text-left">
                 Produk
               </th>
               <th v-if="showCogsColumn"
-                class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="px-4 py-3 font-label text-right">
                 Harga COGS
                 <RequiredAsterisk v-if="!isReadonly('harga_cogs')" />
               </th>
               <th v-if="showMarginColumn"
-                class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="px-4 py-3 font-label text-right">
                 Margin
                 <RequiredAsterisk v-if="!isReadonly('harga_margin')" />
               </th>
               <th v-if="showPriceListColumn"
-                class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="px-4 py-3 font-label text-left">
                 Price List
               </th>
               <th v-if="showApprovalColumn"
-                class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="px-4 py-3 font-label text-left">
                 Harga Approval
               </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-4 py-3 font-label text-left">
                 Catatan
               </th>
               <th v-if="canAddRows"
-                class="w-20 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+                class="w-20 px-4 py-3 font-label text-center">
                 Aksi
               </th>
             </tr>
@@ -510,7 +510,7 @@ function cancel() {
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(row, index) in rows" :key="index" class="transition hover:bg-slate-50">
-              <td v-if="showRowNumber" class="px-4 py-3 align-top text-sm font-medium text-slate-700">
+              <td v-if="showRowNumber" class="px-4 py-3 align-top font-num">
                 {{ index + 1 }}.
               </td>
 
@@ -522,7 +522,7 @@ function cancel() {
                     {{ cabang.nama_cabang }}
                   </option>
                 </FormSelect>
-                <small v-if="getRowFieldError(index, 'id_cabang')" class="text-rose-600">
+                <small v-if="getRowFieldError(index, 'id_cabang')" class="font-caption !text-rose-600">
                   {{ getRowFieldError(index, 'id_cabang') }}
                 </small>
               </td>
@@ -535,7 +535,7 @@ function cancel() {
                     {{ produk.nama_produk }} ({{ produk.ukuran?.nama_ukuran }} {{ produk.ukuran?.satuan?.nama_satuan }})
                   </option>
                 </FormSelect>
-                <small v-if="getRowFieldError(index, 'id_produk')" class="text-rose-600">
+                <small v-if="getRowFieldError(index, 'id_produk')" class="font-caption !text-rose-600">
                   {{ getRowFieldError(index, 'id_produk') }}
                 </small>
               </td>
@@ -556,7 +556,7 @@ function cancel() {
                 <div class="min-w-[190px] space-y-2">
                   <div v-if="visibleMoneyFields.includes('harga_price_list')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">TDS</span>
+                    <span class="font-section">TDS</span>
                     <div>
                       <CurrencyField :model-value="row.harga_price_list" placeholder="0" readonly />
                     </div>
@@ -564,7 +564,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('harga_price_list_pe')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">
+                    <span class="font-section">
                       PE
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
@@ -582,7 +582,7 @@ function cancel() {
                 <div class="min-w-[190px] space-y-2">
                   <div v-if="visibleMoneyFields.includes('harga_bm')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">
+                    <span class="font-section">
                       BM
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
@@ -595,7 +595,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('harga_om')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">
+                    <span class="font-section">
                       OM
                       <RequiredAsterisk v-if="isRole2" />
                     </span>
@@ -608,7 +608,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('harga_ceo')"
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
-                    <span class="text-xs font-semibold uppercase text-slate-500">
+                    <span class="font-section">
                       CEO
                       <RequiredAsterisk v-if="isRole2" />
                     </span>

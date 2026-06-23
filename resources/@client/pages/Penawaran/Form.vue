@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toRaw } from 'vue'
@@ -493,14 +493,14 @@ const produkSelectOptions = {
   render: {
     option: (data: any, escape: (v: string) => string) => `
       <div class="py-1 px-1">
-        <div class="font-semibold leading-snug">${escape(data.text)}${data.jenis ? ` <span class="font-normal text-slate-500">— ${escape(data.jenis)}</span>` : ''}</div>
-        ${data.ukuran ? `<div class="mt-0.5 text-xs text-slate-400">${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}</div>` : ''}
+        <div class="font-strong leading-snug">${escape(data.text)}${data.jenis ? ` <span class="font-body">— ${escape(data.jenis)}</span>` : ''}</div>
+        ${data.ukuran ? `<div class="font-caption mt-0.5">${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}</div>` : ''}
       </div>
     `,
     item: (data: any, escape: (v: string) => string) => `
       <div>
-        <span class="font-medium">${escape(data.text)}</span>${data.jenis ? ` <span class="text-slate-500">— ${escape(data.jenis)}</span>` : ''}
-        ${data.ukuran ? `<span class="ml-1 text-xs text-slate-400">${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}</span>` : ''}
+        <span class="font-strong">${escape(data.text)}</span>${data.jenis ? ` <span class="text-slate-500">— ${escape(data.jenis)}</span>` : ''}
+        ${data.ukuran ? `<span class="ml-1 font-caption">${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}</span>` : ''}
       </div>
     `,
   },
@@ -728,7 +728,7 @@ function formatCurrency(v: number | string = 0) {
 
     <template v-if="isEdit" #header>
       <div class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-        <span class="text-sm leading-5">
+        <span class="font-body leading-5">
           <b>Info:</b> Mengubah penawaran akan mengembalikan posisi disposisi ke
           <b>Draft</b> dan proses approval akan dimulai dari awal.
         </span>
@@ -822,7 +822,7 @@ function formatCurrency(v: number | string = 0) {
             </Button>
 
             <div v-else-if="hargaLoading"
-              class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-slate-400 sm:mb-2.5">
+              class="inline-flex items-center gap-2 font-body whitespace-nowrap !text-slate-400 sm:mb-2.5">
               <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
               Memuat harga…
             </div>
@@ -865,7 +865,7 @@ function formatCurrency(v: number | string = 0) {
       <!-- OA Kapal (conditional) -->
       <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
         class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 class="mb-3 text-sm font-semibold text-slate-700">Ongkos Kapal</h4>
+        <h4 class="font-section mb-3">Ongkos Kapal</h4>
         <div class="grid grid-cols-12 gap-4">
           <div class="col-span-12 md:col-span-4">
             <FormLabel>Transportir</FormLabel>
@@ -902,7 +902,7 @@ function formatCurrency(v: number | string = 0) {
       <!-- OA Truck (conditional) -->
       <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
         class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 class="mb-3 text-sm font-semibold text-slate-700">Ongkos Truck</h4>
+        <h4 class="font-section mb-3">Ongkos Truck</h4>
         <div class="grid grid-cols-12 gap-4">
           <div class="col-span-12 md:col-span-4">
             <FormLabel>Transportir</FormLabel>
@@ -944,24 +944,24 @@ function formatCurrency(v: number | string = 0) {
         <table class="w-full min-w-[760px] divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-12 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">No</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-600">Produk</th>
-              <th class="w-28 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Persen (%)</th>
-              <th class="w-32 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Volume</th>
-              <th class="w-44 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Harga Price List</th>
-              <th v-if="canSeeHarga" class="w-40 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">
+              <th class="w-12 px-4 py-3 font-label text-center">No</th>
+              <th class="px-4 py-3 font-label text-left">Produk</th>
+              <th class="w-28 px-4 py-3 font-label text-right">Persen (%)</th>
+              <th class="w-32 px-4 py-3 font-label text-right">Volume</th>
+              <th class="w-44 px-4 py-3 font-label text-right">Harga Price List</th>
+              <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
                 Harga
                 Tebus</th>
-              <th v-if="canSeeHarga" class="w-40 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">
+              <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
                 Jumlah
                 Harga</th>
-              <th class="w-16 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">Aksi</th>
+              <th class="w-16 px-4 py-3 font-label text-center">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(item, idx) in form.items" :key="idx" class="transition hover:bg-slate-50">
-              <td class="px-4 py-3 text-center text-sm font-medium text-slate-700">{{ idx + 1 }}.</td>
+              <td class="px-4 py-3 font-num text-center">{{ idx + 1 }}.</td>
 
               <td class="px-4 py-3">
                 <TomSelect v-model="item.id_produk" class="min-w-52" :class="itemInputClass(idx, 'id_produk')"
@@ -985,7 +985,7 @@ function formatCurrency(v: number | string = 0) {
                   class="text-right" @input="formatNumeric(item, 'volume_order', $event)" />
               </td>
 
-              <td class="px-4 py-3 text-right text-sm text-slate-700">
+              <td class="px-4 py-3 font-num text-right">
                 {{ formatCurrency(item.harga_price_list || 0) }}
               </td>
 
@@ -993,7 +993,7 @@ function formatCurrency(v: number | string = 0) {
                 <CurrencyField :model-value="toNum(item.harga_tebus)" :readonly="true" />
               </td>
 
-              <td v-if="canSeeHarga" class="px-4 py-3 text-right text-sm text-slate-700">
+              <td v-if="canSeeHarga" class="px-4 py-3 font-num text-right">
                 {{ formatCurrency(lineTotal(item)) }}
               </td>
 
@@ -1008,7 +1008,7 @@ function formatCurrency(v: number | string = 0) {
 
           <tfoot class="border-t border-slate-200 bg-slate-50">
             <tr>
-              <td class="px-4 py-3 text-right text-sm font-medium text-slate-600" colspan="2">
+              <td class="px-4 py-3 font-strong text-right" colspan="2">
                 <div class="flex items-center justify-between">
                   <Button type="button" size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
                     @click="addItem">
@@ -1018,12 +1018,12 @@ function formatCurrency(v: number | string = 0) {
                   <p>Total</p>
                 </div>
               </td>
-              <td class="px-4 py-3 text-right text-sm font-semibold"
+              <td class="px-4 py-3 font-num text-right"
                 :class="totalPersenNumber !== 100 ? 'text-red-600' : 'text-slate-800'">
                 {{ totalPersenDisplay }}%
               </td>
-              <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">{{ totalVolume }}</td>
-              <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">{{ formatCurrency(avgHargaPriceList)
+              <td class="px-4 py-3 font-num text-right">{{ totalVolume }}</td>
+              <td class="px-4 py-3 font-num text-right">{{ formatCurrency(avgHargaPriceList)
                 }}
               </td>
               <td v-if="canSeeHarga" colspan="2" class="px-4 py-3"></td>
@@ -1032,24 +1032,24 @@ function formatCurrency(v: number | string = 0) {
 
             <template v-if="canSeeHarga">
               <tr class="bg-slate-100">
-                <td colspan="5" class="px-4 py-2 text-right text-sm font-medium text-slate-600">Subtotal Harga Tebus
+                <td colspan="5" class="px-4 py-2 font-strong text-right">Subtotal Harga Tebus
                 </td>
-                <td class="px-4 py-2 text-right text-sm font-semibold text-slate-800">{{
+                <td class="px-4 py-2 font-num text-right">{{
                   formatCurrency(grandTotalHargaTebus) }}</td>
                 <td></td>
                 <td></td>
               </tr>
               <!-- TODO: discount input (form.discount) — tersembunyi, akan diimplementasi di task terpisah -->
               <tr v-if="totalDiskon > 0" class="bg-yellow-50">
-                <td colspan="5" class="px-4 py-2 text-right text-sm font-medium text-yellow-700">Diskon</td>
-                <td class="px-4 py-2 text-right text-sm font-semibold text-yellow-800">-{{ formatCurrency(totalDiskon)
+                <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
+                <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
                   }}</td>
                 <td></td>
                 <td></td>
               </tr>
               <tr class="bg-emerald-50">
-                <td colspan="5" class="px-4 py-2 text-right text-sm font-semibold text-emerald-700">Setelah Diskon</td>
-                <td class="px-4 py-2 text-right text-sm font-bold text-emerald-800">{{
+                <td colspan="5" class="px-4 py-2 font-strong text-right !text-emerald-700">Setelah Diskon</td>
+                <td class="px-4 py-2 font-num text-right !text-emerald-800">{{
                   formatCurrency(grandTotalHargaTebusSetelahDiskon) }}</td>
                 <td></td>
                 <td></td>
@@ -1113,7 +1113,7 @@ function formatCurrency(v: number | string = 0) {
       <!-- Panel CUSTOM -->
       <transition name="fade">
         <div v-if="form.tipe_pembayaran === 'CUSTOM'" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h4 class="mb-3 text-sm font-semibold text-slate-700">Detail Pembayaran Custom</h4>
+          <h4 class="font-section mb-3">Detail Pembayaran Custom</h4>
           <div class="grid grid-cols-12 gap-4">
             <div class="col-span-12 md:col-span-6">
               <FormLabel>Down Payment (%)</FormLabel>
@@ -1121,7 +1121,7 @@ function formatCurrency(v: number | string = 0) {
                 <FormInput v-model="form.dp_persen" type="text" inputmode="numeric" placeholder="20"
                   class="w-20 text-right" :class="inputClass('dp_persen')"
                   @input="formatNumeric(form, 'dp_persen', $event)" />
-                <span class="text-sm text-slate-600">% After</span>
+                <span class="font-body">% After</span>
                 <FormInput v-model="form.dp_keterangan" type="text" class="min-w-40 flex-1"
                   placeholder="Purchase Order / 7 days" />
               </div>
@@ -1134,17 +1134,17 @@ function formatCurrency(v: number | string = 0) {
                 <FormInput v-model="form.repayment_persen" type="text" inputmode="numeric" placeholder="80"
                   class="w-20 text-right" :class="inputClass('repayment_persen')"
                   @input="formatNumeric(form, 'repayment_persen', $event)" />
-                <span class="text-sm text-slate-600">% TOP</span>
+                <span class="font-body">% TOP</span>
                 <FormInput v-model="form.repayment_hari" type="text" inputmode="numeric" placeholder="7"
                   class="w-20 text-right" @input="formatNumeric(form, 'repayment_hari', $event)" />
-                <span class="text-sm text-slate-600">days</span>
+                <span class="font-body">days</span>
               </div>
               <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                 fieldError('repayment_persen')
               }}</small>
             </div>
           </div>
-          <p class="mt-2 text-xs text-slate-500">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.</p>
+          <p class="font-caption mt-2">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.</p>
         </div>
       </transition>
 
@@ -1154,14 +1154,14 @@ function formatCurrency(v: number | string = 0) {
           <div class="relative">
             <FormInput v-model="form.toleransi_penyusutan" type="text" inputmode="decimal" placeholder="0"
               class="pr-8 text-right" @input="formatDecimalInput(form, 'toleransi_penyusutan', $event)" />
-            <span class="absolute right-3 top-2.5 text-xs text-slate-400">%</span>
+            <span class="absolute font-caption right-3 top-2.5">%</span>
           </div>
         </div>
 
         <div class="col-span-12 md:col-span-4">
           <FormLabel>Abrasi</FormLabel>
           <FormInput v-model="form.abrasi" type="text" placeholder="Contoh: 0-5% atau sesuai kondisi" />
-          <small class="mt-1 block text-xs text-slate-500">
+          <small class="font-caption mt-1 block">
             Isi bebas (misal: <b>0–5%</b> atau <b>sesuai kondisi</b>).
           </small>
         </div>
@@ -1190,12 +1190,12 @@ function formatCurrency(v: number | string = 0) {
     <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
       :collapsible="true" icon-class="bg-emerald-100 text-emerald-600">
       <div class="overflow-x-auto rounded-xl border border-slate-200">
-        <Table bordered sm class="text-sm">
+        <Table bordered sm class="font-body">
           <Table.Thead class="bg-slate-50">
             <Table.Tr>
-              <Table.Th class="w-12 text-center text-xs uppercase text-slate-600">No</Table.Th>
-              <Table.Th class="text-left text-xs uppercase text-slate-600">Rincian</Table.Th>
-              <Table.Th class="w-60 text-right text-xs uppercase text-slate-600">Harga (Rp)</Table.Th>
+              <Table.Th class="w-12 font-label text-center">No</Table.Th>
+              <Table.Th class="font-label text-left">Rincian</Table.Th>
+              <Table.Th class="w-60 font-label text-right">Harga (Rp)</Table.Th>
             </Table.Tr>
           </Table.Thead>
 
@@ -1217,18 +1217,18 @@ function formatCurrency(v: number | string = 0) {
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="text-right font-bold text-slate-700">Subtotal (Harga Dasar + OA)</Table.Td>
-              <Table.Td class="text-right font-semibold text-slate-700">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
+              <Table.Td colspan="2" class="font-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
+              <Table.Td class="font-num text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="text-right font-bold text-slate-700">PPN (11%)</Table.Td>
+              <Table.Td colspan="2" class="font-strong text-right">PPN (11%)</Table.Td>
               <Table.Td class="text-right text-slate-700">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="text-right text-base font-bold text-slate-700">TOTAL</Table.Td>
-              <Table.Td class="text-right text-base font-bold text-emerald-700">{{
+              <Table.Td colspan="2" class="font-header text-right">TOTAL</Table.Td>
+              <Table.Td class="font-num-lg text-right !text-emerald-700">{{
                 formatCurrency(grandTotalHargaDasar) }}</Table.Td>
             </Table.Tr>
           </Table.Tbody>
@@ -1245,8 +1245,8 @@ function formatCurrency(v: number | string = 0) {
 
         <Slideover.Title class="p-5">
           <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="truncate text-base font-semibold text-slate-800">Referensi Harga Produk</h2>
-            <p class="truncate text-xs text-slate-400">
+            <h2 class="font-header truncate">Referensi Harga Produk</h2>
+            <p class="font-caption truncate">
               {{ selectedCabangName }} · {{ form.masa_berlaku || '-' }} s/d {{ form.sampai_dengan || '-' }}
             </p>
           </div>
@@ -1256,15 +1256,15 @@ function formatCurrency(v: number | string = 0) {
           <!-- Ringkasan -->
           <div class="mb-4 flex flex-wrap gap-2">
             <span
-              class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              class="inline-flex items-center rounded-full bg-slate-100 font-label px-2.5 py-0.5 !text-slate-600">
               Total {{ priceRefSummary.total }} produk
             </span>
             <span
-              class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              class="inline-flex items-center rounded-full bg-emerald-50 font-label px-2.5 py-0.5 !text-emerald-700">
               {{ priceRefSummary.withPrice }} ada harga
             </span>
             <span
-              class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              class="inline-flex items-center rounded-full bg-amber-50 font-label px-2.5 py-0.5 !text-amber-700">
               {{ priceRefSummary.without }} belum ada
             </span>
           </div>
@@ -1280,38 +1280,38 @@ function formatCurrency(v: number | string = 0) {
             <table class="w-full divide-y divide-slate-200">
               <thead class="bg-slate-50">
                 <tr>
-                  <th class="w-10 px-3 py-2.5 text-center text-xs font-semibold uppercase text-slate-600">No</th>
-                  <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase text-slate-600">Produk</th>
-                  <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-slate-600">Harga Price List
+                  <th class="w-10 px-3 py-2.5 font-label text-center">No</th>
+                  <th class="px-3 py-2.5 font-label text-left">Produk</th>
+                  <th class="px-3 py-2.5 font-label text-right">Harga Price List
                   </th>
                 </tr>
               </thead>
 
               <tbody class="divide-y divide-slate-200 bg-white">
                 <tr v-for="(row, idx) in priceReferenceRows" :key="row.id_produk" class="transition hover:bg-slate-50">
-                  <td class="px-3 py-2.5 text-center text-sm text-slate-500">{{ idx + 1 }}</td>
+                  <td class="px-3 py-2.5 font-num text-center">{{ idx + 1 }}</td>
 
                   <td class="px-3 py-2.5">
-                    <div class="text-sm font-medium text-slate-800">
+                    <div class="font-strong">
                       {{ row.nama }}
-                      <span v-if="row.jenis" class="font-normal text-slate-500">— {{ row.jenis }}</span>
+                      <span v-if="row.jenis" class="font-body">— {{ row.jenis }}</span>
                     </div>
-                    <div v-if="row.ukuran" class="text-xs text-slate-400">{{ row.ukuran }}</div>
+                    <div v-if="row.ukuran" class="font-caption">{{ row.ukuran }}</div>
                   </td>
 
                   <td class="px-3 py-2.5 text-right">
-                    <span v-if="row.harga != null" class="text-sm font-semibold text-slate-800">
+                    <span v-if="row.harga != null" class="font-strong">
                       {{ formatCurrency(row.harga) }}
                     </span>
                     <span v-else
-                      class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                      class="inline-flex items-center rounded-full bg-amber-50 font-label px-2 py-0.5 !text-amber-600">
                       Belum ada harga
                     </span>
                   </td>
                 </tr>
 
                 <tr v-if="priceReferenceRows.length === 0">
-                  <td colspan="3" class="px-3 py-8 text-center text-sm text-slate-400">
+                  <td colspan="3" class="px-3 py-8 font-body text-center">
                     Tidak ada produk yang cocok dengan pencarian.
                   </td>
                 </tr>

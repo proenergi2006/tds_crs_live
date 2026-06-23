@@ -129,25 +129,25 @@ function getStatusClass(status?: number) {
 
         <template #body>
           <Table.Tr v-for="(item, idx) in customers" :key="item.id_customer" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-medium text-slate-800">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">{{ item.email || '-' }}</div>
+              <div class="font-strong">{{ item.nama_perusahaan || '-' }}</div>
+              <div class="font-caption mt-0.5">{{ item.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="text-slate-700">{{ item.alamat_perusahaan || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">
+              <div class="font-body">{{ item.alamat_perusahaan || '-' }}</div>
+              <div class="font-caption mt-0.5">
                 {{ item.cabang?.nama_cabang || '-' }}
               </div>
             </Table.Td>
             <Table.Td>
-              <div class="text-slate-700">{{ item.telepon || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">Fax: {{ item.fax || '-' }}</div>
+              <div class="font-body">{{ item.telepon || '-' }}</div>
+              <div class="font-caption mt-0.5">Fax: {{ item.fax || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
                 :class="getStatusClass(item.status_customer)">
                 {{ getStatusLabel(item.status_customer) }}
               </span>

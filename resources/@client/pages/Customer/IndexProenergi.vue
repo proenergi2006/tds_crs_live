@@ -125,20 +125,20 @@ function getStatusClass(status?: number) {
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <div class="box p-4">
-          <div class="text-xs text-slate-500">Total Customer</div>
-          <div class="mt-1 text-2xl font-semibold text-slate-800">{{ totalRecords }}</div>
+          <div class="font-label">Total Customer</div>
+          <div class="font-num-display mt-1">{{ totalRecords }}</div>
         </div>
         <div class="box p-4">
-          <div class="text-xs text-slate-500">Prospect</div>
-          <div class="mt-1 text-2xl font-semibold text-amber-600">{{ totalProspect }}</div>
+          <div class="font-label">Prospect</div>
+          <div class="font-num-display mt-1 !text-amber-600">{{ totalProspect }}</div>
         </div>
         <div class="box p-4">
-          <div class="text-xs text-slate-500">Customer Tetap</div>
-          <div class="mt-1 text-2xl font-semibold text-emerald-600">{{ totalTetap }}</div>
+          <div class="font-label">Customer Tetap</div>
+          <div class="font-num-display mt-1 !text-emerald-600">{{ totalTetap }}</div>
         </div>
         <div class="box p-4">
-          <div class="text-xs text-slate-500">Total Penawaran</div>
-          <div class="mt-1 text-2xl font-semibold text-primary">{{ totalPenawaran }}</div>
+          <div class="font-label">Total Penawaran</div>
+          <div class="font-num-display mt-1 !text-primary">{{ totalPenawaran }}</div>
         </div>
       </div>
 
@@ -174,26 +174,26 @@ function getStatusClass(status?: number) {
             :key="item.id_customer"
             class="transition hover:bg-slate-50"
           >
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-medium text-slate-800">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">{{ item.user?.name || '-' }}</div>
+              <div class="font-strong">{{ item.nama_perusahaan || '-' }}</div>
+              <div class="font-caption mt-0.5">{{ item.user?.name || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="text-slate-700">{{ item.alamat_perusahaan || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">
+              <div class="font-body">{{ item.alamat_perusahaan || '-' }}</div>
+              <div class="font-caption mt-0.5">
                 {{ item.cabang?.nama_cabang || '-' }}
               </div>
             </Table.Td>
             <Table.Td>
-              <div class="text-slate-700">{{ item.telepon || '-' }}</div>
-              <div class="mt-0.5 text-xs text-slate-500">Fax: {{ item.fax || '-' }}</div>
+              <div class="font-body">{{ item.telepon || '-' }}</div>
+              <div class="font-caption mt-0.5">Fax: {{ item.fax || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
               <span
-                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
                 :class="getStatusClass(item.status_customer)"
               >
                 {{ getStatusLabel(item.status_customer) }}

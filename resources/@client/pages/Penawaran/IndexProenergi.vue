@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -203,10 +203,10 @@ function formatDateTime(d: string) {
             :key="pen.id_penawaran"
             class="transition hover:bg-slate-50"
           >
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
-            <Table.Td class="whitespace-nowrap font-medium">
+            <Table.Td class="font-num whitespace-nowrap">
               {{ pen.nomor_penawaran }}
             </Table.Td>
             <Table.Td class="whitespace-nowrap">
@@ -224,14 +224,14 @@ function formatDateTime(d: string) {
             <Table.Td class="text-center">
               <div class="flex flex-col items-center gap-1">
                 <span
-                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                  class="font-label inline-flex items-center rounded-full px-3 py-1"
                   :class="disposisiClass(pen.disposisi_penawaran)"
                 >
                   {{ getDisposisiLabel(pen.disposisi_penawaran) }}
                 </span>
                 <span
                   v-if="getDisposisiTanggal(pen)"
-                  class="text-xs italic text-slate-400"
+                  class="font-caption italic"
                 >
                   {{ getDisposisiTanggal(pen) }}
                 </span>

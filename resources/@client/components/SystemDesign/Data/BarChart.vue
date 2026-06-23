@@ -208,7 +208,7 @@ function truncateLabel(value: string) {
   <div class="space-y-4">
     <div
       v-if="data.length === 0"
-      class="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500"
+      class="font-body flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50"
     >
       Belum ada data chart.
     </div>

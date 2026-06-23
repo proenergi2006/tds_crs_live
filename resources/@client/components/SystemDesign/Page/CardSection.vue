@@ -37,8 +37,8 @@ const isOpen = ref(props.defaultOpen)
         </div>
 
         <div>
-          <h2 class="text-lg font-semibold text-slate-800">{{ title }}</h2>
-          <p v-if="description" class="text-sm text-slate-500">{{ description }}</p>
+          <h2 class="font-header">{{ title }}</h2>
+          <p v-if="description" class="font-body">{{ description }}</p>
         </div>
       </div>
 

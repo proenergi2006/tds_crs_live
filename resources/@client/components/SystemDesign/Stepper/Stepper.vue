@@ -140,7 +140,7 @@ function circleClass(status: StepItem['status'], wrapSize: string): string {
 
 function titleClass(status: StepItem['status']): string {
   return twMerge(
-    'font-bold',
+    'font-oswald font-bold',
     sz.value.titleText,
     status === 'completed' && 'text-slate-700',
     status === 'active' && 'text-slate-800',
@@ -150,7 +150,7 @@ function titleClass(status: StepItem['status']): string {
 
 function badgeClass(status: StepItem['status']): string {
   return twMerge(
-    'inline-flex items-center gap-1 rounded font-semibold uppercase tracking-wide',
+    'inline-flex items-center gap-1 rounded font-oswald font-semibold uppercase tracking-wide',
     sz.value.badgePad,
     sz.value.badgeText,
     status === 'completed' && 'bg-emerald-100 text-emerald-700',
@@ -185,7 +185,7 @@ function badgeClass(status: StepItem['status']): string {
           <Lucide v-else-if="step.status === 'active'" icon="Loader2" :class="sz.iconInner" />
           <!-- <span v-else-if="step.status === 'active'"
             :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" /> -->
-          <span v-else :class="twMerge('font-bold', sz.numText)">{{ index + 1 }}</span>
+          <span v-else :class="twMerge('font-oswald font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
       </div>
 
@@ -193,7 +193,7 @@ function badgeClass(status: StepItem['status']): string {
       <div :class="['flex flex-1 items-start justify-between gap-3', sz.contentPt]">
         <div class="min-w-0">
           <p v-if="showLabel"
-            :class="twMerge('mb-0.5 font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+            :class="twMerge('mb-0.5 font-oswald font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
             {{ getStepLabel(step, index) }}
           </p>
 
@@ -238,11 +238,11 @@ function badgeClass(status: StepItem['status']): string {
         <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
         <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
         <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
-        <span v-else :class="twMerge('font-bold', sz.numText)">{{ index + 1 }}</span>
+        <span v-else :class="twMerge('font-oswald font-bold', sz.numText)">{{ index + 1 }}</span>
       </div>
 
       <div class="mt-2 text-center">
-        <p v-if="showLabel" :class="twMerge('font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+        <p v-if="showLabel" :class="twMerge('font-oswald font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
           {{ getStepLabel(step, index) }}
         </p>
         <p :class="titleClass(step.status)">{{ step.title }}</p>

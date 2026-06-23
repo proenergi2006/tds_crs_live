@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
@@ -369,7 +369,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="vendor-nama" v-model="form.nama_vendor" placeholder="Nama Vendor"
             :class="getFieldError('nama_vendor') ? 'border-rose-500' : ''" />
-          <small v-if="getFieldError('nama_vendor')" class="text-rose-600">{{ getFieldError('nama_vendor') }}</small>
+          <small v-if="getFieldError('nama_vendor')" class="font-caption !text-rose-600">{{ getFieldError('nama_vendor') }}</small>
         </div>
 
         <div>
@@ -378,7 +378,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="vendor-inisial" v-model="form.inisial" placeholder="Inisial" maxlength="10"
             :class="getFieldError('inisial') ? 'border-rose-500' : ''" />
-          <small v-if="getFieldError('inisial')" class="text-rose-600">{{ getFieldError('inisial') }}</small>
+          <small v-if="getFieldError('inisial')" class="font-caption !text-rose-600">{{ getFieldError('inisial') }}</small>
         </div>
       </div>
 
@@ -388,7 +388,7 @@ function cancel() {
             <FormLabel htmlFor="vendor-npwp">NPWP (16 digit)</FormLabel>
             <FormInput id="vendor-npwp" v-model="npwpInput" placeholder="Masukkan NPWP"
               :class="getFieldError('npwp_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="getFieldError('npwp_number')" class="text-rose-600">{{ getFieldError('npwp_number') }}</small>
+            <small v-if="getFieldError('npwp_number')" class="font-caption !text-rose-600">{{ getFieldError('npwp_number') }}</small>
             <small v-else class="text-slate-500">Disimpan sebagai 16 digit angka tanpa pemisah.</small>
           </div>
 
@@ -404,7 +404,7 @@ function cancel() {
             <FormLabel htmlFor="vendor-nib">NIB / TDP / SIUP (10-20 digit)</FormLabel>
             <FormInput id="vendor-nib" v-model="nibInput" placeholder="Masukkan nomor NIB/TDP/SIUP"
               :class="getFieldError('nib_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="getFieldError('nib_number')" class="text-rose-600">{{ getFieldError('nib_number') }}</small>
+            <small v-if="getFieldError('nib_number')" class="font-caption !text-rose-600">{{ getFieldError('nib_number') }}</small>
           </div>
 
           <FileUploadField v-model="files.nib" :existing-files="existingFile(fileConfigs[1])"
@@ -419,7 +419,7 @@ function cancel() {
             <FormLabel htmlFor="vendor-sppkp">SPPKP (8-20 digit)</FormLabel>
             <FormInput id="vendor-sppkp" v-model="sppkpInput" placeholder="Masukkan nomor SPPKP"
               :class="getFieldError('sppkp_number') ? 'border-rose-500' : ''" inputmode="numeric" autocomplete="off" />
-            <small v-if="getFieldError('sppkp_number')" class="text-rose-600">{{ getFieldError('sppkp_number')
+            <small v-if="getFieldError('sppkp_number')" class="font-caption !text-rose-600">{{ getFieldError('sppkp_number')
               }}</small>
           </div>
 
@@ -446,14 +446,14 @@ function cancel() {
           <FormSwitch>
             <FormSwitch.Input id="vendor-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="text-sm text-slate-600">
+          <span class="font-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
       </div>
 
       <div v-if="mode === 'edit'">
-        <p class="mt-6 text-right text-xs text-gray-500">
+        <p class="font-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

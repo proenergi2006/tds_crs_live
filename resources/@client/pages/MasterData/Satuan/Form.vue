@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required } from '@vuelidate/validators'
@@ -184,7 +184,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_satuan" placeholder="Nama Satuan"
           :class="v$.nama_satuan.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.nama_satuan.$error" class="text-rose-600">{{ getFieldError('nama_satuan') }}</small>
+        <small v-if="v$.nama_satuan.$error" class="font-caption !text-rose-600">{{ getFieldError('nama_satuan') }}</small>
       </div>
 
       <div>
@@ -198,14 +198,14 @@ async function submitForm() {
           <FormSwitch>
             <FormSwitch.Input id="edit-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="text-sm text-slate-600">
+          <span class="font-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
       </div>
 
       <div v-if="props.mode === 'edit'">
-        <p class="text-right text-xs text-gray-500 mt-6">
+        <p class="font-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

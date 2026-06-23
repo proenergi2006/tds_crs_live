@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required } from '@vuelidate/validators'
@@ -236,7 +236,7 @@ async function submitForm() {
           </FormLabel>
           <FormInput id="terminal-nama" v-model="form.nama_terminal" placeholder="Nama Terminal"
             :class="v$.nama_terminal.$error ? 'border-rose-500' : ''" />
-          <small v-if="v$.nama_terminal.$error" class="text-rose-600">{{ getFieldError('nama_terminal') }}</small>
+          <small v-if="v$.nama_terminal.$error" class="font-caption !text-rose-600">{{ getFieldError('nama_terminal') }}</small>
         </div>
 
         <div>
@@ -250,7 +250,7 @@ async function submitForm() {
               {{ cabang.nama_cabang }}
             </option>
           </FormSelect>
-          <small v-if="v$.id_cabang.$error" class="text-rose-600">{{ getFieldError('id_cabang') }}</small>
+          <small v-if="v$.id_cabang.$error" class="font-caption !text-rose-600">{{ getFieldError('id_cabang') }}</small>
         </div>
 
         <div>
@@ -263,7 +263,7 @@ async function submitForm() {
             <option value="Jetty">Jetty</option>
             <option value="StockPile">StockPile</option>
           </FormSelect>
-          <small v-if="v$.kategori_terminal.$error" class="text-rose-600">
+          <small v-if="v$.kategori_terminal.$error" class="font-caption !text-rose-600">
             {{ getFieldError('kategori_terminal') }}
           </small>
         </div>
@@ -300,7 +300,7 @@ async function submitForm() {
       </div>
 
       <div v-if="props.mode === 'edit'">
-        <p class="text-right text-xs text-gray-500 mt-6">
+        <p class="font-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

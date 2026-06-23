@@ -1,4 +1,4 @@
-<!-- pages/Penawaran/Verifikasi/Index.vue -->
+﻿<!-- pages/Penawaran/Verifikasi/Index.vue -->
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
@@ -110,16 +110,16 @@ watch(perPage, () => fetchData(1))
 
         <template #body>
           <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-semibold text-slate-800">{{ pen.nomor_penawaran || '-' }}</div>
+              <div class="font-strong">{{ pen.nomor_penawaran || '-' }}</div>
             </Table.Td>
 
             <Table.Td>
-              <div class="font-medium text-slate-700">{{ pen.customer?.nama_perusahaan || '-' }}</div>
+              <div class="font-strong">{{ pen.customer?.nama_perusahaan || '-' }}</div>
               <div class="text-slate-500">{{ pen.nama || '-' }} - {{ pen.jabatan || '' }}</div>
             </Table.Td>
 
@@ -133,7 +133,7 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+              <span class="font-label inline-flex items-center rounded-full px-3 py-1"
                 :class="statusBadgeClass(pen.status)">
                 {{ formatStatusLabel(pen.status) }}
               </span>
@@ -141,7 +141,7 @@ watch(perPage, () => fetchData(1))
 
             <Table.Td class="text-center">
               <div class="flex flex-col items-center gap-1">
-                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                <span class="font-label inline-flex items-center rounded-full px-3 py-1"
                   :class="disposisiBadgeClass(pen.disposisi_penawaran)">
                   {{ getDisposisiLabel(pen.disposisi_penawaran) }}
                 </span>

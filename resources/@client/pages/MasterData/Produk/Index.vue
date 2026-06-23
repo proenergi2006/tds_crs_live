@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
@@ -248,7 +248,7 @@ async function submitDelete() {
         <template #filters>
           <div class="space-y-4 p-1">
             <div>
-              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">
+              <div class="font-section px-3 pb-2 pt-1">
                 Jenis
               </div>
 
@@ -261,7 +261,7 @@ async function submitDelete() {
             </div>
 
             <div>
-              <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">
+              <div class="font-section px-3 pb-2">
                 Ukuran
               </div>
 
@@ -299,12 +299,12 @@ async function submitDelete() {
 
         <template #body>
           <Table.Tr v-for="(item, idx) in produks" :key="item.id_produk" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <span class="font-medium">{{ item.nama_produk }}</span>
-              <p v-if="item.deskripsi" class="text-sm text-slate-500">{{ item.deskripsi }}</p>
+              <span class="font-strong">{{ item.nama_produk }}</span>
+              <p v-if="item.deskripsi" class="font-body">{{ item.deskripsi }}</p>
             </Table.Td>
             <Table.Td>
               {{ item.merk_dagang || '-' }}
@@ -316,7 +316,7 @@ async function submitDelete() {
               {{ item.jenis?.nama || '-' }}
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+              <span class="font-label inline-flex rounded-full px-3 py-1"
                 :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                 {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>

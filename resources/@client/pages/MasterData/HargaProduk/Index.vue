@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -320,27 +320,27 @@ function produkText(row: HargaRow) {
                   class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                   <Lucide icon="CalendarDays" class="h-4 w-4" />
                 </span>
-                <span class="text-sm font-medium text-slate-800">{{ row.label }}</span>
+                <span class="font-strong">{{ row.label }}</span>
               </div>
             </Table.Td>
 
             <Table.Td>
-              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" :class="row.status === 'aktif'
+              <span class="font-label inline-flex items-center rounded-full px-2.5 py-1" :class="row.status === 'aktif'
                 ? 'bg-success/10 text-success'
                 : 'bg-slate-100 text-slate-500'">
                 {{ row.status === 'aktif' ? 'Aktif' : 'Berakhir' }}
               </span>
             </Table.Td>
 
-            <Table.Td class="text-right text-sm text-slate-700">
+            <Table.Td class="font-num text-right">
               {{ row.jumlah_cabang }}
             </Table.Td>
 
-            <Table.Td class="text-right text-sm text-slate-700">
+            <Table.Td class="font-num text-right">
               {{ row.jumlah_data }}
             </Table.Td>
 
-            <Table.Td class="text-sm text-slate-500">
+            <Table.Td class="font-body">
               {{ formatDateTime(row.terakhir_diupdate) }}
             </Table.Td>
 
@@ -364,17 +364,17 @@ function produkText(row: HargaRow) {
           <Slideover.Title class="p-5">
             <div class="flex min-w-0 flex-col gap-1">
               <div class="flex items-center gap-2">
-                <h2 class="text-base font-semibold text-slate-800 truncate">
+                <h2 class="font-header truncate">
                   {{ selectedPeriode?.label ?? '' }}
                 </h2>
                 <span v-if="selectedPeriode"
-                  class="inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="selectedPeriode.status === 'aktif'
+                  class="font-label inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5" :class="selectedPeriode.status === 'aktif'
                     ? 'bg-success/10 text-success'
                     : 'bg-slate-100 text-slate-500'">
                   {{ selectedPeriode.status === 'aktif' ? 'Aktif' : 'Berakhir' }}
                 </span>
               </div>
-              <p class="text-xs text-slate-400">
+              <p class="font-caption">
                 {{ selectedPeriode?.jumlah_data }} data · {{ selectedPeriode?.jumlah_cabang }} cabang
               </p>
             </div>
@@ -390,7 +390,7 @@ function produkText(row: HargaRow) {
               <template #filters>
                 <div class="space-y-4 p-1">
                   <div>
-                    <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Cabang</div>
+                    <div class="font-section px-3 pb-2 pt-1">Cabang</div>
                     <FormSelect v-model="slideoverFilterCabang">
                       <option value="">Semua Cabang</option>
                       <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="cabang.id_cabang">
@@ -399,7 +399,7 @@ function produkText(row: HargaRow) {
                     </FormSelect>
                   </div>
                   <div>
-                    <div class="px-3 pb-2 text-xs font-semibold uppercase text-slate-500">Produk</div>
+                    <div class="font-section px-3 pb-2">Produk</div>
                     <FormSelect v-model="slideoverFilterProduk">
                       <option value="">Semua Produk</option>
                       <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
@@ -433,27 +433,27 @@ function produkText(row: HargaRow) {
               <template #body>
                 <Table.Tr v-for="item in paginatedRows" :key="item.id_produk_harga"
                   class="transition hover:bg-slate-50">
-                  <Table.Td class="text-sm text-slate-700">
+                  <Table.Td class="font-body">
                     {{ item.cabang?.nama_cabang ?? '-' }}
                   </Table.Td>
 
-                  <Table.Td class="text-sm text-slate-700">
+                  <Table.Td class="font-body">
                     <div class="max-w-[220px]">{{ produkText(item) }}</div>
                   </Table.Td>
 
-                  <Table.Td class="text-right text-sm text-slate-700">
+                  <Table.Td class="font-num text-right">
                     {{ formatNumber(item.harga_cogs) }}
                   </Table.Td>
 
-                  <Table.Td class="text-right text-sm text-slate-700">
+                  <Table.Td class="font-num text-right">
                     {{ formatNumber(item.harga_margin) }}
                   </Table.Td>
 
-                  <Table.Td class="text-right text-sm font-medium text-slate-800">
+                  <Table.Td class="font-num text-right">
                     {{ formatNumber(item.harga_price_list) }}
                   </Table.Td>
 
-                  <Table.Td class="text-right text-sm font-medium text-slate-800">
+                  <Table.Td class="font-num text-right">
                     {{ formatNumber(item.harga_price_list_pe) }}
                   </Table.Td>
 

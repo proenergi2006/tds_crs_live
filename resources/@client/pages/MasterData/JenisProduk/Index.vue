@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { debounce } from 'lodash'
 
@@ -192,7 +192,7 @@ async function submitDelete() {
 
         <template #body>
           <Table.Tr v-for="(item, idx) in jenisProduks" :key="item.id_jenis" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
@@ -202,7 +202,7 @@ async function submitDelete() {
               {{ item.deskripsi || '-' }}
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+              <span class="font-label inline-flex rounded-full px-3 py-1"
                 :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                 {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>

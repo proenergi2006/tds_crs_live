@@ -125,7 +125,7 @@ function handleBlur() {
 
       <div
         v-if="suffix"
-        class="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-3 text-xs font-semibold text-slate-400"
+        class="font-caption pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-3"
       >
         {{ suffix }}
       </div>

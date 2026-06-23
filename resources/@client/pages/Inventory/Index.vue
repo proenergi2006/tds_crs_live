@@ -223,8 +223,8 @@ function formatDateTime(value: string) {
         <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-slate-500">Total Volume</p>
-              <p class="mt-2 text-2xl font-semibold text-slate-800">
+              <p class="font-label">Total Volume</p>
+              <p class="font-num-display mt-2">
                 {{ formatNumber(totalVolume) }}
               </p>
             </div>
@@ -237,8 +237,8 @@ function formatDateTime(value: string) {
         <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-slate-500">Nilai Stok</p>
-              <p class="mt-2 text-2xl font-semibold text-slate-800">
+              <p class="font-label">Nilai Stok</p>
+              <p class="font-num-display mt-2">
                 {{ formatCurrency(totalValue) }}
               </p>
             </div>
@@ -251,8 +251,8 @@ function formatDateTime(value: string) {
         <div class="box rounded-lg border p-5">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-slate-500">Stok Terbaru</p>
-              <p class="mt-2 text-base font-semibold text-slate-800">
+              <p class="font-label">Stok Terbaru</p>
+              <p class="font-strong mt-2">
                 {{ formatDateTime(latestStockDate) }}
               </p>
             </div>
@@ -266,10 +266,10 @@ function formatDateTime(value: string) {
       <div v-if="chartData.length > 0" class="box rounded-lg border p-5">
         <div class="mb-4 flex items-center justify-between">
           <div>
-            <h3 class="text-base font-semibold text-slate-800">
+            <h3 class="font-header">
               Grafik Volume Stok
             </h3>
-            <p class="text-sm text-slate-500">
+            <p class="font-body">
               {{ selectedProductId === 0 ? 'Ringkasan per produk' : 'Distribusi per PO' }}
             </p>
           </div>
@@ -288,7 +288,7 @@ function formatDateTime(value: string) {
         <template #filters>
           <div class="space-y-4 p-1">
             <div>
-              <div class="px-3 pb-2 pt-1 text-xs font-semibold uppercase text-slate-500">Produk</div>
+              <div class="font-section px-3 pb-2 pt-1">Produk</div>
               <FormSelect :model-value="String(selectedProductId)"
                 @update:model-value="selectedProductId = Number($event)">
                 <option value="0">Semua Produk</option>
@@ -296,7 +296,7 @@ function formatDateTime(value: string) {
                   {{ product.nama_produk }}
                 </option>
               </FormSelect>
-              <p v-if="selectedProductLabel" class="mt-2 px-3 text-xs text-slate-500">
+              <p v-if="selectedProductLabel" class="font-caption mt-2 px-3">
                 {{ selectedProductLabel }}
               </p>
             </div>
@@ -321,29 +321,29 @@ function formatDateTime(value: string) {
 
         <template #body>
           <Table.Tr v-for="(row, idx) in paginatedStocks" :key="row.id" class="transition hover:bg-slate-50">
-            <Table.Td class="text-center font-medium text-slate-700">
+            <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
-            <Table.Td class="whitespace-nowrap text-slate-600">
+            <Table.Td class="font-body whitespace-nowrap">
               {{ formatDateTime(row.created_at) }}
             </Table.Td>
             <Table.Td>
-              <span class="font-medium text-slate-800">
+              <span class="font-num">
                 {{ row.no_gr || '-' }}
               </span>
             </Table.Td>
             <Table.Td>
-              <span class="font-medium text-slate-800">
+              <span class="font-num">
                 {{ row.nomor_po || '-' }}
               </span>
             </Table.Td>
-            <Table.Td>
+            <Table.Td class="font-body">
               {{ row.produk_label || '-' }}
             </Table.Td>
-            <Table.Td class="text-right font-medium text-slate-700">
+            <Table.Td class="font-num text-right">
               {{ formatNumber(row.volume) }}
             </Table.Td>
-            <Table.Td class="text-right text-slate-700">
+            <Table.Td class="font-num text-right">
               {{ formatCurrency(row.harga_tebus) }}
             </Table.Td>
           </Table.Tr>
