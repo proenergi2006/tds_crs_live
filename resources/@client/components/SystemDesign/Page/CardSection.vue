@@ -28,7 +28,7 @@ const isOpen = ref(props.defaultOpen)
 
 <template>
   <section class="rounded-lg bg-white shadow-sm" :class="collapsible && !isOpen ? 'pb-0' : ''">
-    <div class="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between  border border-bottom"
+    <div class="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between"
       :class="[collapsible && isOpen ? 'pb-5' : '', collapsible ? 'cursor-pointer select-none' : '']"
       @click="collapsible && (isOpen = !isOpen)">
       <div class="flex items-center gap-3">
@@ -55,7 +55,8 @@ const isOpen = ref(props.defaultOpen)
 
     <Transition name="card-collapse">
       <div v-show="!collapsible || isOpen">
-        <div class="mt-4" :class="collapsible ? 'overflow-hidden' : ''">
+        <hr class="mb-4" />
+        <div :class="collapsible ? 'overflow-hidden' : ''">
           <div class="px-6 pb-6" :class="contentClass">
             <slot />
           </div>

@@ -88,13 +88,17 @@ class ProdukHargaController extends Controller
         ]);
     }
 
-    // Mengembalikan map {id_produk: harga_price_list} untuk produk yang harganya ter-cover
-    // oleh rentang periode pengiriman. Jika satu produk punya >1 harga di rentang itu,
+    // Mengembalikan map {id_produk: harga} untuk produk yang harganya ter-cover oleh
+    // rentang periode pengiriman. Jika satu produk punya >1 harga di rentang itu,
     // ambil yang paling baru (periode_akhir paling lama).
+    //
+    // Param `pe=1` (Proenergi): pakai harga_price_list_pe, fallback ke harga_price_list
+    // bila harga PE belum diisi (<= 0). Default (TDS): pakai harga_price_list.
     public function byDate(Request $request)
     {
         $awal  = $request->query('periode_awal');
         $akhir = $request->query('periode_akhir') ?: $awal;
+        $usePe = $request->boolean('pe');
 
         if (!$awal) {
             return response()->json([]);
@@ -111,14 +115,23 @@ class ProdukHargaController extends Controller
             $q->where('id_cabang', $cabangId);
         }
 
-        $rows = $q->get(['id_produk', 'harga_price_list']);
+        $cols = $usePe
+            ? ['id_produk', 'harga_price_list', 'harga_price_list_pe']
+            : ['id_produk', 'harga_price_list'];
+        $rows = $q->get($cols);
 
         $map = [];
         foreach ($rows as $row) {
             // Karena sudah di-order periode_akhir desc, baris pertama per produk = harga terbaru.
-            if (!array_key_exists($row->id_produk, $map)) {
-                $map[$row->id_produk] = $row->harga_price_list;
+            if (array_key_exists($row->id_produk, $map)) {
+                continue;
             }
+
+            // Proenergi: harga_price_list_pe ?? harga_price_list. Kolom pe nullable &
+            // default 0, jadi nilai <= 0 dianggap "belum diisi" lalu fallback ke TDS.
+            $map[$row->id_produk] = ($usePe && (float) ($row->harga_price_list_pe ?? 0) > 0)
+                ? $row->harga_price_list_pe
+                : $row->harga_price_list;
         }
 
         return response()->json($map);

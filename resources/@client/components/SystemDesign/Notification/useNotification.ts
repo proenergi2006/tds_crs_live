@@ -7,6 +7,10 @@ type NotificationOptions = {
     variant?: "primary" | "secondary";
     onClick: () => void;
   };
+  /** Daftar baris detail (mis. daftar error validasi) — dirender sebagai list. */
+  items?: string[];
+  /** Toast tidak auto-dismiss; harus ditutup manual lewat tombol close. */
+  sticky?: boolean;
 };
 
 const actionHandlers = new Map<string, () => void>();
@@ -62,6 +66,8 @@ export function useNotification() {
       title,
       message: message ?? "",
       action,
+      items: options.items ?? [],
+      sticky: options.sticky ?? false,
     };
 
     renderNotification();

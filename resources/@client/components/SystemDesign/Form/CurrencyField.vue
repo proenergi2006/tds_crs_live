@@ -88,11 +88,11 @@ function handleBlur() {
       </div>
 
       <FormInput :model-value="displayValue" type="text" inputmode="numeric" autocomplete="off" :placeholder="placeholder"
-        :disabled="disabled" :readonly="readonly" class="pl-10 text-right" :class="error ? 'border-rose-500' : ''"
+        :disabled="disabled" :readonly="readonly" class="pl-10 text-right" :class="error ? 'input-error' : ''"
         @input="handleInput" @blur="handleBlur" />
     </div>
 
-    <small v-if="error" class="mt-1 block text-rose-600">
+    <small v-if="error" class="block input-error-text">
       {{ error }}
     </small>
   </div>

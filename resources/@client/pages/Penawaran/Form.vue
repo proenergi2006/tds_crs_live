@@ -3,12 +3,14 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toRaw } from 'vue'
 import axios from 'axios'
-import Swal from 'sweetalert2'
+import { useVuelidate } from '@vuelidate/core'
+import { helpers, required, requiredIf } from '@vuelidate/validators'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import TomSelect from '@/components/Base/TomSelect'
 import Table from '@/components/Base/Table'
+import { Slideover } from '@/components/Base/Headless'
 import { FormInput, FormLabel, FormSelect, FormTextarea } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
@@ -24,6 +26,34 @@ const { success, error: notifyError } = useNotification()
 
 const idParam = route.params.id as string | undefined
 const isEdit = Boolean(idParam)
+
+/* Brand: form ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta.
+   Semua perbedaan antar-brand dipusatkan di BRAND_CONFIG. PDF blade & backend
+   tetap terpisah — form hanya memanggil API base yang sesuai. */
+type Brand = 'tds' | 'proenergi'
+const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
+const isProenergi = brand === 'proenergi'
+
+const BRAND_CONFIG = {
+  tds: {
+    apiBase: '/api/penawarans',
+    listRoute: 'penawarans-list',
+    usePe: false,                    // harga dari kolom harga_price_list
+    paymentOptions: ['COD', 'CBD', 'TOP 7', 'TOP 14', 'TOP 30', 'CUSTOM'],
+    showTopHari: false,
+    showAcuan: false,
+  },
+  proenergi: {
+    apiBase: '/api/penawarans-proenergi',
+    listRoute: 'penawarans-list-proenergi',
+    usePe: true,                     // harga_price_list_pe ?? harga_price_list (via param pe=1)
+    paymentOptions: ['COD', 'CBD', 'TOP', 'CUSTOM'],
+    showTopHari: true,
+    showAcuan: true,
+  },
+}
+const cfg = BRAND_CONFIG[brand]
+const brandLabel = isProenergi ? 'Penawaran Proenergi' : 'Penawaran'
 
 /* State: lookups */
 const customers = ref<any[]>([])
@@ -47,6 +77,11 @@ const disposisiPenawaran = ref<number | null>(null)
 const periodeRange = ref('')
 const hargaMap = ref<Record<string, number | null>>({})
 const hargaLoading = ref(false)
+const hargaFetched = ref(false)
+
+/* State: slideover referensi harga */
+const priceRefOpen = ref(false)
+const priceRefSearch = ref('')
 
 interface ItemLine {
   id_produk: string
@@ -65,6 +100,8 @@ const form = reactive({
   items: [] as ItemLine[],
 
   tipe_pembayaran: '',
+  top_hari: '',            // Proenergi: hari TOP (7/14)
+  acuan_pembayaran: '',    // Proenergi: acuan pembayaran
   dp_persen: '',
   dp_keterangan: '',
   repayment_persen: '',
@@ -95,13 +132,7 @@ const form = reactive({
   harga_dasar: 0,
 })
 
-/* Validation state */
-const errors = reactive<Record<string, boolean>>({})
-const invalidProdukIdx = ref<Set<number>>(new Set())
-const invalidPersenIdx = ref<Set<number>>(new Set())
-
 /* Computed: totals */
-const oatPerVolumeManual = computed(() => toNum(form.oat))
 const hargaDasarNumber = computed(() => toNum(form.harga_dasar || 0))
 const oatPerVolume = computed(() => toNum(form.oat || 0))
 
@@ -137,6 +168,149 @@ const totalOAT = computed(() => oatPerVolume.value * totalVolumePO.value)
 const ppn11 = computed(() => Math.round(grandTotalHargaTebusSetelahDiskon.value * 0.11))
 const grandTotalWithOAT = computed(() => grandTotalHargaTebusSetelahDiskon.value + ppn11.value + totalOAT.value)
 
+/* Computed: referensi harga — SELURUH produk, baik yang ada harganya maupun belum.
+   Sudah ter-scope ke satu cabang + satu periode, jadi aman dirender penuh di client. */
+const selectedCabangName = computed(() =>
+  cabangs.value.find(c => String(c.id_cabang) === String(form.id_cabang))?.nama_cabang || '-'
+)
+
+const priceReferenceRows = computed(() => {
+  const q = priceRefSearch.value.trim().toLowerCase()
+  return produks.value
+    .map(p => {
+      const raw = hargaMap.value[String(p.id_produk)]
+      const harga = raw != null && Number(raw) > 0 ? Number(raw) : null
+      const ukuran = p.ukuran?.nama_ukuran
+        ? `${p.ukuran.nama_ukuran}${p.ukuran?.satuan?.nama_satuan ? ' ' + p.ukuran.satuan.nama_satuan : ''}`
+        : ''
+      return {
+        id_produk: p.id_produk,
+        nama: (p.nama_produk || '') as string,
+        jenis: (p.jenis?.nama || '') as string,
+        ukuran,
+        harga,
+      }
+    })
+    .filter(r => !q || r.nama.toLowerCase().includes(q) || r.jenis.toLowerCase().includes(q))
+})
+
+const priceRefSummary = computed(() => {
+  const total = produks.value.length
+  let withPrice = 0
+  for (const p of produks.value) {
+    const raw = hargaMap.value[String(p.id_produk)]
+    if (raw != null && Number(raw) > 0) withPrice++
+  }
+  return { total, withPrice, without: total - withPrice }
+})
+
+/* Validation — useVuelidate (sesuai guideline project) */
+const validationRules = computed(() => ({
+  id_customer: { required: helpers.withMessage('Customer wajib diisi.', required) },
+  id_cabang: { required: helpers.withMessage('Cabang wajib dipilih.', required) },
+  type_pengiriman: { required: helpers.withMessage('Type Pengiriman wajib dipilih.', required) },
+  masa_berlaku: { required: helpers.withMessage('Masa berlaku wajib diisi.', required) },
+  sampai_dengan: {
+    required: helpers.withMessage('Sampai dengan wajib diisi.', required),
+    afterStart: helpers.withMessage(
+      'Tanggal "Sampai Dengan" tidak boleh lebih awal dari "Masa Berlaku".',
+      (value: string) => {
+        if (!value || !form.masa_berlaku) return true
+        const mb = new Date(form.masa_berlaku).getTime()
+        const sd = new Date(value).getTime()
+        if (Number.isNaN(mb) || Number.isNaN(sd)) return true
+        return sd >= mb
+      },
+    ),
+  },
+  metode: { required: helpers.withMessage('Metode wajib dipilih.', required) },
+  tipe_pembayaran: { required: helpers.withMessage('Tipe pembayaran wajib dipilih.', required) },
+  top_hari: {
+    requiredIfTop: helpers.withMessage(
+      'TOP hari wajib dipilih jika tipe pembayaran TOP.',
+      requiredIf(() => cfg.showTopHari && form.tipe_pembayaran === 'TOP'),
+    ),
+  },
+  dp_persen: {
+    requiredIfCustom: helpers.withMessage(
+      'Persentase DP wajib diisi untuk tipe Custom.',
+      requiredIf(() => form.tipe_pembayaran === 'CUSTOM'),
+    ),
+  },
+  repayment_persen: {
+    requiredIfCustom: helpers.withMessage(
+      'Persentase Repayment wajib diisi untuk tipe Custom.',
+      requiredIf(() => form.tipe_pembayaran === 'CUSTOM'),
+    ),
+  },
+  oat: {
+    requiredForNonFob: helpers.withMessage(
+      'OAT per volume wajib terisi (> 0) untuk metode selain FOB.',
+      (value: number | string) => {
+        if (!form.metode || form.metode === 'FOB') return true
+        return toNum(value) > 0
+      },
+    ),
+  },
+  items: {
+    minLength: helpers.withMessage(
+      'Minimal 1 item produk.',
+      (val: ItemLine[]) => Array.isArray(val) && val.length > 0,
+    ),
+    totalPersen: helpers.withMessage(
+      () => `Total Persen harus 100%. Saat ini: ${totalPersenNumber.value}%`,
+      () => totalPersenNumber.value === 100,
+    ),
+    $each: helpers.forEach({
+      id_produk: { required: helpers.withMessage('Produk wajib dipilih.', required) },
+      persen: {
+        positive: helpers.withMessage(
+          'Persentase wajib diisi.',
+          (v: number | string) => toFloat(v) > 0,
+        ),
+      },
+    }),
+  },
+}))
+
+const v$ = useVuelidate(validationRules, form)
+
+/* Helper tampilan error */
+function fieldError(field: string): string {
+  const f = (v$.value as any)[field]
+  return f?.$error ? (f.$errors[0]?.$message?.toString() ?? '') : ''
+}
+
+function inputClass(field: string): string {
+  return (v$.value as any)[field]?.$error ? 'input-error' : ''
+}
+
+function itemError(idx: number, field: 'id_produk' | 'persen'): string {
+  const rowErrors = (v$.value.items as any)?.$each?.$response?.$errors?.[idx]?.[field]
+  return rowErrors && rowErrors.length ? (rowErrors[0]?.$message?.toString() ?? '') : ''
+}
+
+function itemInputClass(idx: number, field: 'id_produk' | 'persen'): string {
+  return itemError(idx, field) ? 'input-error' : ''
+}
+
+/* Kumpulkan semua pesan error (top-level + per-baris items) untuk ringkasan sticky. */
+function collectErrorMessages(): string[] {
+  const msgs: string[] = []
+  const push = (m?: string) => { if (m && !msgs.includes(m)) msgs.push(m) }
+
+  for (const e of v$.value.$errors) push(e.$message?.toString())
+
+  const eachErrors = (v$.value.items as any)?.$each?.$response?.$errors ?? []
+  for (const rowError of eachErrors) {
+    if (!rowError) continue
+    for (const field of Object.keys(rowError)) {
+      for (const er of rowError[field]) push(er?.$message?.toString())
+    }
+  }
+  return msgs
+}
+
 onMounted(async () => {
   await Promise.all([fetchSelects(), fetchTransportirWilayahVolume()])
   if (!isEdit) {
@@ -152,18 +326,29 @@ watch(periodeRange, (val) => {
   form.sampai_dengan = parts[1] || ''
 })
 
+watch(() => form.tipe_pembayaran, (val) => {
+  if (val !== 'TOP') form.top_hari = ''
+})
+
 async function fetchHargaByDate() {
   const periodeAwal = form.masa_berlaku
   const periodeAkhir = form.sampai_dengan
   const idCabang = form.id_cabang
   hargaMap.value = {}
+  hargaFetched.value = false
   if (!periodeAwal || !idCabang) return
   hargaLoading.value = true
   try {
     const { data } = await axios.get('/api/produk-hargas/by-date', {
-      params: { periode_awal: periodeAwal, periode_akhir: periodeAkhir, id_cabang: idCabang },
+      params: {
+        periode_awal: periodeAwal,
+        periode_akhir: periodeAkhir,
+        id_cabang: idCabang,
+        ...(cfg.usePe ? { pe: 1 } : {}),
+      },
     })
     hargaMap.value = data
+    hargaFetched.value = true
   } catch {
     notifyError('Gagal', 'Gagal memuat data harga produk')
   } finally {
@@ -207,7 +392,7 @@ async function fetchSelects() {
     const [cData, caData, pData] = await Promise.all([
       axios.get('/api/customers', { params: { as_list: true } }),
       axios.get('/api/cabangs'),
-      axios.get('/api/produks?with=ukuran'),
+      axios.get('/api/produks', { params: { with: 'ukuran', per_page: 1000 } }),
     ])
     customers.value = cData.data.data || cData.data
     cabangs.value = caData.data.data || caData.data
@@ -230,7 +415,7 @@ async function fetchTransportirWilayahVolume() {
 
 async function fetchPenawaran() {
   try {
-    const { data } = await axios.get(`/api/penawarans/${idParam}`)
+    const { data } = await axios.get(`${cfg.apiBase}/${idParam}`)
     disposisiPenawaran.value = data.disposisi_penawaran != null ? Number(data.disposisi_penawaran) : null
 
     if (data.masa_berlaku && data.sampai_dengan) {
@@ -244,6 +429,8 @@ async function fetchPenawaran() {
       masa_berlaku: data.masa_berlaku,
       sampai_dengan: data.sampai_dengan,
       tipe_pembayaran: data.tipe_pembayaran || '',
+      top_hari: data.top_hari != null ? String(data.top_hari) : '',
+      acuan_pembayaran: data.acuan_pembayaran || '',
       order_method: data.order_method || '',
       dp_persen: formatInt(data.dp_persen),
       dp_keterangan: data.dp_keterangan || '',
@@ -370,88 +557,16 @@ function updateHargaTebus(item: ItemLine) {
   }
 }
 
-/* Validation */
-function clearErrors() {
-  for (const k of Object.keys(errors)) delete errors[k]
-  invalidProdukIdx.value.clear()
-  invalidPersenIdx.value.clear()
-}
-
-function inputClass(field: string) {
-  return errors[field] ? 'border-red-500 ring-1 ring-red-500' : ''
-}
-
-function itemInputClass(idx: number, field: 'id_produk' | 'persen') {
-  const set = field === 'id_produk' ? invalidProdukIdx.value : invalidPersenIdx.value
-  return set.has(idx) ? 'border-red-500 ring-1 ring-red-500' : ''
-}
-
-function validateForm(): boolean {
-  clearErrors()
-  const msgs: string[] = []
-
-  if (!form.id_customer) { errors['id_customer'] = true; msgs.push('Customer wajib diisi.') }
-  if (!form.id_cabang) { errors['id_cabang'] = true; msgs.push('Cabang wajib diisi.') }
-  if (!form.type_pengiriman) { errors['type_pengiriman'] = true; msgs.push('Type Pengiriman wajib dipilih.') }
-  if (!form.masa_berlaku) { errors['masa_berlaku'] = true; msgs.push('Masa berlaku wajib diisi.') }
-  if (!form.sampai_dengan) { errors['sampai_dengan'] = true; msgs.push('Sampai dengan wajib diisi.') }
-
-  if (form.masa_berlaku && form.sampai_dengan) {
-    const mb = new Date(form.masa_berlaku).getTime()
-    const sd = new Date(form.sampai_dengan).getTime()
-    if (!isNaN(mb) && !isNaN(sd) && sd < mb) {
-      errors['masa_berlaku'] = true
-      errors['sampai_dengan'] = true
-      msgs.push('Tanggal "Sampai Dengan" tidak boleh lebih awal dari "Masa Berlaku".')
-    }
-  }
-
-  if (!form.metode) { errors['metode'] = true; msgs.push('Metode wajib dipilih.') }
-  if (!form.tipe_pembayaran) { errors['tipe_pembayaran'] = true; msgs.push('Tipe pembayaran wajib dipilih.') }
-
-  if (form.tipe_pembayaran === 'CUSTOM' && (!form.dp_persen || !form.repayment_persen)) {
-    msgs.push('Persentase DP dan Repayment wajib diisi untuk tipe Custom.')
-  }
-
-  if (!form.items.length) {
-    msgs.push('Minimal 1 item produk.')
-  } else {
-    let sumPersen = 0
-    form.items.forEach((it, idx) => {
-      const persen = toFloat(it.persen)
-      if (!it.id_produk) invalidProdukIdx.value.add(idx)
-      if (persen <= 0) invalidPersenIdx.value.add(idx)
-      sumPersen += persen
-    })
-    if (invalidProdukIdx.value.size > 0) msgs.push('Semua baris harus memilih Produk.')
-    if (invalidPersenIdx.value.size > 0) msgs.push('Persen per baris harus diisi (> 0).')
-    const rounded = Math.round(sumPersen * 100) / 100
-    if (rounded !== 100) {
-      msgs.push(`Total Persen harus 100%. Saat ini: ${rounded}%`)
-      form.items.forEach((_, idx) => invalidPersenIdx.value.add(idx))
-    }
-  }
-
-  const oatNum = Number(oatPerVolumeManual.value || 0)
-  if (form.metode && form.metode !== 'FOB' && oatNum <= 0) {
-    errors['oat'] = true
-    msgs.push('OAT per volume wajib terisi (> 0) untuk metode selain FOB.')
-  }
-
-  if (msgs.length) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Validasi Gagal',
-      html: `<div style="text-align:left"><ul style="margin:0;padding-left:18px">${msgs.map(m => `<li>${m}</li>`).join('')}</ul></div>`,
-    })
-    return false
-  }
-  return true
-}
-
 /* Submit */
 async function submitForm() {
-  if (!validateForm()) return
+  const valid = await v$.value.$validate()
+  if (!valid) {
+    notifyError('Validasi Gagal', 'Periksa kembali isian berikut:', {
+      items: collectErrorMessages(),
+      sticky: true,
+    })
+    return
+  }
   loading.value = true
   try {
     const payloadItems = form.items.map((it) => ({
@@ -490,6 +605,10 @@ async function submitForm() {
       ongkos: payloadOngkos,
       items: payloadItems,
       tipe_pembayaran: form.tipe_pembayaran,
+      ...(isProenergi ? {
+        top_hari: form.tipe_pembayaran === 'TOP' ? (parseInt(String(form.top_hari || '0'), 10) || null) : null,
+        acuan_pembayaran: form.acuan_pembayaran,
+      } : {}),
       order_method: form.order_method,
       dp_persen: parseInt((form.dp_persen || '0').replace(/\./g, ''), 10) || 0,
       dp_keterangan: form.dp_keterangan,
@@ -526,17 +645,17 @@ async function submitForm() {
     }
 
     if (isEdit) {
-      await axios.put(`/api/penawarans/${idParam}`, payload)
+      await axios.put(`${cfg.apiBase}/${idParam}`, payload)
       success('Berhasil', 'Penawaran berhasil diupdate.')
     } else {
-      await axios.post('/api/penawarans', payload)
+      await axios.post(cfg.apiBase, payload)
       success('Berhasil', 'Penawaran berhasil dibuat.')
     }
     goBack()
   } catch (e: any) {
     if (e.response?.status === 422 && e.response.data.errors) {
-      const msgs = Object.values(e.response.data.errors).flat().join('<br/>')
-      Swal.fire({ icon: 'error', title: 'Validasi Backend Gagal', html: msgs })
+      const items = Object.values(e.response.data.errors).flat() as string[]
+      notifyError('Validasi Backend Gagal', 'Perbaiki data berikut:', { items, sticky: true })
     } else {
       notifyError('Gagal', e.response?.data?.message || 'Gagal menyimpan penawaran.')
     }
@@ -546,7 +665,7 @@ async function submitForm() {
 }
 
 function goBack() {
-  router.push({ name: 'penawarans-list' })
+  router.push({ name: cfg.listRoute })
 }
 
 /* Helpers */
@@ -595,7 +714,7 @@ function formatCurrency(v: number | string = 0) {
 </script>
 
 <template>
-  <FormPage :title="isEdit ? 'Edit Penawaran' : 'Tambah Penawaran'"
+  <FormPage :title="isEdit ? `Edit ${brandLabel}` : `Tambah ${brandLabel}`"
     :description="isEdit ? 'Perbarui data penawaran ke customer.' : 'Lengkapi data penawaran baru ke customer.'"
     size="full" layout="sidebar" surface="plain" footer-placement="sidebar" :loading="loading"
     :submit-text="isEdit ? 'Update Penawaran' : 'Simpan Penawaran'" submit-icon="Save" cancel-icon="ArrowLeft"
@@ -627,11 +746,12 @@ function formatCurrency(v: number | string = 0) {
           <TomSelect v-model="form.id_customer" :options="{
             placeholder: 'Pilih Customer...',
             dropdownParent: 'body' as const,
-          }" class="w-full" :class="inputClass('id_customer')" @update:model-value="errors['id_customer'] = false">
+          }" class="w-full" :class="inputClass('id_customer')">
             <option v-for="c in customers" :key="c.id_customer" :value="String(c.id_customer)">
               {{ c.nama_perusahaan }}
             </option>
           </TomSelect>
+          <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer') }}</small>
         </div>
 
         <div class="col-span-12 md:col-span-6">
@@ -644,6 +764,7 @@ function formatCurrency(v: number | string = 0) {
               {{ c.nama_cabang }}
             </option>
           </FormSelect>
+          <small v-if="fieldError('id_cabang')" class="block input-error-text">{{ fieldError('id_cabang') }}</small>
         </div>
       </div>
     </CardSection>
@@ -684,9 +805,28 @@ function formatCurrency(v: number | string = 0) {
       :collapsible="true" icon-class="bg-violet-100 text-violet-600">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12">
-          <DateRangeField v-model="periodeRange" label="Periode Pengiriman (Masa Berlaku s/d Sampai Dengan)"
-            placeholder="Pilih tanggal mulai – akhir" :required="true"
-            :error="(errors['masa_berlaku'] || errors['sampai_dengan']) ? 'Periode wajib diisi' : ''" />
+          <FormLabel>Periode Pengiriman (Masa Berlaku s/d Sampai Dengan)
+            <RequiredAsterisk />
+          </FormLabel>
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div class="flex-1">
+              <DateRangeField v-model="periodeRange" placeholder="Pilih tanggal mulai – akhir"
+                :error="fieldError('masa_berlaku') || fieldError('sampai_dengan')" />
+            </div>
+
+            <Button v-if="hargaFetched && !hargaLoading" type="button" variant="outline-primary"
+              class="inline-flex items-center justify-center gap-2 whitespace-nowrap sm:mb-0.5"
+              @click="priceRefOpen = true">
+              <Lucide icon="Receipt" class="h-4 w-4" />
+              Referensi Harga
+            </Button>
+
+            <div v-else-if="hargaLoading"
+              class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-slate-400 sm:mb-2.5">
+              <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
+              Memuat harga…
+            </div>
+          </div>
         </div>
 
         <div class="col-span-12 md:col-span-6">
@@ -698,6 +838,8 @@ function formatCurrency(v: number | string = 0) {
             <option value="PROJECT">Project</option>
             <option value="RETAIL">Retail</option>
           </FormSelect>
+          <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{ fieldError('type_pengiriman')
+          }}</small>
         </div>
 
         <div class="col-span-12 md:col-span-6">
@@ -716,6 +858,7 @@ function formatCurrency(v: number | string = 0) {
               <option value="FRANCO">Franco</option>
             </template>
           </FormSelect>
+          <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode') }}</small>
         </div>
       </div>
 
@@ -828,11 +971,13 @@ function formatCurrency(v: number | string = 0) {
                     :data-jenis="p.jenis?.nama || ''" :data-ukuran="p.ukuran?.nama_ukuran || ''"
                     :data-satuan="p.ukuran?.satuan?.nama_satuan || ''">{{ p.nama_produk }}</option>
                 </TomSelect>
+                <small v-if="itemError(idx, 'id_produk')" class="block input-error-text">{{ itemError(idx, 'id_produk')
+                }}</small>
               </td>
 
               <td class="px-4 py-3">
                 <NumberField v-model="item.persen" placeholder="100" suffix="%" :min="0" :max="100" :decimals="2"
-                  :error="invalidPersenIdx.has(idx) ? ' ' : ''" @update:model-value="updateHargaTebus(item)" />
+                  :error="itemError(idx, 'persen')" @update:model-value="updateHargaTebus(item)" />
               </td>
 
               <td class="px-4 py-3">
@@ -879,7 +1024,7 @@ function formatCurrency(v: number | string = 0) {
               </td>
               <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">{{ totalVolume }}</td>
               <td class="px-4 py-3 text-right text-sm font-semibold text-slate-800">{{ formatCurrency(avgHargaPriceList)
-              }}
+                }}
               </td>
               <td v-if="canSeeHarga" colspan="2" class="px-4 py-3"></td>
               <td class="px-4 py-3"></td>
@@ -898,7 +1043,7 @@ function formatCurrency(v: number | string = 0) {
               <tr v-if="totalDiskon > 0" class="bg-yellow-50">
                 <td colspan="5" class="px-4 py-2 text-right text-sm font-medium text-yellow-700">Diskon</td>
                 <td class="px-4 py-2 text-right text-sm font-semibold text-yellow-800">-{{ formatCurrency(totalDiskon)
-                }}</td>
+                  }}</td>
                 <td></td>
                 <td></td>
               </tr>
@@ -925,12 +1070,37 @@ function formatCurrency(v: number | string = 0) {
           </FormLabel>
           <FormSelect v-model="form.tipe_pembayaran" class="w-full" :class="inputClass('tipe_pembayaran')">
             <option value="" disabled>Pilih…</option>
-            <option value="COD">COD</option>
-            <option value="CBD">CBD</option>
-            <option value="TOP 7">TOP 7</option>
-            <option value="TOP 14">TOP 14</option>
-            <option value="TOP 30">TOP 30</option>
-            <option value="CUSTOM">Custom</option>
+            <option v-for="opt in cfg.paymentOptions" :key="opt" :value="opt">
+              {{ opt === 'CUSTOM' ? 'Custom' : opt }}
+            </option>
+          </FormSelect>
+          <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{ fieldError('tipe_pembayaran')
+          }}</small>
+        </div>
+
+        <!-- Proenergi: TOP hari -->
+        <div v-if="cfg.showTopHari && form.tipe_pembayaran === 'TOP'" class="col-span-12 md:col-span-6">
+          <FormLabel>TOP (Hari)
+            <RequiredAsterisk />
+          </FormLabel>
+          <FormSelect v-model="form.top_hari" class="w-full" :class="inputClass('top_hari')">
+            <option value="" disabled>Pilih Hari TOP…</option>
+            <option value="7">7 Hari</option>
+            <option value="14">14 Hari</option>
+          </FormSelect>
+          <small v-if="fieldError('top_hari')" class="block input-error-text">{{ fieldError('top_hari') }}</small>
+        </div>
+
+        <!-- Proenergi: Acuan Pembayaran -->
+        <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
+          <FormLabel>Acuan Pembayaran</FormLabel>
+          <FormSelect v-model="form.acuan_pembayaran" class="w-full">
+            <option value="" disabled>Pilih Acuan Pembayaran…</option>
+            <option value="After loading">After loading</option>
+            <option value="Before loading">Before loading</option>
+            <option value="After unloading">After unloading</option>
+            <option value="Before unloading">Before unloading</option>
+            <option value="After invoice received">After invoice received</option>
           </FormSelect>
         </div>
 
@@ -949,23 +1119,29 @@ function formatCurrency(v: number | string = 0) {
               <FormLabel>Down Payment (%)</FormLabel>
               <div class="flex flex-wrap items-center gap-2">
                 <FormInput v-model="form.dp_persen" type="text" inputmode="numeric" placeholder="20"
-                  class="w-20 text-right" @input="formatNumeric(form, 'dp_persen', $event)" />
+                  class="w-20 text-right" :class="inputClass('dp_persen')"
+                  @input="formatNumeric(form, 'dp_persen', $event)" />
                 <span class="text-sm text-slate-600">% After</span>
                 <FormInput v-model="form.dp_keterangan" type="text" class="min-w-40 flex-1"
                   placeholder="Purchase Order / 7 days" />
               </div>
+              <small v-if="fieldError('dp_persen')" class="block input-error-text">{{ fieldError('dp_persen') }}</small>
             </div>
 
             <div class="col-span-12 md:col-span-6">
               <FormLabel>Repayment (%)</FormLabel>
               <div class="flex flex-wrap items-center gap-2">
                 <FormInput v-model="form.repayment_persen" type="text" inputmode="numeric" placeholder="80"
-                  class="w-20 text-right" @input="formatNumeric(form, 'repayment_persen', $event)" />
+                  class="w-20 text-right" :class="inputClass('repayment_persen')"
+                  @input="formatNumeric(form, 'repayment_persen', $event)" />
                 <span class="text-sm text-slate-600">% TOP</span>
                 <FormInput v-model="form.repayment_hari" type="text" inputmode="numeric" placeholder="7"
                   class="w-20 text-right" @input="formatNumeric(form, 'repayment_hari', $event)" />
                 <span class="text-sm text-slate-600">days</span>
               </div>
+              <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
+                fieldError('repayment_persen')
+              }}</small>
             </div>
           </div>
           <p class="mt-2 text-xs text-slate-500">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.</p>
@@ -1036,8 +1212,7 @@ function formatCurrency(v: number | string = 0) {
               <Table.Td class="text-center text-slate-500">2.</Table.Td>
               <Table.Td class="text-slate-700">Ongkos Angkut (OAT per Volume)</Table.Td>
               <Table.Td>
-                <CurrencyField v-model="form.oat"
-                  :error="errors['oat'] ? 'Wajib diisi (> 0) untuk metode selain FOB' : ''" />
+                <CurrencyField v-model="form.oat" :error="fieldError('oat')" />
               </Table.Td>
             </Table.Tr>
 
@@ -1060,6 +1235,92 @@ function formatCurrency(v: number | string = 0) {
         </Table>
       </div>
     </CardSection>
+
+    <!-- SlideOver: Referensi harga produk untuk periode & cabang terpilih -->
+    <Slideover size="lg" :open="priceRefOpen" @close="priceRefOpen = false">
+      <Slideover.Panel>
+        <a href="#" class="absolute left-0 right-auto top-0 -ml-12 mt-4" @click.prevent="priceRefOpen = false">
+          <Lucide icon="X" class="h-8 w-8 text-slate-400" />
+        </a>
+
+        <Slideover.Title class="p-5">
+          <div class="flex min-w-0 flex-col gap-1">
+            <h2 class="truncate text-base font-semibold text-slate-800">Referensi Harga Produk</h2>
+            <p class="truncate text-xs text-slate-400">
+              {{ selectedCabangName }} · {{ form.masa_berlaku || '-' }} s/d {{ form.sampai_dengan || '-' }}
+            </p>
+          </div>
+        </Slideover.Title>
+
+        <Slideover.Description class="p-5">
+          <!-- Ringkasan -->
+          <div class="mb-4 flex flex-wrap gap-2">
+            <span
+              class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              Total {{ priceRefSummary.total }} produk
+            </span>
+            <span
+              class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              {{ priceRefSummary.withPrice }} ada harga
+            </span>
+            <span
+              class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              {{ priceRefSummary.without }} belum ada
+            </span>
+          </div>
+
+          <!-- Pencarian -->
+          <div class="relative mb-4">
+            <Lucide icon="Search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <FormInput v-model="priceRefSearch" type="text" placeholder="Cari produk / jenis..." class="pl-9" />
+          </div>
+
+          <!-- Daftar -->
+          <div class="overflow-hidden rounded-xl border border-slate-200">
+            <table class="w-full divide-y divide-slate-200">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="w-10 px-3 py-2.5 text-center text-xs font-semibold uppercase text-slate-600">No</th>
+                  <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase text-slate-600">Produk</th>
+                  <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-slate-600">Harga Price List
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody class="divide-y divide-slate-200 bg-white">
+                <tr v-for="(row, idx) in priceReferenceRows" :key="row.id_produk" class="transition hover:bg-slate-50">
+                  <td class="px-3 py-2.5 text-center text-sm text-slate-500">{{ idx + 1 }}</td>
+
+                  <td class="px-3 py-2.5">
+                    <div class="text-sm font-medium text-slate-800">
+                      {{ row.nama }}
+                      <span v-if="row.jenis" class="font-normal text-slate-500">— {{ row.jenis }}</span>
+                    </div>
+                    <div v-if="row.ukuran" class="text-xs text-slate-400">{{ row.ukuran }}</div>
+                  </td>
+
+                  <td class="px-3 py-2.5 text-right">
+                    <span v-if="row.harga != null" class="text-sm font-semibold text-slate-800">
+                      {{ formatCurrency(row.harga) }}
+                    </span>
+                    <span v-else
+                      class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                      Belum ada harga
+                    </span>
+                  </td>
+                </tr>
+
+                <tr v-if="priceReferenceRows.length === 0">
+                  <td colspan="3" class="px-3 py-8 text-center text-sm text-slate-400">
+                    Tidak ada produk yang cocok dengan pencarian.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Slideover.Description>
+      </Slideover.Panel>
+    </Slideover>
 
     <!-- Sidebar: Catatan & Syarat Ketentuan -->
     <template #sidebar>

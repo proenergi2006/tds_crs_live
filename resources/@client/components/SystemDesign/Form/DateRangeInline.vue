@@ -66,7 +66,7 @@ const rangeParts = computed(() => {
     <div
       class="relative overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition"
       :class="[
-        error ? 'border-rose-500' : 'border-slate-200 hover:border-primary/40',
+        error ? 'input-error' : 'border-slate-200 hover:border-primary/40',
         disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
       ]"
     >
@@ -110,7 +110,7 @@ const rangeParts = computed(() => {
       />
     </div>
 
-    <small v-if="error" class="mt-1 block text-rose-600">
+    <small v-if="error" class="block input-error-text">
       {{ error }}
     </small>
   </div>

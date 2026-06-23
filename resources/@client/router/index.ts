@@ -317,11 +317,13 @@ const routes = [
         path: "/penawarans/create",
         name: "penawarans-create",
         component: () => import("@/pages/Penawaran/Form.vue"),
+        meta: { brand: "tds" },
       },
       {
         path: "/penawarans-proenergi/create",
         name: "penawarans-create-proenergi",
-        component: () => import("@/pages/Penawaran/FormProenergi.vue"),
+        component: () => import("@/pages/Penawaran/Form.vue"),
+        meta: { brand: "proenergi" },
       },
 
       {
@@ -334,12 +336,14 @@ const routes = [
         path: "/penawarans/:id/edit",
         name: "penawarans-edit",
         component: () => import("@/pages/Penawaran/Form.vue"),
+        meta: { brand: "tds" },
       },
 
       {
         path: "/penawarans-proenergi/:id/edit",
         name: "penawarans-edit-proenergi",
-        component: () => import("@/pages/Penawaran/FormProenergi.vue"),
+        component: () => import("@/pages/Penawaran/Form.vue"),
+        meta: { brand: "proenergi" },
       },
       {
         path: "/penawarans/:id",
@@ -489,47 +493,56 @@ const routes = [
         component: () => import("@/pages/OaTruckForm.vue"),
         props: true,
       },
+
       {
         path: "/penawarans/verifikasi",
         name: "penawarans-verifikasi",
-        component: () => import("@/pages/PenawaranVerifikasiList.vue"),
+        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
+        meta: { role: "bm", brand: "reguler" },
       },
       {
         path: "/penawarans-proenergi/verifikasi",
         name: "penawarans-verifikasi-proenergi",
-        component: () => import("@/pages/PenawaranVerifikasiListProenergi.vue"),
-      },
-      {
-        path: "/penawarans/:id/verifikasi",
-        name: "penawarans-verifikasi-detail",
-        component: () => import("@/pages/VerifikasiDetail.vue"), // Pastikan path sesuai
-      },
-      {
-        path: "/penawarans-proenergi/:id/verifikasi",
-        name: "penawarans-verifikasi-detail-proenergi",
-        component: () => import("@/pages/VerifikasiDetailProenergi.vue"), // Pastikan path sesuai
+        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
+        meta: { role: "bm", brand: "proenergi" },
       },
       {
         path: "/penawarans/verifikasi/om",
         name: "penawarans-verifikasi-om",
-        component: () => import("@/pages/PenawaranVerifikasiListOm.vue"),
+        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
+        meta: { role: "om", brand: "reguler" },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om",
         name: "penawarans-verifikasi-om-proenergi",
-        component: () =>
-          import("@/pages/PenawaranVerifikasiListOmProenergi.vue"),
+        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
+        meta: { role: "om", brand: "proenergi" },
+      },
+      {
+        path: "/penawarans/:id/verifikasi",
+        name: "penawarans-verifikasi-detail",
+        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        meta: { role: "bm", brand: "reguler" },
+      },
+      {
+        path: "/penawarans-proenergi/:id/verifikasi",
+        name: "penawarans-verifikasi-detail-proenergi",
+        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        meta: { role: "bm", brand: "proenergi" },
       },
       {
         path: "/penawarans/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail",
-        component: () => import("@/pages/VerifikasiOmDetail.vue"),
+        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        meta: { role: "om", brand: "reguler" },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail-proenergi",
-        component: () => import("@/pages/VerifikasiOmDetailProenergi.vue"),
+        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        meta: { role: "om", brand: "proenergi" },
       },
+
       {
         path: "/po-customer/create",
         name: "penawarans-po",

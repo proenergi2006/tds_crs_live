@@ -53,11 +53,6 @@ const menu: Array<Menu | "divider"> = [
         pageName: "penawarans-verifikasi-om",
         title: "Verifikasi Penawaran",
       },
-      // {
-      //   icon: "CheckSquare",
-      //   pageName: "po-verification-detail",
-      //   title: "Detail Verifikasi PO",
-      // },
     ],
   },
 
@@ -207,12 +202,13 @@ const menu: Array<Menu | "divider"> = [
   {
     icon: "CheckCircle",
     pageName: "verifikasi",
-    title: "Verifikasi-om",
+    title: "Verifikasi OM",
     subMenu: [
       {
         icon: "File",
         pageName: "penawarans-verifikasi-om",
         title: "penawaran",
+        activePageNames: ["penawarans-verifikasi-om-detail"],
       },
     ],
   },

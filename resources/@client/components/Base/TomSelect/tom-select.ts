@@ -138,10 +138,17 @@ const updateValue = (
   // Add new options
   const options = originalEl.children;
   if (options) {
+    const allowEmptyOption = (computedOptions as any)?.allowEmptyOption === true;
     Array.from(options).forEach(function (optionEl) {
+      const optionValue = optionEl.getAttribute("value");
+      // Lewati option placeholder ber-value kosong (value="") agar tidak ikut
+      // ditambahkan sebagai baris yang bisa dipilih di dropdown. Ini menyelaraskan
+      // perilaku dengan init TomSelect yang juga melewati empty option saat
+      // allowEmptyOption=false (lihat getSettings di lib).
+      if (!optionValue && !allowEmptyOption) return;
       clonedEl.TomSelect.addOption({
         text: optionEl.textContent,
-        value: optionEl.getAttribute("value"),
+        value: optionValue,
       });
     });
   }

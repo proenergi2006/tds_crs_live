@@ -1,5 +1,4 @@
 import { ref } from "vue";
-import type { NotificationElement } from "@/components/Base/Notification/Notification.vue";
 
 export type NotificationAction = {
   id: string;
@@ -7,11 +6,14 @@ export type NotificationAction = {
   variant?: "primary" | "secondary";
 };
 
-export const notificationRef = ref<NotificationElement | null>(null);
+/** Diisi oleh AppNotification.vue saat mount; memicu tampilnya satu toast baru. */
+export const notificationRef = ref<{ showToast: () => void } | null>(null);
 
 export const notificationPayload = ref({
   type: "success",
   title: "",
   message: "",
   action: null as NotificationAction | null,
+  items: [] as string[],
+  sticky: false,
 });

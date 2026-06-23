@@ -188,7 +188,7 @@ function formatNumber(v: number | string = 0) {
     <div class="intro-x flex flex-col gap-4">
 
       <!-- HEADER -->
-      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="text-2xl font-semibold text-slate-800">Detail Penawaran</h2>
           <p class="mt-1 text-sm text-slate-500">
@@ -209,6 +209,37 @@ function formatNumber(v: number | string = 0) {
         <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
+          <!-- <Table bordered>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th class="whitespace-nowrap">#</Table.Th>
+                <Table.Th class="whitespace-nowrap"> First Name </Table.Th>
+                <Table.Th class="whitespace-nowrap"> Last Name </Table.Th>
+                <Table.Th class="whitespace-nowrap"> Username </Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr>
+                <Table.Td>1</Table.Td>
+                <Table.Td>Angelina</Table.Td>
+                <Table.Td>Jolie</Table.Td>
+                <Table.Td>@angelinajolie</Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td>2</Table.Td>
+                <Table.Td>Brad</Table.Td>
+                <Table.Td>Pitt</Table.Td>
+                <Table.Td>@bradpitt</Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td>3</Table.Td>
+                <Table.Td>Charlie</Table.Td>
+                <Table.Td>Hunnam</Table.Td>
+                <Table.Td>@charliehunnam</Table.Td>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table> -->
+
           <!-- Informasi Umum -->
           <CardSection title="Informasi Umum" description="Data utama penawaran" icon="FileText">
             <div class="space-y-6">
@@ -216,8 +247,7 @@ function formatNumber(v: number | string = 0) {
                 :class="gi > 0 ? 'border-t border-slate-100 pt-6' : ''">
                 <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ group.label }}</h3>
                 <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                  <div v-for="f in group.fields" :key="f.label"
-                    :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
+                  <div v-for="f in group.fields" :key="f.label" :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
                     <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ f.label }}</dt>
                     <dd class="mt-1 whitespace-pre-line text-sm font-semibold text-slate-800">{{ dash(f.value) }}</dd>
                   </div>

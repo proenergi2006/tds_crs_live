@@ -23,6 +23,7 @@ const props = withDefaults(
     cancelIcon?: Icon;
     disableSubmit?: boolean;
     disableCancel?: boolean;
+    disableEnterSubmit?: boolean;
     showFooter?: boolean;
     surface?: PageSurface;
     layout?: PageLayout;
@@ -38,6 +39,7 @@ const props = withDefaults(
     cancelIcon: 'X',
     disableSubmit: false,
     disableCancel: false,
+    disableEnterSubmit: true,
     showFooter: true,
     surface: 'boxed',
     layout: 'default',
@@ -75,11 +77,25 @@ function handleSubmit() {
 
   emit('submit')
 }
+
+// Cegah implicit submit saat user menekan Enter di dalam input.
+// Textarea (butuh newline) dan tombol (Enter = klik) tetap dibiarkan normal.
+function handleKeydown(event: KeyboardEvent) {
+  if (!props.disableEnterSubmit) return
+  if (event.key !== 'Enter') return
+
+  const target = event.target as HTMLElement | null
+  const tag = target?.tagName
+
+  if (tag === 'TEXTAREA' || tag === 'BUTTON') return
+
+  event.preventDefault()
+}
 </script>
 
 <template>
   <div class="page-content-wrapper">
-    <form class="intro-x flex flex-col gap-4" @submit.prevent="handleSubmit">
+    <form class="intro-x flex flex-col gap-4" @submit.prevent="handleSubmit" @keydown="handleKeydown">
       <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="text-2xl font-semibold text-slate-800">

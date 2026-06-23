@@ -86,7 +86,7 @@ function formatDisplayDate(value: string) {
     <div
       class="relative overflow-hidden rounded-xl border bg-white px-4 py-3 shadow-sm transition"
       :class="[
-        error ? 'border-rose-500' : 'border-slate-200 hover:border-primary/40',
+        error ? 'input-error' : 'border-slate-200 hover:border-primary/40',
         disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
       ]"
     >
@@ -136,7 +136,7 @@ function formatDisplayDate(value: string) {
       />
     </div>
 
-    <small v-if="error" class="mt-1 block text-rose-600">
+    <small v-if="error" class="block input-error-text">
       {{ error }}
     </small>
   </div>

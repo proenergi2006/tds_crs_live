@@ -150,11 +150,11 @@ function titleClass(status: StepItem['status']): string {
 
 function badgeClass(status: StepItem['status']): string {
   return twMerge(
-    'inline-flex items-center gap-1 rounded-full font-semibold uppercase tracking-wide',
+    'inline-flex items-center gap-1 rounded font-semibold uppercase tracking-wide',
     sz.value.badgePad,
     sz.value.badgeText,
     status === 'completed' && 'bg-emerald-100 text-emerald-700',
-    status === 'active' && 'bg-primary/10 text-primary',
+    status === 'active' && 'bg-primary/10 text-success',
     status === 'pending' && 'bg-slate-100 text-slate-500',
   );
 }
@@ -164,13 +164,13 @@ function badgeClass(status: StepItem['status']): string {
   <!-- Vertical Stepper -->
   <div v-if="direction === 'vertical'" class="relative flex flex-col">
     <!-- Background track -->
-    <div class="absolute z-0 w-0.5 bg-slate-200"
-      :style="{ top: `${halfCircleV}px`, bottom: `${halfCircleV}px`, left: `${halfCircleV - 1}px` }" />
+    <div class="absolute z-0 w-1.5 bg-slate-200"
+      :style="{ top: `${halfCircleV}px`, bottom: `${halfCircleV * 2}px`, left: `${halfCircleV - 3}px` }" />
 
     <!-- Progress -->
-    <div class="absolute z-0 w-0.5 bg-success transition-all duration-500" :style="{
+    <div class="absolute z-0 w-1.5 bg-success transition-all duration-500" :style="{
       top: `${halfCircleV}px`,
-      left: `${halfCircleV - 1}px`,
+      left: `${halfCircleV - 2}px`,
       height: progressHeight,
     }" />
 
@@ -181,9 +181,10 @@ function badgeClass(status: StepItem['status']): string {
         <div :class="circleClass(step.status, sz.iconWrapV)">
           <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
-          <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
-          <span v-else-if="step.status === 'active'"
-            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
+          <Lucide v-else-if="step.status === 'completed'" icon="CheckCheck" :class="sz.iconInner" />
+          <Lucide v-else-if="step.status === 'active'" icon="Loader2" :class="sz.iconInner" />
+          <!-- <span v-else-if="step.status === 'active'"
+            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" /> -->
           <span v-else :class="twMerge('font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
       </div>

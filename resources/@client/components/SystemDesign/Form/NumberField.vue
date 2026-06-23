@@ -118,7 +118,7 @@ function handleBlur() {
         :disabled="disabled"
         :readonly="readonly"
         class="text-right"
-        :class="[error ? 'border-rose-500' : '', suffix ? 'pr-9' : '']"
+        :class="[error ? 'input-error' : '', suffix ? 'pr-9' : '']"
         @input="handleInput"
         @blur="handleBlur"
       />
@@ -131,7 +131,7 @@ function handleBlur() {
       </div>
     </div>
 
-    <small v-if="error && error.trim()" class="mt-1 block text-rose-600">
+    <small v-if="error && error.trim()" class="block input-error-text">
       {{ error }}
     </small>
   </div>

@@ -134,7 +134,7 @@ onUnmounted(() => {
 
 <template>
   <div :class="[
-    'rubick px-5 py-2 sm:pl-2 sm:pr-2 h-screen overflow-hidden',
+    'rubick px-2 py-2 sm:py-4 sm:px-4 h-screen overflow-hidden',
     'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
   ]">
     <MobileMenu />

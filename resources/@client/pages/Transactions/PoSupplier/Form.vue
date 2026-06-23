@@ -11,12 +11,14 @@ import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 
 interface Item {
   id_produk: number | null
   volume_po: number
   harga_tebus: number
   total_harga: number
+  tax_amount: number
 }
 
 const route = useRoute()
@@ -69,6 +71,7 @@ function makeEmptyItem(): Item {
     volume_po: 0,
     harga_tebus: 0,
     total_harga: 0,
+    tax_amount: 0,
   }
 }
 
@@ -141,6 +144,7 @@ async function fetchPo() {
     volume_po: toDbInt(item.volume_po),
     harga_tebus: toDbInt(item.harga_tebus),
     total_harga: toDbInt(item.jumlah_harga),
+    tax_amount: toDbInt(item.tax_amount),
   }))
 
   if (form.items.length === 0) {
@@ -167,15 +171,6 @@ function computeTotal(index: number) {
 
 function computeAllTotals() {
   form.items.forEach((_, index) => computeTotal(index))
-}
-
-function updateVolume(index: number, event: Event) {
-  const input = event.target as HTMLInputElement
-  const value = toInt(input.value)
-
-  input.value = formatNumber(value)
-  form.items[index].volume_po = value
-  computeTotal(index)
 }
 
 function updateHargaTebus(index: number, value: number) {
@@ -381,14 +376,15 @@ function cancel() {
       </template>
 
       <div class="overflow-x-auto rounded-xl border border-slate-200">
-        <table class="min-w-[920px] divide-y divide-slate-200">
+        <table class="min-w-[920px] w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
               <th class="w-12 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">No</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-600">Produk</th>
-              <th class="w-36 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Volume PO</th>
-              <th class="w-44 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Harga Tebus</th>
-              <th class="w-44 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Total Harga</th>
+              <th class="w-32 px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Volume PO</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Harga Tebus</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Total Harga</th>
+              <th class="wpx-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">Tax Amount</th>
               <th class="w-16 px-4 py-3 text-center text-xs font-semibold uppercase text-slate-600">Aksi</th>
             </tr>
           </thead>
@@ -410,17 +406,21 @@ function cancel() {
               </td>
 
               <td class="px-4 py-3">
-                <FormInput :id="`volume-po-${index}`" :value="formatNumber(item.volume_po)" type="text"
-                  inputmode="numeric" class="min-w-[130px] text-right" @input="updateVolume(index, $event)" />
+                <NumberField :id="`volume-po-${index}`" v-model="item.volume_po" placeholder="100" :min="0"
+                  :decimals="0" @update:model-value="computeTotal(index)" />
               </td>
 
               <td class="px-4 py-3">
-                <CurrencyField :model-value="item.harga_tebus" class="min-w-[160px]"
+                <CurrencyField :model-value="item.harga_tebus" class="min-w-[120px]"
                   @update:model-value="updateHargaTebus(index, $event)" />
               </td>
 
               <td class="px-4 py-3">
                 <CurrencyField :model-value="item.total_harga" class="min-w-[160px]" readonly />
+              </td>
+
+              <td class="px-4 py-3 text-right">
+                <CurrencyField :model-value="item.tax_amount" class="min-w-[120px]" />
               </td>
 
               <td class="px-4 py-3 text-center">
@@ -439,6 +439,7 @@ function cancel() {
                 {{ formatNumber(calcSubtotal) }}
               </td>
               <td></td>
+              <td></td>
             </tr>
 
             <tr>
@@ -447,6 +448,7 @@ function cancel() {
                 {{ formatNumber(calcPPN) }}
               </td>
               <td></td>
+              <td></td>
             </tr>
 
             <tr>
@@ -454,6 +456,7 @@ function cancel() {
               <td class="px-4 py-4 text-right text-base font-bold text-emerald-700">
                 {{ formatNumber(calcTotalOrder) }}
               </td>
+              <td></td>
               <td></td>
             </tr>
           </tfoot>

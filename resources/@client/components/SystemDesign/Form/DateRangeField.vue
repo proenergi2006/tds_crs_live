@@ -68,12 +68,12 @@ const pickerOptions = computed(() => ({
         :disabled="disabled"
         :readonly="readonly"
         class="pl-10"
-        :class="error ? 'border-rose-500' : ''"
+        :class="error ? 'input-error' : ''"
         @update:model-value="$emit('update:modelValue', $event)"
       />
     </div>
 
-    <small v-if="error" class="mt-1 block text-rose-600">
+    <small v-if="error" class="block input-error-text">
       {{ error }}
     </small>
   </div>

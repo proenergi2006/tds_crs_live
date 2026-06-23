@@ -49,7 +49,7 @@ export const ROLE_MENU_MAPPING: Record<number, string[]> = {
   9: ["Sales Confirmation", "Review Data Customer Admin"],
 
   // OM (Operations Manager)
-  10: ["Verifikasi-om", "Review Data Customer OM"],
+  10: ["Verifikasi OM", "Review Data Customer OM"],
 
   // Marketing
   12: ["Customer"],
