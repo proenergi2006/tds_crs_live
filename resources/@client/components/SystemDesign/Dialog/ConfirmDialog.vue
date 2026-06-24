@@ -18,6 +18,7 @@ withDefaults(
     iconClass?: string;
     variant?: 'primary' | 'danger' | 'success' | 'warning';
     loading?: boolean;
+    confirmDisabled?: boolean;
   }>(),
   {
     title: 'Konfirmasi',
@@ -28,6 +29,7 @@ withDefaults(
     iconClass: 'bg-primary/10 text-primary',
     variant: 'primary',
     loading: false,
+    confirmDisabled: false,
   },
 );
 
@@ -52,6 +54,10 @@ defineEmits<{
         <p class="font-body mt-2">
           {{ description }}
         </p>
+
+        <div v-if="$slots.default" class="mt-4 text-left">
+          <slot />
+        </div>
       </div>
 
       <div class="flex justify-center gap-3 border-t border-slate-200 px-6 py-4">
@@ -59,7 +65,7 @@ defineEmits<{
           {{ cancelText }}
         </Button>
 
-        <Button ref="confirmButtonRef" :variant="variant" :disabled="loading" @click="$emit('confirm')">
+        <Button ref="confirmButtonRef" :variant="variant" :disabled="loading || confirmDisabled" @click="$emit('confirm')">
           <Lucide v-if="loading" icon="Loader2" class="mr-1 h-4 w-4 animate-spin" />
           {{ confirmText }}
         </Button>

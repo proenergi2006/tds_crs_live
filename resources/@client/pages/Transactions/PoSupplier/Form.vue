@@ -13,6 +13,7 @@ import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import Table from '@/components/Base/Table'
+import dayjs from 'dayjs'
 
 interface Item {
   id_produk: number | null | ''
@@ -50,7 +51,7 @@ const form = reactive({
   id_vendor: '' as number | '',
   id_terminal: '' as number | '',
   nomor_po: '',
-  tanggal_inven: '',
+  tanggal_inven: dayjs().format('YYYY-MM-DD'),
   terms: '',
   terms_day: 0,
   items: [makeEmptyItem()] as Item[],
@@ -58,6 +59,7 @@ const form = reactive({
   terms_condition: '',
   created_by: '',
   lastupdate_by: '',
+  kd_tax: '-',
 })
 
 const calcSubtotal = computed(() => form.items.reduce((sum, item) => sum + item.total_harga, 0))
@@ -140,6 +142,7 @@ async function fetchPo() {
     terms_day: po.terms_day,
     keterangan: po.keterangan || '',
     terms_condition: po.terms_condition || '',
+    kd_tax: po.kd_tax || '-',
   })
 
   termsChecked.value = Boolean(po.terms_condition)
@@ -239,6 +242,7 @@ function buildHeaderPayload() {
     id_terminal: Number(form.id_terminal),
     ...(mode.value === 'edit' ? { nomor_po: form.nomor_po } : {}),
     tanggal_inven: form.tanggal_inven,
+    kd_tax: form.kd_tax,
     terms: form.terms,
     terms_day: Number(form.terms_day),
     subtotal: calcSubtotal.value,

@@ -52,54 +52,13 @@ class VendorPoController extends Controller
         );
     }
 
-    // public function store(Request $request)
-    // {
-    //     // Ambil id_cabang berdasarkan id_terminal (dari terminal)
-    //     $terminal = Terminal::find($request->id_terminal, 'id_terminal');
-    //     $vendor = Vendor::findOrFail($request->id_vendor, 'id_vendor');
-    //     $cabang = Cabang::find($terminal->id_cabang, 'id_cabang');
+    public function show($id)
+    {
+        $po = VendorPo::with(['vendor', 'terminal', 'produks.produk', 'produks.produk.ukuran.satuan', 'produks.produk.jenis'])
+            ->findOrFail($id);
 
-    //     // Ambil nomor PO terakhir dari tabel cabangs
-    //     $lastNoPo = $cabang->urut_po;
-
-    //     // Increment nomor urut (no_po)
-    //     $newNoPo = (int)$lastNoPo + 1;
-
-    //     // Mendapatkan bulan Romawi (misal: VIII untuk Agustus)
-    //     $bulanRomawi = $this->getBulanRomawi(date('m'));
-
-    //     // Tahun (2 digit terakhir)
-    //     $tahun = substr(date('Y'), -2);
-
-    //     // Format nomor PO baru
-    //     $nomorPo = str_pad($newNoPo, 3, '0', STR_PAD_LEFT)  . '/' . $vendor->inisial . '/' . $cabang->inisial_cabang . '/'  . $bulanRomawi . '/' . $tahun;
-
-    //     // Menyimpan data Vendor PO
-    //     $data = [
-    //         'id_vendor' => $request->id_vendor,
-    //         'id_terminal' => $request->id_terminal,
-    //         'nomor_po' => $nomorPo,
-    //         'tanggal_inven' => $request->tanggal_inven,
-    //         'kd_tax' => $request->kd_tax,
-    //         'terms' => $request->terms,
-    //         'terms_day' => $request->terms_day,
-    //         'subtotal' => $request->subtotal,
-    //         'ppn11' => $request->ppn11,
-    //         'total_order' => $request->total_order,
-    //         'keterangan' => $request->keterangan,
-    //         'terms_condition' => $request->terms_condition,
-    //         'created_by' => $request->user()->name,
-    //     ];
-
-    //     // Simpan Vendor PO
-    //     $vendorPo = VendorPo::create($data);
-
-    //     // Update no_po di tabel cabangs
-    //     $cabang->urut_po = $newNoPo;
-    //     $cabang->save();
-
-    //     return response()->json($vendorPo, 201);
-    // }
+        return response()->json($po);
+    }
 
     public function store(Request $request)
     {
@@ -128,7 +87,7 @@ class VendorPoController extends Controller
             $terminal = Terminal::findOrFail($validated['id_terminal']);
             $vendor = Vendor::where('id_vendor', $validated['id_vendor'])
                 ->lockForUpdate()
-                ->firstOrFail(['id_vendor', 'inisial']);
+                ->firstOrFail();
             $cabang = Cabang::findOrFail($terminal->id_cabang);
 
             $nextPoNumber = $vendor->urut_po + 1;
@@ -173,6 +132,8 @@ class VendorPoController extends Controller
                 ];
             }
             VendorPoProduk::insert($detailRows);
+
+            return $vendorPo;
         });
 
         return response()->json([
@@ -201,54 +162,73 @@ class VendorPoController extends Controller
         return $months[$month] ?? 'I'; // Default to 'I' if not found
     }
 
-    public function show($id)
-    {
-        $po = VendorPo::with(['vendor', 'terminal', 'produks.produk', 'produks.produk.ukuran.satuan', 'produks.produk.jenis'])
-            ->findOrFail($id);
-
-        // Format nomor_po jika diperlukan
-        // $po->nomor_po = $this->generateNomorPO($po);
-
-        return response()->json($po);
-    }
-
-    private function generateNomorPO($po)
-    {
-        // Example format: 001/SADP/SLW/IX/25
-        $terminal = $po->terminal;
-        $cabang = $po->cabang;
-
-        // Format: 001/SADP/SLW/IX/25
-        $bulanRomawi = $this->getBulanRomawi(now()->month);  // Convert month to Roman numeral
-        $tahun = now()->year % 100;  // Get last 2 digits of the current year
-        return sprintf("%03d/%s/%s/%s/%02d", $cabang->urut_po, $terminal->inisial_terminal, $cabang->inisial_cabang, $bulanRomawi, $tahun);
-    }
-
     public function update(Request $request, $id)
     {
-        $data = $request->validate([
-            'id_vendor'     => 'required|exists:vendors,id_vendor',
-            'id_terminal'   => 'required|exists:terminals,id_terminal',
-            'nomor_po'      => 'required|string|max:255',
-            'tanggal_inven' => 'required|date',
-            'kd_tax'        => 'required|string|max:10',
-            'terms'         => 'required|string|max:10',
-            'terms_day'     => 'required|integer',
-            'subtotal'      => 'required|numeric',
-            'ppn11'         => 'required|numeric',
-            'total_order'   => 'required|numeric',
-            'keterangan'    => 'nullable|string',
-            'terms_condition'    => 'nullable|string',
-            'disposisi_po'  => 'nullable|integer',
+        $validated = $request->validate([
+            'id_vendor'             => 'required|exists:vendors,id_vendor',
+            'id_terminal'           => 'required|exists:terminals,id_terminal',
+            'nomor_po'              => 'required|string|max:255',
+            'tanggal_inven'         => 'required|date',
+            'terms'                 => 'nullable|string',
+            'terms_day'             => 'nullable|numeric',
+            'subtotal'              => 'required|numeric',
+            'ppn11'                 => 'required|numeric',
+            'total_order'           => 'required|numeric',
+            'keterangan'            => 'nullable|string',
+            'terms_condition'       => 'nullable|string',
+
+            'items'                 => 'required|array|min:1',
+            'items.*.id_produk'     => 'required|exists:produks,id_produk',
+            'items.*.volume_po'     => 'required|numeric',
+            'items.*.harga_tebus'   => 'required|numeric',
+            'items.*.jumlah_harga'  => 'required|numeric',
+            'items.*.kd_tax'        => 'nullable|string|in:E,EC',
+            'items.*.tax_amount'    => 'nullable|numeric',
         ]);
 
-        $data['lastupdate_time'] = now();
-        $data['lastupdate_by']   = $request->user()->name;
-
         $po = VendorPo::findOrFail($id);
-        $po->update($data);
 
-        return response()->json($po);
+        DB::transaction(function () use ($validated, $request, $po) {
+            $po->update([
+                'id_vendor'         => $validated['id_vendor'],
+                'id_terminal'       => $validated['id_terminal'],
+                'nomor_po'          => $validated['nomor_po'],
+                'kd_tax'            => '-',
+                'tanggal_inven'     => $validated['tanggal_inven'],
+                'terms'             => $validated['terms'],
+                'terms_day'         => $validated['terms_day'],
+                'subtotal'          => $validated['subtotal'],
+                'ppn11'             => $validated['ppn11'],
+                'total_order'       => $validated['total_order'],
+                'keterangan'        => $validated['keterangan'],
+                'terms_condition'   => $validated['terms_condition'],
+                'disposisi_po'      => 0,
+                'lastupdate_time'   => now(),
+                'lastupdate_by'     => $request->user()->name,
+            ]);
+
+            VendorPoProduk::where('id_po', $po->id_po)->delete();
+
+            $detailRows = [];
+            foreach ($validated['items'] as $item) {
+                $detailRows[] = [
+                    'id_po'         => $po->id_po,
+                    'id_produk'     => $item['id_produk'],
+                    'volume_po'     => $item['volume_po'],
+                    'harga_tebus'   => $item['harga_tebus'],
+                    'jumlah_harga'  => $item['jumlah_harga'],
+                    'kd_tax'        => $item['kd_tax'] ?? null,
+                    'tax_amount'    => $item['tax_amount'] ?? 0,
+                    'created_time'  => now(),
+                ];
+            }
+            VendorPoProduk::insert($detailRows);
+        });
+
+        return response()->json([
+            'message' => 'PO berhasil diperbarui',
+            'data'    => $po->fresh(),
+        ]);
     }
 
     public function approve(Request $request, $id)
@@ -256,103 +236,13 @@ class VendorPoController extends Controller
         $po = VendorPo::findOrFail($id);
         $po->disposisi_po      = 2;
         $po->cfo_result        = 1;
-        $po->cfo_tgl       = now();
+        $po->cfo_tgl           = now();
         $po->lastupdate_time   = now();
         $po->lastupdate_by     = $request->user()->name;
         $po->save();
 
         return response()->json($po);
     }
-
-
-    // public function preview($id)
-    // {
-    //     $po = VendorPo::with(['vendor','terminal','produks.produk','produks.produk.ukuran.satuan', 'produks.produk.jenis'])->findOrFail($id);
-
-    //     // ambil dari public/images
-    //     $leftPath  = public_path('images/tds.png');
-    //     $rightPath = public_path('images/logo_prodiesel.png');
-
-    //     // ubah ke data URI (base64) — tahan banting untuk Dompdf
-    //     $logoLeft  = file_exists($leftPath)  ? 'data:image/png;base64,'.base64_encode(file_get_contents($leftPath))  : null;
-    //     $logoRight = file_exists($rightPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($rightPath)) : null;
-
-    //     return Pdf::loadView('vendorpos.preview', compact('po','logoLeft','logoRight'))
-    //         ->setPaper('a4','portrait')
-    //         ->setOptions([
-    //             'chroot'          => public_path(), // aman
-    //             'isRemoteEnabled' => true,
-    //         ])->stream("PO.pdf");
-    // }
-
-    // public function preview($id)
-    // {
-    //     $po = VendorPo::with([
-    //         'vendor',
-    //         'terminal',
-    //         'produks.produk',
-    //         'produks.produk.ukuran.satuan',
-    //         'produks.produk.jenis'
-    //     ])->findOrFail($id);
-
-    //     // Logo
-    //     $leftPath  = public_path('images/tds.png');
-    //     $rightPath = public_path('images/logo_prodiesel.png');
-
-    //     $logoLeft  = file_exists($leftPath)
-    //         ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath))
-    //         : null;
-
-    //     $logoRight = file_exists($rightPath)
-    //         ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath))
-    //         : null;
-
-    //     /**
-    //      * ==========================
-    //      * QR SIGNATURE – DIREKTUR
-    //      * ==========================
-    //      */
-    //     $qrPayload = json_encode([
-    //         'type'      => 'APPROVAL_PO',
-    //         'po_number' => $po->nomor_po,
-    //         'approved'  => 'Vica Krisdianatha',
-    //         'role'      => 'Direktur Utama',
-    //         'date'      => now()->format('Y-m-d H:i:s'),
-    //     ]);
-
-    //     // $result = Builder::create()
-    //     //     ->writer(new PngWriter())
-    //     //     ->data($qrPayload)
-    //     //     ->encoding(new Encoding('UTF-8'))
-    //     //     ->errorCorrectionLevel(ErrorCorrectionLevel::High) // ⬅️ INI KUNCI-NYA
-    //     //     ->size(220)
-    //     //     ->margin(5)
-    //     //     ->build();
-
-    //     // $qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
-
-    //     $filename = 'PO-' . str_replace(['/', '\\'], '-', $po->nomor_po) . '.pdf';
-
-    //     // return Pdf::loadView(
-    //     //     'vendorpos.preview',
-    //     //     compact('po', 'logoLeft', 'logoRight', 'qrBase64')
-    //     // )
-
-    //     return Pdf::loadView(
-    //         'vendorpos.preview',
-    //         compact('po', 'logoLeft', 'logoRight')
-    //     )
-    //     ->setPaper('a4', 'portrait')
-    //     ->setOptions([
-    //         'isRemoteEnabled' => true,
-    //         'defaultFont' => 'DejaVu Sans',
-    //     ])
-    //     ->stream($filename);
-
-    // }
-
-
-
 
     public function preview($id)
     {
@@ -361,7 +251,7 @@ class VendorPoController extends Controller
             'terminal',
             'produks.produk',
             'produks.produk.ukuran.satuan',
-            'produks.produk.jenis'
+            'produks.produk.jenis',
         ])->findOrFail($id);
 
         $leftPath  = public_path('images/logo-new.png');
@@ -383,14 +273,13 @@ class VendorPoController extends Controller
 
         $qrBase64 = 'data:image/png;base64,' . base64_encode($result->getString());
 
-
         $filename = 'PO-' . str_replace(['/', '\\'], '-', $po->nomor_po) . '.pdf';
 
-        return Pdf::loadView('vendorpos.preview', compact('po', 'logoLeft', 'logoRight', 'qrBase64'))
+        return PDF::loadView('vendorpos.preview', compact('po', 'logoLeft', 'logoRight', 'qrBase64'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'isRemoteEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
+                'defaultFont'     => 'DejaVu Sans',
             ])
             ->stream($filename);
     }

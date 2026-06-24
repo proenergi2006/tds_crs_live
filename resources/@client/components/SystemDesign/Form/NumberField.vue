@@ -44,7 +44,7 @@ watch(
     // Jangan timpa tampilan kalau nilainya sama dengan yang sedang diketik
     // (mis. user baru mengetik "5," — biarkan koma menggantung).
     if (parseNumber(displayValue.value) !== toNumber(value)) {
-      displayValue.value = isEmpty(value) ? '' : String(value).replace('.', ',')
+      displayValue.value = isEmpty(value) ? '' : formatDisplay(toNumber(value))
     }
   },
   { immediate: true },
@@ -62,26 +62,42 @@ function toNumber(value: unknown): number {
 
 function parseNumber(text: string): number {
   if (!text) return 0
-  const n = Number.parseFloat(text.replace(',', '.'))
+  // Strip thousand separator dots, then convert decimal comma to dot
+  const n = Number.parseFloat(text.replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) ? n : 0
 }
 
-// Sisakan hanya digit dan satu pemisah desimal; titik dinormalisasi ke koma.
+function addThousandSep(intPart: string): string {
+  return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function formatDisplay(n: number): string {
+  const str = String(n).replace('.', ',')
+  const [intPart, decPart] = str.split(',')
+  return decPart ? addThousandSep(intPart) + ',' + decPart : addThousandSep(intPart)
+}
+
 function sanitize(raw: string): string {
-  let val = raw.replace(/[^\d.,]/g, '').replace(/\./g, ',')
+  // Strip thousand separator dots; sisakan hanya digit dan satu koma desimal
+  let val = raw.replace(/[^\d,]/g, '')
 
   const parts = val.split(',')
   if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('')
 
+  let intPart = val.split(',')[0]
+  // Strip leading zeros: "00123" → "123", tapi "0" sendiri tetap "0"
+  intPart = intPart.replace(/^0+(\d)/, '$1')
+
   if (props.decimals <= 0) {
-    return val.split(',')[0]
+    return addThousandSep(intPart)
   }
 
   if (val.includes(',')) {
-    const [int, dec] = val.split(',')
-    val = int + ',' + dec.slice(0, props.decimals)
+    const decPart = val.split(',')[1].slice(0, props.decimals)
+    return addThousandSep(intPart) + ',' + decPart
   }
-  return val
+
+  return addThousandSep(intPart)
 }
 
 function handleInput(event: Event) {
@@ -97,7 +113,7 @@ function handleBlur() {
   if (props.min !== undefined && n < props.min) n = props.min
   if (props.max !== undefined && n > props.max) n = props.max
   emit('update:modelValue', n)
-  displayValue.value = n ? String(n).replace('.', ',') : ''
+  displayValue.value = n ? formatDisplay(n) : ''
 }
 </script>
 

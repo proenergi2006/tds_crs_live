@@ -202,11 +202,11 @@ function formatCurrency(v: number | string = 0) {
     <div class="intro-x flex flex-col gap-4">
 
       <!-- HEADER -->
-      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="font-display">Good Receipt</h2>
           <p class="font-lead mt-1">
-            Catat penerimaan produk dari vendor PO <code>{{ po.nomor_po }}</code> dan posting volume terima ke stok.
+            Catat penerimaan produk PO dan posting volume terima ke stok.
           </p>
         </div>
         <Button variant="outline-secondary" @click="goBack">
@@ -223,32 +223,33 @@ function formatCurrency(v: number | string = 0) {
 
           <!-- Informasi PO -->
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Nomor PO</div>
-                <div class="font-strong mt-1">{{ po.nomor_po || '-' }}</div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div>
+                  <div class="font-label">Nomor PO</div>
+                  <div class="font-strong mt-1">{{ po.nomor_po || '-' }}</div>
+                </div>
+                <div>
+                  <div class="font-label">Tanggal PO</div>
+                  <div class="font-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
+                </div>
+                <div>
+                  <div class="font-label">Terms</div>
+                  <div class="font-strong mt-1">
+                    {{ po.terms || '-' }}
+                    <span class="text-slate-400">&nbsp;·&nbsp;{{ po.terms_day || 0 }} hari</span>
+                  </div>
+                </div>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Tanggal PO</div>
-                <div class="font-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Vendor</div>
-                <div class="font-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Terminal</div>
-                <div class="font-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Kode Tax</div>
-                <div class="font-strong mt-1">{{ po.kd_tax || '-' }}</div>
-              </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div class="font-label">Terms</div>
-                <div class="font-strong mt-1">
-                  {{ po.terms || '-' }}
-                  <span class="text-slate-400">&nbsp;·&nbsp;{{ po.terms_day || 0 }} hari</span>
+
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div>
+                  <div class="font-label">Vendor</div>
+                  <div class="font-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
+                </div>
+                <div>
+                  <div class="font-label">Terminal</div>
+                  <div class="font-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
                 </div>
               </div>
             </div>
@@ -257,29 +258,32 @@ function formatCurrency(v: number | string = 0) {
           <!-- Rincian Produk PO -->
           <CardSection title="Rincian Produk PO" description="Produk yang akan diterima berdasarkan vendor PO"
             icon="Boxes" icon-class="bg-indigo-100 text-indigo-600">
-            <DataList :loading="loading" :empty="poProducts.length === 0" :colspan="4" :show-footer="false">
-              <template #head>
-                <Table.Th>Produk</Table.Th>
-                <Table.Th class="text-right">Volume PO</Table.Th>
-                <Table.Th class="text-right">Harga Tebus</Table.Th>
-                <Table.Th class="text-right">Jumlah Harga</Table.Th>
-              </template>
-              <template #body>
-                <Table.Tr v-for="item in poProducts" :key="item.id_po_produk" class="transition hover:bg-slate-50">
-                  <Table.Td>
-                    <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="font-caption mt-0.5">
-                      {{ item.produk?.ukuran?.nama_ukuran || '-' }}
-                      {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
-                    </div>
-                  </Table.Td>
-                  <Table.Td class="font-num text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
-                  <Table.Td class="text-right text-slate-700">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
-                  <Table.Td class="font-num text-right">{{ formatCurrency(item.jumlah_harga) }}
-                  </Table.Td>
-                </Table.Tr>
-              </template>
-            </DataList>
+            <div class="overflow-x-auto">
+              <Table bordered sm class="font-body">
+                <Table.Thead class="bg-slate-50">
+                  <Table.Th>Produk</Table.Th>
+                  <Table.Th class="text-right">Volume PO</Table.Th>
+                  <Table.Th class="text-right">Harga Tebus</Table.Th>
+                  <Table.Th class="text-right">Jumlah Harga</Table.Th>
+                </Table.Thead>
+
+                <Table.Tbody class="bg-white">
+                  <Table.Tr v-for="item in poProducts" :key="item.id_po_produk" class="transition hover:bg-slate-50">
+                    <Table.Td>
+                      <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                      <div class="font-caption mt-0.5">
+                        {{ item.produk?.ukuran?.nama_ukuran || '-' }}
+                        {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
+                      </div>
+                    </Table.Td>
+                    <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
+                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
+                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.jumlah_harga) }}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </table>
+            </div>
           </CardSection>
 
         </div>
@@ -412,7 +416,7 @@ function formatCurrency(v: number | string = 0) {
               placeholder="0" required @input="onNumberInput(item.id_po_produk, $event)" />
             <p class="mt-1 font-caption">Sisa dapat diterima: {{
               formatNumber(volumeSisaMap[item.id_po_produk])
-              }}</p>
+            }}</p>
           </div>
         </div>
 
