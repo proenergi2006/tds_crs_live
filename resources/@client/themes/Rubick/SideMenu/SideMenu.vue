@@ -314,10 +314,11 @@ onUnmounted(() => {
       <!-- BEGIN: Content -->
       <div
         class="md:max-w-auto min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 flex flex-col overflow-hidden">
+        <!-- TopBar di LUAR area scroll: tetap diam di atas, hanya konten yang scroll. -->
+        <div class="z-[51]">
+          <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
+        </div>
         <div ref="contentScrollRef" class="content-area-scroll flex-1 overflow-y-auto">
-          <div class="sticky top-0 z-[51]">
-            <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
-          </div>
           <RouterView />
         </div>
       </div>

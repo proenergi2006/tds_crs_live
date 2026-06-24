@@ -111,7 +111,7 @@
             <DetailRow label="Customer" :value="penawaran.customer?.nama_perusahaan || '-'" />
             <DetailRow label="Cabang" :value="penawaran.cabang?.nama_cabang || '-'" />
             <DetailRow label="Metode" :value="penawaran.metode || '-'" />
-            <DetailRow label="Ketentuan Order" :value="penawaran.order_method || '-'" />
+            <DetailRow label="Metode Pemesanan" :value="penawaran.order_method || '-'" />
             <DetailRow
               label="Masa Berlaku"
               :value="`${formatDate(penawaran.masa_berlaku)} - ${formatDate(penawaran.sampai_dengan)}`"
@@ -127,7 +127,7 @@
             <DetailRow label="Diskon" :value="formatCurrency(penawaran.discount)" bigValue />
             <DetailRow label="OAT / Volume" :value="formatCurrency(penawaran.oat)" bigValue />
             <DetailRow label="Toleransi Penyusutan" :value="`${penawaran.toleransi_penyusutan || 0}%`" />
-            <DetailRow label="Keterangan" :value="penawaran.keterangan || '-'" />
+            <DetailRow label="Titik Serah Terima & T&C Bongkar" :value="penawaran.keterangan || '-'" />
             <DetailRow label="Catatan" :value="penawaran.catatan || '-'" />
           </div>
         </div>

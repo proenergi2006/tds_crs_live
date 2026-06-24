@@ -96,7 +96,7 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
   <div class="page-content-wrapper">
     <form class="intro-x flex flex-col gap-4" @submit.prevent="handleSubmit" @keydown="handleKeydown">
-      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="font-display">
             {{ title }}
@@ -249,7 +249,7 @@ function handleKeydown(event: KeyboardEvent) {
         </div>
 
         <div class="xl:col-span-1">
-          <div class="sticky top-20 space-y-6">
+          <div class="sticky top-6 space-y-6">
             <slot name="sidebar" />
 
             <div v-if="showFooter && useSidebarFooter" class="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">

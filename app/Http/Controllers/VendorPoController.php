@@ -7,12 +7,12 @@ use App\Models\Cabang;
 use App\Models\Terminal;
 use Illuminate\Http\Request;
 use App\Models\Vendor;
-
+use App\Models\VendorPoProduk;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
-
+use Illuminate\Support\Facades\DB;
 use PDF;
 
 
@@ -52,53 +52,133 @@ class VendorPoController extends Controller
         );
     }
 
+    // public function store(Request $request)
+    // {
+    //     // Ambil id_cabang berdasarkan id_terminal (dari terminal)
+    //     $terminal = Terminal::find($request->id_terminal, 'id_terminal');
+    //     $vendor = Vendor::findOrFail($request->id_vendor, 'id_vendor');
+    //     $cabang = Cabang::find($terminal->id_cabang, 'id_cabang');
+
+    //     // Ambil nomor PO terakhir dari tabel cabangs
+    //     $lastNoPo = $cabang->urut_po;
+
+    //     // Increment nomor urut (no_po)
+    //     $newNoPo = (int)$lastNoPo + 1;
+
+    //     // Mendapatkan bulan Romawi (misal: VIII untuk Agustus)
+    //     $bulanRomawi = $this->getBulanRomawi(date('m'));
+
+    //     // Tahun (2 digit terakhir)
+    //     $tahun = substr(date('Y'), -2);
+
+    //     // Format nomor PO baru
+    //     $nomorPo = str_pad($newNoPo, 3, '0', STR_PAD_LEFT)  . '/' . $vendor->inisial . '/' . $cabang->inisial_cabang . '/'  . $bulanRomawi . '/' . $tahun;
+
+    //     // Menyimpan data Vendor PO
+    //     $data = [
+    //         'id_vendor' => $request->id_vendor,
+    //         'id_terminal' => $request->id_terminal,
+    //         'nomor_po' => $nomorPo,
+    //         'tanggal_inven' => $request->tanggal_inven,
+    //         'kd_tax' => $request->kd_tax,
+    //         'terms' => $request->terms,
+    //         'terms_day' => $request->terms_day,
+    //         'subtotal' => $request->subtotal,
+    //         'ppn11' => $request->ppn11,
+    //         'total_order' => $request->total_order,
+    //         'keterangan' => $request->keterangan,
+    //         'terms_condition' => $request->terms_condition,
+    //         'created_by' => $request->user()->name,
+    //     ];
+
+    //     // Simpan Vendor PO
+    //     $vendorPo = VendorPo::create($data);
+
+    //     // Update no_po di tabel cabangs
+    //     $cabang->urut_po = $newNoPo;
+    //     $cabang->save();
+
+    //     return response()->json($vendorPo, 201);
+    // }
+
     public function store(Request $request)
     {
-        // Ambil id_cabang berdasarkan id_terminal (dari terminal)
-        $terminal = Terminal::find($request->id_terminal);
-        $vendor = Vendor::findOrFail($request->id_vendor);
-        $cabang = Cabang::find($terminal->id_cabang);
+        $validated = $request->validate([
+            'id_vendor'         => 'required|exists:vendors,id_vendor',
+            'id_terminal'       => 'required|exists:terminals,id_terminal',
+            'tanggal_inven'     => 'required|date',
+            'terms'             => 'nullable|string',
+            'terms_day'         => 'nullable|numeric',
+            'subtotal'          => 'required|numeric',
+            'ppn11'             => 'required|numeric',
+            'total_order'       => 'required|numeric',
+            'keterangan'        => 'nullable|string',
+            'terms_condition'   => 'nullable|string',
 
-        // Ambil nomor PO terakhir dari tabel cabangs
-        $lastNoPo = $cabang->urut_po;
+            'items'                     => 'required|array|min:1',
+            'items.*.id_produk'         => 'required|exists:produks,id_produk',
+            'items.*.volume_po'         => 'required|numeric',
+            'items.*.harga_tebus'       => 'required|numeric',
+            'items.*.jumlah_harga'      => 'required|numeric',
+            'items.*.kd_tax'            => 'nullable|string|in:E,EC',
+            'items.*.tax_amount'        => 'nullable|numeric',
+        ]);
 
-        // Increment nomor urut (no_po)
-        $newNoPo = (int)$lastNoPo + 1;
+        $vendorPo = DB::transaction(function () use ($validated, $request) {
+            $terminal = Terminal::findOrFail($validated['id_terminal']);
+            $vendor = Vendor::where('id_vendor', $validated['id_vendor'])
+                ->lockForUpdate()
+                ->firstOrFail(['id_vendor', 'inisial']);
+            $cabang = Cabang::findOrFail($terminal->id_cabang);
 
-        // Mendapatkan bulan Romawi (misal: VIII untuk Agustus)
-        $bulanRomawi = $this->getBulanRomawi(date('m'));
+            $nextPoNumber = $vendor->urut_po + 1;
+            $bulanRomawi = $this->getBulanRomawi(date('m'));
+            $tahun = substr(date('Y'), -2);
+            $nomorPo = str_pad($nextPoNumber, 3, '0', STR_PAD_LEFT)
+                . '/' . $vendor->inisial
+                . '/' . $cabang->inisial_cabang
+                . '/' . $bulanRomawi
+                . '/' . $tahun;
 
-        // Tahun (2 digit terakhir)
-        $tahun = substr(date('Y'), -2);
+            // Header PO
+            $vendorPo = VendorPo::create([
+                'id_vendor'         => $validated['id_vendor'],
+                'id_terminal'       => $validated['id_terminal'],
+                'nomor_po'          => $nomorPo,
+                'kd_tax'            => '-',
+                'tanggal_inven'     => $validated['tanggal_inven'],
+                'terms'             => $validated['terms'],
+                'terms_day'         => $validated['terms_day'],
+                'subtotal'          => $validated['subtotal'],
+                'ppn11'             => $validated['ppn11'],
+                'total_order'       => $validated['total_order'],
+                'keterangan'        => $validated['keterangan'],
+                'terms_condition'   => $validated['terms_condition'],
+                'created_by'        => $request->user()->name,
+            ]);
+            $vendor->increment('urut_po');
 
-        // Format nomor PO baru
-        $nomorPo = str_pad($newNoPo, 3, '0', STR_PAD_LEFT)  . '/' . $vendor->inisial . '/' . $cabang->inisial_cabang . '/'  . $bulanRomawi . '/' . $tahun;
+            // Detail PO
+            $detailRows = [];
+            foreach ($validated['items'] as $item) {
+                $detailRows[] = [
+                    'id_po'         => $vendorPo->id_po,
+                    'id_produk'     => $item['id_produk'],
+                    'volume_po'     => $item['volume_po'],
+                    'harga_tebus'   => $item['harga_tebus'],
+                    'jumlah_harga'  => $item['jumlah_harga'],
+                    'kd_tax'        => $item['kd_tax'] ?? null,
+                    'tax_amount'    => $item['tax_amount'] ?? 0,
+                    'created_time'  => now(),
+                ];
+            }
+            VendorPoProduk::insert($detailRows);
+        });
 
-        // Menyimpan data Vendor PO
-        $data = [
-            'id_vendor' => $request->id_vendor,
-            'id_terminal' => $request->id_terminal,
-            'nomor_po' => $nomorPo,
-            'tanggal_inven' => $request->tanggal_inven,
-            'kd_tax' => $request->kd_tax,
-            'terms' => $request->terms,
-            'terms_day' => $request->terms_day,
-            'subtotal' => $request->subtotal,
-            'ppn11' => $request->ppn11,
-            'total_order' => $request->total_order,
-            'keterangan' => $request->keterangan,
-            'terms_condition' => $request->terms_condition,
-            'created_by' => $request->user()->name,
-        ];
-
-        // Simpan Vendor PO
-        $vendorPo = VendorPo::create($data);
-
-        // Update no_po di tabel cabangs
-        $cabang->urut_po = $newNoPo;
-        $cabang->save();
-
-        return response()->json($vendorPo, 201);
+        return response()->json([
+            'message' => 'PO berhasil dibuat',
+            'data' => $vendorPo
+        ], 201);
     }
 
     // Fungsi untuk mengubah bulan angka menjadi bulan Romawi

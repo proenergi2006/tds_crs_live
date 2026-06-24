@@ -245,7 +245,7 @@ function formatNumber(v: number | string = 0) {
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-20 space-y-4">
+          <div class="sticky top-6 space-y-4">
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5">

@@ -76,7 +76,7 @@ const typeScale = [
   { cls: 'font-caption', role: 'Metadata samar', sample: 'Terakhir diperbarui 23 Jun 2026' },
 ];
 
-/* Section: numeric scale — Oswald + tabular figures, kecil sampai display. */
+/* Section: numeric scale — Barlow Condensed + tabular figures, kecil sampai display. */
 const numericScale = [
   { cls: 'font-num-sm', role: 'Tabel padat / hitungan inline', sample: '1.250' },
   { cls: 'font-num', role: 'Angka / nominal default', sample: 'Rp. 9.800.000' },
@@ -134,7 +134,7 @@ const stats = [
       <section class="rounded-lg bg-white p-6 shadow-sm">
         <h2 class="font-header">Skala Angka</h2>
         <p class="font-body mt-1">
-          Khusus figur: Oswald dengan <em>tabular figures</em> agar rata di kolom.
+          Khusus figur: Barlow Condensed dengan <em>tabular figures</em> agar rata di kolom.
         </p>
 
         <div class="mt-5 divide-y divide-slate-100">
@@ -172,7 +172,8 @@ const stats = [
           <!-- Informasi Harga Produk -->
           <section class="rounded-lg bg-white shadow-sm">
             <div class="flex items-center gap-3 p-6">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                 <Lucide icon="Tag" class="h-5 w-5" />
               </div>
               <div class="flex items-center gap-2">
@@ -224,7 +225,8 @@ const stats = [
           <!-- Rincian Harga -->
           <section class="rounded-lg bg-white shadow-sm">
             <div class="flex items-center gap-3 p-6">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                 <Lucide icon="Wallet" class="h-5 w-5" />
               </div>
               <h2 class="font-header">Rincian Harga</h2>
@@ -245,7 +247,8 @@ const stats = [
           <!-- Rincian Item -->
           <section class="rounded-lg bg-white shadow-sm">
             <div class="flex items-center gap-3 p-6">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                 <Lucide icon="Boxes" class="h-5 w-5" />
               </div>
               <h2 class="font-header">Rincian Item</h2>
@@ -308,12 +311,13 @@ const stats = [
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-20 space-y-4">
+          <div class="sticky top-6 space-y-4">
 
             <!-- Status Penawaran -->
             <section class="rounded-lg bg-white shadow-sm">
               <div class="flex items-center gap-3 p-6">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                <div
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
                   <Lucide icon="ShieldCheck" class="h-5 w-5" />
                 </div>
                 <h2 class="font-header">Status Penawaran</h2>
@@ -321,9 +325,8 @@ const stats = [
               <hr class="mb-4" />
               <ol class="space-y-5 px-6 pb-6">
                 <li v-for="step in approvalSteps" :key="step.title" class="flex gap-3">
-                  <div class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                    :class="step.state === 'completed' ? 'bg-emerald-100 text-emerald-600'
-                      : step.state === 'active' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'">
+                  <div class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" :class="step.state === 'completed' ? 'bg-emerald-100 text-emerald-600'
+                    : step.state === 'active' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'">
                     <Lucide :icon="step.state === 'completed' ? 'Check' : 'Circle'" class="h-3.5 w-3.5" />
                   </div>
                   <div>

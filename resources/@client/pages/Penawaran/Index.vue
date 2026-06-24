@@ -1,6 +1,6 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { debounce } from 'lodash'
 
@@ -12,10 +12,35 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatDateTime } from '@/utils/format'
 
 const router = useRouter()
+const route = useRoute()
 const { success, error } = useNotification()
+
+/* Brand: index ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta. */
+type Brand = 'tds' | 'proenergi'
+const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
+
+const BRAND_CONFIG = {
+  tds: {
+    apiBase: '/api/penawarans',
+    createRoute: 'penawarans-create',
+    detailRoute: 'penawarans-detail',
+    editRoute: 'penawarans-edit',
+    title: 'Penawaran',
+    description: 'Kelola data penawaran ke customer',
+  },
+  proenergi: {
+    apiBase: '/api/penawarans-proenergi',
+    createRoute: 'penawarans-create-proenergi',
+    detailRoute: 'penawarans-detail-proenergi',
+    editRoute: 'penawarans-edit-proenergi',
+    title: 'Penawaran Proenergi',
+    description: 'Kelola data penawaran ke customer (Proenergi)',
+  },
+}
+const cfg = BRAND_CONFIG[brand]
 
 /* State: data & pagination */
 const penawarans = ref<any[]>([])
@@ -51,7 +76,7 @@ async function fetchCabangs() {
 async function fetchData(page = 1) {
   loading.value = true
   try {
-    const res = await axios.get('/api/penawarans', {
+    const res = await axios.get(cfg.apiBase, {
       params: {
         page,
         per_page: perPage.value,
@@ -76,15 +101,15 @@ function goToPage(page: number) {
 
 /* Actions */
 function openCreate() {
-  router.push({ name: 'penawarans-create' })
+  router.push({ name: cfg.createRoute })
 }
 
 function openDetail(id: number) {
-  router.push({ name: 'penawarans-detail', params: { id } })
+  router.push({ name: cfg.detailRoute, params: { id } })
 }
 
 function openEdit(id: number) {
-  router.push({ name: 'penawarans-edit', params: { id } })
+  router.push({ name: cfg.editRoute, params: { id } })
 }
 
 function confirmDelete(id: number, nomor: string) {
@@ -96,7 +121,7 @@ async function submitDelete() {
   if (!deleteTarget.value) return
   deleteLoading.value = true
   try {
-    await axios.delete(`/api/penawarans/${deleteTarget.value.id}`)
+    await axios.delete(`${cfg.apiBase}/${deleteTarget.value.id}`)
     deleteModal.value = false
     success('Berhasil', 'Penawaran berhasil dihapus.')
     fetchData(currentPage.value)
@@ -124,20 +149,29 @@ function getDisposisiLabel(value: string | number): string {
 function disposisiClass(v: string | number) {
   const val = String(v)
   return {
-    'bg-slate-100 text-slate-600':   val === '1',
-    'bg-amber-100 text-amber-700':   val === '2',
-    'bg-orange-100 text-orange-700': val === '3',
+    'bg-slate-100 text-slate-600':     val === '1',
+    'bg-amber-100 text-amber-700':     val === '2',
+    'bg-orange-100 text-orange-700':   val === '3',
     'bg-emerald-100 text-emerald-700': val === '4',
-    'bg-rose-100 text-rose-700':     val === '5' || val === '6',
+    'bg-rose-100 text-rose-700':       val === '5' || val === '6',
   }
 }
 
+/* Timestamp disposisi (mis. "Approved BM: 23 Jun 2026 14:30"). */
+function getDisposisiTanggal(pen: any): string {
+  const d = String(pen.disposisi_penawaran)
+  if (d === '3' && pen.bm_tanggal) return `Approved BM: ${formatDateTime(pen.bm_tanggal)}`
+  if (d === '4' && pen.om_tanggal) return `Approved OM: ${formatDateTime(pen.om_tanggal)}`
+  if (d === '5' && pen.bm_tanggal) return `Rejected BM: ${formatDateTime(pen.bm_tanggal)}`
+  if (d === '6' && pen.om_tanggal) return `Rejected OM: ${formatDateTime(pen.om_tanggal)}`
+  return ''
+}
 </script>
 
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <PageHeader title="Penawaran" description="Kelola data penawaran ke customer">
+      <PageHeader :title="cfg.title" :description="cfg.description">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="PlusCircle" class="h-4 w-4" />
@@ -207,12 +241,17 @@ function disposisiClass(v: string | number) {
               {{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³
             </Table.Td>
             <Table.Td class="text-center">
-              <span
-                class="font-label inline-flex items-center rounded-full px-3 py-1"
-                :class="disposisiClass(pen.disposisi_penawaran)"
-              >
-                {{ getDisposisiLabel(pen.disposisi_penawaran) }}
-              </span>
+              <div class="flex flex-col items-center gap-1">
+                <span
+                  class="font-label inline-flex items-center rounded-full px-3 py-1"
+                  :class="disposisiClass(pen.disposisi_penawaran)"
+                >
+                  {{ getDisposisiLabel(pen.disposisi_penawaran) }}
+                </span>
+                <span v-if="getDisposisiTanggal(pen)" class="font-caption italic">
+                  {{ getDisposisiTanggal(pen) }}
+                </span>
+              </div>
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-1">

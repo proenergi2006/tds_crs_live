@@ -17,7 +17,29 @@ import { formatDate, formatDateTime } from '@/utils/format'
 const router = useRouter()
 const route = useRoute()
 const { success, error } = useNotification()
-const penawaranApi = createResourceApi('/penawarans')
+
+/* Brand: detail ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta. */
+type Brand = 'tds' | 'proenergi'
+const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
+const isProenergi = brand === 'proenergi'
+
+const BRAND_CONFIG = {
+  tds: {
+    resourceEndpoint: '/penawarans',
+    apiBase: '/api/penawarans',
+    listRoute: 'penawarans-list',
+    title: 'Detail Penawaran',
+  },
+  proenergi: {
+    resourceEndpoint: '/penawarans-proenergi',
+    apiBase: '/api/penawarans-proenergi',
+    listRoute: 'penawarans-list-proenergi',
+    title: 'Detail Penawaran Proenergi',
+  },
+}
+const cfg = BRAND_CONFIG[brand]
+
+const penawaranApi = createResourceApi(cfg.resourceEndpoint)
 
 const id = Number(route.params.id)
 const penawaran = ref<any>({})
@@ -62,7 +84,8 @@ const infoGroups = computed(() => {
       label: 'Pembayaran & Ketentuan',
       fields: [
         { label: 'Tipe Pembayaran', value: p.tipe_pembayaran },
-        { label: 'Ketentuan Order', value: p.order_method },
+        ...(isProenergi ? [{ label: 'Acuan Pembayaran', value: p.acuan_pembayaran }] : []),
+        { label: 'Metode Pemesanan', value: p.order_method },
         {
           label: 'Down Payment',
           value: p.dp_persen ? `${p.dp_persen}%${p.dp_keterangan ? ' — ' + p.dp_keterangan : ''}` : null,
@@ -143,7 +166,7 @@ async function fetchPenawaran() {
 async function ajukanPenawaran() {
   ajukanLoading.value = true
   try {
-    const { data } = await axios.patch(`/api/penawarans/${id}/ajukan`)
+    const { data } = await axios.patch(`${cfg.apiBase}/${id}/ajukan`)
     ajukanDialogOpen.value = false
     success('Berhasil Diajukan', data.message || 'Penawaran berhasil diajukan ke Branch Manager.')
     await fetchPenawaran()
@@ -156,7 +179,7 @@ async function ajukanPenawaran() {
 
 async function preview(lang?: 'id' | 'en') {
   try {
-    const response = await axios.get(`/api/penawarans/${id}/preview`, {
+    const response = await axios.get(`${cfg.apiBase}/${id}/preview`, {
       params: lang ? { lang } : {},
       responseType: 'blob',
     })
@@ -169,7 +192,7 @@ async function preview(lang?: 'id' | 'en') {
 }
 
 function goBack() {
-  router.push({ name: 'penawarans-list' })
+  router.push({ name: cfg.listRoute })
 }
 
 function formatCurrency(v: number | string = 0) {
@@ -190,7 +213,7 @@ function formatNumber(v: number | string = 0) {
       <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="font-display">Detail Penawaran</h2>
+          <h2 class="font-display">{{ cfg.title }}</h2>
           <p class="font-lead mt-1">
             Informasi lengkap penawaran <code>{{ penawaran.nomor_penawaran || '-' }}</code>
           </p>
@@ -272,13 +295,13 @@ function formatNumber(v: number | string = 0) {
           <!-- Rincian Item -->
           <CardSection title="Rincian Item" description="Daftar produk pada penawaran" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
-            <DataList :loading="loading" :empty="items.length === 0" :colspan="3" :show-footer="false">
-              <template #head>
+            <Table Table bordered sm class="font-body">
+              <Table.Thead class="bg-slate-50">
                 <Table.Th>Produk</Table.Th>
                 <Table.Th class="w-28 text-right">Persen</Table.Th>
                 <Table.Th class="w-40 text-right">Volume</Table.Th>
-              </template>
-              <template #body>
+              </Table.Thead>
+              <Table.Tbody class="bg-white">
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item" class="transition hover:bg-slate-50">
                   <Table.Td>
                     <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
@@ -292,40 +315,30 @@ function formatNumber(v: number | string = 0) {
                   <Table.Td class="font-num text-right">{{ formatNumber(item.volume_order) }}
                   </Table.Td>
                 </Table.Tr>
-              </template>
-            </DataList>
+              </Table.Tbody>
+            </Table>
           </CardSection>
 
           <!-- Catatan & Keterangan -->
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4">
             <CardSection title="Catatan & Keterangan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
-              <dl class="space-y-3 font-body">
-                <div>
-                  <dt class="font-label">Keterangan</dt>
-                  <dd class="font-strong mt-1">{{ penawaran.keterangan || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="font-label">Catatan</dt>
-                  <dd class="font-strong mt-1">{{ penawaran.catatan || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="font-label">Syarat &amp; Ketentuan</dt>
-                  <dd class="font-strong mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-'
-                    }}</dd>
-                </div>
-              </dl>
-            </CardSection>
-
-            <CardSection title="Catatan Verifikasi" icon="MessageSquare" icon-class="bg-blue-100 text-blue-600">
-              <div class="space-y-3">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">Catatan Verifikasi BM</div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}
+              <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div class="font-label">Keterangan</div>
+                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.keterangan || '-' }}
                   </p>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">Catatan Verifikasi OM</div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
+                <div class="col-span-1 ">
+                  <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="font-label">Catatan</div>
+                    <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan || '-' }}
+                    </p>
+                  </div>
+                  <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="font-label">Syarat & Ketentuan</div>
+                    <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardSection>
@@ -335,7 +348,7 @@ function formatNumber(v: number | string = 0) {
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-20 space-y-4">
+          <div class="sticky top-6 space-y-4">
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
@@ -370,6 +383,22 @@ function formatNumber(v: number | string = 0) {
                 </div>
               </div>
             </CardSection>
+
+            <section class="p-6 rounded-lg bg-white shadow-sm space-y-3">
+              <div v-if="!penawaran.catatan_verifikasi && !penawaran.catatan_om"
+                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <i class="font-body mt-1 whitespace-pre-line">Tidak ada catatan untuk penawaran ini.</i>
+              </div>
+              <div v-if="penawaran.catatan_verifikasi" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="font-label">Catatan Verifikasi BM</div>
+                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}
+                </p>
+              </div>
+              <div v-if="penawaran.catatan_om" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="font-label">Catatan Verifikasi OM</div>
+                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
+              </div>
+            </section>
           </div>
         </div>
 

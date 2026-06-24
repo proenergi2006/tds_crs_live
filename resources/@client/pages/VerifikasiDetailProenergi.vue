@@ -72,7 +72,7 @@
               <span class="col-span-2">: {{ penawaran.metode || '-' }}</span>
             </div>
             <div class="grid grid-cols-3">
-              <span class="font-medium text-gray-600">Ketentuan Order</span>
+              <span class="font-medium text-gray-600">Metode Pemesanan</span>
               <span class="col-span-2">: {{ penawaran.order_method || '-' }}</span>
             </div>
             <div class="grid grid-cols-3">
@@ -129,7 +129,7 @@
               <span class="col-span-2">: {{ penawaran.toleransi_penyusutan }}%</span>
             </div>
             <div class="grid grid-cols-3">
-              <span class="font-medium text-gray-600">Keterangan</span>
+              <span class="font-medium text-gray-600">Titik Serah Terima & T&C Bongkar</span>
               <span class="col-span-2">: {{ penawaran.keterangan }}</span>
             </div>
             <div class="grid grid-cols-3">

@@ -156,7 +156,7 @@ const infoGroups = computed(() => [
     label: 'Ketentuan Transaksi',
     fields: [
       { label: 'Metode', value: penawaran.value.metode },
-      { label: 'Ketentuan Order', value: penawaran.value.order_method },
+      { label: 'Metode Pemesanan', value: penawaran.value.order_method },
       {
         label: 'Masa Berlaku',
         value: `${formatDate(penawaran.value.masa_berlaku)} - ${formatDate(penawaran.value.sampai_dengan)}`,
@@ -404,7 +404,7 @@ onMounted(fetchPenawaran)
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-20 space-y-4">
+          <div class="sticky top-6 space-y-4">
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">

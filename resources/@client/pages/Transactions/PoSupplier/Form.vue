@@ -12,12 +12,14 @@ import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
+import Table from '@/components/Base/Table'
 
 interface Item {
-  id_produk: number | null
+  id_produk: number | null | ''
   volume_po: number
   harga_tebus: number
   total_harga: number
+  kd_tax: string
   tax_amount: number
 }
 
@@ -45,11 +47,10 @@ const terminals = ref<any[]>([])
 const produks = ref<any[]>([])
 
 const form = reactive({
-  id_vendor: null as number | null,
-  id_terminal: null as number | null,
+  id_vendor: '' as number | '',
+  id_terminal: '' as number | '',
   nomor_po: '',
   tanggal_inven: '',
-  kd_tax: '',
   terms: '',
   terms_day: 0,
   items: [makeEmptyItem()] as Item[],
@@ -60,17 +61,26 @@ const form = reactive({
 })
 
 const calcSubtotal = computed(() => form.items.reduce((sum, item) => sum + item.total_harga, 0))
-const calcPPN = computed(() => Math.round(calcSubtotal.value * 0.11))
-const calcTotalOrder = computed(() => calcSubtotal.value + calcPPN.value)
+
+/**
+ * Kode tax sekarang tidak lagi berada di header level, disesuikan agar bisa mendefinisikan tax per item
+ * Dengan begitu, ppn11% tidak relevan lagi. Gunakan totalTax untuk menggantikan ppn11%
+ * Field di db tetap sama, namun tujuannya sekarang digunakan untuk menyimpan totalTax per item
+ */
+// const calcPPN = computed(() => Math.round(calcSubtotal.value * 0.11))
+
+const calcTotalTax = computed(() => form.items.reduce((sum, item) => sum + item.tax_amount, 0))
+const calcTotalOrder = computed(() => calcSubtotal.value + calcTotalTax.value)
 
 onMounted(init)
 
 function makeEmptyItem(): Item {
   return {
-    id_produk: null,
+    id_produk: '',
     volume_po: 0,
     harga_tebus: 0,
     total_harga: 0,
+    kd_tax: '',
     tax_amount: 0,
   }
 }
@@ -126,7 +136,6 @@ async function fetchPo() {
     id_terminal: po.id_terminal,
     nomor_po: po.nomor_po,
     tanggal_inven: po.tanggal_inven,
-    kd_tax: po.kd_tax,
     terms: po.terms,
     terms_day: po.terms_day,
     keterangan: po.keterangan || '',
@@ -144,7 +153,8 @@ async function fetchPo() {
     volume_po: toDbInt(item.volume_po),
     harga_tebus: toDbInt(item.harga_tebus),
     total_harga: toDbInt(item.jumlah_harga),
-    tax_amount: toDbInt(item.tax_amount),
+    kd_tax: item.kd_tax ?? '',
+    tax_amount: Number(item.tax_amount) || 0,
   }))
 
   if (form.items.length === 0) {
@@ -167,6 +177,12 @@ function removeRow(index: number) {
 function computeTotal(index: number) {
   const item = form.items[index]
   item.total_harga = toInt(item.volume_po) * toInt(item.harga_tebus)
+  computeTax(index)
+}
+
+function computeTax(index: number) {
+  const item = form.items[index]
+  item.tax_amount = item.kd_tax === 'E' ? Math.round(item.total_harga * 0.11) : 0
 }
 
 function computeAllTotals() {
@@ -223,11 +239,10 @@ function buildHeaderPayload() {
     id_terminal: Number(form.id_terminal),
     ...(mode.value === 'edit' ? { nomor_po: form.nomor_po } : {}),
     tanggal_inven: form.tanggal_inven,
-    kd_tax: form.kd_tax,
     terms: form.terms,
     terms_day: Number(form.terms_day),
     subtotal: calcSubtotal.value,
-    ppn11: calcPPN.value,
+    ppn11: calcTotalTax.value,
     total_order: calcTotalOrder.value,
     keterangan: form.keterangan,
     terms_condition: termsChecked.value ? form.terms_condition : null,
@@ -237,15 +252,18 @@ function buildHeaderPayload() {
   }
 }
 
-function buildItemsPayload(idPo: number) {
-  return form.items.map(item => ({
-    id_po: idPo,
-    id_produk: Number(item.id_produk),
-    volume_po: toInt(item.volume_po),
-    harga_tebus: toInt(item.harga_tebus),
-    jumlah_harga: toInt(item.total_harga),
-    created_by: mode.value === 'create' ? form.created_by : form.lastupdate_by,
-  }))
+function buildPayload(idPo?: number) {
+  return {
+    ...buildHeaderPayload(),
+    items: form.items.map(item => ({
+      id_produk: Number(item.id_produk),
+      volume_po: toInt(item.volume_po),
+      harga_tebus: toInt(item.harga_tebus),
+      jumlah_harga: toInt(item.total_harga),
+      kd_tax: item.kd_tax || null,
+      tax_amount: item.tax_amount,
+    })),
+  }
 }
 
 async function submitForm() {
@@ -261,20 +279,10 @@ async function submitForm() {
 
   try {
     if (mode.value === 'create') {
-      const { data: savedPo } = await axios.post('/api/vendor-pos', buildHeaderPayload())
-
-      await axios.post('/api/vendor-pos-produk/batch', {
-        items: buildItemsPayload(savedPo.id_po),
-      })
-
+      await axios.post('/api/vendor-pos', buildPayload())
       success('Berhasil', 'PO berhasil disimpan')
     } else {
-      await axios.put(`/api/vendor-pos/${poId.value}`, buildHeaderPayload())
-      await axios.delete('/api/vendor-pos-produk/batch', { params: { id_po: poId.value } })
-      await axios.post('/api/vendor-pos-produk/batch', {
-        items: buildItemsPayload(poId.value),
-      })
-
+      await axios.put(`/api/vendor-pos/${poId.value}`, buildPayload())
       success('Berhasil', 'PO diperbarui')
     }
 
@@ -305,63 +313,65 @@ function cancel() {
     <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12 md:col-span-4">
-          <FormLabel for="vendor">Vendor</FormLabel>
-          <FormSelect id="vendor" v-model="form.id_vendor">
-            <option disabled value="">-- Pilih Vendor --</option>
-            <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
-              {{ vendor.nama_vendor }}
-            </option>
-          </FormSelect>
-        </div>
+          <div class="font-label mb-1">Data PO</div>
+          <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
+            <div v-if="mode === 'edit'">
+              <FormLabel for="nomor_po">Nomor PO</FormLabel>
+              <FormInput id="nomor_po" v-model="form.nomor_po" placeholder="Nomor PO" disabled />
+            </div>
 
-        <div class="col-span-12 md:col-span-4">
-          <FormLabel for="terminal">Terminal</FormLabel>
-          <FormSelect id="terminal" v-model="form.id_terminal">
-            <option disabled value="">-- Pilih Terminal --</option>
-            <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
-              {{ terminal.nama_terminal }}
-            </option>
-          </FormSelect>
-        </div>
+            <div v-else>
+              <FormLabel>Nomor PO</FormLabel>
+              <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 font-body text-xs">
+                *<i>Generate</i> otomatis setelah simpan.
+              </div>
+            </div>
 
-        <div v-if="mode === 'edit'" class="col-span-12 md:col-span-4">
-          <FormLabel for="nomor_po">Nomor PO</FormLabel>
-          <FormInput id="nomor_po" v-model="form.nomor_po" placeholder="Nomor PO" disabled />
-        </div>
-
-        <div v-else class="col-span-12 md:col-span-4">
-          <FormLabel>Nomor PO</FormLabel>
-          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 font-body">
-            *<i>Generate</i> otomatis saat data disimpan.
+            <DateField v-model="form.tanggal_inven" label="Tanggal" placeholder="Pilih tanggal PO" />
           </div>
         </div>
+        <div class="col-span-12 md:col-span-4">
+          <div class="font-label mb-1">Data Vendor</div>
+          <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
+            <div>
+              <FormLabel for="vendor">Vendor</FormLabel>
+              <FormSelect id="vendor" v-model="form.id_vendor">
+                <option disabled value="">-- Pilih Vendor --</option>
+                <option v-for="vendor in vendors" :key="vendor.id_vendor" :value="vendor.id_vendor">
+                  {{ vendor.nama_vendor }}
+                </option>
+              </FormSelect>
+            </div>
 
-        <div class="col-span-12 md:col-span-3">
-          <DateField v-model="form.tanggal_inven" label="Tanggal" placeholder="Pilih tanggal PO" />
+            <div>
+              <FormLabel for="terminal">Terminal</FormLabel>
+              <FormSelect id="terminal" v-model="form.id_terminal">
+                <option disabled value="">-- Pilih Terminal --</option>
+                <option v-for="terminal in terminals" :key="terminal.id_terminal" :value="terminal.id_terminal">
+                  {{ terminal.nama_terminal }}
+                </option>
+              </FormSelect>
+            </div>
+          </div>
         </div>
+        <div class="col-span-12 md:col-span-4">
+          <div class="font-label mb-1">Data Lainnya</div>
+          <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
+            <div class="col-span-12 md:col-span-3">
+              <FormLabel for="terms">Terms</FormLabel>
+              <FormSelect id="terms" v-model="form.terms">
+                <option disabled value="">-- Pilih Terms --</option>
+                <option value="CBD">CBD</option>
+                <option value="COD">COD</option>
+                <option value="TOP">TOP</option>
+              </FormSelect>
+            </div>
 
-        <div class="col-span-12 md:col-span-3">
-          <FormLabel for="kd_tax">Kode Tax</FormLabel>
-          <FormSelect id="kd_tax" v-model="form.kd_tax">
-            <option disabled value="">-- Pilih Kode Tax --</option>
-            <option value="E">E</option>
-            <option value="EC">EC</option>
-          </FormSelect>
-        </div>
-
-        <div class="col-span-12 md:col-span-3">
-          <FormLabel for="terms">Terms</FormLabel>
-          <FormSelect id="terms" v-model="form.terms">
-            <option disabled value="">-- Pilih Terms --</option>
-            <option value="CBD">CBD</option>
-            <option value="COD">COD</option>
-            <option value="TOP">TOP</option>
-          </FormSelect>
-        </div>
-
-        <div class="col-span-12 md:col-span-3">
-          <FormLabel for="terms_day">Terms Day</FormLabel>
-          <FormInput id="terms_day" v-model.number="form.terms_day" type="number" />
+            <div class="col-span-12 md:col-span-3">
+              <FormLabel for="terms_day">Terms Day</FormLabel>
+              <FormInput id="terms_day" v-model.number="form.terms_day" type="number" />
+            </div>
+          </div>
         </div>
       </div>
     </CardSection>
@@ -375,27 +385,30 @@ function cancel() {
         </Button>
       </template>
 
-      <div class="overflow-x-auto rounded-xl border border-slate-200">
-        <table class="min-w-[920px] w-full divide-y divide-slate-200">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="w-12 px-4 py-3 font-label text-center">No</th>
-              <th class="px-4 py-3 font-label text-left">Produk</th>
-              <th class="w-32 px-4 py-3 font-label text-right">Volume PO</th>
-              <th class="px-4 py-3 font-label text-right">Harga Tebus</th>
-              <th class="px-4 py-3 font-label text-right">Total Harga</th>
-              <th class="wpx-4 py-3 font-label text-right">Tax Amount</th>
-              <th class="w-16 px-4 py-3 font-label text-center">Aksi</th>
-            </tr>
-          </thead>
+      <div class="overflow-x-auto">
+        <Table bordered sm class="font-body">
+          <Table.Thead class="bg-slate-50">
+            <Table.Tr>
+              <Table.Th class="w-16 px-4 py-3 font-label text-center">#</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-left">Produk</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Volume PO</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Harga Tebus</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Total Harga</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-center">Kode Tax</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Tax Amount</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
 
-          <tbody class="divide-y divide-slate-200 bg-white">
-            <tr v-for="(item, index) in form.items" :key="index" class="transition hover:bg-slate-50">
-              <td class="px-4 py-3 font-num text-center">
-                {{ index + 1 }}.
-              </td>
+          <Table.Tbody class="bg-white">
+            <Table.Tr v-for="(item, index) in form.items" :key="index" class="transition hover:bg-slate-50">
+              <Table.Td class="px-4 py-3 text-center">
+                <Button v-if="form.items.length > 1" type="button" variant="soft-danger" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus" @click="removeRow(index)">
+                  <Lucide icon="Trash2" class="h-3 w-3" />
+                </Button>
+              </Table.Td>
 
-              <td class="px-4 py-3">
+              <Table.Td class="px-4 py-3">
                 <FormSelect :id="`produk-${index}`" v-model="item.id_produk" class="min-w-64">
                   <option disabled value="">-- Pilih Produk --</option>
                   <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
@@ -403,63 +416,62 @@ function cancel() {
                     }})
                   </option>
                 </FormSelect>
-              </td>
+              </Table.Td>
 
-              <td class="px-4 py-3">
-                <NumberField :id="`volume-po-${index}`" v-model="item.volume_po" placeholder="100" :min="0"
+              <Table.Td class="px-4 py-3">
+                <NumberField class="w-32" :id="`volume-po-${index}`" v-model="item.volume_po" placeholder="100" :min="0"
                   :decimals="0" @update:model-value="computeTotal(index)" />
-              </td>
+              </Table.Td>
 
-              <td class="px-4 py-3">
+              <Table.Td class="px-4 py-3">
                 <CurrencyField :model-value="item.harga_tebus" class="min-w-[120px]"
                   @update:model-value="updateHargaTebus(index, $event)" />
-              </td>
+              </Table.Td>
 
-              <td class="px-4 py-3">
+              <Table.Td class="px-4 py-3">
                 <CurrencyField :model-value="item.total_harga" class="min-w-[160px]" readonly />
-              </td>
+              </Table.Td>
 
-              <td class="px-4 py-3 text-right">
-                <CurrencyField :model-value="item.tax_amount" class="min-w-[120px]" />
-              </td>
+              <Table.Td class="px-4 py-3 text-center">
+                <FormSelect :id="`kd-tax-${index}`" v-model="item.kd_tax" class="w-20" @change="computeTax(index)">
+                  <option disabled value="">-</option>
+                  <option value="E">E</option>
+                  <option value="EC">EC</option>
+                </FormSelect>
+              </Table.Td>
 
-              <td class="px-4 py-3 text-center">
-                <Button v-if="form.items.length > 1" type="button" variant="soft-danger" rounded
-                  class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus" @click="removeRow(index)">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
-          </tbody>
+              <Table.Td class="px-4 py-3">
+                <CurrencyField :model-value="item.tax_amount" class="min-w-[140px]" readonly />
+              </Table.Td>
+            </Table.Tr>
 
-          <tfoot class="border-t border-slate-200 bg-slate-50">
-            <tr>
-              <td colspan="4" class="px-4 py-3 font-strong text-right">Subtotal</td>
-              <td class="px-4 py-3 font-num text-right">
+            <Table.Tr>
+              <Table.Td colspan="4" class="px-4 py-3 font-strong text-right">Subtotal</Table.Td>
+              <Table.Td class="px-4 py-3 font-num-lg text-right">
                 {{ formatNumber(calcSubtotal) }}
-              </td>
-              <td></td>
-              <td></td>
-            </tr>
+              </Table.Td>
+              <Table.Td></Table.Td>
+              <Table.Td></Table.Td>
+            </Table.Tr>
 
-            <tr>
-              <td colspan="4" class="px-4 py-3 font-strong text-right">PPN 11%</td>
-              <td class="px-4 py-3 font-num text-right">
-                {{ formatNumber(calcPPN) }}
-              </td>
-              <td></td>
-              <td></td>
-            </tr>
+            <Table.Tr>
+              <Table.Td colspan="4" class="px-4 py-3 font-strong text-right">Total Tax</Table.Td>
+              <Table.Td class="px-4 py-3 font-num-lg text-right">
+                {{ formatNumber(calcTotalTax) }}
+              </Table.Td>
+              <Table.Td></Table.Td>
+              <Table.Td></Table.Td>
+            </Table.Tr>
 
-            <tr>
-              <td colspan="4" class="px-4 py-4 text-right font-header">Total Order</td>
-              <td class="px-4 py-4 font-num-lg text-right !text-emerald-700">
+            <Table.Tr>
+              <Table.Td colspan="4" class="px-4 py-4 text-right font-header">Total Order</Table.Td>
+              <Table.Td class="px-4 py-4 font-num-lg text-right !text-emerald-700">
                 {{ formatNumber(calcTotalOrder) }}
-              </td>
-              <td></td>
-              <td></td>
-            </tr>
-          </tfoot>
+              </Table.Td>
+              <Table.Td></Table.Td>
+              <Table.Td></Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
         </table>
       </div>
     </CardSection>

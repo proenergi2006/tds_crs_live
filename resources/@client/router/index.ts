@@ -307,11 +307,13 @@ const routes = [
         path: "/penawarans",
         name: "penawarans-list",
         component: () => import("@/pages/Penawaran/Index.vue"),
+        meta: { brand: "tds" },
       },
       {
         path: "/penawarans-proenergi",
         name: "penawarans-list-proenergi",
-        component: () => import("@/pages/Penawaran/IndexProenergi.vue"),
+        component: () => import("@/pages/Penawaran/Index.vue"),
+        meta: { brand: "proenergi" },
       },
       {
         path: "/penawarans/create",
@@ -349,11 +351,13 @@ const routes = [
         path: "/penawarans/:id",
         name: "penawarans-detail",
         component: () => import("@/pages/Penawaran/Detail.vue"),
+        meta: { brand: "tds" },
       },
       {
         path: "/penawarans-proenergi/:id",
         name: "penawarans-detail-proenergi",
-        component: () => import("@/pages/Penawaran/DetailProenergi.vue"),
+        component: () => import("@/pages/Penawaran/Detail.vue"),
+        meta: { brand: "proenergi" },
       },
 
       {

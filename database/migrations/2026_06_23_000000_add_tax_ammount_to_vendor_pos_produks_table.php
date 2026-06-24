@@ -8,8 +8,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('vendor_pos_produks', function (Blueprint $table) {
-            if (!Schema::hasColumn('vendor_pos_produks', 'tax_amount')) {
-                $table->decimal('tax_amount', 22, 4)->default(0)->after('jumlah_harga');
+            if (!Schema::hasColumn('vendor_pos_produks', 'kd_tax')) {
+                $table->string('kd_tax')->nullable()->after('jumlah_harga');
+                $table->decimal('tax_amount', 22, 4)->default(0)->after('kd_tax');
             }
         });
     }
@@ -17,8 +18,8 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('vendor_pos_produks', function (Blueprint $table) {
-            if (Schema::hasColumn('vendor_pos_produks', 'tax_amount')) {
-                $table->dropColumn('tax_amount');
+            if (Schema::hasColumn('vendor_pos_produks', 'kd_tax')) {
+                $table->dropColumn(['kd_tax', 'tax_amount']);
             }
         });
     }

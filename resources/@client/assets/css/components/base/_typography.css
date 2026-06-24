@@ -5,7 +5,7 @@
  |
  | Global type system for the template. Two roles:
  |
- |   Oswald (fontFamily.oswald)       — condensed display face. Carries the
+ |   Barlow Condensed (fontFamily.barlow) — condensed display face. Carries the
  |     personality: page titles, section headings, eyebrows/labels and figures.
  |   Open Sans (fontFamily.opensans)  — humanist body face. Carries the
  |     reading: paragraphs, field values and captions.
@@ -13,14 +13,14 @@
  | Use these classes instead of re-declaring font-size/weight/color per page so
  | the scale stays consistent. Fonts are imported in "fonts/_google.css".
  |
- |   Display group (Oswald)            Text group (Open Sans)
+ |   Display group (Barlow Condensed)  Text group (Open Sans)
  |   .font-display   page / hero title  .font-lead     supporting paragraph
  |   .font-header    card / section     .font-body     default paragraph / cell
  |   .font-section   sub-group title    .font-strong   emphasized value
  |   .font-eyebrow   uppercase overline .font-caption  muted metadata
  |   .font-label     field label
  |
- |   Numeric group (Oswald, tabular figures) — for amounts, counts, KPIs
+ |   Numeric group (Barlow Condensed, tabular figures) — for amounts, counts, KPIs
  |   .font-num-sm        dense table figure
  |   .font-num           default number / amount
  |   .font-num-lg        emphasized value (card highlight)
@@ -31,7 +31,7 @@
 
 /* Display — page / hero title */
 .font-display {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-size: theme("fontSize.3xl");
     font-weight: 600;
     line-height: 1.15;
@@ -41,7 +41,7 @@
 
 /* Header — card / section title */
 .font-header {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-size: theme("fontSize.xl");
     font-weight: 600;
     line-height: 1.25;
@@ -50,7 +50,7 @@
 
 /* Section — sub-group title within a card */
 .font-section {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-size: theme("fontSize.xs");
     font-weight: 600;
     line-height: 1.4;
@@ -61,7 +61,7 @@
 
 /* Eyebrow — uppercase overline above a title */
 .font-eyebrow {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-size: theme("fontSize.xs");
     font-weight: 600;
     line-height: 1.4;
@@ -72,7 +72,7 @@
 
 /* Label — field / column label */
 .font-label {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-size: theme("fontSize.xs");
     font-weight: 500;
     line-height: 1.4;
@@ -81,14 +81,14 @@
     color: theme("colors.slate.400");
 }
 
-/* Numeric scale — Oswald with tabular figures so columns align.
+/* Numeric scale — Barlow Condensed with tabular figures so columns align.
    Shared base: every .font-num-* inherits the family + tnum feature. */
 .font-num-sm,
 .font-num,
 .font-num-lg,
 .font-num-display,
 .font-num-display-lg {
-    font-family: theme("fontFamily.oswald");
+    font-family: theme("fontFamily.barlow");
     font-feature-settings: "tnum" 1;
     font-variant-numeric: tabular-nums;
 }

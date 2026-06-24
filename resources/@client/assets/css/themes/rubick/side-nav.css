@@ -380,7 +380,7 @@
         &::-webkit-scrollbar-thumb {
             background-image: linear-gradient(to bottom, rgb(var(--color-theme-2)), #059669);
             background-clip: padding-box;
-            border: 2px solid transparent;
+            border: 1px solid transparent;
             border-radius: 99px;
             opacity: 0;
             transition: opacity 0.4s ease;
