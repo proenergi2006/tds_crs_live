@@ -42,12 +42,12 @@
             max-width: 260px;
             display: none;
             position: absolute;
-            top: 0;
-            left: calc(100% - 14px);
+            top: 49px;
+            left: 0;
             z-index: 9999;
             padding: theme("spacing.3");
-            color: theme("colors.white");
-            background-color: #054d39;
+            color: theme("colors.slate.700");
+            background-color: white;
             border-radius: theme("borderRadius.xl");
             box-shadow: theme("boxShadow.2xl");
         }
@@ -57,8 +57,8 @@
             padding-bottom: theme("spacing.2");
             margin-bottom: theme("spacing.1");
             font-weight: theme("fontWeight.medium");
-            color: theme("colors.white");
-            border-bottom: 1px solid theme("colors.white" / 10%);
+            color: theme("colors.slate.500");
+            border-bottom: 1px solid theme("colors.slate.200");
         }
         .side-nav__collapsed-item {
             min-height: 40px;
@@ -67,7 +67,7 @@
             gap: theme("spacing.3");
             padding-left: theme("spacing.3");
             padding-right: theme("spacing.3");
-            color: theme("colors.white" / 72%);
+            color: theme("colors.slate.600");
             border-radius: theme("borderRadius.xl");
             white-space: nowrap;
             transition-property: theme("transitionProperty.DEFAULT");
@@ -75,8 +75,8 @@
             transition-duration: theme("transitionDuration.100");
             &:hover,
             &.side-nav__collapsed-item--active {
-                color: white;
-                background-color: theme("colors.white" / 8%);
+                color: theme("colors.theme.1");
+                background-color: theme("colors.slate.100");
             }
             svg {
                 width: theme("spacing.4");
@@ -91,9 +91,9 @@
         .side-nav__collapsed-group {
             border-radius: theme("borderRadius.xl");
             &.side-nav__collapsed-item--active {
-                background-color: theme("colors.white" / 6%);
+                background-color: theme("colors.slate.100");
                 .side-nav__collapsed-item {
-                    color: white;
+                    color: theme("colors.theme.1");
                 }
             }
         }
@@ -118,6 +118,9 @@
                 justify-content: center;
                 padding-left: 0;
                 .side-menu__title {
+                    display: none;
+                }
+                &:not(.side-menu--active) .side-menu__icon:before {
                     display: none;
                 }
             }

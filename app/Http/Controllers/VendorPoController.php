@@ -280,6 +280,7 @@ class VendorPoController extends Controller
             ->setOptions([
                 'isRemoteEnabled' => true,
                 'defaultFont'     => 'DejaVu Sans',
+                'tempDir'         => storage_path('app/dompdf-tmp'),
             ])
             ->stream($filename);
     }

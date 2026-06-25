@@ -52,6 +52,7 @@ const menu: Array<Menu | "divider"> = [
         icon: "CheckSquare",
         pageName: "penawarans-verifikasi-om",
         title: "Verifikasi Penawaran",
+        activePageNames: ["penawarans-verifikasi-om-detail"],
       },
     ],
   },

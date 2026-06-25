@@ -190,7 +190,7 @@ function formatNumber(v: number | string = 0) {
                 </Table.Thead>
 
                 <Table.Tbody class="bg-white">
-                  <Table.Tr v-for="item in produks" :key="item.id_po_produk" class="transition hover:bg-slate-50">
+                  <Table.Tr v-for="item in produks" :key="item.id_po_produk">
                     <Table.Td>
                       <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
                       <div class="font-caption mt-0.5">
