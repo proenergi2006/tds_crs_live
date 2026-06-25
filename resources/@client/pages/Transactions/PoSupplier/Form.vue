@@ -285,12 +285,13 @@ async function submitForm() {
     if (mode.value === 'create') {
       await axios.post('/api/vendor-pos', buildPayload())
       success('Berhasil', 'PO berhasil disimpan')
+      router.push({ name: 'vendor-pos-list' })
     } else {
       await axios.put(`/api/vendor-pos/${poId.value}`, buildPayload())
       success('Berhasil', 'PO diperbarui')
+      router.push({ name: 'vendor-pos-detail' })
     }
 
-    router.push({ name: 'vendor-pos-list' })
   } catch (e: any) {
     error.value = e.response?.data?.message || 'Gagal menyimpan'
   } finally {

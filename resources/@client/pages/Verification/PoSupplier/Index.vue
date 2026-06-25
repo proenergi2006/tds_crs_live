@@ -114,11 +114,11 @@ function statusLabel(statusPo?: { key: string; label: string }) {
 
 function statusBadgeClass(statusPo?: { key: string; label: string }) {
   const map: Record<string, string> = {
-    draft: 'bg-slate-100 text-slate-600',
-    waiting_cfo: 'bg-orange-100 text-orange-700',
-    waiting_ceo: 'bg-blue-100 text-blue-700',
-    approved: 'bg-emerald-100 text-emerald-700',
-    rejected: 'bg-red-100 text-red-700',
+    Draft: 'bg-slate-100 text-slate-600',
+    WaitingCeo: 'bg-blue-100 text-blue-700',
+    Approved: 'bg-emerald-100 text-emerald-700',
+    DitolakCfo: 'bg-red-100 text-red-700',
+    DitolakCeo: 'bg-red-100 text-red-700',
   }
   return map[statusPo?.key ?? ''] ?? 'bg-slate-100 text-slate-600'
 }
@@ -199,8 +199,7 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
             <Table.Td class="text-slate-700">{{ po.vendor?.nama_vendor || '-' }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.terminal?.nama_terminal || '-' }}</Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
-                :class="statusBadgeClass(po.status_po)">
+              <span class="font-label inline-flex rounded-full px-3 py-1" :class="statusBadgeClass(po.status_po)">
                 {{ statusLabel(po.status_po) }}
               </span>
             </Table.Td>

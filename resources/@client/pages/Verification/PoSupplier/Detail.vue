@@ -13,7 +13,7 @@ import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Steppe
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 
 const router = useRouter()
@@ -34,7 +34,7 @@ const rejectNote = ref('')
 const produks = computed<any[]>(() => po.value.produks || [])
 
 const approvalSteps = computed<StepItem[]>(() => {
-  const d: number = po.value.disposisi_po ?? -1
+  const key = po.value.status_po?.key ?? 'Draft'
 
   function s(completedWhen: boolean, activeWhen: boolean): StepItem['status'] {
     if (completedWhen) return 'completed'
@@ -42,22 +42,30 @@ const approvalSteps = computed<StepItem[]>(() => {
     return 'pending'
   }
 
+  const isWaitingOrApproved = key === 'WaitingCeo' || key === 'Approved'
+
   return [
     {
       title: 'Drafting',
-      status: s(d >= 1, d === 0),
+      description: 'Inisiasi dokumen PO kepada vendor',
+      status: s(isWaitingOrApproved, !isWaitingOrApproved),
     },
     {
-      title: 'Verifikasi CFO',
-      status: s(d >= 2, d === 1),
+      title: 'PO Diajukan',
+      description: 'PO diteruskan ke proses verifikasi CEO',
+      status: s(isWaitingOrApproved, false),
+      timestamp: formatDateTime(po.value.cfo_tgl),
     },
     {
       title: 'Verifikasi CEO',
-      status: s(d === 4, d === 2),
+      description: 'Menunggu keputusan persetujuan CEO',
+      status: s(key === 'Approved', key === 'WaitingCeo'),
+      timestamp: formatDateTime(po.value.ceo_tgl),
     },
     {
       title: 'Disetujui',
-      status: s(d === 4, false),
+      description: 'Dokumen PO disetujui untuk lanjut ke flow berikutnya',
+      status: s(key === 'Approved', false),
     },
   ]
 })
@@ -269,17 +277,19 @@ function goBack() {
                   <Lucide icon="Printer" class="h-4 w-4" />
                   Preview PDF
                 </Button>
-                <hr class="my-2" />
-                <Button variant="danger" class="inline-flex items-center justify-center gap-2 w-full"
-                  @click="rejectDialogOpen = true">
-                  <Lucide icon="X" class="h-4 w-4" />
-                  Tolak
-                </Button>
-                <Button variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
-                  @click="approveDialogOpen = true">
-                  <Lucide icon="Check" class="h-4 w-4" />
-                  Setujui
-                </Button>
+                <template v-if="po.status_po?.key === 'WaitingCeo'">
+                  <hr class="my-2" />
+                  <Button variant="danger" class="inline-flex items-center justify-center gap-2 w-full"
+                    @click="rejectDialogOpen = true">
+                    <Lucide icon="X" class="h-4 w-4" />
+                    Tolak
+                  </Button>
+                  <Button variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
+                    @click="approveDialogOpen = true">
+                    <Lucide icon="Check" class="h-4 w-4" />
+                    Setujui
+                  </Button>
+                </template>
               </div>
             </div>
 

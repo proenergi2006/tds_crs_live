@@ -7,12 +7,11 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
-import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,10 +25,15 @@ const approving = ref(false)
 const approveDialogOpen = ref(false)
 
 const produks = computed<any[]>(() => po.value.produks || [])
-const isApprovalDisabled = computed(() => po.value.disposisi_po !== 0)
+const isWaitingOrApproved = computed(() => {
+  const key = po.value.status_po?.key
+  return key === 'WaitingCeo' || key === 'Approved'
+})
+const isEditableState = computed(() => !isWaitingOrApproved.value)
+const isApprovalDisabled = isWaitingOrApproved
 
 const approvalSteps = computed<StepItem[]>(() => {
-  const d: number = po.value.disposisi_po ?? -1
+  const key = po.value.status_po?.key ?? 'Draft'
 
   function s(completedWhen: boolean, activeWhen: boolean): StepItem['status'] {
     if (completedWhen) return 'completed'
@@ -37,22 +41,30 @@ const approvalSteps = computed<StepItem[]>(() => {
     return 'pending'
   }
 
+  const waitingOrApproved = key === 'WaitingCeo' || key === 'Approved'
+
   return [
     {
       title: 'Drafting',
-      status: s(d >= 1, d === 0),
+      description: 'Inisiasi dokumen PO kepada vendor',
+      status: s(waitingOrApproved, !waitingOrApproved),
     },
     {
-      title: 'Verifikasi CFO',
-      status: s(d >= 2, d === 1),
+      title: 'PO Diajukan',
+      description: 'PO diteruskan ke proses verifikasi CEO',
+      status: s(waitingOrApproved, false),
+      timestamp: formatDateTime(po.value.cfo_tgl),
     },
     {
       title: 'Verifikasi CEO',
-      status: s(d === 4, d === 2),
+      description: 'Menunggu keputusan persetujuan CEO',
+      status: s(key === 'Approved', key === 'WaitingCeo'),
+      timestamp: formatDateTime(po.value.ceo_tgl),
     },
     {
       title: 'Disetujui',
-      status: s(d === 4, false),
+      description: 'Dokumen PO disetujui untuk lanjut ke flow berikutnya',
+      status: s(key === 'Approved', false),
     },
   ]
 })
@@ -128,7 +140,7 @@ function formatNumber(v: number | string = 0) {
             <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
             Kembali
           </Button>
-          <Button v-if="po.disposisi_po === 0" class="ml-2" variant="soft-pending" @click="goToEdit">
+          <Button v-if="isEditableState" class="ml-2" variant="soft-pending" @click="goToEdit">
             <Lucide icon="Edit" class="mr-2 h-4 w-4" />
             Edit
           </Button>
@@ -267,8 +279,8 @@ function formatNumber(v: number | string = 0) {
                 class="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
                 <div class="font-label mb-3">APPROVAL NOTES</div>
                 <div class="space-y-3">
-                  <div v-if="po.cfo_tgl" class="rounded-xl border p-3 space-y-1"
-                    :class="po.cfo_result === 2 ? 'border-danger/30 bg-danger/5' : 'border-success/30 bg-success/5'">
+                  <div v-if="po.cfo_result === 2" class="rounded-xl border p-3 space-y-1"
+                    :class="'border-danger/30 bg-danger/5'">
                     <div class="flex items-center justify-between">
                       <span class="font-strong">CFO</span>
                       <span class="text-xs font-label px-2 py-0.5 rounded-full"
@@ -282,7 +294,8 @@ function formatNumber(v: number | string = 0) {
                     </div>
                   </div>
 
-                  <div v-if="po.ceo_tgl" class="rounded-xl border p-3 space-y-1"
+                  <div v-if="po.ceo_result !== null && po.ceo_result !== undefined"
+                    class="rounded-xl border p-3 space-y-1"
                     :class="po.ceo_result === 2 ? 'border-danger/30 bg-danger/5' : 'border-success/30 bg-success/5'">
                     <div class="flex items-center justify-between">
                       <span class="font-strong">CEO</span>

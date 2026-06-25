@@ -167,17 +167,25 @@ async function submitDelete() {
 }
 
 // Helpers
+function isEditableState(key?: string): boolean {
+  return key !== 'Approved'
+}
+
+function isDestroyableState(key?: string): boolean {
+  return key !== 'WaitingCeo' && key !== 'Approved'
+}
+
 function statusLabel(statusPo?: { key: string; label: string }) {
   return statusPo?.label ?? '-'
 }
 
 function statusBadgeClass(statusPo?: { key: string; label: string }) {
   const map: Record<string, string> = {
-    draft: 'bg-slate-100 text-slate-600',
-    waiting_cfo: 'bg-orange-100 text-orange-700',
-    waiting_ceo: 'bg-blue-100 text-blue-700',
-    approved: 'bg-emerald-100 text-emerald-700',
-    rejected: 'bg-red-100 text-red-700',
+    Draft: 'bg-slate-100 text-slate-600',
+    WaitingCeo: 'bg-blue-100 text-blue-700',
+    Approved: 'bg-emerald-100 text-emerald-700',
+    DitolakCfo: 'bg-red-100 text-red-700',
+    DitolakCeo: 'bg-red-100 text-red-700',
   }
   return map[statusPo?.key ?? ''] ?? 'bg-slate-100 text-slate-600'
 }
@@ -251,7 +259,7 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
           <Table.Th>Vendor</Table.Th>
           <Table.Th>Terminal</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
+          <Table.Th class="text-right">Aksi</Table.Th>
         </template>
 
         <template #body>
@@ -266,30 +274,29 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
             <Table.Td class="text-slate-700">{{ po.vendor?.nama_vendor || '-' }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.terminal?.nama_terminal || '-' }}</Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
-                :class="statusBadgeClass(po.status_po)">
+              <span class="font-label inline-flex rounded-full px-3 py-1" :class="statusBadgeClass(po.status_po)">
                 {{ statusLabel(po.status_po) }}
               </span>
             </Table.Td>
-            <Table.Td class="text-center">
+            <Table.Td class="text-right">
               <div class="inline-flex items-center justify-center gap-1">
                 <Button variant="soft-dark" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Detail"
                   @click="goDetail(po.id_po)">
                   <Lucide icon="Eye" class="h-4 w-4" />
                 </Button>
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
-                  @click="goEdit(po.id_po)">
+                <Button v-if="isEditableState(po.status_po?.key)" variant="soft-pending" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Edit" @click="goEdit(po.id_po)">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
-                <Button v-if="po.disposisi_po === 0" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
+                <Button v-if="isDestroyableState(po.status_po?.key)" variant="soft-danger" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
-                <Button v-if="po.disposisi_po === 4" variant="soft-success" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Good Receipt" @click="goReceive(po.id_po)">
+                <Button v-if="po.status_po?.key === 'Approved'" variant="soft-success" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Good Receipt" @click="goReceive(po.id_po)">
                   <Lucide icon="PackageCheck" class="h-4 w-4" />
                 </Button>
-                <Button v-if="po.disposisi_po === 4" variant="soft-secondary" rounded
+                <Button v-if="po.status_po?.key === 'Approved'" variant="soft-secondary" rounded
                   class="!h-8 !w-8 !p-0 !shadow-none" title="Cetak" @click="previewPdf(po.id_po)">
                   <Lucide icon="Printer" class="h-4 w-4" />
                 </Button>

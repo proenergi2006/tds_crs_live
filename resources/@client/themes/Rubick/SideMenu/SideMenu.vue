@@ -9,6 +9,7 @@ import TopBar from "@/components/Themes/Rubick/TopBar";
 import MobileMenu from "@/components/MobileMenu";
 import { useMenuStore } from "@/stores/menu";
 import { useAuthStore } from "@/stores/auth";
+import { useApprovalBadgeStore } from "@/stores/approvalBadge";
 import {
   type ProvideForceActiveMenu,
   forceActiveMenu,
@@ -46,6 +47,16 @@ const isSidebarCollapsed = computed(
 
 // Ambil user dari auth store
 const user = computed(() => authStore.user);
+
+const badgeStore = useApprovalBadgeStore();
+
+const getMenuBadge = (pageName?: string): number => {
+  if (!pageName) return 0;
+  if (pageName === 'po-verification-list') return badgeStore.vendorPo;
+  if (pageName === 'penawarans-verifikasi-om') return badgeStore.penawaran;
+  if (pageName === 'Verifikasi') return badgeStore.total;
+  return 0;
+};
 
 // Role agen
 const agenRoles = [13, 14, 15, 16];
@@ -119,6 +130,10 @@ watch(
 onMounted(() => {
   setFormattedMenu(menu.value);
 
+  if (Number(user.value?.id_role) === 2) {
+    badgeStore.fetch()
+  }
+
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
   });
@@ -188,9 +203,15 @@ onUnmounted(() => {
                   <Lucide :icon="menu.icon" />
                 </div>
                 <div class="side-menu__title">
-                  {{ menu.title }}
-                  <div v-if="menu.subMenu" :class="[
-                    'side-menu__sub-icon',
+                  <span class="flex-1 min-w-0 truncate">{{ menu.title }}</span>
+                  <span v-if="getMenuBadge(menu.pageName) > 0" :class="[
+                    'shrink-0 mr-[1.25rem] text-[10px] font-semibold rounded-full px-1.5 leading-5 min-w-[18px] text-center',
+                    menu.active ? 'bg-emerald-800 text-white' : 'bg-white text-emerald-700',
+                  ]">
+                    {{ getMenuBadge(menu.pageName) }}
+                  </span>
+                  <div v-if="menu.subMenu && getMenuBadge(menu.pageName) === 0" :class="[
+                    'side-menu__sub-icon ',
                     { 'transform rotate-180': menu.activeDropdown },
                   ]">
                     <Lucide icon="ChevronDown" />
@@ -225,6 +246,10 @@ onUnmounted(() => {
                   ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, subMenu)">
                     <Lucide :icon="subMenu.icon" />
                     <span>{{ subMenu.title }}</span>
+                    <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                      class="ml-auto text-[10px] font-semibold bg-emerald-800 text-white rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                      {{ getMenuBadge(subMenu.pageName) }}
+                    </span>
                   </a>
                 </template>
               </div>
@@ -258,11 +283,15 @@ onUnmounted(() => {
                       </div>
                       <div class="side-menu__title">
                         {{ subMenu.title }}
+                        <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                          class="ml-auto mr-[10px] shrink-0 text-[10px] font-semibold bg-white text-emerald-700 rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                          {{ getMenuBadge(subMenu.pageName) }}
+                        </span>
                         <div v-if="subMenu.subMenu" :class="[
                           'side-menu__sub-icon',
                           { 'transform rotate-180': subMenu.activeDropdown },
                         ]">
-                          <Lucide icon="ChevronDown" />
+                          <Lucide icon="ArrowDown" />
                         </div>
                       </div>
                     </Tippy>

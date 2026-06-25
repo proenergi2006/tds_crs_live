@@ -109,8 +109,7 @@ class ReceiveItemController extends Controller
             'produks',
             'receives.details',
         ])
-            ->where('cfo_result', 1)
-            ->where('ceo_result', 1)
+            ->where('disposisi_po', \App\Enums\VendorPoApprovalState::Approved->value)
             ->get()
             ->filter(fn($po) => $po->getStatusRealisasi() !== 'selesai')
             ->map(fn($po) => [

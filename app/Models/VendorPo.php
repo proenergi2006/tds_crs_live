@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VendorPoApprovalState;
 use Illuminate\Database\Eloquent\Model;
 
 class VendorPo extends Model
@@ -24,6 +25,12 @@ class VendorPo extends Model
         'keterangan',
         'terms_condition',
         'disposisi_po',
+        'cfo_result',
+        'cfo_summary',
+        'cfo_tgl',
+        'ceo_result',
+        'ceo_summary',
+        'ceo_tgl',
         'created_time',
         'created_by',
         'lastupdate_time',
@@ -57,23 +64,11 @@ class VendorPo extends Model
     // Helpers
     public function getStatusPoAttribute(): array
     {
-        $disposisi = (int) $this->disposisi_po;
-        $cfoResult = (int) ($this->cfo_result ?? -1);
-        $ceoResult = (int) ($this->ceo_result ?? -1);
-
-        if ($disposisi === 4 && $ceoResult === 1) {
-            return ['key' => 'approved', 'label' => 'Disetujui'];
-        }
-
-        if ($disposisi === 2 && $ceoResult !== 1) {
-            return ['key' => 'waiting_ceo', 'label' => 'Menunggu Verifikasi CEO'];
-        }
-
-        if ($disposisi === 0 && ($cfoResult === 2 || $ceoResult === 2)) {
-            return ['key' => 'rejected', 'label' => 'Ditolak'];
-        }
-
-        return ['key' => 'draft', 'label' => 'Draft'];
+        $state = VendorPoApprovalState::resolve($this);
+        return [
+            'key'   => $state->name,
+            'label' => $state->label(),
+        ];
     }
 
     public function getTotalVolumePo(): float

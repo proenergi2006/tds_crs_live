@@ -142,26 +142,6 @@ class VendorPoController extends Controller
         ], 201);
     }
 
-    // Fungsi untuk mengubah bulan angka menjadi bulan Romawi
-    private function getBulanRomawi($month)
-    {
-        $months = [
-            '01' => 'I',
-            '02' => 'II',
-            '03' => 'III',
-            '04' => 'IV',
-            '05' => 'V',
-            '06' => 'VI',
-            '07' => 'VII',
-            '08' => 'VIII',
-            '09' => 'IX',
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII'
-        ];
-        return $months[$month] ?? 'I'; // Default to 'I' if not found
-    }
-
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -203,6 +183,12 @@ class VendorPoController extends Controller
                 'keterangan'        => $validated['keterangan'],
                 'terms_condition'   => $validated['terms_condition'],
                 'disposisi_po'      => 0,
+                'cfo_result'        => null,
+                'cfo_summary'       => null,
+                'cfo_tgl'           => null,
+                'ceo_result'        => null,
+                'ceo_summary'       => null,
+                'ceo_tgl'           => null,
                 'lastupdate_time'   => now(),
                 'lastupdate_by'     => $request->user()->name,
             ]);
@@ -229,6 +215,31 @@ class VendorPoController extends Controller
             'message' => 'PO berhasil diperbarui',
             'data'    => $po->fresh(),
         ]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $po = VendorPo::findOrFail($id);
+
+        // Guard 1: hanya Draft yang boleh dihapus
+        if ((int) $po->disposisi_po !== 0 || $po->cfo_result !== null) {
+            return response()->json([
+                'message' => 'PO tidak dapat dihapus karena sudah dalam proses approval.',
+            ], 422);
+        }
+
+        if ($po->receives()->exists()) {
+            return response()->json([
+                'message' => 'PO tidak dapat dihapus karena sudah memiliki data Good Receipt.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($po) {
+            VendorPoProduk::where('id_po', $po->id_po)->delete();
+            $po->delete();
+        });
+
+        return response()->json(null, 204);
     }
 
     public function approve(Request $request, $id)
@@ -285,26 +296,32 @@ class VendorPoController extends Controller
             ->stream($filename);
     }
 
+    // Fungsi untuk mengubah bulan angka menjadi bulan Romawi
+    private function getBulanRomawi($month)
+    {
+        $months = [
+            '01' => 'I',
+            '02' => 'II',
+            '03' => 'III',
+            '04' => 'IV',
+            '05' => 'V',
+            '06' => 'VI',
+            '07' => 'VII',
+            '08' => 'VIII',
+            '09' => 'IX',
+            '10' => 'X',
+            '11' => 'XI',
+            '12' => 'XII'
+        ];
+        return $months[$month] ?? 'I'; // Default to 'I' if not found
+    }
 
-
-
-
-
-    /**
-     * Endpoint publik untuk menampilkan data PO (JSON).
-     */
+    // Endpoint publik untuk menampilkan data PO (JSON).
     public function publicShow($id)
     {
         $po = VendorPo::with(['vendor', 'terminal', 'produks.produk'])
             ->findOrFail($id);
 
         return response()->json($po);
-    }
-
-
-    public function destroy($id)
-    {
-        VendorPo::destroy($id);
-        return response()->json(null, 204);
     }
 }

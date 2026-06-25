@@ -45,6 +45,7 @@ use App\Http\Controllers\DeliveryPlanController;
 use App\Http\Controllers\PrController;
 use App\Http\Controllers\DeliveryRequestController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ApprovalPendingCountController;
 
 // Controller Proenergi
 use App\Http\Controllers\PenawaranProenergiController;
@@ -131,6 +132,9 @@ Route::middleware('auth:sanctum')->group(function () {
   // Verifikasi PO (CFO/CEO)
   Route::get('po-verification', [PoVerificationController::class, 'index']);
   Route::post('po-verification/{id}', [PoVerificationController::class, 'verify']);
+
+  // Badge counter untuk CEO
+  Route::get('approvals/pending-count', ApprovalPendingCountController::class);
 
   // Receive Item — global list
   Route::get('good-receipts/pending', [ReceiveItemController::class, 'pendingGr']);

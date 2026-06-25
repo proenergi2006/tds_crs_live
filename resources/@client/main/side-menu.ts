@@ -46,12 +46,12 @@ const menu: Array<Menu | "divider"> = [
       {
         icon: "CheckSquare",
         pageName: "po-verification-list",
-        title: "Verifikasi PO",
+        title: "PO Suppiler",
       },
       {
         icon: "CheckSquare",
         pageName: "penawarans-verifikasi-om",
-        title: "Verifikasi Penawaran",
+        title: "Penawaran",
         activePageNames: ["penawarans-verifikasi-om-detail"],
       },
     ],

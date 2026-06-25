@@ -7,10 +7,10 @@ import { type Menu as MenuItem } from "@/stores/menu";
 import defaultLogoUrl from "@/assets/images/logo-tds-1.png";
 import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import axios from 'axios'
-import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 withDefaults(defineProps<{
   isSidebarCollapsed?: boolean
@@ -34,6 +34,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const menuStore = useMenuStore()
+const notification = useNotification()
 
 const userName = computed(() => auth.user?.name || 'Guest')
 const userEmail = computed(() => auth.user?.email || '-')
@@ -147,25 +148,18 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
 async function onLogout() {
   try {
     const { data } = await axios.post('/api/logout');
-    await Swal.fire({
-      icon: 'success',
-      title: data.message,
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
-      timerProgressBar: true,
-      didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer);
-        toast.addEventListener('mouseleave', Swal.resumeTimer);
-      }
-    });
+    notification.success(data.message)
   } catch (e) {
     console.error('Logout error', e);
   } finally {
-    localStorage.removeItem('access_token');
-    delete axios.defaults.headers.common['Authorization'];
-    router.push({ name: 'login' });
+    // Delay redirect so nextTick can fire showToast() before AppNotification unmounts.
+    // Toastify clones the toast node into document.body (survives Layout unmount),
+    // but only if showToast() runs before templateRef is nulled by unmount.
+    setTimeout(() => {
+      localStorage.removeItem('access_token');
+      delete axios.defaults.headers.common['Authorization'];
+      router.push({ name: 'login' });
+    }, 500)
   }
 }
 </script>

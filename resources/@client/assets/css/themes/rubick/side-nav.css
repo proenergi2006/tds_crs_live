@@ -230,7 +230,7 @@
                 padding: 10px 0;
             }
             & > li > a.side-menu--active ~ ul.side-menu__sub-open {
-                margin-bottom: 0;
+                margin-bottom: 0.25rem;
             }
             & > li > ul.side-menu__sub-open > li > ul.side-menu__sub-open {
                 margin-top: 0;
