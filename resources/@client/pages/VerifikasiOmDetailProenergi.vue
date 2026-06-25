@@ -3,7 +3,8 @@
     <div v-if="loading" class="flex min-h-[420px] items-center justify-center">
       <div class="rounded-2xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
         <div class="flex items-center gap-3 text-slate-600">
-          <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600"></span>
+          <span
+            class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600"></span>
           <span class="text-base font-medium">Memuat data penawaran...</span>
         </div>
       </div>
@@ -24,7 +25,7 @@
 
     <div v-else>
       <!-- Header -->
-      <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <Button variant="outline-secondary" @click="goBack">← Kembali</Button>
           <h1 class="mt-3 text-2xl font-bold text-slate-800">
@@ -111,11 +112,9 @@
             <DetailRow label="Customer" :value="penawaran.customer?.nama_perusahaan || '-'" />
             <DetailRow label="Cabang" :value="penawaran.cabang?.nama_cabang || '-'" />
             <DetailRow label="Metode" :value="penawaran.metode || '-'" />
-            <DetailRow label="Ketentuan Order" :value="penawaran.order_method || '-'" />
-            <DetailRow
-              label="Masa Berlaku"
-              :value="`${formatDate(penawaran.masa_berlaku)} - ${formatDate(penawaran.sampai_dengan)}`"
-            />
+            <DetailRow label="Metode Pemesanan" :value="penawaran.order_method || '-'" />
+            <DetailRow label="Masa Berlaku"
+              :value="`${formatDate(penawaran.masa_berlaku)} - ${formatDate(penawaran.sampai_dengan)}`" />
             <DetailRow label="Tipe Pembayaran" :value="penawaran.tipe_pembayaran || '-'" />
             <DetailRow label="Lokasi Kirim" :value="penawaran.lokasi_pengiriman || '-'" />
             <DetailRow label="Syarat & Ketentuan" :value="penawaran.syarat_ketentuan || '-'" />
@@ -127,7 +126,7 @@
             <DetailRow label="Diskon" :value="formatCurrency(penawaran.discount)" bigValue />
             <DetailRow label="OAT / Volume" :value="formatCurrency(penawaran.oat)" bigValue />
             <DetailRow label="Toleransi Penyusutan" :value="`${penawaran.toleransi_penyusutan || 0}%`" />
-            <DetailRow label="Keterangan" :value="penawaran.keterangan || '-'" />
+            <DetailRow label="Titik Serah Terima & T&C Bongkar" :value="penawaran.keterangan || '-'" />
             <DetailRow label="Catatan" :value="penawaran.catatan || '-'" />
           </div>
         </div>
@@ -169,19 +168,20 @@
           <table class="min-w-full">
             <thead class="bg-slate-50">
               <tr>
-                <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Produk</th>
-                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Volume</th>
-                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Harga Dasar</th>
-                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Jumlah</th>
+                <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Produk
+                </th>
+                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Volume
+                </th>
+                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Harga
+                  Dasar</th>
+                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Jumlah
+                </th>
               </tr>
             </thead>
 
             <tbody>
-              <tr
-                v-for="item in penawaran.items"
-                :key="item.id_penawaran_item"
-                class="border-t border-slate-100 transition hover:bg-slate-50"
-              >
+              <tr v-for="item in penawaran.items" :key="item.id_penawaran_item"
+                class="border-t border-slate-100 transition hover:bg-slate-50">
                 <td class="px-5 py-4">
                   <div class="font-semibold text-slate-800">
                     {{ item.produk?.nama_produk || '-' }}
@@ -230,7 +230,8 @@
 
               <tr class="bg-green-50">
                 <td colspan="3" class="px-5 py-4 text-right text-base font-bold text-green-700">Grand Total</td>
-                <td class="px-5 py-4 text-right text-2xl font-extrabold text-green-700">{{ formatCurrency(grandTotal) }}</td>
+                <td class="px-5 py-4 text-right text-2xl font-extrabold text-green-700">{{ formatCurrency(grandTotal) }}
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -434,10 +435,10 @@ async function tolak() {
 function formatDate(d: string) {
   return d
     ? new Date(d).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })
     : '-'
 }
 
@@ -469,7 +470,7 @@ function formatStatus(status: string) {
       return 'Ditolak OM'
     default:
       return status
-    }
+  }
 }
 
 function formatDisposisi(disposisi: string | number) {

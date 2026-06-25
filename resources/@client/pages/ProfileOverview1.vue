@@ -133,211 +133,186 @@ async function disable2FA() {
 </script>
 
 <template>
-  <Tab.Group>
-    <Tab.List variant="link-tabs" class="mt-5">
-      <Tab as="button"><Tab.Button>Account &amp; Profile</Tab.Button></Tab>
-      <Tab as="button"><Tab.Button>Update Password</Tab.Button></Tab>
-      <Tab as="button"><Tab.Button>Security 2FA</Tab.Button></Tab>
-    </Tab.List>
+  <div class="page-content-wrapper">
+    <div class="intro-y flex flex-col gap-4">
+      <Tab.Group>
+        <Tab.List variant="link-tabs">
+          <Tab as="button">
+            <Tab.Button>Account &amp; Profile</Tab.Button>
+          </Tab>
+          <Tab as="button">
+            <Tab.Button>Update Password</Tab.Button>
+          </Tab>
+          <Tab as="button">
+            <Tab.Button>Security 2FA</Tab.Button>
+          </Tab>
+        </Tab.List>
 
-    <Tab.Panels class="mt-5">
-      <!-- Account & Profile -->
-      <Tab.Panel>
-        <div class="bg-white dark:bg-darkmode-600 rounded-lg shadow-lg p-6">
-          <div class="flex items-center mb-6 border-b border-slate-200 dark:border-darkmode-400 pb-2">
-            <Lucide icon="User" class="w-6 h-6 text-primary mr-2" />
-            <h3 class="text-2xl font-bold text-slate-700 dark:text-slate-200">Account &amp; Profile</h3>
-          </div>
+        <Tab.Panels class="mt-5">
+          <!-- Account & Profile -->
+          <Tab.Panel>
+            <div class="bg-white dark:bg-darkmode-600 rounded-lg shadow-lg p-6">
+              <div class="flex items-center mb-6 border-b border-slate-200 dark:border-darkmode-400 pb-2">
+                <Lucide icon="User" class="w-6 h-6 text-primary mr-2" />
+                <h3 class="text-2xl font-bold text-slate-700 dark:text-slate-200">Account &amp; Profile</h3>
+              </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="flex items-center space-x-4">
-              <img
-                src="https://via.placeholder.com/80"
-                alt="Avatar"
-                class="w-20 h-20 rounded-full object-cover shadow"
-              />
-              <div>
-                <div class="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                  {{ userName }}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex items-center space-x-4">
+                  <img src="https://via.placeholder.com/80" alt="Avatar"
+                    class="w-20 h-20 rounded-full object-cover shadow" />
+                  <div>
+                    <div class="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                      {{ userName }}
+                    </div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400">
+                      {{ userEmail }}
+                    </div>
+                  </div>
                 </div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">
-                  {{ userEmail }}
+
+                <div class="space-y-4">
+                  <div class="flex items-center space-x-2">
+                    <Lucide icon="Mail" class="w-5 h-5 text-primary dark:text-primary/80" />
+                    <span class="text-sm text-slate-700 dark:text-slate-300">{{ userEmail }}</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <Lucide icon="Phone" class="w-5 h-5 text-primary dark:text-primary/80" />
+                    <span class="text-sm text-slate-700 dark:text-slate-300">-</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <Lucide icon="MapPin" class="w-5 h-5 text-primary dark:text-primary/80" />
+                    <span class="text-sm text-slate-700 dark:text-slate-300">-</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </Tab.Panel>
 
-            <div class="space-y-4">
-              <div class="flex items-center space-x-2">
-                <Lucide icon="Mail" class="w-5 h-5 text-primary dark:text-primary/80" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">{{ userEmail }}</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <Lucide icon="Phone" class="w-5 h-5 text-primary dark:text-primary/80" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">-</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <Lucide icon="MapPin" class="w-5 h-5 text-primary dark:text-primary/80" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">-</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Tab.Panel>
-
-      <!-- Update Password -->
-      <Tab.Panel>
-        <div class="bg-white dark:bg-darkmode-600 rounded-lg shadow-lg p-6">
-          <div class="flex items-center justify-between mb-6 border-b border-slate-200 dark:border-darkmode-400 pb-2">
-            <h3 class="text-2xl font-bold text-slate-700 dark:text-slate-200">
-              <Lucide icon="Key" class="w-5 h-5 inline-block mr-2" />
-              Update Password
-            </h3>
-          </div>
-
-          <form @submit.prevent="updatePassword" class="space-y-6">
-            <div>
-              <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-                Password Sekarang
-              </label>
-              <div class="relative">
-                <FormInput
-                  v-model="passwordForm.current_password"
-                  :type="showCurrentPassword ? 'text' : 'password'"
-                  placeholder="••••••••"
-                  class="w-full !box pr-12"
-                />
-                <button
-                  type="button"
-                  class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
-                  @click="showCurrentPassword = !showCurrentPassword"
-                >
-                  <Lucide :icon="showCurrentPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-                Password Baru
-              </label>
-              <div class="relative">
-                <FormInput
-                  v-model="passwordForm.new_password"
-                  :type="showNewPassword ? 'text' : 'password'"
-                  placeholder="••••••••"
-                  class="w-full !box pr-12"
-                />
-                <button
-                  type="button"
-                  class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
-                  @click="showNewPassword = !showNewPassword"
-                >
-                  <Lucide :icon="showNewPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-                Konfirmasi Password
-              </label>
-              <div class="relative">
-                <FormInput
-                  v-model="passwordForm.confirm_password"
-                  :type="showConfirmPassword ? 'text' : 'password'"
-                  placeholder="••••••••"
-                  class="w-full !box pr-12"
-                />
-                <button
-                  type="button"
-                  class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
-                  @click="showConfirmPassword = !showConfirmPassword"
-                >
-                  <Lucide :icon="showConfirmPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div class="pt-4 border-t border-slate-200 dark:border-darkmode-400 flex justify-end">
-              <Button type="submit" variant="primary" :loading="passwordLoading">
-                Ubah Password
-              </Button>
-            </div>
-          </form>
-        </div>
-      </Tab.Panel>
-
-      <!-- Security 2FA -->
-      <Tab.Panel>
-        <div class="p-6 bg-white rounded-lg shadow">
-          <h3 class="text-xl font-semibold mb-4">Two-Factor Authentication</h3>
-
-          <div class="grid md:grid-cols-2 gap-6">
-            <div class="space-y-4">
-              <ol class="list-decimal list-inside">
-                <li>Tekan tombol <b>Enable 2FA</b>.</li>
-                <li>Scan QR code dengan Authenticator.</li>
-                <li>Masukkan kode 6 digit untuk verifikasi.</li>
-              </ol>
-
-              <div v-if="step === 'idle'">
-                <Button variant="primary" :loading="loading" @click="generate2FA">
-                  Enable 2FA
-                </Button>
+          <!-- Update Password -->
+          <Tab.Panel>
+            <div class="bg-white dark:bg-darkmode-600 rounded-lg shadow-lg p-6">
+              <div
+                class="flex items-center justify-between mb-6 border-b border-slate-200 dark:border-darkmode-400 pb-2">
+                <h3 class="text-2xl font-bold text-slate-700 dark:text-slate-200">
+                  <Lucide icon="Key" class="w-5 h-5 inline-block mr-2" />
+                  Update Password
+                </h3>
               </div>
 
-              <div v-else-if="step === 'generated'">
-                <label class="block">Kode 6 digit:</label>
-                <input
-                  v-model="codeInput"
-                  type="text"
-                  maxlength="6"
-                  class="border px-2 py-1 rounded w-20"
-                />
-                <div class="flex space-x-2 mt-2">
-                  <Button variant="primary" :loading="loading" @click="enable2FA">
-                    Verifikasi &amp; Aktifkan
-                  </Button>
-                  <Button variant="outline-secondary" :loading="loading" @click="disable2FA">
-                    Batalkan
+              <form @submit.prevent="updatePassword" class="space-y-6">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Password Sekarang
+                  </label>
+                  <div class="relative">
+                    <FormInput v-model="passwordForm.current_password" :type="showCurrentPassword ? 'text' : 'password'"
+                      placeholder="••••••••" class="w-full !box pr-12" />
+                    <button type="button"
+                      class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+                      @click="showCurrentPassword = !showCurrentPassword">
+                      <Lucide :icon="showCurrentPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Password Baru
+                  </label>
+                  <div class="relative">
+                    <FormInput v-model="passwordForm.new_password" :type="showNewPassword ? 'text' : 'password'"
+                      placeholder="••••••••" class="w-full !box pr-12" />
+                    <button type="button"
+                      class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+                      @click="showNewPassword = !showNewPassword">
+                      <Lucide :icon="showNewPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Konfirmasi Password
+                  </label>
+                  <div class="relative">
+                    <FormInput v-model="passwordForm.confirm_password" :type="showConfirmPassword ? 'text' : 'password'"
+                      placeholder="••••••••" class="w-full !box pr-12" />
+                    <button type="button"
+                      class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+                      @click="showConfirmPassword = !showConfirmPassword">
+                      <Lucide :icon="showConfirmPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 dark:border-darkmode-400 flex justify-end">
+                  <Button type="submit" variant="primary" :loading="passwordLoading">
+                    Ubah Password
                   </Button>
                 </div>
-              </div>
+              </form>
+            </div>
+          </Tab.Panel>
 
-              <div v-else-if="step === 'verified'">
-                <p class="text-green-600">2FA sudah aktif!</p>
-                <label class="block">Masukkan kode untuk disable:</label>
-                <div class="flex items-center">
-                  <input
-                    v-model="codeInput"
-                    type="text"
-                    maxlength="6"
-                    class="border px-2 py-1 rounded w-40"
-                  />
-                  <Button
-                    variant="danger"
-                    :loading="loading"
-                    @click="disable2FA"
-                    class="ml-2"
-                  >
-                    Disable 2FA
-                  </Button>
+          <!-- Security 2FA -->
+          <Tab.Panel>
+            <div class="p-6 bg-white rounded-lg shadow">
+              <h3 class="text-xl font-semibold mb-4">Two-Factor Authentication</h3>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                  <ol class="list-decimal list-inside">
+                    <li>Tekan tombol <b>Enable 2FA</b>.</li>
+                    <li>Scan QR code dengan Authenticator.</li>
+                    <li>Masukkan kode 6 digit untuk verifikasi.</li>
+                  </ol>
+
+                  <div v-if="step === 'idle'">
+                    <Button variant="primary" :loading="loading" @click="generate2FA">
+                      Enable 2FA
+                    </Button>
+                  </div>
+
+                  <div v-else-if="step === 'generated'">
+                    <label class="block">Kode 6 digit:</label>
+                    <input v-model="codeInput" type="text" maxlength="6" class="border px-2 py-1 rounded w-20" />
+                    <div class="flex space-x-2 mt-2">
+                      <Button variant="primary" :loading="loading" @click="enable2FA">
+                        Verifikasi &amp; Aktifkan
+                      </Button>
+                      <Button variant="outline-secondary" :loading="loading" @click="disable2FA">
+                        Batalkan
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div v-else-if="step === 'verified'">
+                    <p class="text-green-600">2FA sudah aktif!</p>
+                    <label class="block">Masukkan kode untuk disable:</label>
+                    <div class="flex items-center">
+                      <input v-model="codeInput" type="text" maxlength="6" class="border px-2 py-1 rounded w-40" />
+                      <Button variant="danger" :loading="loading" @click="disable2FA" class="ml-2">
+                        Disable 2FA
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col items-center justify-center">
+                  <div v-if="step === 'generated'">
+                    <img :src="qrCodeInline!" alt="QR Code" class="w-40 h-40 mx-auto" />
+                    <p class="mt-2 text-sm">Secret: <code>{{ secret }}</code></p>
+                  </div>
+                  <div v-else class="text-gray-400 italic">
+                    QR code akan muncul di sini setelah klik “Enable 2FA”.
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="flex flex-col items-center justify-center">
-              <div v-if="step === 'generated'">
-                <img :src="qrCodeInline!" alt="QR Code" class="w-40 h-40 mx-auto" />
-                <p class="mt-2 text-sm">Secret: <code>{{ secret }}</code></p>
-              </div>
-              <div v-else class="text-gray-400 italic">
-                QR code akan muncul di sini setelah klik “Enable 2FA”.
-              </div>
-            </div>
-          </div>
-        </div>
-      </Tab.Panel>
-    </Tab.Panels>
-  </Tab.Group>
+          </Tab.Panel>
+        </Tab.Panels>
+      </Tab.Group>
+    </div>
+  </div>
 </template>

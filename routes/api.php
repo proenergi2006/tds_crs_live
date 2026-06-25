@@ -5,28 +5,30 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\UserController; 
-use App\Http\Controllers\TwoFactorController; 
-use App\Http\Controllers\ProfileController; 
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\TwoFactorController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
-use App\Http\Controllers\SatuanController; 
-use App\Http\Controllers\UkuranController;
-use App\Http\Controllers\ProdukController;
-use App\Http\Controllers\ProdukHargaController;
+use App\Http\Controllers\MasterData\JenisProdukController;
+use App\Http\Controllers\MasterData\ProdukController;
+use App\Http\Controllers\MasterData\ProdukHargaController;
+use App\Http\Controllers\MasterData\SatuanController;
+use App\Http\Controllers\MasterData\TerminalController;
+use App\Http\Controllers\MasterData\UkuranController;
+use App\Http\Controllers\MasterData\VendorController;
 use App\Http\Controllers\AttachmentHargaDasarController;
 use App\Http\Controllers\ProvinsiController;
 use App\Http\Controllers\KabupatenController;
 use App\Http\Controllers\ForgotPasswordController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\TerminalController;
+use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Customer\CustomerVerificationController;
+use App\Http\Controllers\Customer\LinkCustomerController;
 use App\Http\Controllers\VendorPoController;
 use App\Http\Controllers\VendorPoProdukController;
 use App\Http\Controllers\PoVerificationController;
 use App\Http\Controllers\ReceiveItemController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\PenawaranController;
-use App\Http\Controllers\JenisProdukController;
 use App\Http\Controllers\TransportirController;
 use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\VolumeController;
@@ -38,15 +40,14 @@ use App\Http\Controllers\OngkosTruckController;
 use App\Http\Controllers\PoCustomerController;
 use App\Http\Controllers\SalesConfirmationController;
 use App\Http\Controllers\CustomerLcrController;
-use App\Http\Controllers\CustomerVerificationController;
-use App\Http\Controllers\LinkCustomerController;
 use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\DeliveryPlanController;
 use App\Http\Controllers\PrController;
 use App\Http\Controllers\DeliveryRequestController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ApprovalPendingCountController;
 
-// Controller Proenergi 
+// Controller Proenergi
 use App\Http\Controllers\PenawaranProenergiController;
 // End
 
@@ -76,206 +77,215 @@ Route::get('produk-hargas/check', [ProdukHargaController::class, 'check']);
 
 // 3. Protected routes
 Route::middleware('auth:sanctum')->group(function () {
-    // a) Get current user
-    Route::get('user', fn(Request $req) => $req->user());
-    Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
+  // a) Get current user
+  Route::get('user', fn(Request $req) => $req->user());
+  Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
 
-    // b) Roles CRUD
-    Route::apiResource('roles', RoleController::class);
+  // b) Roles CRUD
+  Route::apiResource('roles', RoleController::class);
 
-    // c) Users CRUD
-    Route::apiResource('users', UserController::class);
-    Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+  // c) Users CRUD
+  Route::apiResource('users', UserController::class);
+  Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
 
-    // d) 2FA management
-    Route::post('2fa/generate', [TwoFactorController::class,'generate']);
-    Route::post('2fa/enable',   [TwoFactorController::class,'enable']);
-    Route::post('2fa/disable',  [TwoFactorController::class,'disable']);
+  // d) 2FA management
+  Route::post('2fa/generate', [TwoFactorController::class, 'generate']);
+  Route::post('2fa/enable',   [TwoFactorController::class, 'enable']);
+  Route::post('2fa/disable',  [TwoFactorController::class, 'disable']);
 
-    // e) Update password & profile
-    Route::post('user/password', [ProfileController::class, 'updatePassword']);
-    Route::post('/user/face', [ProfileController::class, 'updateFace']);
+  // e) Update password & profile
+  Route::post('user/password', [ProfileController::class, 'updatePassword']);
+  Route::post('/user/face', [ProfileController::class, 'updateFace']);
 
-    // f) Master data
-    Route::apiResource('cabangs', CabangController::class);
-    Route::get('/cabangs/suggest', [CabangController::class, 'suggest']);
-    Route::apiResource('satuans', SatuanController::class);
-    Route::apiResource('ukurans', UkuranController::class);
-    Route::apiResource('produks', ProdukController::class);
-    Route::apiResource('produk-hargas', ProdukHargaController::class);
-    Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
+  // f) Master data
+  Route::apiResource('cabangs', CabangController::class);
+  Route::get('/cabangs/suggest', [CabangController::class, 'suggest']);
+  Route::apiResource('satuans', SatuanController::class);
+  Route::apiResource('ukurans', UkuranController::class);
+  Route::apiResource('produks', ProdukController::class);
+  Route::get('/produk-hargas/periode', [ProdukHargaController::class, 'periode']);
+  Route::get('/produk-hargas/by-date', [ProdukHargaController::class, 'byDate']);
+  Route::apiResource('produk-hargas', ProdukHargaController::class);
+  Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
 
-    Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
-    Route::apiResource('provinsis', ProvinsiController::class);
-    Route::apiResource('kabupatens', KabupatenController::class);
-    Route::apiResource('customers', CustomerController::class);
-    Route::apiResource('vendors', VendorController::class);
-    Route::apiResource('terminals', TerminalController::class);
+  Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
+  Route::apiResource('provinsis', ProvinsiController::class);
+  Route::apiResource('kabupatens', KabupatenController::class);
+  Route::apiResource('customers', CustomerController::class);
+  Route::apiResource('vendors', VendorController::class);
+  Route::apiResource('terminals', TerminalController::class);
 
-    // g) Vendor PO + detail
-    Route::delete('vendor-pos-produk/batch', [VendorPoProdukController::class, 'destroyByPo'])
-        ->name('vendor-pos-produk.batch-destroy');
-    Route::post('vendor-pos-produk/batch', [VendorPoProdukController::class, 'storeBatch'])
-        ->name('vendor-pos-produk.batch-store');
+  // g) Vendor PO + detail
+  Route::delete('vendor-pos-produk/batch', [VendorPoProdukController::class, 'destroyByPo'])
+    ->name('vendor-pos-produk.batch-destroy');
+  Route::post('vendor-pos-produk/batch', [VendorPoProdukController::class, 'storeBatch'])
+    ->name('vendor-pos-produk.batch-store');
 
-    Route::apiResource('vendor-pos-produk', VendorPoProdukController::class)
-         ->only(['index','store','show','update','destroy'])
-         ->where(['vendor_pos_produk' => '[0-9]+']);
+  Route::apiResource('vendor-pos-produk', VendorPoProdukController::class)
+    ->only(['index', 'store', 'show', 'update', 'destroy'])
+    ->where(['vendor_pos_produk' => '[0-9]+']);
 
-    Route::apiResource('vendor-pos', VendorPoController::class)->except(['create','edit']);
-    Route::patch('vendor-pos/{id}/approve', [VendorPoController::class, 'approve'])
-         ->name('vendor-pos.approve');
+  Route::apiResource('vendor-pos', VendorPoController::class)->except(['create', 'edit']);
+  Route::patch('vendor-pos/{id}/approve', [VendorPoController::class, 'approve'])
+    ->name('vendor-pos.approve');
 
-    // Verifikasi PO (CFO/CEO)
-    Route::get('po-verification', [PoVerificationController::class, 'index']);
-    Route::post('po-verification/{id}', [PoVerificationController::class, 'verify']);
+  // Verifikasi PO (CFO/CEO)
+  Route::get('po-verification', [PoVerificationController::class, 'index']);
+  Route::post('po-verification/{id}', [PoVerificationController::class, 'verify']);
 
-    // Receive Item
-    Route::get('vendor-pos/{poId}/receives',  [ReceiveItemController::class, 'index'])->whereNumber('poId');
-    Route::post('vendor-pos/{poId}/receives', [ReceiveItemController::class, 'store'])->whereNumber('poId');
+  // Badge counter untuk CEO
+  Route::get('approvals/pending-count', ApprovalPendingCountController::class);
 
-    // Stock, Penawaran, dsb.
-    Route::get('stocks', [StockController::class, 'index']);
+  // Receive Item — global list
+  Route::get('good-receipts/pending', [ReceiveItemController::class, 'pendingGr']);
+  Route::get('good-receipts', [ReceiveItemController::class, 'index']);
+  Route::delete('good-receipts/{id}', [ReceiveItemController::class, 'destroy'])->whereNumber('id');
+  // Receive Item — per PO
+  Route::get('vendor-pos/{poId}/receives',  [ReceiveItemController::class, 'indexByPo'])->whereNumber('poId');
+  Route::post('vendor-pos/{poId}/receives', [ReceiveItemController::class, 'store'])->whereNumber('poId');
 
-    Route::get('penawarans', [PenawaranController::class, 'index']);
-    Route::get('penawarans/bm', [PenawaranController::class, 'indexForBranchManager']);
-    Route::patch('penawarans/{id}/verifikasi',   [PenawaranController::class, 'verifikasi']);
-    Route::patch('penawarans/{id}/tolak-bm',     [PenawaranController::class, 'tolakbm']);
-    Route::get('penawarans/om',                  [PenawaranController::class, 'indexForOperationalManager']);
-    Route::patch('penawarans/{id}/verifikasi-om',[PenawaranController::class, 'verifikasiOm']);
-    Route::patch('penawarans/{id}/tolak-om',     [PenawaranController::class, 'tolakom']);
-    Route::get('penawarans/{id}',                [PenawaranController::class, 'show']);
-    Route::post('penawarans',                    [PenawaranController::class, 'store']);
-    Route::put('penawarans/{id}',                [PenawaranController::class, 'update']);
-    Route::delete('penawarans/{id}',             [PenawaranController::class, 'destroy']);
-    // routes/web.php (atau api.php kalau kamu expose via API)
-Route::get('/penawarans/{id}/preview', [\App\Http\Controllers\PenawaranController::class, 'previewPdfMultiLang']);
+  // Stock, Penawaran, dsb.
+  Route::get('stocks', [StockController::class, 'index']);
 
-
-    Route::apiResource('jenis-produks', JenisProdukController::class);
-    Route::apiResource('transportirs', TransportirController::class);
-    Route::apiResource('personnels', PersonnelController::class);
-    Route::apiResource('volumes', VolumeController::class);
-    Route::apiResource('wilayah-angkuts', WilayahAngkutController::class);
-    Route::apiResource('master-kapals', MasterKapalController::class);
-    Route::get('ongkos-kapal/check', [OngkosKapalController::class, 'checkOA']);
-    Route::apiResource('ongkos-kapal', OngkosKapalController::class);
-    Route::apiResource('master-trucks', MasterTruckController::class);
-    Route::get('ongkos-trucks/check', [OngkosTruckController::class, 'checkOA']);
-    Route::apiResource('ongkos-trucks', OngkosTruckController::class);
-    Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan']);
-    Route::apiResource('customer-pos', PoCustomerController::class);
-
-    Route::apiResource('customer-lcrs', CustomerLcrController::class);
-    Route::post('uploads/lcr-image', [CustomerLcrController::class, 'uploadImage']);
-    Route::get('customer-lcrs', [CustomerLcrController::class, 'indexLogistik'])->name('lcr.index');
-    Route::patch('customer-lcrs/{customerLcr}/set-flag',  [CustomerLcrController::class, 'setFlag']);
-    Route::patch('customer-lcrs/{customerLcr}/reset-flag', [CustomerLcrController::class, 'resetFlag']);
-    Route::get('logistik/customer-lcrs/{id}', [CustomerLcrController::class, 'showLogistik']);
-
-    // Public form (pakai token) - upload internal (auth)
-    Route::post('customer-verifications/{customerVerification}/upload', [CustomerVerificationController::class, 'upload']);
-
-    // Resource CustomerVerification (internal)
-    Route::apiResource('customer-verifications', CustomerVerificationController::class);
-
-    // ===== Review (Marketing/Finance) – umum =====
-    Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
-    Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
-    Route::get   ('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
-    Route::patch ('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
-    Route::post  ('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
-
-    Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
-
-    Route::get ('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'getReview'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
-    Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
-    Route::patch('review/customer-verifications/{id}/approve', [CustomerVerificationController::class, 'approve'])->whereNumber('id');
-
-    // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
-    Route::get ('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-    Route::get('/review/customer-verifications/{id}/admin-evaluation', [CustomerVerificationController::class, 'getAdminEvaluation']);
+  Route::get('penawarans', [PenawaranController::class, 'index']);
+  Route::get('penawarans/bm', [PenawaranController::class, 'indexForBranchManager']);
+  Route::patch('penawarans/{id}/verifikasi',   [PenawaranController::class, 'verifikasi']);
+  Route::patch('penawarans/{id}/tolak-bm',     [PenawaranController::class, 'tolakbm']);
+  Route::get('penawarans/om',                  [PenawaranController::class, 'indexForOperationalManager']);
+  Route::patch('penawarans/{id}/verifikasi-om', [PenawaranController::class, 'verifikasiOm']);
+  Route::patch('penawarans/{id}/tolak-om',     [PenawaranController::class, 'tolakom']);
+  Route::get('penawarans/{id}',                [PenawaranController::class, 'show']);
+  Route::post('penawarans',                    [PenawaranController::class, 'store']);
+  Route::put('penawarans/{id}',                [PenawaranController::class, 'update']);
+  Route::delete('penawarans/{id}',             [PenawaranController::class, 'destroy']);
+  // routes/web.php (atau api.php kalau kamu expose via API)
+  Route::get('/penawarans/{id}/preview', [\App\Http\Controllers\PenawaranController::class, 'previewPdfMultiLang']);
 
 
-    Route::post('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/evaluation-attachment', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
-    // ====== ⬆⬆⬆ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬆⬆⬆ ======
+  Route::apiResource('jenis-produks', JenisProdukController::class);
+  Route::apiResource('transportirs', TransportirController::class);
+  Route::apiResource('personnels', PersonnelController::class);
+  Route::apiResource('volumes', VolumeController::class);
+  Route::apiResource('wilayah-angkuts', WilayahAngkutController::class);
+  Route::apiResource('master-kapals', MasterKapalController::class);
+  Route::get('ongkos-kapal/check', [OngkosKapalController::class, 'checkOA']);
+  Route::apiResource('ongkos-kapal', OngkosKapalController::class);
+  Route::apiResource('master-trucks', MasterTruckController::class);
+  Route::get('ongkos-trucks/check', [OngkosTruckController::class, 'checkOA']);
+  Route::apiResource('ongkos-trucks', OngkosTruckController::class);
+  Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan']);
+  Route::apiResource('customer-pos', PoCustomerController::class);
 
-    // ===== Admin (biarkan seperti semula) =====
-    Route::prefix('review/admin')->group(function () {
-        Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
-        Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
+  Route::apiResource('customer-lcrs', CustomerLcrController::class);
+  Route::post('uploads/lcr-image', [CustomerLcrController::class, 'uploadImage']);
+  Route::get('customer-lcrs', [CustomerLcrController::class, 'indexLogistik'])->name('lcr.index');
+  Route::patch('customer-lcrs/{customerLcr}/set-flag',  [CustomerLcrController::class, 'setFlag']);
+  Route::patch('customer-lcrs/{customerLcr}/reset-flag', [CustomerLcrController::class, 'resetFlag']);
+  Route::get('logistik/customer-lcrs/{id}', [CustomerLcrController::class, 'showLogistik']);
 
-        // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
-        Route::prefix('review/customer-verifications')->group(function () {
-            Route::get('{id}/evaluation',  [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-            Route::post('{id}/evaluation', [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-        });
+  // Public form (pakai token) - upload internal (auth)
+  Route::post('customer-verifications/{customerVerification}/upload', [CustomerVerificationController::class, 'upload']);
 
-        // Dan alias lain yang sudah ada sebelumnya (tetap dibiarkan)
-        Route::get ('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationShow'])->whereNumber('id');
-        Route::post('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationSave'])->whereNumber('id');
-        Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
+  // Resource CustomerVerification (internal)
+  Route::apiResource('customer-verifications', CustomerVerificationController::class);
+
+  // ===== Review (Marketing/Finance) – umum =====
+  Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
+  Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
+  Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
+  Route::patch('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
+  Route::post('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
+
+  Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
+
+  Route::get('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'getReview'])->whereNumber('id');
+  Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
+  Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
+  Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
+  Route::patch('review/customer-verifications/{id}/approve', [CustomerVerificationController::class, 'approve'])->whereNumber('id');
+
+  // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
+  Route::get('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
+  Route::get('/review/customer-verifications/{id}/admin-evaluation', [CustomerVerificationController::class, 'getAdminEvaluation']);
+
+
+  Route::post('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
+  Route::post('review/customer-verifications/{id}/evaluation-attachment', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
+  // ====== ⬆⬆⬆ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬆⬆⬆ ======
+
+  // ===== Admin (biarkan seperti semula) =====
+  Route::prefix('review/admin')->group(function () {
+    Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
+    Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
+    Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
+
+    // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
+    Route::prefix('review/customer-verifications')->group(function () {
+      Route::get('{id}/evaluation',  [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
+      Route::post('{id}/evaluation', [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
     });
 
-    Route::prefix('review/logistik')->group(function () {
-        Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewLogistikIndex']);
-        Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewLogistikStats']);
-        // reuse method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
-        Route::get('/customer-verifications/{id}',    [CustomerVerificationController::class, 'logistikShow'])->whereNumber('id');
-        Route::patch('/customer-verifications/{id}',  [CustomerVerificationController::class, 'logistikSave'])->whereNumber('id');
-        Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'logistikVerify']);
-    });
+    // Dan alias lain yang sudah ada sebelumnya (tetap dibiarkan)
+    Route::get('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationShow'])->whereNumber('id');
+    Route::post('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationSave'])->whereNumber('id');
+    Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
+  });
 
-    Route::prefix('review/bm')->group(function () {
-        Route::get   ('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
-        Route::get   ('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-        Route::patch ('customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
-        // simpan verifikasi BM
-        Route::patch ('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
-    });
+  Route::prefix('review/logistik')->group(function () {
+    Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewLogistikIndex']);
+    Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewLogistikStats']);
+    // reuse method setDisposisi yang sudah ada
+    Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
+    Route::get('/customer-verifications/{id}',    [CustomerVerificationController::class, 'logistikShow'])->whereNumber('id');
+    Route::patch('/customer-verifications/{id}',  [CustomerVerificationController::class, 'logistikSave'])->whereNumber('id');
+    Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'logistikVerify']);
+  });
 
-    Route::prefix('review/om')->group(function () {
-        Route::get ('/customer-verifications',        [CustomerVerificationController::class, 'reviewOmIndex']);
-        Route::get ('/customer-verifications/stats',  [CustomerVerificationController::class, 'reviewOmStats']);
-        Route::patch('/customer-verifications/{id}/verify', [CustomerVerificationController::class, 'omVerify'])->whereNumber('id');
-    
-        // opsional: kirim balik ke BM atau finalize → gunakan method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
-    });
+  Route::prefix('review/bm')->group(function () {
+    Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
+    Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
+    Route::patch('customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
+    // simpan verifikasi BM
+    Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
+  });
 
-    Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
+  Route::prefix('review/om')->group(function () {
+    Route::get('/customer-verifications',        [CustomerVerificationController::class, 'reviewOmIndex']);
+    Route::get('/customer-verifications/stats',  [CustomerVerificationController::class, 'reviewOmStats']);
+    Route::patch('/customer-verifications/{id}/verify', [CustomerVerificationController::class, 'omVerify'])->whereNumber('id');
 
-    Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
-Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
+    // opsional: kirim balik ke BM atau finalize → gunakan method setDisposisi yang sudah ada
+    Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
+  });
 
-// simpan keputusan ADMIN (sudah ada): POST /api/sales-confirmations/po/{poc}
-Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']); // ⬅️ baru
+  Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
 
-Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
-Route::post('/po-customers/{poc}/close', [PoCustomerController::class, 'closePo']);
+  Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
+  Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
 
-Route::get('/po-customers/{poc}/plan', [PoCustomerController::class, 'getPoPlan']);
-Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']); // ⬅️ baru
-Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']); // opsional
+  // simpan keputusan ADMIN (sudah ada): POST /api/sales-confirmations/po/{poc}
+  Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']); // ⬅️ baru
 
-Route::prefix('logistics')->group(function () {
+  Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
+  Route::post('/po-customers/{poc}/close', [PoCustomerController::class, 'closePo']);
+
+  Route::get('/po-customers/{poc}/plan', [PoCustomerController::class, 'getPoPlan']);
+  Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']); // ⬅️ baru
+  Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']); // opsional
+
+  Route::prefix('logistics')->group(function () {
     // Delivery Plan (list / edit volume / split)
-    Route::get   ('/delivery-plans',              [DeliveryPlanController::class, 'index']);
-    Route::get   ('/delivery-plans/{id}',         [DeliveryPlanController::class, 'show']);
-    Route::patch ('/delivery-plans/{id}',         [DeliveryPlanController::class, 'update']);
-    Route::patch ('/delivery-plans/{id}/volume',  [DeliveryPlanController::class, 'updateVolume']);
-    Route::post  ('/delivery-plans/{id}/split',   [DeliveryPlanController::class, 'split']);
+    Route::get('/delivery-plans',              [DeliveryPlanController::class, 'index']);
+    Route::get('/delivery-plans/{id}',         [DeliveryPlanController::class, 'show']);
+    Route::patch('/delivery-plans/{id}',         [DeliveryPlanController::class, 'update']);
+    Route::patch('/delivery-plans/{id}/volume',  [DeliveryPlanController::class, 'updateVolume']);
+    Route::post('/delivery-plans/{id}/split',   [DeliveryPlanController::class, 'split']);
 
     // Simpan ke PR (header + detail)
-    Route::post  ('/pr', [PrController::class, 'store']);
-});
+    Route::post('/pr', [PrController::class, 'store']);
+  });
 
-Route::prefix('procurement')->group(function () {
+  Route::prefix('procurement')->group(function () {
     // Delivery Request (PR + PR Detail)
     Route::get('/delivery-requests',           [DeliveryRequestController::class, 'index']);
     Route::get('/delivery-requests/{id}',      [DeliveryRequestController::class, 'show']);
@@ -284,43 +294,43 @@ Route::prefix('procurement')->group(function () {
 
     // Stock lookup (untuk modal pilih stok)
     Route::get('/stocks', [StockController::class, 'index']);
-});
+  });
 
-// PROENERGI
+  // PROENERGI
 
-    Route::get('penawarans-proenergi', [PenawaranProenergiController::class, 'index']);
-    Route::get('penawarans-proenergi/bm', [PenawaranProenergiController::class, 'indexForBranchManager']);
-    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
-    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
-    Route::get('penawarans-proenergi/om',                  [PenawaranProenergiController::class, 'indexForOperationalManager']);
-    Route::patch('penawarans-proenergi/{id}/verifikasi-om',[PenawaranProenergiController::class, 'verifikasiOm']);
-    Route::patch('penawarans-proenergi/{id}/tolak-om',     [PenawaranProenergiController::class, 'tolakom']);
-    Route::get('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'show']);
-    Route::post('penawarans-proenergi',                    [PenawaranProenergiController::class, 'store']);
-    Route::put('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'update']);
-    Route::delete('penawarans-proenergi/{id}',             [PenawaranProenergiController::class, 'destroy']);
-    // routes/web.php (atau api.php kalau kamu expose via API)
-    Route::get('/penawarans-proenergi/{id}/preview', [\App\Http\Controllers\PenawaranProenergiController::class, 'previewPdfMultiLang']);
-    Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranProenergiController::class, 'ajukan']);
-    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
-    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
-
-
+  Route::get('penawarans-proenergi', [PenawaranProenergiController::class, 'index']);
+  Route::get('penawarans-proenergi/bm', [PenawaranProenergiController::class, 'indexForBranchManager']);
+  Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
+  Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
+  Route::get('penawarans-proenergi/om',                  [PenawaranProenergiController::class, 'indexForOperationalManager']);
+  Route::patch('penawarans-proenergi/{id}/verifikasi-om', [PenawaranProenergiController::class, 'verifikasiOm']);
+  Route::patch('penawarans-proenergi/{id}/tolak-om',     [PenawaranProenergiController::class, 'tolakom']);
+  Route::get('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'show']);
+  Route::post('penawarans-proenergi',                    [PenawaranProenergiController::class, 'store']);
+  Route::put('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'update']);
+  Route::delete('penawarans-proenergi/{id}',             [PenawaranProenergiController::class, 'destroy']);
+  // routes/web.php (atau api.php kalau kamu expose via API)
+  Route::get('/penawarans-proenergi/{id}/preview', [\App\Http\Controllers\PenawaranProenergiController::class, 'previewPdfMultiLang']);
+  Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranProenergiController::class, 'ajukan']);
+  Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
+  Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
 
 
 
 
 
 
-    // Logout
-    Route::post('logout',[AuthController::class,'logout']);
+
+
+  // Logout
+  Route::post('logout', [AuthController::class, 'logout']);
 });
 
 // ====== Public (tanpa auth) ======
 Route::get('/verify/{token}', [CustomerVerificationController::class, 'showByToken']);
 Route::put('/verify/{token}', [CustomerVerificationController::class, 'updateByToken']);
 Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'uploadByToken'])
-    ->where('token', '[A-Za-z0-9\-]{10,}');
+  ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
 Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
 Route::get('/link-customers', [LinkCustomerController::class, 'index']);
@@ -329,3 +339,6 @@ Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('thro
 
 // Public PO detail (contoh)
 Route::get('public/vendor-pos/{id}', [VendorPoController::class, 'publicShow'])->whereNumber('id');
+
+// ====== Dev only: testing kirim email (nonaktif di production) ======
+Route::get('dev/test-email', [\App\Http\Controllers\Dev\MailTestController::class, 'send']);

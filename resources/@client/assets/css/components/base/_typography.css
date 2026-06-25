@@ -1,0 +1,175 @@
+/*
+ |--------------------------------------------------------------------------
+ | Typography
+ |--------------------------------------------------------------------------
+ |
+ | Global type system for the template. Two roles:
+ |
+ |   Barlow Condensed (fontFamily.barlow) — condensed display face. Carries the
+ |     personality: page titles, section headings, eyebrows/labels and figures.
+ |   Open Sans (fontFamily.opensans)  — humanist body face. Carries the
+ |     reading: paragraphs, field values and captions.
+ |
+ | Use these classes instead of re-declaring font-size/weight/color per page so
+ | the scale stays consistent. Fonts are imported in "fonts/_google.css".
+ |
+ |   Display group (Barlow Condensed)  Text group (Open Sans)
+ |   .font-display   page / hero title  .font-lead     supporting paragraph
+ |   .font-header    card / section     .font-body     default paragraph / cell
+ |   .font-section   sub-group title    .font-strong   emphasized value
+ |   .font-eyebrow   uppercase overline .font-caption  muted metadata
+ |   .font-label     field label
+ |
+ |   Numeric group (Barlow Condensed, tabular figures) — for amounts, counts, KPIs
+ |   .font-num-sm        dense table figure
+ |   .font-num           default number / amount
+ |   .font-num-lg        emphasized value (card highlight)
+ |   .font-num-display   stat / KPI number
+ |   .font-num-display-lg hero metric
+ |
+ */
+
+/* Display — page / hero title */
+.font-display {
+    font-family: theme("fontFamily.barlow");
+    font-size: theme("fontSize.3xl");
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: theme("colors.slate.800");
+}
+
+/* Header — card / section title */
+.font-header {
+    font-family: theme("fontFamily.barlow");
+    font-size: theme("fontSize.xl");
+    font-weight: 600;
+    line-height: 1.25;
+    color: theme("colors.slate.800");
+}
+
+/* Section — sub-group title within a card */
+.font-section {
+    font-family: theme("fontFamily.barlow");
+    font-size: theme("fontSize.xs");
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: theme("colors.slate.500");
+}
+
+/* Eyebrow — uppercase overline above a title */
+.font-eyebrow {
+    font-family: theme("fontFamily.barlow");
+    font-size: theme("fontSize.xs");
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: theme("colors.slate.400");
+}
+
+/* Label — field / column label */
+.font-label {
+    font-family: theme("fontFamily.barlow");
+    font-size: theme("fontSize.xs");
+    font-weight: 500;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: theme("colors.slate.400");
+}
+
+/* Numeric scale — Barlow Condensed with tabular figures so columns align.
+   Shared base: every .font-num-* inherits the family + tnum feature. */
+.font-num-sm,
+.font-num,
+.font-num-lg,
+.font-num-display,
+.font-num-display-lg {
+    font-family: theme("fontFamily.barlow");
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Small — dense tables, inline counts */
+.font-num-sm {
+    font-size: theme("fontSize.xs");
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    color: theme("colors.slate.600");
+}
+
+/* Normal — default amount / figure */
+.font-num {
+    font-size: theme("fontSize.sm");
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    color: theme("colors.slate.700");
+}
+
+/* Large — emphasized value, e.g. a card highlight */
+.font-num-lg {
+    font-size: theme("fontSize.lg");
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0;
+    color: theme("colors.slate.800");
+}
+
+/* Display — stat / KPI number */
+.font-num-display {
+    font-size: theme("fontSize.3xl");
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: theme("colors.slate.800");
+}
+
+/* Display large — hero metric */
+.font-num-display-lg {
+    font-size: theme("fontSize.5xl");
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: theme("colors.slate.900");
+}
+
+/* Lead — supporting paragraph under a title */
+.font-lead {
+    font-family: theme("fontFamily.opensans");
+    font-size: theme("fontSize.base");
+    font-weight: 400;
+    line-height: 1.6;
+    color: theme("colors.slate.500");
+}
+
+/* Body — default paragraph / table cell text */
+.font-body {
+    font-family: theme("fontFamily.opensans");
+    font-size: theme("fontSize.sm");
+    font-weight: 400;
+    line-height: 1.6;
+    color: theme("colors.slate.600");
+}
+
+/* Strong — emphasized value text */
+.font-strong {
+    font-family: theme("fontFamily.opensans");
+    font-size: theme("fontSize.sm");
+    font-weight: 600;
+    line-height: 1.5;
+    color: theme("colors.slate.800");
+}
+
+/* Caption — muted helper / metadata */
+.font-caption {
+    font-family: theme("fontFamily.opensans");
+    font-size: theme("fontSize.xs");
+    font-weight: 400;
+    line-height: 1.5;
+    color: theme("colors.slate.400");
+}

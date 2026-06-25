@@ -16,6 +16,8 @@ class VendorPoProduk extends Model
         'volume_po',
         'harga_tebus',
         'jumlah_harga',
+        'kd_tax',
+        'tax_amount',
         'created_time',
         'lastupdate_time',
     ];

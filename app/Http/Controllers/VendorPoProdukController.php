@@ -42,12 +42,14 @@ class VendorPoProdukController extends Controller
     public function storeBatch(Request $request)
     {
         $data = $request->validate([
-            'items'                => 'required|array|min:1',
-            'items.*.id_po'        => 'required|exists:vendor_pos,id_po',
-            'items.*.id_produk'    => 'required|exists:produks,id_produk',
-            'items.*.volume_po'    => 'required|numeric',
-            'items.*.harga_tebus'  => 'required|numeric',
-            'items.*.jumlah_harga' => 'required|numeric',
+            'items'                  => 'required|array|min:1',
+            'items.*.id_po'          => 'required|exists:vendor_pos,id_po',
+            'items.*.id_produk'      => 'required|exists:produks,id_produk',
+            'items.*.volume_po'      => 'required|numeric',
+            'items.*.harga_tebus'    => 'required|numeric',
+            'items.*.jumlah_harga'   => 'required|numeric',
+            'items.*.kd_tax'         => 'nullable|string|in:E,EC',
+            'items.*.tax_amount'     => 'nullable|numeric',
         ]);
 
         DB::transaction(function() use ($data) {

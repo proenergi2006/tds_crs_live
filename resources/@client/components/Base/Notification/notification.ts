@@ -6,6 +6,42 @@ import {
 
 const toastifyClass = "_" + Math.random().toString(36).substr(2, 9);
 
+const bindNotificationButtons = (el: NotificationElement) => {
+  el
+    .querySelectorAll("[data-notification-action]")
+    .forEach(function (button) {
+      const actionButton = button as HTMLElement;
+
+      if (actionButton.dataset.notificationActionBound) return;
+
+      actionButton.dataset.notificationActionBound = "true";
+      actionButton.addEventListener("click", function () {
+        const action = actionButton.getAttribute("data-notification-action");
+
+        if (action) {
+          window.dispatchEvent(
+            new CustomEvent("app-notification-action", {
+              detail: action,
+            }),
+          );
+        }
+      });
+    });
+
+  el
+    .querySelectorAll("[data-dismiss='notification']")
+    .forEach(function (button) {
+      const dismissButton = button as HTMLElement;
+
+      if (dismissButton.dataset.notificationDismissBound) return;
+
+      dismissButton.dataset.notificationDismissBound = "true";
+      dismissButton.addEventListener("click", function () {
+        el.toastify.hideToast();
+      });
+    });
+};
+
 const init = (el: NotificationElement, props: NotificationProps) => {
   el.showToast = () => {
     const clonedEl = el.cloneNode(true) as NotificationElement;
@@ -22,13 +58,7 @@ const init = (el: NotificationElement, props: NotificationProps) => {
       node: clonedEl,
     });
     clonedEl.toastify.showToast();
-    clonedEl
-      .querySelectorAll("[data-dismiss='notification']")
-      .forEach(function (el) {
-        el.addEventListener("click", function () {
-          clonedEl.toastify.hideToast();
-        });
-      });
+    bindNotificationButtons(clonedEl);
 
     el.hideToast = () => {
       document.querySelectorAll(`.${toastifyClass}`).forEach(function (el) {
@@ -42,7 +72,9 @@ const init = (el: NotificationElement, props: NotificationProps) => {
 const reInit = (el: NotificationElement) => {
   const wrapperEl = document.querySelectorAll(`.${toastifyClass}`)[0];
   if (wrapperEl) {
-    wrapperEl.innerHTML = el.innerHTML;
+    const toastifyEl = wrapperEl as NotificationElement;
+    toastifyEl.innerHTML = el.innerHTML;
+    bindNotificationButtons(toastifyEl);
   }
 };
 

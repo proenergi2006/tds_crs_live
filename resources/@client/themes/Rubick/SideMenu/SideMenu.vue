@@ -9,6 +9,7 @@ import TopBar from "@/components/Themes/Rubick/TopBar";
 import MobileMenu from "@/components/MobileMenu";
 import { useMenuStore } from "@/stores/menu";
 import { useAuthStore } from "@/stores/auth";
+import { useApprovalBadgeStore } from "@/stores/approvalBadge";
 import {
   type ProvideForceActiveMenu,
   forceActiveMenu,
@@ -19,7 +20,7 @@ import {
   enter,
   leave,
 } from "./side-menu";
-import { watch, reactive, ref, computed, onMounted, provide } from "vue";
+import { watch, reactive, ref, computed, onMounted, onUnmounted, provide } from "vue";
 
 const route: Route = useRoute();
 const router = useRouter();
@@ -34,8 +35,28 @@ const authStore = useAuthStore();
 const menu = computed(() => nestedMenu(menuStore.menu("side-menu"), route));
 const windowWidth = ref(window.innerWidth);
 
+// Manual user preference — persisted to localStorage
+const userCollapsedPref = ref(
+  localStorage.getItem("rubick-sidebar-collapsed") === "true"
+);
+
+// Auto-collapse below xl (< 1280px); at xl+ use the user's stored preference
+const isSidebarCollapsed = computed(
+  () => windowWidth.value < 1280 || userCollapsedPref.value
+);
+
 // Ambil user dari auth store
 const user = computed(() => authStore.user);
+
+const badgeStore = useApprovalBadgeStore();
+
+const getMenuBadge = (pageName?: string): number => {
+  if (!pageName) return 0;
+  if (pageName === 'po-verification-list') return badgeStore.vendorPo;
+  if (pageName === 'penawarans-verifikasi-om') return badgeStore.penawaran;
+  if (pageName === 'Verifikasi') return badgeStore.total;
+  return 0;
+};
 
 // Role agen
 const agenRoles = [13, 14, 15, 16];
@@ -62,6 +83,39 @@ provide<ProvideForceActiveMenu>("forceActiveMenu", (pageName: string) => {
   setFormattedMenu(menu.value);
 });
 
+const contentScrollRef = ref<HTMLElement | null>(null);
+let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+const onContentScroll = () => {
+  contentScrollRef.value?.classList.add("is-scrolling");
+  if (scrollTimer) clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    contentScrollRef.value?.classList.remove("is-scrolling");
+  }, 1000);
+};
+
+const toggleSidebarCollapse = () => {
+  userCollapsedPref.value = !userCollapsedPref.value;
+  localStorage.setItem(
+    "rubick-sidebar-collapsed",
+    String(userCollapsedPref.value)
+  );
+};
+
+const onCollapsedPanelItemClick = (
+  event: MouseEvent,
+  menuItem: FormattedMenu
+) => {
+  event.preventDefault();
+
+  if (menuItem.subMenu) {
+    return;
+  }
+
+  linkTo(menuItem, router);
+  setFormattedMenu([...formattedMenu]);
+};
+
 watch(menu, () => {
   setFormattedMenu(menu.value);
 });
@@ -76,64 +130,137 @@ watch(
 onMounted(() => {
   setFormattedMenu(menu.value);
 
+  if (Number(user.value?.id_role) === 2) {
+    badgeStore.fetch()
+  }
+
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
   });
+
+  contentScrollRef.value?.addEventListener("scroll", onContentScroll);
+});
+
+onUnmounted(() => {
+  contentScrollRef.value?.removeEventListener("scroll", onContentScroll);
+  if (scrollTimer) clearTimeout(scrollTimer);
 });
 </script>
 
 <template>
-  <div
-    :class="[
-      'rubick px-5 sm:px-8 py-5',
-      'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
-    ]"
-  >
+  <div :class="[
+    'rubick px-2 py-2 sm:py-4 sm:px-4 h-screen overflow-hidden',
+    'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
+  ]">
     <MobileMenu />
-    <div class="mt-[4.7rem] flex md:mt-0">
+    <div class="mt-[4.7rem] flex md:mt-0 h-full">
       <!-- BEGIN: Side Menu -->
-      <nav
-        class="side-nav hidden w-[80px] overflow-x-hidden pb-16 pr-5 md:block xl:w-[230px]"
-      >
-        <RouterLink
-          :to="{ name: 'dashboard-overview-1' }"
-          class="flex items-center pt-4 pl-5 intro-x"
-        >
-        <img
-            alt="Application Logo"
-            class="w-16"
-            :src="currentLogo"
-          />
-          <span
-  class="hidden ml-3 text-lg font-semibold xl:block"
-  :class="isAgenRole
-    ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
-    : 'text-white'"
->
-  {{ appName }}
-</span>
-        </RouterLink>
-        <div class="my-6 side-nav__divider"></div>
+      <nav :class="[
+        'side-nav hidden w-[80px] pb-16 pr-5 md:block xl:w-[230px]',
+        isSidebarCollapsed
+          ? 'side-nav--collapsed overflow-visible'
+          : 'overflow-x-hidden',
+      ]">
+        <div class="flex items-center pt-2 pl-8 intro-x">
+          <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex min-w-0 items-center">
+            <img alt="Application Logo" class="w-12" :src="currentLogo" />
+            <span class="hidden ml-3 font-semibold xl:block" :class="[
+              isSidebarCollapsed && 'xl:hidden',
+              isAgenRole
+                ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
+                : 'text-white',
+            ]">
+              {{ appName }}
+            </span>
+          </RouterLink>
+        </div>
+        <div class="my-3 side-nav__divider"></div>
         <ul>
           <template v-for="(menu, menuKey) in formattedMenu">
-            <li
-              v-if="menu == 'divider'"
-              type="li"
-              class="my-6 side-nav__divider"
-              :key="'divider-' + menuKey"
-            ></li>
-            <li v-else :key="menuKey">
-              <Tippy
-                as="a"
-                :content="menu.title"
-                :options="{
-                  placement: 'right',
-                }"
-                :disable="windowWidth > 1260"
-                :href="
-                  menu.subMenu
-                    ? '#'
-                    : ((pageName: string | undefined) => {
+            <li v-if="menu == 'divider'" type="li" class="my-6 side-nav__divider" :key="'divider-' + menuKey"></li>
+            <li v-else :key="menuKey" class="side-nav__item">
+              <Tippy as="a" :content="menu.title" :options="{
+                placement: 'right',
+              }" :disable="isSidebarCollapsed ? !!menu.subMenu : windowWidth > 1260" :href="menu.subMenu
+                ? '#'
+                : ((pageName: string | undefined) => {
+                  try {
+                    return router.resolve({
+                      name: pageName,
+                    }).fullPath;
+                  } catch (err) {
+                    return '';
+                  }
+                })(menu.pageName)
+                " @click="(event: MouseEvent) => {
+                  event.preventDefault();
+                  linkTo(menu, router);
+                  setFormattedMenu([...formattedMenu]);
+                }" :class="[
+                  menu.active ? 'side-menu side-menu--active' : 'side-menu',
+                ]">
+                <div class="side-menu__icon">
+                  <Lucide :icon="menu.icon" />
+                </div>
+                <div class="side-menu__title">
+                  <span class="flex-1 min-w-0 truncate">{{ menu.title }}</span>
+                  <span v-if="getMenuBadge(menu.pageName) > 0" :class="[
+                    'shrink-0 mr-[1.25rem] text-[10px] font-semibold rounded-full px-1.5 leading-5 min-w-[18px] text-center',
+                    menu.active ? 'bg-emerald-800 text-white' : 'bg-white text-emerald-700',
+                  ]">
+                    {{ getMenuBadge(menu.pageName) }}
+                  </span>
+                  <div v-if="menu.subMenu && getMenuBadge(menu.pageName) === 0" :class="[
+                    'side-menu__sub-icon ',
+                    { 'transform rotate-180': menu.activeDropdown },
+                  ]">
+                    <Lucide icon="ChevronDown" />
+                  </div>
+                </div>
+              </Tippy>
+              <div v-if="isSidebarCollapsed && menu.subMenu" class="side-nav__collapsed-panel">
+                <div class="side-nav__collapsed-title">{{ menu.title }}</div>
+                <template v-for="(subMenu, subMenuKey) in menu.subMenu" :key="subMenuKey">
+                  <div v-if="subMenu.subMenu" :class="[
+                    'side-nav__collapsed-group',
+                    subMenu.active && 'side-nav__collapsed-item--active',
+                  ]">
+                    <div class="side-nav__collapsed-item">
+                      <Lucide :icon="subMenu.icon" />
+                      <span>{{ subMenu.title }}</span>
+                      <Lucide icon="CornerRightDown" class="side-nav__collapsed-chevron" />
+                    </div>
+                    <div class="side-nav__collapsed-children">
+                      <a v-for="(lastSubMenu, lastSubMenuKey) in subMenu.subMenu" :key="lastSubMenuKey" href="#" :class="[
+                        'side-nav__collapsed-item side-nav__collapsed-item--child',
+                        lastSubMenu.active && 'side-nav__collapsed-item--active',
+                      ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, lastSubMenu)">
+                        <Lucide :icon="lastSubMenu.icon" />
+                        <span>{{ lastSubMenu.title }}</span>
+                      </a>
+                    </div>
+                  </div>
+                  <a v-else href="#" :class="[
+                    'side-nav__collapsed-item',
+                    subMenu.active && 'side-nav__collapsed-item--active',
+                  ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, subMenu)">
+                    <Lucide :icon="subMenu.icon" />
+                    <span>{{ subMenu.title }}</span>
+                    <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                      class="ml-auto text-[10px] font-semibold bg-emerald-800 text-white rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                      {{ getMenuBadge(subMenu.pageName) }}
+                    </span>
+                  </a>
+                </template>
+              </div>
+              <Transition v-if="!isSidebarCollapsed" @enter="enter" @leave="leave">
+                <ul v-if="menu.subMenu && menu.activeDropdown" :class="{ 'side-menu__sub-open': menu.activeDropdown }">
+                  <li v-for="(subMenu, subMenuKey) in menu.subMenu" :key="subMenuKey">
+                    <Tippy as="a" :content="subMenu.title" :options="{
+                      placement: 'right',
+                    }" :disable="windowWidth > 1260" :href="subMenu.subMenu
+                      ? '#'
+                      : ((pageName: string | undefined) => {
                         try {
                           return router.resolve({
                             name: pageName,
@@ -141,53 +268,43 @@ onMounted(() => {
                         } catch (err) {
                           return '';
                         }
-                      })(menu.pageName)
-                "
-                @click="(event: MouseEvent) => {
-                  event.preventDefault();
-                  linkTo(menu, router);
-                  setFormattedMenu([...formattedMenu]);
-                }"
-                :class="[
-                  menu.active ? 'side-menu side-menu--active' : 'side-menu',
-                ]"
-              >
-                <div class="side-menu__icon">
-                  <Lucide :icon="menu.icon" />
-                </div>
-                <div class="side-menu__title">
-                  {{ menu.title }}
-                  <div
-                    v-if="menu.subMenu"
-                    :class="[
-                      'side-menu__sub-icon',
-                      { 'transform rotate-180': menu.activeDropdown },
-                    ]"
-                  >
-                    <Lucide icon="ChevronDown" />
-                  </div>
-                </div>
-              </Tippy>
-              <Transition @enter="enter" @leave="leave">
-                <ul
-                  v-if="menu.subMenu && menu.activeDropdown"
-                  :class="{ 'side-menu__sub-open': menu.activeDropdown }"
-                >
-                  <li
-                    v-for="(subMenu, subMenuKey) in menu.subMenu"
-                    :key="subMenuKey"
-                  >
-                    <Tippy
-                      as="a"
-                      :content="subMenu.title"
-                      :options="{
-                        placement: 'right',
-                      }"
-                      :disable="windowWidth > 1260"
-                      :href="
-                        subMenu.subMenu
-                          ? '#'
-                          : ((pageName: string | undefined) => {
+                      })(subMenu.pageName)
+                      " :class="[
+                        subMenu.active
+                          ? 'side-menu side-menu--active'
+                          : 'side-menu',
+                      ]" @click="(event: MouseEvent) => {
+                        event.preventDefault();
+                        linkTo(subMenu, router);
+                        setFormattedMenu([...formattedMenu]);
+                      }">
+                      <div class="side-menu__icon side-menu__icon--tree">
+                        <Lucide :icon="subMenu.active ? 'ChevronsRight' : 'CornerDownRight'" />
+                      </div>
+                      <div class="side-menu__title">
+                        {{ subMenu.title }}
+                        <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                          class="ml-auto mr-[10px] shrink-0 text-[10px] font-semibold bg-white text-emerald-700 rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                          {{ getMenuBadge(subMenu.pageName) }}
+                        </span>
+                        <div v-if="subMenu.subMenu" :class="[
+                          'side-menu__sub-icon',
+                          { 'transform rotate-180': subMenu.activeDropdown },
+                        ]">
+                          <Lucide icon="ArrowDown" />
+                        </div>
+                      </div>
+                    </Tippy>
+                    <Transition @enter="enter" @leave="leave" v-if="subMenu.subMenu">
+                      <ul v-if="subMenu.subMenu && subMenu.activeDropdown" :class="{
+                        'side-menu__sub-open': subMenu.activeDropdown,
+                      }">
+                        <li v-for="(lastSubMenu, lastSubMenuKey) in subMenu.subMenu" :key="lastSubMenuKey">
+                          <Tippy as="a" :content="lastSubMenu.title" :options="{
+                            placement: 'right',
+                          }" :disable="windowWidth > 1260" :href="lastSubMenu.subMenu
+                            ? '#'
+                            : ((pageName: string | undefined) => {
                               try {
                                 return router.resolve({
                                   name: pageName,
@@ -195,85 +312,18 @@ onMounted(() => {
                               } catch (err) {
                                 return '';
                               }
-                            })(subMenu.pageName)
-                      "
-                      :class="[
-                        subMenu.active
-                          ? 'side-menu side-menu--active'
-                          : 'side-menu',
-                      ]"
-                      @click="(event: MouseEvent) => {
-                        event.preventDefault();
-                        linkTo(subMenu, router);
-                        setFormattedMenu([...formattedMenu]);
-                      }"
-                    >
-                      <div class="side-menu__icon">
-                        <Lucide :icon="subMenu.icon" />
-                      </div>
-                      <div class="side-menu__title">
-                        {{ subMenu.title }}
-                        <div
-                          v-if="subMenu.subMenu"
-                          :class="[
-                            'side-menu__sub-icon',
-                            { 'transform rotate-180': subMenu.activeDropdown },
-                          ]"
-                        >
-                          <Lucide icon="ChevronDown" />
-                        </div>
-                      </div>
-                    </Tippy>
-                    <Transition
-                      @enter="enter"
-                      @leave="leave"
-                      v-if="subMenu.subMenu"
-                    >
-                      <ul
-                        v-if="subMenu.subMenu && subMenu.activeDropdown"
-                        :class="{
-                          'side-menu__sub-open': subMenu.activeDropdown,
-                        }"
-                      >
-                        <li
-                          v-for="(
-                            lastSubMenu, lastSubMenuKey
-                          ) in subMenu.subMenu"
-                          :key="lastSubMenuKey"
-                        >
-                          <Tippy
-                            as="a"
-                            :content="lastSubMenu.title"
-                            :options="{
-                              placement: 'right',
-                            }"
-                            :disable="windowWidth > 1260"
-                            :href="
-                              lastSubMenu.subMenu
-                                ? '#'
-                                : ((pageName: string | undefined) => {
-                                    try {
-                                      return router.resolve({
-                                        name: pageName,
-                                      }).fullPath;
-                                    } catch (err) {
-                                      return '';
-                                    }
-                                  })(lastSubMenu.pageName)
-                            "
-                            :class="[
+                            })(lastSubMenu.pageName)
+                            " :class="[
                               lastSubMenu.active
                                 ? 'side-menu side-menu--active'
                                 : 'side-menu',
-                            ]"
-                            @click="(event: MouseEvent) => {
+                            ]" @click="(event: MouseEvent) => {
                               event.preventDefault();
                               linkTo(lastSubMenu, router);
                               setFormattedMenu([...formattedMenu]);
-                            }"
-                          >
-                            <div class="side-menu__icon">
-                              <Lucide :icon="lastSubMenu.icon" />
+                            }">
+                            <div class="side-menu__icon side-menu__icon--tree">
+                              <Lucide :icon="lastSubMenu.active ? 'ChevronsRight' : 'CornerDownRight'" />
                             </div>
                             <div class="side-menu__title">
                               {{ lastSubMenu.title }}
@@ -292,10 +342,14 @@ onMounted(() => {
       <!-- END: Side Menu -->
       <!-- BEGIN: Content -->
       <div
-        class="md:max-w-auto min-h-screen min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 px-4 pb-10 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 md:px-[22px]"
-      >
-        <TopBar />
-        <RouterView />
+        class="md:max-w-auto min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 flex flex-col overflow-hidden">
+        <!-- TopBar di LUAR area scroll: tetap diam di atas, hanya konten yang scroll. -->
+        <div class="z-[51]">
+          <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
+        </div>
+        <div ref="contentScrollRef" class="content-area-scroll flex-1 overflow-y-auto">
+          <RouterView />
+        </div>
       </div>
       <!-- END: Content -->
     </div>

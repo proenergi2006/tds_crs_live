@@ -6,24 +6,14 @@ import { type ProvideBeradcrumb } from "./Breadcrumb.vue";
 interface LinkProps extends /* @vue-ignore */ LiHTMLAttributes {
   to?: RouterLinkProps["to"];
   active?: boolean;
-  index?: number;
+  disabled?: boolean;
 }
 
-const { to = "", active = false, index = 0 } = defineProps<LinkProps>();
+const { to = "", active = false, disabled = false } = defineProps<LinkProps>();
 
 const breadcrumb = inject<ProvideBeradcrumb>("breadcrumb");
 
 const computedClass = computed(() => [
-  index > 0 && "relative ml-5 pl-0.5",
-  breadcrumb &&
-    !breadcrumb.light &&
-    index > 0 &&
-    "before:content-[''] before:w-[14px] before:h-[14px] before:bg-chevron-black before:transform before:rotate-[-90deg] before:bg-[length:100%] before:-ml-[1.125rem] before:absolute before:my-auto before:inset-y-0",
-  breadcrumb &&
-    breadcrumb.light &&
-    index > 0 &&
-    "before:content-[''] before:w-[14px] before:h-[14px] before:bg-chevron-white before:transform before:rotate-[-90deg] before:bg-[length:100%] before:-ml-[1.125rem] before:absolute before:my-auto before:inset-y-0",
-  index > 0 && "dark:before:bg-chevron-white",
   breadcrumb &&
     !breadcrumb.light &&
     active &&
@@ -34,7 +24,10 @@ const computedClass = computed(() => [
 
 <template>
   <li :class="computedClass">
-    <RouterLink :to="to">
+    <span v-if="disabled">
+      <slot></slot>
+    </span>
+    <RouterLink v-else :to="to">
       <slot></slot>
     </RouterLink>
   </li>

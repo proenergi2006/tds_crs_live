@@ -18,17 +18,17 @@ const forceActiveMenu = (route: Route, pageName: string) => {
   route.forceActiveMenu = pageName;
 };
 
+const isActiveMenuItem = (item: Menu, route: Route): boolean => {
+  const activeRouteName = String(route.forceActiveMenu ?? route.name ?? "");
+
+  return item.pageName === activeRouteName || !!item.activePageNames?.includes(activeRouteName);
+};
+
 // Setup side menu
 const findActiveMenu = (subMenu: Menu[], route: Route): boolean => {
   let match = false;
   subMenu.forEach((item) => {
-    if (
-      ((route.forceActiveMenu !== undefined &&
-        item.pageName === route.forceActiveMenu) ||
-        (route.forceActiveMenu === undefined &&
-          item.pageName === route.name)) &&
-      !item.ignore
-    ) {
+    if (isActiveMenuItem(item, route) && !item.ignore) {
       match = true;
     } else if (!match && item.subMenu) {
       match = findActiveMenu(item.subMenu, route);
@@ -45,14 +45,12 @@ const nestedMenu = (menu: Array<Menu | "divider">, route: Route) => {
         icon: item.icon,
         title: item.title,
         pageName: item.pageName,
+        activePageNames: item.activePageNames,
         subMenu: item.subMenu,
         ignore: item.ignore,
       };
       menuItem.active =
-        ((route.forceActiveMenu !== undefined &&
-          menuItem.pageName === route.forceActiveMenu) ||
-          (route.forceActiveMenu === undefined &&
-            menuItem.pageName === route.name) ||
+        (isActiveMenuItem(menuItem, route) ||
           (menuItem.subMenu && findActiveMenu(menuItem.subMenu, route))) &&
         !menuItem.ignore;
 

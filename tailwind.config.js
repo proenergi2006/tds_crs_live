@@ -41,7 +41,13 @@ module.exports = {
                 },
             },
             fontFamily: {
-                roboto: ["Roboto"],
+                barlow: ["Barlow Condensed", "ui-sans-serif", "system-ui", "sans-serif"],
+                opensans: [
+                    "Open Sans",
+                    "ui-sans-serif",
+                    "system-ui",
+                    "sans-serif",
+                ],
             },
             container: {
                 center: true,

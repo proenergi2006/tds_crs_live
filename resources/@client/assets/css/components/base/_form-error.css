@@ -1,0 +1,29 @@
+@layer components {
+  /*
+   | Error state seragam untuk semua field input (input, select, textarea,
+   | dan TomSelect). Pakai token semantik `danger` agar mengikuti tema aktif.
+   | Pemakaian: tambahkan class `input-error` pada elemen field saat invalid,
+   | dan `input-error-text` pada teks pesan error di bawahnya.
+   */
+  .input-error {
+    border-color: rgb(var(--color-danger)) !important;
+    box-shadow: 0 0 0 1px rgb(var(--color-danger)) !important;
+  }
+
+  .input-error:focus {
+    box-shadow: 0 0 0 4px rgb(var(--color-danger) / 0.2) !important;
+  }
+
+  /* TomSelect: class jatuh di `.ts-wrapper`, sedangkan border ada di `.ts-control`. */
+  .ts-wrapper.input-error .ts-control {
+    border-color: rgb(var(--color-danger)) !important;
+    box-shadow: 0 0 0 1px rgb(var(--color-danger)) !important;
+  }
+
+  .input-error-text {
+    margin-top: theme("spacing.1");
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: rgb(var(--color-danger));
+  }
+}

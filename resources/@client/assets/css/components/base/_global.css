@@ -14,7 +14,7 @@ html {
         font-size: theme("fontSize.sm");
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        font-family: theme("fontFamily.roboto");
+        font-family: theme("fontFamily.opensans");
         color: theme("colors.slate.600");
         line-height: theme("lineHeight.5");
     }

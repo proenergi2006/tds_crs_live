@@ -1,0 +1,16 @@
+/*
+ |--------------------------------------------------------------------------
+ | Google Fonts
+ |--------------------------------------------------------------------------
+ |
+ | Barlow Condensed — condensed display face, used for headings, eyebrows,
+ |             labels and numeric data (see "fontFamily.barlow" in tailwind.config.js).
+ | Open Sans — humanist body face, used for paragraphs, values and captions
+ |             (see "fontFamily.opensans" in tailwind.config.js). Also the
+ |             default body font (see "components/base/_global.css").
+ |
+ | The shared typography classes that consume these faces live in
+ | "components/base/_typography.css".
+ |
+ */
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap");

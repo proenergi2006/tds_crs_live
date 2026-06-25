@@ -113,6 +113,11 @@
     }
 }
 
+/* Dropdown di-append ke body (via dropdownParent: 'body') — perlu z-index tinggi agar tidak tertutup stacking context layout */
+body > .ts-dropdown {
+    z-index: 9999;
+}
+
 .dark {
     .tom-select {
         &.ts-wrapper,

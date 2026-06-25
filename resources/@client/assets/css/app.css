@@ -10,7 +10,7 @@
  | https://tailwindcss.com/docs/theme
  |
  */
-@import "./fonts/_roboto.css";
+@import "./fonts/_google.css";
 
 /*
  |--------------------------------------------------------------------------
@@ -22,11 +22,13 @@
  */
 @import "./components/base/_box.css";
 @import "./components/base/_global.css";
+@import "./components/base/_typography.css";
 @import "./components/base/_image-fit.css";
 @import "./components/base/_scrollbar-hidden.css";
 @import "./components/base/_typing-dots.css";
 @import "./components/base/_zoom-in.css";
 @import "./components/base/_intro.css";
+@import "./components/base/_form-error.css";
 
 /*
  |--------------------------------------------------------------------------
@@ -43,3 +45,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.page-content-wrapper {
+  padding: 32px;
+}
