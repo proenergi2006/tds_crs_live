@@ -2,8 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (app()->environment('uat')) {
+            URL::forceScheme('https');
+        }
+
         if ($this->app->environment('local', 'development') && config('mail.dev_redirect')) {
             Mail::alwaysTo(config('mail.dev_redirect'));
         }
