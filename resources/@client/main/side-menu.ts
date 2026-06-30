@@ -1,11 +1,10 @@
 import { type Menu } from "@/stores/menu";
-import { useAuthStore } from "@/stores/auth";
 
 const menu: Array<Menu | "divider"> = [
+  /* Section: Dashboard */
   {
     icon: "Home",
-    pageName: "dashboard",
-    title: "Home",
+    title: "Dashboard",
     subMenu: [
       {
         icon: "User",
@@ -20,228 +19,96 @@ const menu: Array<Menu | "divider"> = [
     ],
   },
 
+  /* Section: Customer & Penawaran */
   {
-    icon: "User",
-    pageName: "Access Control",
-    title: "Access Control",
+    icon: "Users",
+    title: "Customer & Penawaran",
     subMenu: [
       {
-        icon: "Shield",
-        pageName: "role-overview",
-        title: "role",
+        icon: "User",
+        pageName: "customers-list",
+        title: "Customer",
+        activePageNames: ["customers-create", "customers-edit"],
       },
       {
-        icon: "Users",
-        pageName: "users",
-        title: "user",
+        icon: "User",
+        pageName: "customers-list-proenergi",
+        title: "Customer (Proenergi)",
+        activePageNames: ["customers-create-proenergi", "customers-edit-proenergi"],
+      },
+      {
+        icon: "File",
+        pageName: "penawarans-list",
+        title: "Penawaran",
+        activePageNames: ["penawarans-create", "penawarans-edit", "penawarans-detail"],
+      },
+      {
+        icon: "File",
+        pageName: "penawarans-list-proenergi",
+        title: "Penawaran (Proenergi)",
+        activePageNames: [
+          "penawarans-create-proenergi",
+          "penawarans-edit-proenergi",
+          "penawarans-detail-proenergi",
+        ],
+      },
+      {
+        icon: "ClipboardCheck",
+        pageName: "sales-confirmations",
+        title: "Sales Confirmation",
       },
     ],
   },
 
+  /* Section: Verifikasi */
   {
     icon: "CheckCircle",
-    pageName: "Verifikasi",
     title: "Verifikasi",
     subMenu: [
       {
         icon: "CheckSquare",
         pageName: "po-verification-list",
-        title: "PO Suppiler",
+        title: "PO Supplier",
       },
-      {
-        icon: "CheckSquare",
-        pageName: "penawarans-verifikasi-om",
-        title: "Penawaran",
-        activePageNames: ["penawarans-verifikasi-om-detail"],
-      },
-    ],
-  },
-
-  {
-    icon: "Users",
-    pageName: "Customer",
-    title: "Customer",
-    subMenu: [
-      {
-        icon: "User",
-        pageName: "customers-list",
-        title: "customer",
-        activePageNames: [
-          "customers-create",
-          "customers-edit",
-          "customers-detail",
-        ],
-      },
-      {
-        icon: "File",
-        pageName: "penawarans-list",
-        title: "penawaran",
-        activePageNames: [
-          "penawarans-create",
-          "penawarans-edit",
-          "penawarans-detail",
-        ],
-      },
-      // {
-      //   icon: 'MapPin',
-      //   pageName: 'lcr-list',
-      //   title: 'LCR',
-      // },
-      // {
-      //   icon: 'File',
-      //   pageName: 'customer-verifications',
-      //   title: 'Generate Link',
-      // },
-      // {
-      //   icon: 'File',
-      //   pageName: 'review-customer',
-      //   title: 'Review Data Customer',
-      // },
-    ],
-  },
-
-  {
-    icon: "Users",
-    pageName: "Customer Proenergi",
-    title: "Customer ",
-    subMenu: [
-      {
-        icon: "User",
-        pageName: "customers-list-proenergi",
-        title: "customer",
-      },
-      {
-        icon: "File",
-        pageName: "penawarans-list-proenergi",
-        title: "penawaran",
-      },
-      // {
-      //   icon: 'MapPin',
-      //   pageName: 'lcr-list',
-      //   title: 'LCR',
-      // },
-      // {
-      //   icon: 'File',
-      //   pageName: 'customer-verifications',
-      //   title: 'Generate Link',
-      // },
-      // {
-      //   icon: 'File',
-      //   pageName: 'review-customer',
-      //   title: 'Review Data Customer',
-      // },
-    ],
-  },
-
-  // {
-  //   icon: "File",
-  //   pageName: "po-customers-index",
-  //   title: "PO Customer",
-  // },
-
-  {
-    icon: "File",
-    pageName: "review-data-customer-admin",
-    title: "Review Data Customer Admin",
-  },
-  {
-    icon: "File",
-    pageName: "review-data-customer-logistik",
-    title: "Review Data Customer Logistik",
-  },
-
-  // {
-  //   icon: 'File',
-  //   pageName: 'verify-data-customer-om',
-  //   title: 'Review Data Customer OM',
-  // },
-
-  {
-    icon: "CheckCircle",
-    pageName: "sales-confirmations",
-    title: "Sales Confirmation",
-  },
-
-  {
-    icon: "CheckCircle",
-    pageName: "verifikasi",
-    title: "Verifikasi BM",
-    subMenu: [
       {
         icon: "File",
         pageName: "penawarans-verifikasi",
-        title: "penawaran",
+        title: "Penawaran (BM)",
       },
-    ],
-  },
-
-  {
-    icon: "CheckCircle",
-    pageName: "verifikasi proenergi",
-    title: "Verifikasi ",
-    subMenu: [
-      {
-        icon: "File",
-        pageName: "penawarans-verifikasi-proenergi",
-        title: "penawaran",
-      },
-    ],
-  },
-
-  // {
-  //   icon: 'File',
-  //   pageName: 'verify-data-customer-bm',
-  //   title: 'Review Customer BM',
-  // },
-
-  // {
-  //   icon: 'ClipboardCheck',
-  //   pageName: 'sales-confirmations-bm',
-  //   title: 'Sales Confirmation (BM)',
-  // },
-
-  {
-    icon: "CheckCircle",
-    pageName: "verifikasi",
-    title: "Verifikasi OM",
-    subMenu: [
       {
         icon: "File",
         pageName: "penawarans-verifikasi-om",
-        title: "penawaran",
+        title: "Penawaran (OM)",
         activePageNames: ["penawarans-verifikasi-om-detail"],
       },
-    ],
-  },
-
-  {
-    icon: "CheckCircle",
-    pageName: "verifikasi",
-    title: "Verifikasi Penawaran",
-    subMenu: [
+      {
+        icon: "File",
+        pageName: "penawarans-verifikasi-proenergi",
+        title: "Penawaran (Proenergi BM)",
+      },
       {
         icon: "File",
         pageName: "penawarans-verifikasi-om-proenergi",
-        title: "penawaran",
+        title: "Penawaran (Proenergi OM)",
       },
     ],
   },
 
+  /* Section: Procurement */
   {
     icon: "Receipt",
-    pageName: "Transactions",
-    title: "Transactions Data",
+    title: "Procurement",
     subMenu: [
       {
         icon: "Inbox",
         pageName: "vendor-pos-list",
+        title: "PO Supplier",
         activePageNames: [
           "vendor-pos-create",
           "vendor-pos-edit",
           "vendor-pos-detail",
           "vendor-pos-receive",
         ],
-        title: "PO Supplier",
       },
       {
         icon: "FileCheck",
@@ -250,17 +117,17 @@ const menu: Array<Menu | "divider"> = [
       },
       {
         icon: "ClipboardList",
-        pageName: "procurement-delivery-requests", // <- sama dgn name router
-        activePageNames: ["procurement-dr-detail"],
+        pageName: "procurement-delivery-requests",
         title: "Delivery Request",
+        activePageNames: ["procurement-dr-detail"],
       },
     ],
   },
 
+  /* Section: Inventory */
   {
     icon: "Boxes",
-    pageName: "Inventory",
-    title: "Inventory Data",
+    title: "Inventory",
     subMenu: [
       {
         icon: "Inbox",
@@ -270,15 +137,83 @@ const menu: Array<Menu | "divider"> = [
     ],
   },
 
+  /* Section: Logistik */
+  {
+    icon: "Truck",
+    title: "Logistik",
+    subMenu: [
+      {
+        icon: "MapPin",
+        pageName: "logistik-lcrs",
+        title: "Verifikasi LCR",
+      },
+      {
+        icon: "ClipboardList",
+        pageName: "logistics-delivery-plan",
+        title: "Delivery Plan",
+      },
+      {
+        icon: "Database",
+        title: "Master Logistik",
+        subMenu: [
+          {
+            icon: "Users",
+            pageName: "transportir-list",
+            title: "Transportir",
+          },
+          {
+            icon: "User",
+            pageName: "personnel-list",
+            title: "Personnel",
+          },
+          {
+            icon: "Package",
+            pageName: "volumes-list",
+            title: "Volume",
+          },
+          {
+            icon: "Pin",
+            pageName: "wilayah-angkut-list",
+            title: "Wilayah Angkut",
+          },
+          {
+            icon: "Ship",
+            pageName: "kapals-list",
+            title: "Master Kapal",
+          },
+          {
+            icon: "Ship",
+            pageName: "ongkos-kapal-list",
+            title: "OA Kapal",
+          },
+          {
+            icon: "Truck",
+            pageName: "trucks-list",
+            title: "Master Truck",
+          },
+          {
+            icon: "Truck",
+            pageName: "oa-trucks-list",
+            title: "OA Truck",
+          },
+        ],
+      },
+      {
+        icon: "File",
+        pageName: "review-data-customer-logistik",
+        title: "Review Data Customer",
+      },
+    ],
+  },
+
+  /* Section: Master Data */
   {
     icon: "Database",
-    pageName: "Master-Data",
-    title: "Master-Data",
+    title: "Master Data",
     subMenu: [
       {
         icon: "Archive",
-        pageName: "products",
-        title: "Master Produk",
+        title: "Produk",
         subMenu: [
           {
             icon: "CornerDownRight",
@@ -304,18 +239,17 @@ const menu: Array<Menu | "divider"> = [
       },
       {
         icon: "Wallet",
-        pageName: "Harga",
         title: "Harga",
         subMenu: [
           {
             icon: "ShoppingBag",
             pageName: "produk-hargas",
+            title: "Produk Harga",
             activePageNames: [
               "produk-hargas-create",
               "produk-hargas-edit",
               "produk-hargas-detail",
             ],
-            title: "Produks Harga",
           },
           {
             icon: "Tag",
@@ -324,212 +258,66 @@ const menu: Array<Menu | "divider"> = [
           },
         ],
       },
-
       {
         icon: "CreditCard",
         pageName: "vendors-list",
-        activePageNames: ["vendors-create", "vendors-edit"],
         title: "Vendor",
+        activePageNames: ["vendors-create", "vendors-edit"],
       },
       {
         icon: "Terminal",
         pageName: "terminals-list",
         title: "Terminal",
       },
-    ],
-  },
-
-  {
-    title: "Request",
-    icon: "AlertTriangle",
-    pageName: "",
-  },
-
-  {
-    title: "Report",
-    icon: "AlertTriangle",
-    pageName: "",
-  },
-
-  {
-    icon: "Database",
-    pageName: "Referensi Data",
-    title: "Referensi Data",
-    subMenu: [
       {
-        icon: "Terminal",
-        pageName: "terminals-list",
-        title: "Terminal",
-      },
-      {
-        icon: "CreditCard",
-        pageName: "vendors-list",
-        activePageNames: ["vendors-create", "vendors-edit"],
-        title: "Vendor",
-      },
-      {
-        icon: "Archive",
-        pageName: "products",
-        title: "Master Produk",
+        icon: "MapPin",
+        title: "Wilayah",
         subMenu: [
           {
-            icon: "CornerDownRight",
-            pageName: "produks-list",
-            title: "Produk",
+            icon: "Flag",
+            pageName: "provinsi-list",
+            title: "Provinsi",
           },
           {
-            icon: "CornerDownRight",
-            pageName: "satuan",
-            title: "Satuan",
-          },
-          {
-            icon: "CornerDownRight",
-            pageName: "ukuran",
-            title: "Ukuran",
-          },
-          {
-            icon: "CornerDownRight",
-            pageName: "jenis-produk-list",
-            title: "Jenis",
-          },
-        ],
-      },
-
-      {
-        icon: "Wallet",
-        pageName: "Harga",
-        title: "Harga",
-        subMenu: [
-          {
-            icon: "ShoppingBag",
-            pageName: "produk-hargas",
-            activePageNames: [
-              "produk-hargas-create",
-              "produk-hargas-edit",
-              "produk-hargas-detail",
-            ],
-            title: "Produks Harga",
-          },
-          {
-            icon: "Tag",
-            pageName: "attachment-harga-dasar-list",
-            title: "Attachment Harga",
+            icon: "Flag",
+            pageName: "kabupatens-list",
+            title: "Kabupaten",
           },
         ],
       },
     ],
   },
 
+  /* Section: Tata Kelola */
   {
-    icon: "MapPin",
-    pageName: "Master Wilayah",
-    title: "Master Wilayah",
+    icon: "Shield",
+    title: "Tata Kelola",
     subMenu: [
-      {
-        icon: "Flag",
-        pageName: "provinsi-list",
-        title: "provinsi",
-      },
-      {
-        icon: "Flag",
-        pageName: "kabupatens-list",
-        title: "kabupaten",
-      },
-    ],
-  },
-
-  {
-    icon: "Wallet",
-    pageName: "Harga Bm",
-    title: "Harga Bm",
-    subMenu: [
-      {
-        icon: "ShoppingBag",
-        pageName: "produk-hargas",
-        activePageNames: [
-          "produk-hargas-create",
-          "produk-hargas-edit",
-          "produk-hargas-detail",
-        ],
-        title: "Produks Harga",
-      },
-      {
-        icon: "Tag",
-        pageName: "attachment-harga-dasar-list",
-        title: "Attachment Harga",
-      },
-    ],
-  },
-
-  {
-    icon: "Database",
-    pageName: "Master Data Logistik",
-    title: "Master Logistik",
-    subMenu: [
-      {
-        icon: "Users",
-        pageName: "transportir-list",
-        title: "transportir",
-      },
       {
         icon: "User",
-        pageName: "personnel-list",
-        title: "personnel",
+        title: "Access Control",
+        subMenu: [
+          {
+            icon: "Shield",
+            pageName: "role-overview",
+            title: "Role",
+          },
+          {
+            icon: "Users",
+            pageName: "users",
+            title: "User",
+          },
+        ],
       },
       {
-        icon: "Package",
-        pageName: "volumes-list",
-        title: "Volume",
-      },
-      {
-        icon: "Pin",
-        pageName: "wilayah-angkut-list",
-        title: "Wilayah Angkut",
-      },
-      {
-        icon: "Ship",
-        pageName: "kapals-list",
-        title: "Master Kapal",
-      },
-      {
-        icon: "Ship",
-        pageName: "ongkos-kapal-list",
-        title: "OA Kapal",
-      },
-      {
-        icon: "Truck",
-        pageName: "trucks-list",
-        title: "Master Truck",
-      },
-      {
-        icon: "Truck",
-        pageName: "oa-trucks-list",
-        title: "OA Truck",
-      },
-    ],
-  },
-
-  {
-    icon: "MapPin",
-    pageName: "logistik-lcrs",
-    title: "Verifikasi LCR - Logistik",
-  },
-
-  {
-    icon: "ClipboardList",
-    pageName: "logistics-delivery-plan", // harus sama dengan name route LIST
-    title: "Delivery Plan",
-  },
-
-  {
-    icon: "Monitor",
-    pageName: "administrator-monitoring",
-    title: "Monitoring",
-    subMenu: [
-      {
-        icon: "Activity",
+        icon: "Monitor",
         pageName: "monitoring-app-logs",
-        title: "Application Logs",
+        title: "Monitoring",
+      },
+      {
+        icon: "File",
+        pageName: "review-data-customer-admin",
+        title: "Review Data Customer",
       },
     ],
   },

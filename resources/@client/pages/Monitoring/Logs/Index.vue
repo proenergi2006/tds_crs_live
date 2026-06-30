@@ -71,7 +71,7 @@ async function fetchData() {
 
   try {
     const { data } = await axios.get('/api/logs', { params: { limit: 200 } })
-    allLogs.value = Array.isArray(data.data) ? data.data : []
+    allLogs.value = Array.isArray(data.data) ? [...data.data].reverse() : []
     currentPage.value = 1
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat log aplikasi')

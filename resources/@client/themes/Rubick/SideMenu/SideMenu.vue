@@ -291,7 +291,7 @@ onUnmounted(() => {
                           'side-menu__sub-icon',
                           { 'transform rotate-180': subMenu.activeDropdown },
                         ]">
-                          <Lucide icon="ArrowDown" />
+                          <Lucide icon="ChevronDown" />
                         </div>
                       </div>
                     </Tippy>

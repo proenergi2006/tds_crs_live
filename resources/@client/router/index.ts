@@ -101,13 +101,13 @@ const routes = [
         path: "produk-hargas",
         name: "produk-hargas",
         component: () => import("@/pages/MasterData/HargaProduk/Index.vue"),
-        // meta: { roles: [2, 5] },
+        meta: { roles: [2, 5, 8] },
       },
       {
         path: "produk-hargas/:id/detail",
         name: "produk-hargas-detail",
         component: () => import("@/pages/MasterData/HargaProduk/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail Harga Produk" },
+        meta: { breadcrumbTitle: "Detail Harga Produk", roles: [2, 5, 8] },
       },
       {
         path: "produk-hargas/create",
@@ -196,16 +196,19 @@ const routes = [
         path: "customers",
         name: "customers-list",
         component: () => import("@/pages/Customer/Index.vue"),
+        meta: { roles: [4, 12] },
       },
       {
         path: "customers-proenergi",
         name: "customers-list-proenergi",
         component: () => import("@/pages/Customer/IndexProenergi.vue"),
+        meta: { roles: [13, 14] },
       },
       {
         path: "customers/create",
         name: "customers-create",
         component: () => import("@/pages/Customer/Form.vue"),
+        meta: { roles: [4, 12] },
       },
       {
         path: "customers-proenergi/create",
@@ -216,6 +219,7 @@ const routes = [
         path: "customers/:id/edit",
         name: "customers-edit",
         component: () => import("@/pages/Customer/Form.vue"),
+        meta: { roles: [4, 12] },
       },
       {
         path: "customers-proenergi/:id/edit",
@@ -226,6 +230,7 @@ const routes = [
         path: "vendors",
         name: "vendors-list",
         component: () => import("@/pages/MasterData/Vendor/Index.vue"),
+        meta: { roles: [2, 5] },
       },
       {
         path: "vendors/create",
@@ -243,7 +248,7 @@ const routes = [
         path: "terminals",
         name: "terminals-list",
         component: () => import("@/pages/MasterData/Terminal/Index.vue"),
-        meta: { roles: [5] },
+        meta: { roles: [2, 5] },
       },
 
       {
@@ -289,6 +294,7 @@ const routes = [
         path: "/po-verification",
         name: "po-verification-list",
         component: () => import("@/pages/Verification/PoSupplier/Index.vue"),
+        meta: { roles: [2, 3] },
       },
 
       {
@@ -302,30 +308,31 @@ const routes = [
         path: "/stock-inventory",
         name: "StockInventory",
         component: () => import("@/pages/Inventory/Index.vue"),
+        meta: { roles: [5] },
       },
       {
         path: "/penawarans",
         name: "penawarans-list",
         component: () => import("@/pages/Penawaran/Index.vue"),
-        meta: { brand: "tds" },
+        meta: { brand: "tds", roles: [4, 12] },
       },
       {
         path: "/penawarans-proenergi",
         name: "penawarans-list-proenergi",
         component: () => import("@/pages/Penawaran/Index.vue"),
-        meta: { brand: "proenergi" },
+        meta: { brand: "proenergi", roles: [13, 14] },
       },
       {
         path: "/penawarans/create",
         name: "penawarans-create",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "tds" },
+        meta: { brand: "tds", roles: [4, 12] },
       },
       {
         path: "/penawarans-proenergi/create",
         name: "penawarans-create-proenergi",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "proenergi" },
+        meta: { brand: "proenergi", roles: [13, 14] },
       },
 
       {
@@ -338,37 +345,39 @@ const routes = [
         path: "/penawarans/:id/edit",
         name: "penawarans-edit",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "tds" },
+        meta: { brand: "tds", roles: [4, 12] },
       },
 
       {
         path: "/penawarans-proenergi/:id/edit",
         name: "penawarans-edit-proenergi",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "proenergi" },
+        meta: { brand: "proenergi", roles: [13, 14] },
       },
       {
         path: "/penawarans/:id",
         name: "penawarans-detail",
         component: () => import("@/pages/Penawaran/Detail.vue"),
-        meta: { brand: "tds" },
+        meta: { brand: "tds", roles: [4, 12] },
       },
       {
         path: "/penawarans-proenergi/:id",
         name: "penawarans-detail-proenergi",
         component: () => import("@/pages/Penawaran/Detail.vue"),
-        meta: { brand: "proenergi" },
+        meta: { brand: "proenergi", roles: [13, 14] },
       },
 
       {
         path: "/jenis-produks",
         name: "jenis-produk-list",
         component: () => import("@/pages/MasterData/JenisProduk/Index.vue"),
+        meta: { roles: [2, 5] },
       },
       {
         path: "/transportir",
         name: "transportir-list",
         component: () => import("@/pages/TransportirList.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/transportirs/create",
@@ -384,6 +393,7 @@ const routes = [
         path: "/personnels",
         name: "personnel-list",
         component: () => import("@/pages/PersonnelList.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/personnels/create",
@@ -399,6 +409,7 @@ const routes = [
         path: "/volumes",
         name: "volumes-list",
         component: () => import("@/pages/VolumeList.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/volumes/create",
@@ -414,6 +425,7 @@ const routes = [
         path: "/wilayah-angkut",
         name: "wilayah-angkut-list",
         component: () => import("@/pages/WilayahAngkutList.vue"),
+        meta: { roles: [7] },
       },
 
       {
@@ -433,7 +445,7 @@ const routes = [
         path: "/kapals",
         name: "kapals-list",
         component: () => import("@/pages/KapalList.vue"),
-        meta: { title: "List Kapal" },
+        meta: { title: "List Kapal", roles: [7] },
       },
       {
         path: "/kapals/create",
@@ -451,6 +463,7 @@ const routes = [
         path: "/ongkos-kapal",
         name: "ongkos-kapal-list",
         component: () => import("@/pages/OngkosKapalList.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/ongkos-kapal/create",
@@ -467,6 +480,7 @@ const routes = [
         path: "/trucks",
         name: "trucks-list",
         component: () => import("@/pages/TruckList.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/trucks/create",
@@ -484,6 +498,7 @@ const routes = [
         name: "oa-trucks-list",
         component: () => import("@/pages/OaTruckList.vue"),
         props: true,
+        meta: { roles: [7] },
       },
       {
         path: "/oa-trucks/create",
@@ -502,25 +517,25 @@ const routes = [
         path: "/penawarans/verifikasi",
         name: "penawarans-verifikasi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "bm", brand: "reguler" },
+        meta: { role: "bm", brand: "reguler", roles: [8] },
       },
       {
         path: "/penawarans-proenergi/verifikasi",
         name: "penawarans-verifikasi-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "bm", brand: "proenergi" },
+        meta: { role: "bm", brand: "proenergi", roles: [15] },
       },
       {
         path: "/penawarans/verifikasi/om",
         name: "penawarans-verifikasi-om",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "om", brand: "reguler" },
+        meta: { role: "om", brand: "reguler", roles: [2, 3, 10] },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om",
         name: "penawarans-verifikasi-om-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "om", brand: "proenergi" },
+        meta: { role: "om", brand: "proenergi", roles: [16] },
       },
       {
         path: "/penawarans/:id/verifikasi",
@@ -538,7 +553,7 @@ const routes = [
         path: "/penawarans/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "om", brand: "reguler" },
+        meta: { role: "om", brand: "reguler", roles: [2, 3, 10] },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om/:id",
@@ -586,6 +601,7 @@ const routes = [
         path: "/logistik/lcrs",
         name: "logistik-lcrs",
         component: () => import("@/pages/LogistikLcrList.vue"),
+        meta: { roles: [6] },
       },
       {
         path: "/logistik/lcrs/:id",
@@ -630,11 +646,13 @@ const routes = [
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
         component: () => import("@/pages/ReviewDataCustomerAdmin.vue"),
+        meta: { roles: [9] },
       },
       {
         path: "/review/logistik",
         name: "review-data-customer-logistik",
         component: () => import("@/pages/ReviewDataCustomerLogistik.vue"),
+        meta: { roles: [7] },
       },
       {
         path: "/review/logistik/:id",
@@ -671,6 +689,7 @@ const routes = [
         path: "/sales-confirmations",
         name: "sales-confirmations",
         component: () => import("@/pages/SalesConfirmationIndex.vue"),
+        meta: { roles: [9] },
       },
       {
         path: "/sales-confirmations/:id",
@@ -706,20 +725,20 @@ const routes = [
         path: "/logistics/delivery-plan",
         name: "logistics-delivery-plan",
         component: () => import("@/pages/DeliveryPlanList.vue"),
-        meta: { title: "Delivery Plan" },
+        meta: { title: "Delivery Plan", roles: [7] },
       },
 
       {
         path: "/procurement/delivery-requests",
         name: "procurement-delivery-requests",
         component: () => import("@/pages/Delivery/Index.vue"),
-        meta: { title: "Delivery Request" }, // opsional role guard juga bisa ditambah
+        meta: { title: "Delivery Request", roles: [5] },
       },
       {
         path: "/procurement/delivery-requests/:id",
         name: "procurement-dr-detail",
         component: () => import("@/pages/DeliveryRequestDetail.vue"),
-        meta: { breadcrumbTitle: "Detail Delivery Request" },
+        meta: { breadcrumbTitle: "Detail Delivery Request", roles: [5] },
         props: true,
       },
 

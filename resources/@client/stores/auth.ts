@@ -12,8 +12,18 @@ export const useAuthStore = defineStore('auth', {
       email: string
       id_role: number
       two_factor_secret: string | null
+      permissions: string[]
     } | null,
   }),
+
+  getters: {
+    // Cek apakah user memiliki permission tertentu.
+    // Return false (bukan error) jika user null atau permissions belum ter-load.
+    // Admin sudah mendapat semua 23 permission dari backend (via $appends accessor),
+    // sehingga getter ini cukup array.includes() tanpa perlu bypass khusus di FE.
+    can: (state) => (permission: string): boolean =>
+      state.user?.permissions?.includes(permission) ?? false,
+  },
 
   actions: {
     async fetchUser() {
