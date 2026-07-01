@@ -89,7 +89,7 @@ const deleteTarget = ref<number | null>(null)
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-const isRole5 = computed(() => Number(auth.user?.id_role) === 5)
+const canManageHarga = computed(() => auth.can('harga-produk.manage'))
 
 // ─── Computed: tabel utama ────────────────────────────────────────────────────
 
@@ -288,7 +288,7 @@ function produkText(row: HargaRow) {
       <PageHeader title="Master Harga Produk"
         description="Kelola data harga produk per periode. Klik baris untuk melihat detail harga.">
         <template #action>
-          <Button v-if="isRole5" :as="RouterLink" :to="{ name: 'produk-hargas-create' }" variant="white"
+          <Button v-if="canManageHarga" :as="RouterLink" :to="{ name: 'produk-hargas-create' }" variant="white"
             class="inline-flex items-center gap-2">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Harga
@@ -471,7 +471,7 @@ function produkText(row: HargaRow) {
                         <Lucide icon="Edit" class="h-4 w-4" />
                       </Button>
 
-                      <Button v-if="isRole5" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                      <Button v-if="canManageHarga" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
                         title="Hapus" @click="confirmDelete(item.id_produk_harga)">
                         <Lucide icon="Trash2" class="h-4 w-4" />
                       </Button>

@@ -283,7 +283,7 @@ async function onLogout() {
             Profile
           </Menu.Item>
 
-          <Menu.Item v-if="auth.user?.id_role === 1" as="button" class="hover:bg-white/5"
+          <Menu.Item v-if="auth.can('admin.users.manage')" as="button" class="hover:bg-white/5"
             @click="() => router.push({ name: 'users' })">
             <Lucide icon="Edit" class="w-4 h-4 mr-2" />
             Add Account

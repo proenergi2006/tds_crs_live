@@ -48,6 +48,7 @@ const nestedMenu = (menu: Array<Menu | "divider">, route: Route) => {
         activePageNames: item.activePageNames,
         subMenu: item.subMenu,
         ignore: item.ignore,
+        badgeKey: item.badgeKey,
       };
       menuItem.active =
         (isActiveMenuItem(menuItem, route) ||

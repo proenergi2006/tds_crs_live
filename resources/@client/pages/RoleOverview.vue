@@ -9,10 +9,18 @@
         </p>
       </div>
 
-      <Button variant="primary" @click="openCreate" class="inline-flex items-center gap-2">
-        <Lucide icon="Plus" class="h-4 w-4" />
-        <span>Add New Role</span>
-      </Button>
+      <div class="flex items-center gap-2">
+        <RouterLink :to="{ name: 'role-permissions' }">
+          <Button variant="outline-secondary" class="inline-flex items-center gap-2">
+            <Lucide icon="ShieldCheck" class="h-4 w-4" />
+            <span>Manage Permissions</span>
+          </Button>
+        </RouterLink>
+        <Button variant="primary" @click="openCreate" class="inline-flex items-center gap-2">
+          <Lucide icon="Plus" class="h-4 w-4" />
+          <span>Add New Role</span>
+        </Button>
+      </div>
     </div>
 
     <!-- Summary -->
@@ -288,6 +296,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from "vue"
+import { RouterLink } from "vue-router"
 import axios from "axios"
 import { debounce } from "lodash"
 import Swal from "sweetalert2"

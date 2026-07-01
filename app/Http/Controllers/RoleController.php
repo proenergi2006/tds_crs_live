@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
@@ -89,5 +91,52 @@ class RoleController extends Controller
         ]);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Return permission_ids yang sudah di-assign ke role ini.
+     */
+    public function permissions(Role $role)
+    {
+        $ids = DB::table('role_has_permissions')
+            ->where('id_role', $role->id_role)
+            ->pluck('permission_id');
+
+        return response()->json(['data' => $ids]);
+    }
+
+    /**
+     * Sync seluruh permissions untuk role ini (replace strategy).
+     * Hanya Administrator (id_role=1) yang boleh akses.
+     */
+    public function syncPermissions(Request $request, Role $role)
+    {
+        abort_if($request->user()->id_role !== 1, 403, 'Hanya Administrator yang dapat mengubah permissions.');
+
+        $validated = $request->validate([
+            'permission_ids'   => ['present', 'array'],
+            'permission_ids.*' => ['integer', 'exists:permissions,id'],
+        ]);
+
+        DB::transaction(function () use ($role, $validated) {
+            DB::table('role_has_permissions')
+                ->where('id_role', $role->id_role)
+                ->delete();
+
+            if (!empty($validated['permission_ids'])) {
+                $rows = collect($validated['permission_ids'])
+                    ->map(fn ($pid) => [
+                        'id_role'       => $role->id_role,
+                        'permission_id' => $pid,
+                    ])
+                    ->all();
+
+                DB::table('role_has_permissions')->insert($rows);
+            }
+        });
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return response()->json(['message' => 'Permissions updated']);
     }
 }

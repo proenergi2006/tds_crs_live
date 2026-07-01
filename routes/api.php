@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
@@ -81,8 +82,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', fn(Request $req) => $req->user());
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
 
-    // b) Roles CRUD
+    // b) Roles CRUD + permission matrix
     Route::apiResource('roles', RoleController::class);
+    Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
+    Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
+    Route::get('permissions',               [PermissionController::class, 'index']);
 
     // c) Users CRUD
     Route::apiResource('users', UserController::class);

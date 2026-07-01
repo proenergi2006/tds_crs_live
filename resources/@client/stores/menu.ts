@@ -4,10 +4,8 @@ import { type Icon } from "@/components/Base/Lucide/Lucide.vue";
 import { type Themes } from "@/stores/theme";
 import topMenu from "@/main/top-menu";
 import simpleMenu from "@/main/simple-menu";
-import sideMenu from "@/main/side-menu";
+import navigation from "@/main/navigation";
 import { useAuthStore } from "@/stores/auth";
-import { canAccessMenu } from "@/stores/roleMenuMapping";
-import router from "@/router";
 
 export interface Menu {
   icon: Icon;
@@ -16,6 +14,8 @@ export interface Menu {
   activePageNames?: string[];
   subMenu?: Menu[];
   ignore?: boolean;
+  permission?: string;
+  badgeKey?: string;
   badge?: {
     counter: "pendingCfo" | "pendingCeo";
     role?: number; // kalau diisi, badge hanya tampil untuk role ini
@@ -26,35 +26,37 @@ export interface MenuState {
   menuValue: Array<Menu | "divider">;
 }
 
-const routeByName = () =>
-  new Map(router.getRoutes().map((route) => [String(route.name), route]));
+/**
+ * Filter satu item navigasi secara rekursif berdasarkan permission.
+ *
+ * Aturan:
+ *   - Leaf item tanpa `permission`  → selalu tampil (universal: Dashboard, Profile)
+ *   - Leaf item dengan `permission` → tampil jika auth.can(permission)
+ *   - Grup tanpa `permission`       → tampil jika ≥ 1 child lolos filter
+ *   - Grup dengan `permission`      → tampil jika auth.can(permission) && ≥ 1 child lolos
+ */
+const filterByPermission = (
+  item: Menu,
+  canFn: (permission: string) => boolean,
+): Menu | null => {
+  if (item.subMenu?.length) {
+    const filteredSub = item.subMenu
+      .map((sub) => filterByPermission(sub, canFn))
+      .filter((sub): sub is Menu => sub !== null);
 
-const canAccessRoute = (roleId: number | undefined, pageName?: string) => {
-  if (!pageName) return true;
+    if (!filteredSub.length) return null;
 
-  const route = routeByName().get(pageName);
-  const allowedRoles = route?.meta.roles;
+    if (item.permission && !canFn(item.permission)) return null;
 
-  if (!Array.isArray(allowedRoles) || !allowedRoles.length) return true;
+    return { ...item, subMenu: filteredSub };
+  }
 
-  return allowedRoles.includes(roleId ?? -1);
-};
+  // Leaf item
+  if (item.permission) {
+    return canFn(item.permission) ? item : null;
+  }
 
-const filterMenuItemByRole = (item: Menu, roleId: number | undefined): Menu | null => {
-  if (!canAccessRoute(roleId, item.pageName)) return null;
-
-  if (!item.subMenu?.length) return item;
-
-  const subMenu = item.subMenu
-    .map((subItem) => filterMenuItemByRole(subItem, roleId))
-    .filter((subItem): subItem is Menu => subItem !== null);
-
-  if (!subMenu.length && !item.pageName) return null;
-
-  return {
-    ...item,
-    subMenu,
-  };
+  return item; // tanpa permission → universal, selalu tampil
 };
 
 export const useMenuStore = defineStore("menu", {
@@ -64,25 +66,13 @@ export const useMenuStore = defineStore("menu", {
   getters: {
     menu: (state) => (layout: Themes["layout"]) => {
       const auth = useAuthStore();
-      const roleId = auth.user?.id_role;
 
-      if (layout === "top-menu") {
-        return topMenu;
-      }
-      if (layout === "simple-menu") {
-        return simpleMenu;
-      }
+      if (layout === "top-menu") return topMenu;
+      if (layout === "simple-menu") return simpleMenu;
 
-      // Filter side-menu berdasarkan role permissions
-      return sideMenu
-        .map((item) => {
-          if (item === "divider") return item;
-
-          if (!canAccessMenu(roleId, item.title)) return null;
-
-          return filterMenuItemByRole(item, roleId);
-        })
-        .filter((item): item is Menu | "divider" => item !== null);
+      return (navigation as Menu[])
+        .map((item) => filterByPermission(item, (p) => auth.can(p)))
+        .filter((item): item is Menu => item !== null);
     },
   },
 });
