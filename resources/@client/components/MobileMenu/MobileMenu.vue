@@ -3,10 +3,13 @@ import "@/assets/css/vendors/simplebar.css";
 import "@/assets/css/components/mobile-menu.css";
 import { useRoute, useRouter } from "vue-router";
 import { twMerge } from "tailwind-merge";
-import logoUrl from "@/assets/images/logo.svg";
+import defaultLogoUrl from "@/assets/images/logo.png";
+import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import Lucide from "@/components/Base/Lucide";
 import { useMenuStore } from "@/stores/menu";
 import { useThemeStore } from "@/stores/theme";
+import { useAuthStore } from "@/stores/auth";
+import { useAccount } from "@/composables/useAccount";
 import {
   type FormattedMenu,
   nestedMenu,
@@ -27,8 +30,24 @@ const setFormattedMenu = (
 };
 const themeStore = useThemeStore();
 const menuStore = useMenuStore();
+const authStore = useAuthStore();
 const menu = computed(() =>
   nestedMenu(menuStore.menu(themeStore.theme.layout), route)
+);
+
+// Account (user info + logout) — shared with desktop AccountMenu
+const { userName, userEmail, onLogout } = useAccount();
+
+// Brand agen vs TDS (pola sama seperti SideMenu.vue)
+const agenRoles = [13, 14, 15, 16];
+const isAgenRole = computed(() =>
+  agenRoles.includes(Number(authStore.user?.id_role))
+);
+const appName = computed(() =>
+  isAgenRole.value ? "Agen TDS" : "Tri Daya Selaras"
+);
+const currentLogo = computed(() =>
+  isAgenRole.value ? agenLogoUrl : defaultLogoUrl
 );
 
 const activeMobileMenu = ref(false);
@@ -63,12 +82,29 @@ onMounted(() => {
     ]"
   >
     <div class="h-[70px] px-3 sm:px-8 flex items-center">
-      <a href="" class="flex mr-auto">
-        <img
-          alt="Midone Tailwind HTML Admin Template"
-          class="w-6"
-          :src="logoUrl"
-        />
+      <a href="" class="flex items-center gap-3 mr-auto min-w-0">
+        <div
+          class="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] bg-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
+        >
+          <img
+            alt="Application Logo"
+            class="w-8 h-8 object-contain"
+            :src="currentLogo"
+          />
+        </div>
+        <div class="flex min-w-0 flex-col leading-tight">
+          <span
+            class="font-semibold truncate"
+            :class="isAgenRole
+              ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
+              : 'text-white'"
+          >
+            {{ appName }}
+          </span>
+          <span class="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">
+            Crushed Stone
+          </span>
+        </div>
       </a>
       <a href="#" @click="(e) => e.preventDefault()">
         <Lucide
@@ -83,15 +119,17 @@ onMounted(() => {
       </a>
     </div>
     <div
-      ref="scrollableRef"
-      :class="
-        twMerge([
-          'h-screen z-20 top-0 left-0 w-[270px] -ml-[100%] bg-primary transition-all duration-300 ease-in-out dark:bg-darkmode-800',
-          '[&[data-simplebar]]:fixed [&_.simplebar-scrollbar]:before:bg-black/50',
-          'group-[.mobile-menu--active]:ml-0',
-        ])
-      "
+      class="fixed z-20 h-screen top-0 left-0 w-[270px] -ml-[100%] bg-primary transition-all duration-300 ease-in-out dark:bg-darkmode-800 flex flex-col group-[.mobile-menu--active]:ml-0"
     >
+      <div
+        ref="scrollableRef"
+        :class="
+          twMerge([
+            'flex-1 min-h-0',
+            '[&_.simplebar-scrollbar]:before:bg-black/50',
+          ])
+        "
+      >
       <a
         href="#"
         @click="(e) => e.preventDefault()"
@@ -252,6 +290,27 @@ onMounted(() => {
         </template>
         <!-- END: First Child -->
       </ul>
+      </div>
+      <!-- BEGIN: Account Footer (di luar SimpleBar, selalu terlihat) -->
+      <div class="shrink-0 border-t border-white/[0.08] px-6 py-4">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-white leading-tight truncate">
+            {{ userName }}
+          </div>
+          <div class="text-xs text-white/70 leading-tight mt-0.5 truncate">
+            {{ userEmail }}
+          </div>
+        </div>
+        <button
+          type="button"
+          @click="onLogout"
+          class="mt-3 flex w-full items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+        >
+          <Lucide icon="ToggleRight" class="w-4 h-4 mr-2" />
+          Logout
+        </button>
+      </div>
+      <!-- END: Account Footer -->
     </div>
   </div>
   <!-- END: Mobile Menu -->
