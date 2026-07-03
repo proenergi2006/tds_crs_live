@@ -10,21 +10,22 @@ declare module "vue-router" {
     brand?: string;
     role?: string;
     permission?: string;
+    guestOnly?: boolean;
   }
 }
 
 const routes = [
-  { path: "/", redirect: "/login" },
   {
     path: "/login",
     name: "login",
-    meta: { title: "Login" },
+    meta: { title: "Login", guestOnly: true },
     component: () => import("@/pages/Login.vue"),
   },
 
   {
     path: "/two-factor",
     name: "two-factor",
+    meta: { guestOnly: true },
     component: () => import("@/pages/TwoFactor.vue"),
   },
 
@@ -35,7 +36,7 @@ const routes = [
   },
 
   {
-    path: "/app",
+    path: "/",
     component: () => import("@/themes/Layout.vue"),
     children: [
       {
@@ -585,12 +586,6 @@ const routes = [
       },
 
       {
-        path: "/po-customer/create",
-        name: "penawarans-po",
-        component: () => import("@/pages/PenawaranCustomerPO.vue"),
-      },
-
-      {
         path: "/po-customers",
         name: "po-customers-index",
         component: () => import("@/pages/PoCustomersIndex.vue"),
@@ -724,7 +719,7 @@ const routes = [
       },
 
       {
-        path: "/sales-confirmations/bm/:id",
+        path: "/sales-confirmations/bm/:id/po",
         name: "sales-confirmations-bm-detail-po",
         component: () => import("@/pages/SalesConfirmationBMDetailClassic.vue"),
         props: true,
@@ -832,10 +827,22 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Belum login → redirect ke login
-  if (!token && to.name !== "login" && to.name !== "two-factor") {
+  if (
+    !token &&
+    to.name !== "login" &&
+    to.name !== "two-factor" &&
+    to.name !== "verify-customer" &&
+    to.name !== "forgot-password"
+  ) {
     // stop lebih cepat saat redirect agar tidak menggantung
     stopRouteLoading(150);
     return next({ name: "login", query: { logged_out: "1" } });
+  }
+
+  // Sudah login tapi mencoba akses halaman guest-only → redirect ke dashboard
+  if (token && to.meta.guestOnly) {
+    stopRouteLoading(150);
+    return next({ name: "dashboard-overview-1" });
   }
 
   // Cek permission
