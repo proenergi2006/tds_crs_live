@@ -17,7 +17,7 @@ class PermissionController extends Controller
 
         $grouped = $permissions
             ->groupBy('module')
-            ->map(fn ($items, $module) => [
+            ->map(fn($items, $module) => [
                 'module'      => $module,
                 'permissions' => $items->values(),
             ])
@@ -26,11 +26,6 @@ class PermissionController extends Controller
         return response()->json(['data' => $grouped]);
     }
 
-    /**
-     * Update only the `module` and `description` metadata of a permission.
-     * `name` and `guard_name` are intentionally never accepted here — they
-     * are technical keys referenced elsewhere (e.g. router meta.permission).
-     */
     public function update(UpdatePermissionRequest $request, $id)
     {
         $permission = DB::table('permissions')->where('id', $id)->first();

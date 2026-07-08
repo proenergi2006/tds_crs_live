@@ -16,50 +16,42 @@
       </Tab.List>
 
       <Tab.Panels class="mt-4">
-        <!-- Master Permission (read-only) -->
+        <!-- Master Permission (read-only, flat list, edit module/description only) -->
         <Tab.Panel>
-          <div v-if="isLoading" class="flex items-center justify-center py-24 text-slate-500">
-            <Lucide icon="Loader" class="mr-2 h-5 w-5 animate-spin" />
-            Memuat data permission...
-          </div>
+          <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="isLoading"
+            :empty="paginatedPermissions.length === 0" :colspan="4" :show-footer="true" :show-toolbar="true"
+            :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+            search-placeholder="Cari permission..." loading-text="Memuat data permission..."
+            empty-description="Belum ada data permission." @page-change="goToPage">
+            <template #head>
+              <Table.Th>Module</Table.Th>
+              <Table.Th>Name</Table.Th>
+              <Table.Th>Description</Table.Th>
+              <Table.Th class="text-center">Aksi</Table.Th>
+            </template>
 
-          <div v-else class="space-y-6">
-            <CardSection
-              v-for="group in permissionGroups"
-              :key="group.module"
-              :title="group.module"
-              icon="Shield"
-            >
-              <div class="divide-y divide-slate-100">
-                <div
-                  v-for="perm in group.permissions"
-                  :key="perm.id"
-                  class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div class="flex flex-col gap-1">
-                    <div class="text-sm font-medium text-slate-800">{{ perm.name }}</div>
-                    <div class="text-xs text-slate-500">{{ perm.description || '-' }}</div>
-                  </div>
-
-                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shrink-0 !shadow-none" title="Edit"
+            <template #body>
+              <Table.Tr v-for="perm in paginatedPermissions" :key="perm.id" class="transition hover:bg-slate-50">
+                <Table.Td>
+                  <span class="font-label inline-flex rounded-full bg-primary/10 px-3 py-1 text-primary">
+                    {{ perm.module }}
+                  </span>
+                </Table.Td>
+                <Table.Td class="font-medium text-slate-800">
+                  {{ perm.name }}
+                </Table.Td>
+                <Table.Td class="text-slate-600">
+                  {{ perm.description || '-' }}
+                </Table.Td>
+                <Table.Td class="text-center">
+                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
                     @click="openEdit(perm)">
                     <Lucide icon="Edit" class="h-4 w-4" />
                   </Button>
-                </div>
-
-                <div v-if="!group.permissions.length" class="py-3 text-sm text-slate-500">
-                  Tidak ada permission pada module ini.
-                </div>
-              </div>
-            </CardSection>
-
-            <div
-              v-if="!permissionGroups.length"
-              class="rounded-lg bg-white p-6 text-center text-sm text-slate-500 shadow-sm"
-            >
-              Belum ada data permission.
-            </div>
-          </div>
+                </Table.Td>
+              </Table.Tr>
+            </template>
+          </DataList>
         </Tab.Panel>
 
         <!-- Permission Matrix -->
@@ -76,12 +68,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { debounce } from 'lodash'
 import { Tab } from '@/components/Base/Headless'
 import Button from '@/components/Base/Button'
+import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import PermissionMatrix from './Matrix.vue'
 import PermissionFormModal from './Form.vue'
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -106,9 +100,54 @@ interface PermissionGroup {
 const isLoading = ref(true)
 const permissionGroups = ref<PermissionGroup[]>([])
 
+const searchQuery = ref('')
+const perPage = ref(10)
+const currentPage = ref(1)
+
 /* Section: Form state */
 const formModal = ref(false)
 const selectedPermission = ref<Permission | null>(null)
+
+/* Section: Computed — flatten grouped-by-module response into a single list */
+const allPermissions = computed<Permission[]>(() =>
+  permissionGroups.value.flatMap(group => group.permissions),
+)
+
+const filteredPermissions = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+
+  if (!query) return allPermissions.value
+
+  return allPermissions.value.filter(perm => {
+    return [perm.module, perm.name, perm.description].some(value =>
+      String(value || '').toLowerCase().includes(query),
+    )
+  })
+})
+
+const totalRecords = computed(() => filteredPermissions.value.length)
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(totalRecords.value / perPage.value)),
+)
+
+const paginatedPermissions = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value
+
+  return filteredPermissions.value.slice(start, start + perPage.value)
+})
+
+watch(searchQuery, debounce(resetToFirstPage, 300))
+watch(perPage, resetToFirstPage)
+
+function resetToFirstPage() {
+  currentPage.value = 1
+}
+
+function goToPage(page: number) {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
 
 /* Section: Data fetching */
 async function loadPermissions() {
@@ -116,6 +155,7 @@ async function loadPermissions() {
   try {
     const { data } = await permissionApi.getAll()
     permissionGroups.value = data.data as PermissionGroup[]
+    currentPage.value = 1
   } catch {
     permissionGroups.value = []
   } finally {

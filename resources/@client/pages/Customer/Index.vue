@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
@@ -14,7 +14,13 @@ import { createResourceApi } from '@/utils/resourceApi.js'
 
 const customerApi = createResourceApi('/customers')
 const { success, error } = useNotification()
+const route = useRoute()
 const router = useRouter()
+
+/* Brand switching — TDS vs Proenergi (pola sama seperti Penawaran/Form.vue) */
+type Brand = 'tds' | 'proenergi'
+const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
+const isProenergi = brand === 'proenergi'
 
 /* State: data & pagination */
 const customers = ref<any[]>([])
@@ -29,6 +35,13 @@ const totalPages = ref(1)
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
+
+/* Computed: summary cards (Proenergi only) */
+const totalProspect = computed(() => customers.value.filter(c => c.status_customer === 1).length)
+const totalTetap = computed(() => customers.value.filter(c => c.status_customer === 2).length)
+const totalPenawaran = computed(() =>
+  customers.value.reduce((sum, c) => sum + Number(c.jumlah_penawaran ?? 0), 0)
+)
 
 onMounted(() => fetchData())
 
@@ -59,11 +72,16 @@ function goToPage(page: number) {
 }
 
 function openCreate() {
-  router.push({ name: 'customers-create' })
+  router.push({ name: isProenergi ? 'customers-create-proenergi' : 'customers-create' })
 }
 
 function openEdit(id: number) {
-  router.push({ name: 'customers-edit', params: { id } })
+  router.push({ name: isProenergi ? 'customers-edit-proenergi' : 'customers-edit', params: { id } })
+}
+
+function openCreatePenawaran(id: number) {
+  const routeName = isProenergi ? 'penawarans-create-proenergi' : 'penawarans-create'
+  router.push({ name: routeName, query: { customer_id: id } })
 }
 
 function confirmDelete(id: number) {
@@ -103,7 +121,10 @@ function getStatusClass(status?: number) {
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <PageHeader title="Master Customers" description="Kelola data customer yang kamu tangani">
+      <PageHeader
+        :title="isProenergi ? 'Master Customers Proenergi' : 'Master Customers'"
+        :description="isProenergi ? 'Kelola data customer Proenergi yang kamu tangani' : 'Kelola data customer yang kamu tangani'"
+      >
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
@@ -112,8 +133,28 @@ function getStatusClass(status?: number) {
         </template>
       </PageHeader>
 
+      <!-- Summary Cards (Proenergi only) -->
+      <div v-if="isProenergi" class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <div class="box p-4">
+          <div class="font-label">Total Customer</div>
+          <div class="font-num-display mt-1">{{ totalRecords }}</div>
+        </div>
+        <div class="box p-4">
+          <div class="font-label">Prospect</div>
+          <div class="font-num-display mt-1 !text-amber-600">{{ totalProspect }}</div>
+        </div>
+        <div class="box p-4">
+          <div class="font-label">Customer Tetap</div>
+          <div class="font-num-display mt-1 !text-emerald-600">{{ totalTetap }}</div>
+        </div>
+        <div class="box p-4">
+          <div class="font-label">Total Penawaran</div>
+          <div class="font-num-display mt-1 !text-primary">{{ totalPenawaran }}</div>
+        </div>
+      </div>
+
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="customers.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :empty="customers.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"
         :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nama perusahaan atau email..."
         loading-text="Memuat data customer..." empty-description="Belum ada customer yang ditambahkan."
         @page-change="goToPage">
@@ -124,6 +165,7 @@ function getStatusClass(status?: number) {
           <Table.Th>Kontak</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">LCR</Table.Th>
+          <Table.Th class="text-center">Quotations</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
 
@@ -134,7 +176,7 @@ function getStatusClass(status?: number) {
             </Table.Td>
             <Table.Td>
               <div class="font-strong">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="font-caption mt-0.5">{{ item.email || '-' }}</div>
+              <div class="font-caption mt-0.5">{{ isProenergi ? (item.user?.name || '-') : (item.email || '-') }}</div>
             </Table.Td>
             <Table.Td>
               <div class="font-body">{{ item.alamat_perusahaan || '-' }}</div>
@@ -156,8 +198,15 @@ function getStatusClass(status?: number) {
               <Lucide v-if="item.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
             </Table.Td>
+            <Table.Td class="font-num text-center">
+              {{ item.jumlah_penawaran ?? 0 }}
+            </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-2">
+                <Button variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Buat Penawaran"
+                  @click="openCreatePenawaran(item.id_customer)">
+                  <Lucide icon="FilePlus" class="h-4 w-4" />
+                </Button>
                 <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
                   @click="openEdit(item.id_customer)">
                   <Lucide icon="Edit" class="h-4 w-4" />

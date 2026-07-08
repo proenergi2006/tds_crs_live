@@ -1,26 +1,15 @@
 <template>
-  <div class="p-6">
-    <PageHeader title="Permission Matrix"
-      description="Kelola assignment permission per role. Centang untuk memberikan akses, kosongkan untuk mencabut.">
-      <template #action>
-        <RouterLink :to="{ name: 'role-overview' }">
-          <Button variant="outline-secondary" class="inline-flex items-center gap-2">
-            <Lucide icon="ArrowLeft" class="h-4 w-4" />
-            Kembali ke Role
-          </Button>
-        </RouterLink>
-      </template>
-    </PageHeader>
-
+  <CardSection title="Matrix Permission" description="Setiap baris permission, setiap kolom role." icon="LayoutGrid"
+    content-class="!px-0 !pb-0" class="my-4">
     <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-24 text-slate-500">
       <Lucide icon="Loader" class="mr-2 h-5 w-5 animate-spin" />
       Memuat permission matrix...
     </div>
 
+    <!-- Matrix Table -->
     <template v-else>
-      <!-- Matrix Table -->
-      <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="overflow-hidden border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
           <table class="w-full min-w-max divide-y divide-slate-200">
             <thead class="bg-slate-50">
@@ -68,28 +57,28 @@
           </table>
         </div>
       </div>
-
-      <!-- Sticky save bar -->
-      <div
-        class="sticky bottom-0 z-10 -mx-6 -mb-6 flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4"
-        style="box-shadow: 0 -2px 8px rgba(0,0,0,0.06)">
-        <span class="text-sm text-slate-500">
-          <template v-if="isDirty">
-            <span class="font-semibold text-amber-600">{{ changedRoleCount }} role</span>
-            memiliki perubahan yang belum disimpan.
-          </template>
-          <template v-else>
-            Tidak ada perubahan.
-          </template>
-        </span>
-
-        <Button variant="primary" :disabled="!isDirty || isSaving" class="inline-flex items-center gap-2"
-          @click="saveChanges">
-          <Lucide v-if="isSaving" icon="Loader" class="h-4 w-4 animate-spin" />
-          Save Changes
-        </Button>
-      </div>
     </template>
+  </CardSection>
+
+  <!-- Sticky save bar -->
+  <div v-if="!isLoading"
+    class="sticky bottom-0 z-10 -mx-6 -mb-6 flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4"
+    style="box-shadow: 0 -2px 8px rgba(0,0,0,0.06)">
+    <span class="text-sm text-slate-500">
+      <template v-if="isDirty">
+        <span class="font-semibold text-amber-600">{{ changedRoleCount }} role</span>
+        memiliki perubahan yang belum disimpan.
+      </template>
+      <template v-else>
+        Tidak ada perubahan.
+      </template>
+    </span>
+
+    <Button variant="primary" :disabled="!isDirty || isSaving" class="inline-flex items-center gap-2"
+      @click="saveChanges">
+      <Lucide v-if="isSaving" icon="Loader" class="h-4 w-4 animate-spin" />
+      Save Changes
+    </Button>
   </div>
 </template>
 
@@ -98,9 +87,13 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
+import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
+import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+
+const roleApi = createResourceApi('/roles')
 
 /* Section: Types */
 interface Permission {
@@ -177,11 +170,11 @@ async function loadData() {
   try {
     const [permRes, roleRes] = await Promise.all([
       axios.get('/api/permissions'),
-      axios.get('/api/roles', { params: { per_page: 200 } }),
+      roleApi.getAll({ as_list: true }),
     ])
 
     permissionGroups.value = permRes.data.data as PermissionGroup[]
-    roles.value = (roleRes.data.data as RoleItem[]).filter(r => r.id_role !== 1)
+    roles.value = (roleRes.data as RoleItem[]).filter(r => r.id_role !== 1)
 
     // Inisialisasi matrix dengan false untuk setiap pasangan (permId, roleId)
     permissionGroups.value.forEach(group => {
@@ -207,7 +200,7 @@ async function loadData() {
 
     originalMatrix.value = snapshotMatrix()
   } catch {
-    error('Gagal memuat permission matrix')
+    error('Gagal', 'Gagal memuat permission matrix')
   } finally {
     isLoading.value = false
   }
@@ -239,7 +232,7 @@ async function saveChanges() {
     originalMatrix.value = snapshotMatrix()
     success('Permissions berhasil disimpan')
   } catch {
-    error('Gagal menyimpan permissions')
+    error('Gagal', 'Gagal menyimpan permissions')
   } finally {
     isSaving.value = false
   }

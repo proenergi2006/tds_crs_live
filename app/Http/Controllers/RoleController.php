@@ -17,15 +17,19 @@ class RoleController extends Controller
     {
         $search  = $request->query('search');
         $perPage = $request->query('per_page', 10);
-    
+
         $query = Role::query();
-    
+
         if ($search) {
             $query->where('role_name', 'like', "%{$search}%");
         }
-    
+
+        if ($request->boolean('as_list')) {
+            return response()->json($query->get());
+        }
+
         $paginated = $query->paginate($perPage);
-    
+
         return response()->json($paginated);
     }
 

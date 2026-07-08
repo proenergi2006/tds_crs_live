@@ -216,13 +216,13 @@ const routes = [
         path: "customers",
         name: "customers-list",
         component: () => import("@/pages/Customer/Index.vue"),
-        meta: { permission: "penawaran.tds.manage" },
+        meta: { permission: "penawaran.tds.manage", brand: "tds" },
       },
       {
         path: "customers-proenergi",
         name: "customers-list-proenergi",
-        component: () => import("@/pages/Customer/IndexProenergi.vue"),
-        meta: { permission: "penawaran.proenergi.manage" },
+        component: () => import("@/pages/Customer/Index.vue"),
+        meta: { permission: "penawaran.proenergi.manage", brand: "proenergi" },
       },
       {
         path: "customers/create",
