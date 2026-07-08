@@ -26,7 +26,7 @@
             <thead class="bg-slate-50">
               <tr>
                 <th
-                  class="min-w-[260px] px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  class="sticky left-0 z-20 min-w-[260px] bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
                   Permission
                 </th>
                 <th v-for="role in roles" :key="role.id_role"
@@ -40,17 +40,20 @@
               <template v-for="group in permissionGroups" :key="group.module">
                 <!-- Module header row -->
                 <tr class="border-t border-slate-200 bg-slate-100">
-                  <td :colspan="roles.length + 1" class="px-5 py-2">
+                  <td
+                    class="sticky left-0 z-10 bg-slate-100 px-5 py-2 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
                     <span class="text-xs font-bold uppercase tracking-widest text-slate-600">
                       {{ group.module }}
                     </span>
                   </td>
+                  <td :colspan="roles.length"></td>
                 </tr>
 
                 <!-- Permission rows -->
                 <tr v-for="perm in group.permissions" :key="perm.id"
-                  class="border-t border-slate-100 transition hover:bg-slate-50">
-                  <td class="min-w-[260px] px-5 py-3">
+                  class="group border-t border-slate-100 transition hover:bg-slate-50">
+                  <td
+                    class="sticky left-0 z-10 min-w-[260px] bg-white px-5 py-3 group-hover:bg-slate-50 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
                     <div class="text-sm font-medium text-slate-800">{{ perm.name }}</div>
                     <div class="mt-0.5 text-xs text-slate-500">{{ perm.description }}</div>
                   </td>
@@ -68,7 +71,7 @@
 
       <!-- Sticky save bar -->
       <div
-        class="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4"
+        class="sticky bottom-0 z-10 -mx-6 -mb-6 flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4"
         style="box-shadow: 0 -2px 8px rgba(0,0,0,0.06)">
         <span class="text-sm text-slate-500">
           <template v-if="isDirty">

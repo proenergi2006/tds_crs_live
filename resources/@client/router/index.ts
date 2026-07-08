@@ -48,13 +48,13 @@ const routes = [
       {
         path: "role-overview",
         name: "role-overview",
-        component: () => import("@/pages/RoleOverview.vue"),
+        component: () => import("@/pages/Role/Index.vue"),
         meta: { permission: "admin.users.manage" },
       },
       {
-        path: "role-overview/permissions",
-        name: "role-permissions",
-        component: () => import("@/pages/RoleOverview/Permissions.vue"),
+        path: "/permission-overview",
+        name: "permission-overview",
+        component: () => import("@/pages/Permission/Index.vue"),
         meta: { permission: "admin.users.manage" },
       },
       {
@@ -124,7 +124,10 @@ const routes = [
         path: "produk-hargas/:id/detail",
         name: "produk-hargas-detail",
         component: () => import("@/pages/MasterData/HargaProduk/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail Harga Produk", permission: "harga-produk.view" },
+        meta: {
+          breadcrumbTitle: "Detail Harga Produk",
+          permission: "harga-produk.view",
+        },
       },
       {
         path: "produk-hargas/create",
@@ -534,25 +537,41 @@ const routes = [
         path: "/penawarans/verifikasi",
         name: "penawarans-verifikasi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "bm", brand: "reguler", permission: "penawaran.verify-bm" },
+        meta: {
+          role: "bm",
+          brand: "reguler",
+          permission: "penawaran.verify-bm",
+        },
       },
       {
         path: "/penawarans-proenergi/verifikasi",
         name: "penawarans-verifikasi-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
+        meta: {
+          role: "bm",
+          brand: "proenergi",
+          permission: "penawaran.proenergi.verify-bm",
+        },
       },
       {
         path: "/penawarans/verifikasi/om",
         name: "penawarans-verifikasi-om",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "om", brand: "reguler", permission: "penawaran.verify-om" },
+        meta: {
+          role: "om",
+          brand: "reguler",
+          permission: "penawaran.verify-om",
+        },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om",
         name: "penawarans-verifikasi-om-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
+        meta: {
+          role: "om",
+          brand: "proenergi",
+          permission: "penawaran.proenergi.verify-om",
+        },
       },
       {
         path: "/penawarans/:id/verifikasi",
@@ -570,7 +589,11 @@ const routes = [
         path: "/penawarans/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "om", brand: "reguler", permission: "penawaran.verify-om" },
+        meta: {
+          role: "om",
+          brand: "reguler",
+          permission: "penawaran.verify-om",
+        },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om/:id",
@@ -743,13 +766,19 @@ const routes = [
         path: "/procurement/delivery-requests",
         name: "procurement-delivery-requests",
         component: () => import("@/pages/Delivery/Index.vue"),
-        meta: { title: "Delivery Request", permission: "delivery-request.manage" },
+        meta: {
+          title: "Delivery Request",
+          permission: "delivery-request.manage",
+        },
       },
       {
         path: "/procurement/delivery-requests/:id",
         name: "procurement-dr-detail",
         component: () => import("@/pages/DeliveryRequestDetail.vue"),
-        meta: { breadcrumbTitle: "Detail Delivery Request", permission: "delivery-request.manage" },
+        meta: {
+          breadcrumbTitle: "Detail Delivery Request",
+          permission: "delivery-request.manage",
+        },
         props: true,
       },
 
@@ -757,7 +786,10 @@ const routes = [
         path: "/monitoring/app-logs",
         name: "monitoring-app-logs",
         component: () => import("@/pages/Monitoring/Logs/Index.vue"),
-        meta: { title: "Application Logs", permission: "admin.monitoring.view" },
+        meta: {
+          title: "Application Logs",
+          permission: "admin.monitoring.view",
+        },
       },
 
       // ... child routes lain ...
@@ -777,7 +809,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes,
 });
 

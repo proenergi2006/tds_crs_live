@@ -87,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
     Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
     Route::get('permissions',               [PermissionController::class, 'index']);
+    Route::put('permissions/{id}',          [PermissionController::class, 'update']);
 
     // c) Users CRUD
     Route::apiResource('users', UserController::class);

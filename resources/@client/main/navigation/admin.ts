@@ -9,8 +9,9 @@ export const adminNavigation: NavItem[] = [
         icon: 'User',
         title: 'Access Control',
         subMenu: [
-          { icon: 'Shield', pageName: 'role-overview', title: 'Role', permission: 'admin.users.manage' },
-          { icon: 'Users',  pageName: 'users',         title: 'User', permission: 'admin.users.manage' },
+          { icon: 'Shield',      pageName: 'role-overview',       title: 'Role',       permission: 'admin.users.manage' },
+          { icon: 'ShieldCheck', pageName: 'permission-overview', title: 'Permission', permission: 'admin.users.manage' },
+          { icon: 'Users',       pageName: 'users',               title: 'User',       permission: 'admin.users.manage' },
         ],
       },
       {

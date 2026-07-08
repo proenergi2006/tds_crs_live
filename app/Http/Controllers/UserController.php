@@ -14,16 +14,20 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $search  = $request->query('search');
-        $perPage = $request->query('per_page', 10);
+        $search = $request->query('search');
 
-        $query = User::with('role','cabang');  
+        $query = User::with('role','cabang');
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
         }
 
+        if ($request->boolean('as_list')) {
+            return response()->json($query->get());
+        }
+
+        $perPage = $request->query('per_page', 10);
         return response()->json($query->paginate($perPage));
     }
 

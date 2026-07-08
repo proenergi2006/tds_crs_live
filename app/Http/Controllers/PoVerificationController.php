@@ -18,21 +18,36 @@ class PoVerificationController extends Controller
 
         if ($roleId === 2) {
             $q->where('disposisi_po', '>=', 2)
-              ->orderByRaw("CASE WHEN disposisi_po = 2 THEN 0 ELSE 1 END ASC");
+                ->orderByRaw("CASE WHEN disposisi_po = 2 THEN 0 ELSE 1 END ASC");
         } elseif ($roleId === 3) {
             $q->where('disposisi_po', '>=', 1);
         }
 
         if ($search) {
-            $q->where(function($sub) use ($search) {
+            $q->where(function ($sub) use ($search) {
                 $sub->where('nomor_po', 'like', "%{$search}%")
-                    ->orWhere('keterangan', 'like', "%{$search}%");
+                    ->orWhere('vendor.nama_vendor', 'like', "%{$search}%")
+                    ->orWhere('terminal.nama_terminal', 'like', "%{$search}%");
             });
         }
 
-        $q->orderBy('lastupdate_time', 'desc')
-        ->orderBy('id_po', 'desc');
-  
+        if ($tanggalDari = $request->query('tanggal_dari')) {
+            $q->whereDate('tanggal_inven', '>=', $tanggalDari);
+        }
+
+        if ($tanggalSampai = $request->query('tanggal_sampai')) {
+            $q->whereDate('tanggal_inven', '<=', $tanggalSampai);
+        }
+
+        if ($terminal = $request->query('id_terminal')) {
+            $q->where('id_terminal', $terminal);
+        }
+
+        if ($vendor = $request->query('id_vendor')) {
+            $q->where('id_vendor', $vendor);
+        }
+
+        $q->orderByDesc('lastupdate_time')->orderByDesc('id_po');
 
         return response()->json($q->paginate($perPage));
     }
@@ -60,7 +75,6 @@ class PoVerificationController extends Controller
             $po->cfo_summary    = $data['summary'] ?? null;
             $po->cfo_tgl        = now();
             $po->disposisi_po   = $result === 1 ? 2 : 0;
-
         } elseif ($roleId === 2) {
             // Verifikasi CEO
             if ($po->disposisi_po !== 2) {
@@ -70,7 +84,6 @@ class PoVerificationController extends Controller
             $po->ceo_summary    = $data['summary'] ?? null;
             $po->ceo_tgl        = now();
             $po->disposisi_po   = $result === 1 ? 4 : 0;
-
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
         }

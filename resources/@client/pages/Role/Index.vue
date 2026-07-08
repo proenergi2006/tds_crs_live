@@ -10,7 +10,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <RouterLink :to="{ name: 'role-permissions' }">
+        <RouterLink :to="{ name: 'permission-overview' }">
           <Button variant="outline-secondary" class="inline-flex items-center gap-2">
             <Lucide icon="ShieldCheck" class="h-4 w-4" />
             <span>Manage Permissions</span>
