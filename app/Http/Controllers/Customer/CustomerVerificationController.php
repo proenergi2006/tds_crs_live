@@ -85,7 +85,23 @@ class CustomerVerificationController extends Controller
         'customer:id_customer,nama_perusahaan,id_provinsi,id_kabupaten,postal_code,telepon,fax,email,alamat_perusahaan'
     ])->where('token_verification', $token)->firstOrFail();
 
-    return response()->json($row);
+    // Tentukan status lifecycle token. Tidak menolak/error untuk status
+    // expired/used — hanya menyertakan field 'status', keputusan tampilan
+    // ada di frontend (task terpisah).
+    $isExpired = $row->expired_at !== null && $row->expired_at->lte(now());
+
+    if ($isExpired) {
+        $status = 'expired';
+    } elseif (!$row->is_active) {
+        $status = 'used';
+    } else {
+        $status = 'active';
+    }
+
+    $data = $row->toArray();
+    $data['status'] = $status;
+
+    return response()->json($data);
 }
 
     // POST /api/customer-verifications
@@ -486,17 +502,19 @@ class CustomerVerificationController extends Controller
                 $logistikUpdate
             );
 
-            // ---------- flag verifikasi ----------
-            DB::table('customer_verifications')
-                ->where('id_verification', $cv->id_verification)
-                ->update(['is_evaluated' => 1]);
-
-            // ---------- simpan snapshot JSON ----------
+            // ---------- simpan snapshot JSON + flag verifikasi (satu titik update) ----------
+            // is_evaluated sebelumnya di-set dua kali (DB::table(...) di atas lalu
+            // $cv->update() di bawah) — dikonsolidasi jadi satu titik di sini.
+            // is_active => 0 & completion_status => 'submitted' ditambahkan supaya
+            // token single-use: setelah submit sukses, token ini tidak bisa dipakai
+            // submit ulang.
             $cv->update([
-                'legal_data'    => json_encode($legal,    JSON_UNESCAPED_UNICODE),
-                'finance_data'  => json_encode($finance,  JSON_UNESCAPED_UNICODE),
-                'logistik_data' => json_encode($logistik, JSON_UNESCAPED_UNICODE),
-                'is_evaluated'  => 1,
+                'legal_data'        => json_encode($legal,    JSON_UNESCAPED_UNICODE),
+                'finance_data'      => json_encode($finance,  JSON_UNESCAPED_UNICODE),
+                'logistik_data'     => json_encode($logistik, JSON_UNESCAPED_UNICODE),
+                'is_evaluated'      => 1,
+                'is_active'         => 0,
+                'completion_status' => \App\Enums\CustomerVerificationCompletionStatus::Submitted,
             ]);
         });
 

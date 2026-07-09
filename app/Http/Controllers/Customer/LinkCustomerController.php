@@ -52,30 +52,37 @@ class LinkCustomerController extends Controller
         //     return response()->json(['message' => 'Customer tidak perlu link.'], 422);
         // }
 
-        // cek kalau sudah ada yang aktif → pakai itu saja supaya tidak dobel
+        // cek kalau sudah ada yang aktif → pakai itu saja supaya tidak dobel,
+        // KECUALI token itu sudah expired → invalidate lalu generate baru.
         $existing = CustomerVerification::where('id_customer', $customer->id_customer)
             ->where('is_active', 1)
             ->latest('id_verification')
             ->first();
 
         if ($existing) {
+            $isExpired = $existing->expired_at !== null && $existing->expired_at->lte(now());
 
-            if ((int)($customer->is_generated_link ?? 0) === 0) {
-                $customer->forceFill([
-                    'is_generated_link' => 1,
-                    'lastupdate_time'   => now(),
-                    'lastupdate_by'     => optional($request->user())->name ?? 'system',
-                ])->save();
+            if (!$isExpired) {
+                if ((int)($customer->is_generated_link ?? 0) === 0) {
+                    $customer->forceFill([
+                        'is_generated_link' => 1,
+                        'lastupdate_time'   => now(),
+                        'lastupdate_by'     => optional($request->user())->name ?? 'system',
+                    ])->save();
+                }
+
+                $link = rtrim(config('app.frontend_url', config('app.url')), '/')
+                    . '/verify/' . $existing->token_verification;
+
+                return response()->json([
+                    'already_exists' => true,
+                    'verification'   => $existing,
+                    'link'           => $link,
+                ]);
             }
 
-            $link = rtrim(config('app.frontend_url', config('app.url')), '/')
-                . '/verify/' . $existing->token_verification;
-
-            return response()->json([
-                'already_exists' => true,
-                'verification'   => $existing,
-                'link'           => $link,
-            ]);
+            // token lama sudah expired → invalidate, lanjut buat token baru di bawah
+            $existing->update(['is_active' => 0]);
         }
 
         // generate token 17 char (huruf/angka huruf besar)
@@ -90,6 +97,8 @@ class LinkCustomerController extends Controller
             'is_evaluated'       => 0,
             'is_reviewed'        => 0,
             'is_active'          => 1,
+            'expired_at'         => now()->addDays(7),
+            'completion_status'  => \App\Enums\CustomerVerificationCompletionStatus::Draft,
 
             'legal_data'         => '',
             'legal_summary'      => '',

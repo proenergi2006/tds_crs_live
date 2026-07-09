@@ -323,6 +323,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Monitoring — hanya Administrator (id_role=1)
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
+    // Link Customer (butuh login — dipindah dari luar grup auth:sanctum)
+    Route::get('/link-customers', [LinkCustomerController::class, 'index']);
+    Route::post('/link-customers/{customer}/generate', [LinkCustomerController::class, 'generate']);
 
 
 
@@ -341,8 +344,6 @@ Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'u
     ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
 Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
-Route::get('/link-customers', [LinkCustomerController::class, 'index']);
-Route::post('/link-customers/{customer}/generate', [LinkCustomerController::class, 'generate']);
 Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('throttle:30,1');
 
 // Public PO detail (contoh)
