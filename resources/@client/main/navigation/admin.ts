@@ -24,6 +24,7 @@ export const adminNavigation: NavItem[] = [
         icon: 'File',
         pageName: 'review-data-customer-admin',
         title: 'Review Data Customer',
+        activePageNames: ['review-data-customer-admin-detail'],
         permission: 'sales-confirmation.manage',
       },
     ],

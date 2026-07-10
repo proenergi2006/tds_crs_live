@@ -198,6 +198,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/approval-timeline', [CustomerVerificationController::class, 'approvalTimeline'])->whereNumber('id');
     Route::patch('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
 
@@ -236,31 +237,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
     });
 
-    Route::prefix('review/logistik')->group(function () {
-        Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewLogistikIndex']);
-        Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewLogistikStats']);
-        // reuse method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
-        Route::get('/customer-verifications/{id}',    [CustomerVerificationController::class, 'logistikShow'])->whereNumber('id');
-        Route::patch('/customer-verifications/{id}',  [CustomerVerificationController::class, 'logistikSave'])->whereNumber('id');
-        Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'logistikVerify']);
-    });
-
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
         Route::patch('customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
         // simpan verifikasi BM
         Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
-    });
-
-    Route::prefix('review/om')->group(function () {
-        Route::get('/customer-verifications',        [CustomerVerificationController::class, 'reviewOmIndex']);
-        Route::get('/customer-verifications/stats',  [CustomerVerificationController::class, 'reviewOmStats']);
-        Route::patch('/customer-verifications/{id}/verify', [CustomerVerificationController::class, 'omVerify'])->whereNumber('id');
-
-        // opsional: kirim balik ke BM atau finalize → gunakan method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
     });
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);

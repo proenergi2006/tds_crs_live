@@ -2,21 +2,239 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalTemplate;
 use App\Models\Customer;
 use App\Models\CustomerReview;
 use App\Models\CustomerReviewAttachment;
 use App\Models\CustomerVerification;
+use App\Models\DocumentApproval;
+use App\Models\DocumentApprovalStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class CustomerVerificationController extends Controller
 {
+    /**
+     * Kode template approval untuk modul ini (approval_templates.code) —
+     * dipakai di seluruh method C1–C6 di controller ini.
+     */
+    private const APPROVAL_TEMPLATE_CODE = 'customer_verification';
+
+    /**
+     * step_order & id_role template customer_verification (diverifikasi ke
+     * tabel roles asli via tinker, cocok dengan
+     * ApprovalTemplateCustomerVerificationSeeder & plan Prioritas A/B —
+     * JANGAN diambil dari CLAUDE.md role-ID table, itu eksplisit ditandai
+     * belum lengkap/stale).
+     *
+     * (CA-Amend, pivot 2026-07-10) 2 step formal: Admin Finance -> BM.
+     * Marketing bukan lagi step approval formal (lihat createDocumentApprovalCycle()
+     * & saveReview()) sehingga STEP_MARKETING/ROLE_MARKETING dihapus dari sini.
+     */
+    private const STEP_ADMIN_FINANCE = 1;
+    private const STEP_BM            = 2;
+
+    private const ROLE_ADMIN_FINANCE = 9;
+    private const ROLE_BM            = 8;
+
+    /**
+     * (CA4, dulu C1) Buat 1 siklus document_approvals + 2 document_approval_steps
+     * (semua pending, Admin Finance -> BM) untuk verification ini. Dipanggil
+     * dari `saveReview()` saat Marketing forward (bukan lagi dari
+     * updateByToken() — lihat CA3) — caller WAJIB memastikan tidak ada siklus
+     * `in_progress` lain yang masih berjalan untuk verification yang sama
+     * sebelum memanggil method ini (guard double-forward ada di saveReview()).
+     *
+     * Dipanggil baik untuk siklus pertama (belum pernah forward) maupun
+     * siklus baru pasca-reject (multi-cycle, morphMany) — tidak ada
+     * perbedaan logic di antara keduanya, method ini selalu membuat siklus
+     * baru yang fresh.
+     *
+     * Template + step sudah di-seed di Prioritas A / dikoreksi CA1
+     * (ApprovalTemplateCustomerVerificationSeeder) dan seharusnya selalu ada.
+     * Kalau ternyata tidak ada/tidak lengkap, throw supaya aksi forward
+     * di-rollback secara eksplisit — daripada silently membiarkan baris
+     * customer_verifications ter-set disposisi_result=0 tanpa ada approval
+     * cycle sama sekali (row itu akan hilang dari semua antrean review, silent
+     * data loss yang lebih berbahaya daripada forward gagal dengan pesan
+     * jelas).
+     */
+    private function createDocumentApprovalCycle(CustomerVerification $cv): void
+    {
+        $template = ApprovalTemplate::with('steps')
+            ->where('code', self::APPROVAL_TEMPLATE_CODE)
+            ->first();
+
+        if (!$template || $template->steps->count() < 2) {
+            Log::error('Approval template customer_verification tidak ditemukan/tidak lengkap saat forward verification.', [
+                'id_verification' => $cv->id_verification,
+                'id_customer'     => $cv->id_customer,
+                'template_found'  => (bool) $template,
+                'steps_count'     => $template?->steps->count(),
+            ]);
+            throw new \RuntimeException('Approval template customer_verification belum ter-setup dengan benar.');
+        }
+
+        $stepIdsByOrder = $template->steps->pluck('id_step', 'step_order');
+
+        $approval = $cv->documentApprovals()->create([
+            'id_template'        => $template->id_template,
+            'status'             => DocumentApprovalStatus::InProgress,
+            'current_step_order' => 1,
+            'started_at'         => now(),
+        ]);
+
+        foreach ([1, 2] as $order) {
+            DocumentApprovalStep::create([
+                'id_approval'      => $approval->id_approval,
+                'id_template_step' => $stepIdsByOrder->get($order),
+                'step_order'       => $order,
+                'status'           => DocumentApprovalStepStatus::Pending,
+            ]);
+        }
+    }
+
+    /**
+     * (CA5/CA6, dulu C2/C3/C4) Tandai satu step document_approval_steps sebagai
+     * approved/rejected untuk siklus approval yang sedang `in_progress` milik
+     * verification ini, lalu majukan/tutup document_approvals induknya:
+     *
+     * - approved & bukan step terakhir (order < 2) -> current_step_order maju
+     *   ke step berikutnya, document_approvals tetap in_progress.
+     * - approved & step terakhir (order 2 / BM)    -> document_approvals
+     *   ditutup status=approved, completed_at=now(), current_step_order=null.
+     * - rejected (di step manapun)                  -> document_approvals
+     *   ditutup status=rejected, completed_at=now(), current_step_order=null.
+     *
+     * Sengaja mencari siklus yang `in_progress` (bukan sekadar approval
+     * terbaru) supaya tidak menyentuh siklus lama yang sudah closed. Kalau
+     * tidak ketemu approval/step yang cocok (mis. baris yang belum sempat
+     * dapat document_approvals — seharusnya tidak terjadi untuk data yang
+     * sudah lewat Prioritas B/C1, tapi dijaga defensif), catat warning dan
+     * return null TANPA throw — efek samping & kolom lama di method pemanggil
+     * tetap harus jalan seperti sebelumnya, supaya rewire ini tidak
+     * menjatuhkan behavior existing yang sudah berjalan.
+     */
+    private function advanceApprovalStep(
+        CustomerVerification $cv,
+        int $stepOrder,
+        DocumentApprovalStepStatus $status,
+        ?string $note
+    ): ?DocumentApproval {
+        $approval = $cv->documentApprovals()
+            ->where('status', DocumentApprovalStatus::InProgress)
+            ->latest('id_approval')
+            ->first();
+
+        if (!$approval) {
+            Log::warning('Tidak ada document_approvals berstatus in_progress untuk verification ini saat mencoba advance step approval.', [
+                'id_verification' => $cv->id_verification,
+                'step_order'      => $stepOrder,
+                'target_status'   => $status->value,
+            ]);
+            return null;
+        }
+
+        $step = $approval->steps()->where('step_order', $stepOrder)->first();
+
+        if (!$step) {
+            Log::warning('document_approval_steps untuk step_order ini tidak ditemukan pada document_approvals in_progress.', [
+                'id_verification' => $cv->id_verification,
+                'id_approval'     => $approval->id_approval,
+                'step_order'      => $stepOrder,
+            ]);
+            return null;
+        }
+
+        $step->update([
+            'status'        => $status,
+            'actor_id'      => auth()->id(),
+            'acted_at'      => now(),
+            'decision_note' => $note,
+        ]);
+
+        if ($status === DocumentApprovalStepStatus::Rejected) {
+            $approval->update([
+                'status'             => DocumentApprovalStatus::Rejected,
+                'current_step_order' => null,
+                'completed_at'       => now(),
+            ]);
+        } elseif ($stepOrder >= 2) {
+            $approval->update([
+                'status'             => DocumentApprovalStatus::Approved,
+                'current_step_order' => null,
+                'completed_at'       => now(),
+            ]);
+        } else {
+            $approval->update([
+                'current_step_order' => $stepOrder + 1,
+            ]);
+        }
+
+        return $approval;
+    }
+
+    /**
+     * (C6) Query dasar "antrean pending" untuk 1 step tertentu di sistem
+     * approval baru: verification yang punya document_approvals in_progress
+     * DENGAN current_step_order = step yang diminta (bukan sekadar step yang
+     * status-nya masih 'pending' -- semua step yang belum pernah disentuh
+     * juga nominal 'pending', termasuk step 2/3 milik siklus yang baru saja
+     * dibuat lewat C1 dan masih di step 1; filter current_step_order inilah
+     * yang membuat query ini benar2 "actionable now di step ini", bukan
+     * "belum pernah diputuskan"), lalu dicocokkan lagi ke step
+     * document_approval_steps pada step_order & id_role (via id_template_step)
+     * yang diminta sebagai double-check konsistensi data.
+     */
+    private function pendingStepQuery(int $stepOrder, int $idRole)
+    {
+        return CustomerVerification::query()
+            ->whereHas('documentApprovals', function ($approvalQuery) use ($stepOrder, $idRole) {
+                $approvalQuery->where('status', DocumentApprovalStatus::InProgress)
+                    ->where('current_step_order', $stepOrder)
+                    ->whereHas('steps', function ($stepQuery) use ($stepOrder, $idRole) {
+                        $stepQuery->where('step_order', $stepOrder)
+                            ->where('status', DocumentApprovalStepStatus::Pending)
+                            ->whereHas('templateStep', function ($templateStepQuery) use ($idRole) {
+                                $templateStepQuery->where('id_role', $idRole);
+                            });
+                    });
+            });
+    }
+
+    /**
+     * (CA7, pivot 2026-07-10) Query "antrean Marketing": Marketing bukan lagi
+     * step formal di document_approval_steps, jadi query ini TIDAK memakai
+     * pendingStepQuery(). Kandidat = verification yang customer-nya sudah
+     * submit (is_evaluated=1) DAN salah satu dari:
+     *  - belum pernah punya siklus document_approvals sama sekali (belum
+     *    pernah di-forward), ATAU
+     *  - siklus TERBARU (latestDocumentApproval, one-of-many by id_approval)
+     *    berstatus `rejected` (perlu direview/diedit ulang & di-forward lagi).
+     * Verification dengan siklus terbaru `in_progress`/`approved` TIDAK masuk
+     * ke sini (sedang/sudah diproses Admin Finance/BM).
+     */
+    private function marketingQueueQuery()
+    {
+        return CustomerVerification::query()
+            ->where('is_evaluated', 1)
+            ->where(function ($w) {
+                $w->whereDoesntHave('documentApprovals')
+                    ->orWhereHas('latestDocumentApproval', function ($approvalQuery) {
+                        $approvalQuery->where('status', DocumentApprovalStatus::Rejected);
+                    });
+            });
+    }
+
     // GET /api/customer-verifications
     public function index(Request $request)
     {
@@ -558,10 +776,18 @@ class CustomerVerificationController extends Controller
             // Reset is_verified di titik SUBMIT (bukan di generate()) — siklus
             // verifikasi baru sedang berjalan, jadi status Verified sebelumnya
             // (kalau ada, dari siklus lama) sudah tidak berlaku lagi sampai
-            // disetujui ulang oleh OM (lihat omVerify()).
+            // disetujui ulang lewat step BM di sistem approval baru (lihat
+            // bmVerify(), C4/C5).
             DB::table('customers')
                 ->where('id_customer', $cv->id_customer)
                 ->update(['is_verified' => 0]);
+
+            // (CA3, pivot 2026-07-10) Siklus document_approvals TIDAK LAGI
+            // dibuat di sini. Submit customer hanya mengisi data & menandai
+            // is_evaluated=1 (siap direview Marketing) -- siklus approval
+            // 2-step (Admin Finance -> BM) baru dibuat saat Marketing forward
+            // lewat saveReview() (lihat CA4). Guard single-use di atas
+            // (is_evaluated check) TIDAK disentuh oleh perubahan ini.
         });
 
         return response()->json(['message' => 'Data berhasil diperbarui.']);
@@ -576,20 +802,29 @@ class CustomerVerificationController extends Controller
     }
 
 
+    /**
+     * (CA7, pivot 2026-07-10, dulu C6) "unreviewed" = antrean Marketing
+     * sesungguhnya (lihat marketingQueueQuery()): sudah submit tapi belum
+     * pernah di-forward, atau siklus terakhirnya rejected. Acceptance: stats
+     * cocok dengan isi reviewIndex() default.
+     */
     public function reviewStats()
     {
-        // jumlah item yang "siap di-review"
-        $unreviewed = CustomerVerification::query()
-            ->where('is_evaluated', 1)
-            ->where('is_reviewed', 0)
-            ->where('is_active', 1)
-            ->count();
+        $unreviewed = $this->marketingQueueQuery()->count();
 
-        // optional: jumlah yang sudah di-review
+        // "reviewed" = sudah pernah di-forward dan siklus TERBARUnya sedang
+        // berjalan/sudah disetujui (in_progress/approved) -- kebalikan dari
+        // marketingQueueQuery(). Info sekunder untuk tab "reviewed" di FE,
+        // tidak dipakai acceptance criteria CA7 (yang dicek hanya kecocokan
+        // unreviewed vs list default).
         $reviewed = CustomerVerification::query()
             ->where('is_evaluated', 1)
-            ->where('is_reviewed', 1)
-            ->where('is_active', 1)
+            ->whereHas('latestDocumentApproval', function ($approvalQuery) {
+                $approvalQuery->whereIn('status', [
+                    DocumentApprovalStatus::InProgress,
+                    DocumentApprovalStatus::Approved,
+                ]);
+            })
             ->count();
 
         return response()->json([
@@ -598,6 +833,13 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
+    /**
+     * (CA7, pivot 2026-07-10, dulu C6) Default list ("unreviewed") sekarang
+     * berdasarkan marketingQueueQuery() (belum pernah forward ATAU siklus
+     * terakhir rejected), bukan step document_approval_steps (Marketing sudah
+     * bukan step formal). Tab "reviewed" (kalau FE masih mengirimnya) tetap
+     * didukung, dipetakan ke siklus terbaru in_progress/approved.
+     */
     public function reviewIndex(Request $r)
     {
         $per    = (int) $r->query('per_page', 25);
@@ -605,18 +847,17 @@ class CustomerVerificationController extends Controller
         // baca 'tab' (fallback ke 'status' untuk kompatibilitas lama)
         $status = $r->query('tab', $r->query('status', 'unreviewed'));
 
-        $rows = \App\Models\CustomerVerification::query()
+        $baseQuery = $status === 'reviewed'
+            ? CustomerVerification::query()->where('is_evaluated', 1)->whereHas('latestDocumentApproval', function ($approvalQuery) {
+                $approvalQuery->whereIn('status', [
+                    DocumentApprovalStatus::InProgress,
+                    DocumentApprovalStatus::Approved,
+                ]);
+            })
+            : $this->marketingQueueQuery();
+
+        $rows = $baseQuery
             ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
-            ->when(
-                $status === 'unreviewed',
-                fn($w) =>
-                $w->where('is_evaluated', 1)->where('is_reviewed', 0)->where('is_active', 1)
-            )
-            ->when(
-                $status === 'reviewed',
-                fn($w) =>
-                $w->where('is_reviewed', 1)->where('is_active', 1) // tambahkan is_active bila perlu
-            )
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('nama_perusahaan', 'like', "%{$q}%")
@@ -689,6 +930,52 @@ class CustomerVerificationController extends Controller
                 return $kyc['form'] ?? [];
             })(),
             // 'review_files' => $kyc['files'] ?? [],
+        ]);
+    }
+
+    /**
+     * (Prioritas E1 gap, F2 blocker) Timeline seluruh siklus
+     * `document_approvals` untuk 1 verifikasi, terbaru dulu, tiap siklus
+     * beserta step-nya (nama step, actor, waktu, catatan keputusan) — dipakai
+     * frontend detail page untuk render approval timeline. Read-only, tidak
+     * ada logic bisnis baru di sini.
+     */
+    public function approvalTimeline(int $id)
+    {
+        $cv = CustomerVerification::findOrFail($id);
+
+        $cycles = $cv->documentApprovals()
+            ->with([
+                'steps' => function ($q) {
+                    $q->orderBy('step_order');
+                },
+                'steps.templateStep:id_step,step_name,step_order,id_role',
+                'steps.actor:id,name',
+            ])
+            ->orderByDesc('id_approval')
+            ->get();
+
+        return response()->json([
+            'data' => $cycles->map(function (DocumentApproval $cycle) {
+                return [
+                    'id_approval'        => $cycle->id_approval,
+                    'status'             => $cycle->status,
+                    'current_step_order' => $cycle->current_step_order,
+                    'started_at'         => $cycle->started_at,
+                    'completed_at'       => $cycle->completed_at,
+                    'steps'              => $cycle->steps->map(function (DocumentApprovalStep $step) {
+                        return [
+                            'step_order'    => $step->step_order,
+                            'step_name'     => $step->templateStep->step_name ?? null,
+                            'status'        => $step->status,
+                            'actor_id'      => $step->actor_id,
+                            'actor_name'    => $step->actor->name ?? null,
+                            'acted_at'      => $step->acted_at,
+                            'decision_note' => $step->decision_note,
+                        ];
+                    }),
+                ];
+            }),
         ]);
     }
 
@@ -946,6 +1233,25 @@ class CustomerVerificationController extends Controller
         }
         $cv = CustomerVerification::select('id_verification', 'id_customer')->findOrFail($id);
 
+        // (CA4, pivot 2026-07-10) Guard eksplisit terhadap double-forward:
+        // saveReview() sekarang JUGA berperan sebagai titik pembuatan siklus
+        // document_approvals (Marketing bukan lagi step approval formal,
+        // method ini SELALU berarti "forward"). Kalau verification ini masih
+        // punya siklus `in_progress` yang berjalan, forward ulang ditolak
+        // (validation error) supaya tidak membuat siklus kedua yang tumpang
+        // tindih dengan siklus yang sedang berjalan. Forward ulang SETELAH
+        // siklus terakhir `rejected` tetap diperbolehkan (multi-cycle by
+        // design, lihat CustomerVerification::documentApprovals() morphMany).
+        $hasInProgressCycle = $cv->documentApprovals()
+            ->where('status', DocumentApprovalStatus::InProgress)
+            ->exists();
+
+        if ($hasInProgressCycle) {
+            return response()->json([
+                'message' => 'Verifikasi ini masih memiliki siklus persetujuan yang sedang berjalan (Admin Finance/BM belum memutuskan) — tidak bisa forward ulang.',
+            ], 422);
+        }
+
         DB::transaction(function () use ($cv, $data, $creditLimit, $r) {
 
             // 1) upsert review
@@ -957,12 +1263,23 @@ class CustomerVerificationController extends Controller
                 ])
             );
 
-            // 2) set reviewed & disposisi_result = 0 (sesuai SQL lama)
+            // 2) set reviewed & disposisi_result = 0 (sesuai SQL lama, kolom
+            // lama tetap ditulis untuk kompatibilitas tampilan lama — lihat
+            // catatan coexistence di laporan Hephaestus)
             CustomerVerification::where('id_verification', $cv->id_verification)
                 ->update([
                     'is_reviewed'      => 1,
                     'disposisi_result' => 0,
                 ]);
+
+            // 2b) (CA4, pivot 2026-07-10) Marketing bukan lagi step approval
+            // formal -- saveReview() (forward) sekarang membuat/membuat-ulang
+            // siklus document_approvals 2-step (Admin Finance -> BM, keduanya
+            // pending, current_step_order=1). Guard double-forward sudah
+            // dicek di atas SEBELUM transaction ini, jadi di titik ini aman
+            // untuk selalu membuat siklus baru (baik forward pertama kali,
+            // maupun forward ulang pasca-reject).
+            $this->createDocumentApprovalCycle($cv);
 
             $affected = DB::table('customers')
                 ->where('id_customer', $cv->id_customer)
@@ -986,7 +1303,7 @@ class CustomerVerificationController extends Controller
 
         return response()->json([
             'ok' => true,
-            'message' => 'Review tersimpan & status diverifikasi.',
+            'message' => 'Review tersimpan & diforward ke Admin Finance.',
         ]);
     }
 
@@ -1061,16 +1378,19 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true, 'message' => 'Persetujuan dikirim.']);
     }
 
+    /**
+     * (CA8, pivot 2026-07-10, dulu C6) Rewire: antrean Admin Finance sekarang
+     * berdasarkan document_approval_steps step 1 (Admin Finance jadi step
+     * pertama di model 2-step baru, dulu step 2) berstatus pending (role
+     * id_role=9), bukan is_active/is_reviewed/disposisi_result.
+     */
     public function reviewAdminIndex(Request $r)
     {
         $per = (int) $r->query('per_page', 25);
         $q   = trim((string) $r->query('q', ''));
 
-        $rows = CustomerVerification::query()
+        $rows = $this->pendingStepQuery(self::STEP_ADMIN_FINANCE, self::ROLE_ADMIN_FINANCE)
             ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
-            ->where('is_active', 1)
-            ->where('is_reviewed', 1)
-            // ->where('disposisi_result', 1) // HANYA tahap admin
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('nama_perusahaan', 'like', "%{$q}%")
@@ -1091,12 +1411,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewAdminStats()
     {
-        // jumlah item di antrean admin (is_reviewed=1 & disposisi=1)
-        $queue = CustomerVerification::query()
-            ->where('is_active', 1)
-            ->where('is_reviewed', 1)
-            ->where('disposisi_result', 1)
-            ->count();
+        $queue = $this->pendingStepQuery(self::STEP_ADMIN_FINANCE, self::ROLE_ADMIN_FINANCE)->count();
 
         return response()->json(['queue' => $queue]);
     }
@@ -1136,6 +1451,14 @@ class CustomerVerificationController extends Controller
     {
         // Validasi sesuai payload FE (approval di dalam form)
         $payload = $r->validate([
+            // (Prioritas C-Amend gap-fix, 2026-07-10) reject path Admin
+            // Finance -- pola sama persis dengan bmVerify(): 'decision'
+            // nullable APPROVE/REJECT (default APPROVE bila tidak dikirim),
+            // 'notes' dipakai untuk decision_note reject supaya nama field
+            // konsisten antara kedua endpoint step approval ini.
+            'decision'                           => ['nullable', 'in:APPROVE,REJECT'],
+            'notes'                              => ['nullable', 'string'],
+
             'form'                               => ['required', 'array'],
             'form.top_text'                      => ['nullable', 'string'],
             'form.potential_volume'              => ['nullable', 'string'],
@@ -1176,6 +1499,10 @@ class CustomerVerificationController extends Controller
             'form.approval.assessment_result'    => ['nullable', 'string'],
         ]);
 
+        // default APPROVE, sama persis pola $data['decision'] ?? 'APPROVE' di bmVerify()
+        $decision = $payload['decision'] ?? 'APPROVE';
+        $notes    = $payload['notes'] ?? null;
+
         $form     = $payload['form'];
         $approval = $form['approval'] ?? [];
 
@@ -1205,7 +1532,7 @@ class CustomerVerificationController extends Controller
 
         $incomingKyc = (array) ($form['kyc_rows'] ?? []);
 
-        DB::transaction(function () use ($id, $form, $approval, $arrData, $incomingKyc, $summary, $creditLimit) {
+        DB::transaction(function () use ($id, $form, $approval, $arrData, $incomingKyc, $summary, $creditLimit, $decision, $notes) {
 
             // Kunci baris
             $cv = \App\Models\CustomerVerification::lockForUpdate()->findOrFail($id);
@@ -1234,21 +1561,53 @@ class CustomerVerificationController extends Controller
             // Map jenis data (tetap disimpan kalau perlu)
             $jenisDataInt = ($form['jenis_data'] ?? 'SEBELUM') === 'SETELAH' ? 2 : 1;
 
-            // === PERMINTAANMU: paksa nilai ini saat berhasil simpan ===
-            $financeResult = 1;   // <- selalu 1
-            $disp          = 2;   // <- selalu 2
+            // (Prioritas C-Amend gap-fix, 2026-07-10) nilai kolom lama sekarang
+            // bergantung ke $decision, bukan selalu dipaksa "lolos":
+            // - APPROVE (default, perilaku existing tidak berubah): finance_result=1,
+            //   disposisi_result=2.
+            // - REJECT: finance_result=0 (konsisten dengan konvensi sm_result=0
+            //   untuk reject di bmVerify() -- sibling _result column di
+            //   controller yang sama), disposisi_result=0 (kembali ke
+            //   Marketing/Draft di level kolom lama, selaras dengan sistem baru
+            //   yang membuka lagi antrean Marketing lewat marketingQueueQuery()
+            //   begitu cycle document_approvals ditutup rejected).
+            if ($decision === 'REJECT') {
+                $financeResult = 0;
+                $disp          = 0;
+            } else {
+                $financeResult = 1;
+                $disp          = 2;
+            }
 
-            // Update verification
+            // Update verification -- data evaluasi (KYC, ringkasan finansial,
+            // dokumen, dst.) tetap ditulis apa adanya baik APPROVE maupun
+            // REJECT: ini kerja/catatan Admin Finance yang sudah diinput,
+            // tidak ada alasan bisnis untuk dibuang hanya karena hasil
+            // keputusannya reject.
             $cv->update([
                 'finance_data'        => json_encode($arrData, JSON_UNESCAPED_UNICODE),
                 'jenis_datanya'       => $jenisDataInt,
                 'finance_summary'     => $summary,
-                'finance_result'      => $financeResult,            // 1
+                'finance_result'      => $financeResult,
                 'finance_tgl_proses'  => now(),
                 'finance_pic'         => auth()->user()->name ?? null,
                 'finance_data_kyc'    => json_encode($kycSaved, JSON_UNESCAPED_UNICODE),
-                'disposisi_result'    => $disp,                     // 2
+                'disposisi_result'    => $disp,
             ]);
+
+            // (CA5, pivot 2026-07-10, dulu C3; gap-fix 2026-07-10 menambah
+            // reject) Approve -> step 1 (Admin Finance) approved,
+            // current_step_order maju ke 2 (BM) di dalam advanceApprovalStep().
+            // Reject -> step 1 rejected, cycle document_approvals ditutup
+            // rejected sepenuhnya di dalam advanceApprovalStep() (tidak perlu
+            // kode eksplisit "kirim balik ke Marketing" -- queue Marketing di
+            // CA7 sudah otomatis menangkap ini via marketingQueueQuery()).
+            $this->advanceApprovalStep(
+                $cv,
+                self::STEP_ADMIN_FINANCE,
+                $decision === 'REJECT' ? DocumentApprovalStepStatus::Rejected : DocumentApprovalStepStatus::Approved,
+                $decision === 'REJECT' ? $notes : ($summary !== '' ? $summary : null)
+            );
 
             // Jika SETELAH komite, sinkron ke customers (opsional, tetap dipertahankan)
             if ($jenisDataInt === 2) {
@@ -1279,44 +1638,6 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function reviewLogistikIndex(Request $r)
-    {
-        $perPage = (int)($r->get('per_page', 25));
-        $q       = trim((string)$r->get('q', ''));
-
-        $qry = CustomerVerification::query()
-            ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
-            ->select([
-                'id_verification',
-                'id_customer',
-                'token_verification',
-                'is_reviewed',
-                'disposisi_result',
-            ])
-            ->where('is_reviewed', 1)
-            ->where('disposisi_result', 2); // tahap logistik
-
-        if ($q !== '') {
-            $qry->whereHas('customer', function ($s) use ($q) {
-                $s->where('nama_perusahaan', 'ilike', "%{$q}%")
-                    ->orWhere('kode_pelanggan', 'ilike', "%{$q}%")
-                    ->orWhere('alamat_perusahaan', 'ilike', "%{$q}%");
-            });
-        }
-
-        $rows = $qry->orderByDesc('id_verification')->paginate($perPage);
-        return response()->json($rows);
-    }
-
-    public function reviewLogistikStats()
-    {
-        $queue = CustomerVerification::where('is_reviewed', 1)
-            ->where('disposisi_result', 2)
-            ->count();
-
-        return response()->json(['queue' => $queue]);
-    }
-
     public function logistikShow(int $id)
     {
         $cv = CustomerVerification::with('customer')->findOrFail($id);
@@ -1339,40 +1660,18 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    public function logistikSave(Request $r, int $id)
-    {
-        $data = $r->validate([
-            'logistik_summary'  => ['nullable', 'string'],
-            'logistik_result'   => ['nullable', 'string'],
-            'assessment_result' => ['nullable', 'string', 'in:Supply Delivery,Supply Delivery With Note,Revised and Resubmitted'],
-        ]);
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        // Simpan hanya kolom logistik; kolom lain tetap read-only
-        $cv->update([
-            'logistik_summary'   => $data['logistik_summary']  ?? '',
-            // jika Anda punya kolom string khusus, pakai 'logistik_result_text'
-            // kalau memang kolomnya bernama 'logistik_result' (tipe string), gunakan itu.
-            'logistik_result'    => 1,
-            'disposisi_result'   => 3,
-            'logistik_tgl_proses' => now(),
-            'logistik_pic'       => auth()->user()->name ?? null,
-            'assessment_result'  => $data['assessment_result'] ?? null,
-        ]);
-
-        return response()->json(['ok' => true]);
-    }
-
+    /**
+     * (CA8, pivot 2026-07-10, dulu C6) Rewire: antrean BM sekarang berdasarkan
+     * document_approval_steps step 2 (FINAL di model 2-step baru, dulu step 3)
+     * berstatus pending (role id_role=8), bukan is_reviewed/disposisi_result.
+     */
     public function reviewBmIndex(Request $r)
     {
         $q       = trim((string) $r->query('q', ''));
         $perPage = (int) ($r->query('per_page', 25));
 
-        $rows = CustomerVerification::query()
+        $rows = $this->pendingStepQuery(self::STEP_BM, self::ROLE_BM)
             ->with(['customer']) // pastikan relasi ada
-            ->where('is_reviewed', 1)
-            ->where('disposisi_result', 3) // antrean BM
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('nama_perusahaan', 'ilike', "%{$q}%")
@@ -1388,21 +1687,25 @@ class CustomerVerificationController extends Controller
 
     public function reviewBmStats()
     {
-        $queue = CustomerVerification::where('is_reviewed', 1)->where('disposisi_result', 3)->count();
+        $queue = $this->pendingStepQuery(self::STEP_BM, self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
     }
 
     /**
-     * Simpan verifikasi BM:
+     * Simpan verifikasi BM (step 2, FINAL, di model 2-step baru — pivot
+     * 2026-07-10):
      * - bm_notes: catatan BM
-     * - bm_decision: APPROVE / REVISE / REJECT (opsional)
-     * Default: APPROVE -> bm_result=1, disposisi=4 (OM)
+     * - bm_decision: APPROVE / REJECT (REVISE dihapus total, tidak ada lagi
+     *   konsep "kirim balik untuk revisi" di sistem approval baru — reject di
+     *   step manapun menutup siklus, verifikasi kembali ke Marketing untuk
+     *   diedit & di-forward ulang sebagai siklus baru, lihat CA4/CA7)
+     * Default: APPROVE -> bm_result=1, disposisi=4 (OM, kolom lama)
      */
     public function bmVerify(Request $r, int $id)
     {
         $data = $r->validate([
             'notes'    => ['nullable', 'string'],
-            'decision' => ['nullable', 'in:APPROVE,REVISE,REJECT'],
+            'decision' => ['nullable', 'in:APPROVE,REJECT'],
         ]);
 
         return DB::transaction(function () use ($id, $data) {
@@ -1422,10 +1725,6 @@ class CustomerVerificationController extends Controller
             if ($decision === 'APPROVE') {
                 $updates['sm_result']       = 1;  // OK
                 $updates['disposisi_result'] = 4;  // ke OM
-            } elseif ($decision === 'REVISE') {
-                // kembalikan ke Logistik untuk revisi
-                $updates['sm_result']       = 0;
-                $updates['disposisi_result'] = 2;
             } else { // REJECT
                 $updates['sm_result']       = 0;
                 // tetap di BM untuk diproses/arsip (atau set ke 0 sesuai kebijakan)
@@ -1434,88 +1733,43 @@ class CustomerVerificationController extends Controller
 
             $cv->update($updates);
 
-            return response()->json(['ok' => true]);
-        });
-    }
+            // ===== (CA6, pivot 2026-07-10, dulu C4/C5) sistem approval baru: document_approvals / document_approval_steps =====
+            // BM adalah step 2, FINAL, di model 2-step baru (Marketing bukan
+            // step formal lagi, Logistik & OM sudah dihapus dari alur, lihat
+            // Prioritas D).
+            if ($decision === 'APPROVE') {
+                $approval = $this->advanceApprovalStep(
+                    $cv,
+                    2,
+                    DocumentApprovalStepStatus::Approved,
+                    $data['notes'] ?? null
+                );
 
+                // (C5 lama, dipertahankan) Efek samping yang dulu dipicu oleh
+                // method OM (sekarang dihapus, lihat Prioritas D1.1) saat
+                // approve direlokasi ke sini: HANYA terpicu kalau step 2 (BM)
+                // benar2 ter-approve di sistem approval baru ($approval tidak
+                // null).
+                if ($approval) {
+                    $cv->update([
+                        'is_approved'      => 1,
+                        'tanggal_approved' => now(),
+                        'role_approve'     => 4,
+                    ]);
 
-    public function reviewOmStats()
-    {
-        $queue = \App\Models\CustomerVerification::query()
-            ->where('is_reviewed', 1)
-            ->where('disposisi_result', 4) // OM
-            ->where('is_active', 1)
-            ->count();
-
-        return response()->json(['queue' => (int)$queue]);
-    }
-
-    // ==== OM INDEX ====
-    public function reviewOmIndex(Request $r)
-    {
-        $per = (int) $r->query('per_page', 25);
-        $q   = trim((string) $r->query('q', ''));
-
-        $rows = \App\Models\CustomerVerification::query()
-            ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
-            ->where('is_reviewed', 1)
-            ->where('disposisi_result', 4) // OM
-            ->where('is_active', 1)
-            ->when($q !== '', function ($w) use ($q) {
-                $w->whereHas('customer', function ($c) use ($q) {
-                    $c->where('nama_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('alamat_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('kode_pelanggan', 'like', "%{$q}%");
-                });
-            })
-            ->orderByDesc('id_verification')
-            ->paginate($per);
-
-        return response()->json([
-            'data'         => $rows->items(),
-            'current_page' => $rows->currentPage(),
-            'last_page'    => $rows->lastPage(),
-            'total'        => $rows->total(),
-        ]);
-    }
-
-    // ==== OM VERIFY (simpan keputusan OM) ====
-    public function omVerify(Request $r, int $id)
-    {
-        $data = $r->validate([
-            'result'  => ['required', 'integer', 'in:0,1'], // 1=approve, 0=reject
-            'summary' => ['nullable', 'string'],
-        ]);
-
-        return DB::transaction(function () use ($data, $id) {
-            $cv = \App\Models\CustomerVerification::lockForUpdate()->findOrFail($id);
-
-            $update = [
-                'om_result'     => (int) $data['result'],
-                'om_summary'    => $data['summary'] ?? null,
-                'om_tgl_proses' => now(),
-                'om_pic'        => auth()->user()->name ?? null,
-                // tetap di disposisi OM (4). Jika ingin "selesai" bisa set ke 0.
-                'disposisi_result' => 5,
-            ];
-
-            // opsional: set approved bila OM approve
-            if ((int)$data['result'] === 1) {
-                $update['is_approved']      = 1;
-                $update['tanggal_approved'] = now();
-                $update['role_approve']     = 4; // OM
-            }
-
-            $cv->update($update);
-
-            // customers.is_verified hanya di-set 1 pada jalur APPROVE — TIDAK
-            // pada reject. Ini penanda definitif "data customer sudah
-            // diverifikasi & disetujui sampai OM" (reset ke 0 terjadi di titik
-            // SUBMIT, lihat updateByToken()).
-            if ((int) $data['result'] === 1) {
-                DB::table('customers')
-                    ->where('id_customer', $cv->id_customer)
-                    ->update(['is_verified' => 1]);
+                    DB::table('customers')
+                        ->where('id_customer', $cv->id_customer)
+                        ->update(['is_verified' => 1]);
+                }
+            } else { // REJECT
+                $this->advanceApprovalStep(
+                    $cv,
+                    2,
+                    DocumentApprovalStepStatus::Rejected,
+                    $data['notes'] ?? null
+                );
+                // Efek samping approve (is_approved/tanggal_approved/role_approve/
+                // customers.is_verified) SENGAJA tidak terpicu di jalur reject ini.
             }
 
             return response()->json(['ok' => true]);
