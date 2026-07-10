@@ -62,7 +62,14 @@ class LinkCustomerController extends Controller
         if ($existing) {
             $isExpired = $existing->expired_at !== null && $existing->expired_at->lte(now());
 
-            if (!$isExpired) {
+            // Verifikasi yang sudah DITOLAK (disposisi_result=5 & is_approved
+            // falsy) tetap is_active=1 dan belum tentu expired — kalau di-reuse
+            // apa adanya, generate() akan mengembalikan token LAMA yang sudah
+            // ditolak alih-alih memulai siklus verifikasi baru. Perlakukan
+            // sama seperti expired: jangan reuse.
+            $isRejected = (int) $existing->disposisi_result === 5 && !$existing->is_approved;
+
+            if (!$isExpired && !$isRejected) {
                 if ((int)($customer->is_generated_link ?? 0) === 0) {
                     $customer->forceFill([
                         'is_generated_link' => 1,
@@ -81,7 +88,7 @@ class LinkCustomerController extends Controller
                 ]);
             }
 
-            // token lama sudah expired → invalidate, lanjut buat token baru di bawah
+            // token lama sudah expired ATAU ditolak → invalidate, lanjut buat token baru di bawah
             $existing->update(['is_active' => 0]);
         }
 
@@ -98,7 +105,6 @@ class LinkCustomerController extends Controller
             'is_reviewed'        => 0,
             'is_active'          => 1,
             'expired_at'         => now()->addDays(7),
-            'completion_status'  => \App\Enums\CustomerVerificationCompletionStatus::Draft,
 
             'legal_data'         => '',
             'legal_summary'      => '',

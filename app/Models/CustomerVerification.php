@@ -18,7 +18,6 @@ class CustomerVerification extends Model
         'is_reviewed',
         'is_active',
         'expired_at',
-        'completion_status',
 
         'legal_data',
         'legal_summary',
@@ -92,8 +91,6 @@ class CustomerVerification extends Model
         'ceo_tgl_proses'      => 'datetime',
         'tanggal_approved'    => 'datetime',
         'expired_at'          => 'datetime',
-
-        'completion_status'   => \App\Enums\CustomerVerificationCompletionStatus::class,
     ];
 
     public function customer(): BelongsTo

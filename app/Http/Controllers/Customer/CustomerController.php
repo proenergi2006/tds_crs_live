@@ -10,6 +10,7 @@ use App\Models\CustomerAdminArnya;
 use App\Models\CustomerContact;
 use App\Models\CustomerLogistik;
 use App\Models\CustomerPayment;
+use App\Models\CustomerVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ class CustomerController extends Controller
     {
         $q = Customer::query()
             ->with(['user', 'provinsi', 'kabupaten', 'cabang'])
-            ->where('id_user', $request->user()->id)
+            // ->where('id_user', $request->user()->id)
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as jumlah_penawaran']);
 
@@ -30,13 +31,105 @@ class CustomerController extends Controller
             });
         }
 
+        $baseQuery = clone $q;
+
+        $tabCounts = [
+            'all'        => (clone $baseQuery)->count(),
+            'verified'   => (clone $baseQuery)->where('is_verified', 1)->count(),
+            'unverified' => (clone $baseQuery)->where('is_verified', 0)->count(),
+        ];
+
+        $tab = $request->query('tab', 'all');
+        if ($tab === 'verified') {
+            $q->where('is_verified', 1);
+        } elseif ($tab === 'unverified') {
+            $q->where('is_verified', 0);
+        }
+
         if ($request->boolean('as_list')) {
             return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
         }
 
+        $q->with('latestVerification');
+
         $perPage = min((int) $request->query('per_page', 10), 100);
 
-        return response()->json($q->paginate($perPage));
+        $paginated = $q->paginate($perPage)->through(function (Customer $customer) {
+            $customer->verification_badge  = $this->resolveVerificationBadge($customer);
+            $customer->latest_verification  = $this->formatLatestVerification($customer->latestVerification);
+            return $customer;
+        });
+
+        $response = $paginated->toArray();
+        $response['tab_counts'] = $tabCounts;
+
+        return response()->json($response);
+    }
+
+    private function resolveVerificationBadge(Customer $customer): string
+    {
+        if ((int) $customer->is_verified === 1) {
+            return 'verified';
+        }
+
+        $latest = $customer->latestVerification;
+
+        if (!$latest || (int) ($customer->is_generated_link ?? 0) === 0) {
+            return 'belum_ada_link';
+        }
+
+        $isExpired = $latest->expired_at !== null && $latest->expired_at->lte(now());
+
+        if (!$latest->is_evaluated && !$isExpired) {
+            return 'menunggu_customer';
+        }
+
+        if (!$latest->is_evaluated && $isExpired) {
+            return 'link_kedaluwarsa';
+        }
+
+        if ($latest->is_evaluated && !$latest->is_reviewed) {
+            return 'perlu_direview';
+        }
+
+        if ($latest->is_reviewed && in_array((int) $latest->disposisi_result, [1, 2, 3, 4], true)) {
+            return 'proses_internal';
+        }
+
+        if ((int) $latest->disposisi_result === 5 && !$latest->is_approved) {
+            return 'ditolak';
+        }
+
+        return 'belum_ada_link';
+    }
+
+    private function formatLatestVerification(?CustomerVerification $verification): ?array
+    {
+        if (!$verification) {
+            return null;
+        }
+
+        return [
+            'id_verification'  => $verification->id_verification,
+            'disposisi_result' => (int) $verification->disposisi_result,
+            'is_evaluated'     => (bool) $verification->is_evaluated,
+            'is_reviewed'      => (bool) $verification->is_reviewed,
+            'is_active'        => (bool) $verification->is_active,
+            'expired_at'       => optional($verification->expired_at)->toISOString(),
+            'stage_label'      => $this->stageLabel((int) $verification->disposisi_result),
+        ];
+    }
+
+    private function stageLabel(int $disposisiResult): string
+    {
+        return match ($disposisiResult) {
+            0 => 'Marketing/Draft',
+            1 => 'Admin',
+            2 => 'Logistik',
+            3 => 'BM',
+            4 => 'OM',
+            default => '-',
+        };
     }
 
     public function store(StoreCustomerRequest $request)

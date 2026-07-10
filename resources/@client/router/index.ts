@@ -36,6 +36,12 @@ const routes = [
   },
 
   {
+    path: "/verify/:token",
+    name: "verify-customer",
+    component: () => import("@/pages/CustomerUpdateForm.vue"),
+  },
+
+  {
     path: "/",
     component: () => import("@/themes/Layout.vue"),
     children: [
@@ -652,11 +658,6 @@ const routes = [
         path: "/link-customers",
         name: "link-customers",
         component: () => import("@/pages/ListLinkCustomer.vue"),
-      },
-      {
-        path: "/verify/:token",
-        name: "verify-customer",
-        component: () => import("@/pages/CustomerUpdateForm.vue"),
       },
       {
         path: "/review-customer",

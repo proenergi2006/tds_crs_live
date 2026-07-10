@@ -106,4 +106,16 @@ public function verifications()
     return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
 }
 
+/**
+ * Record customer_verifications TERBARU milik customer ini (order by
+ * id_verification desc). Dipakai untuk badge status di CustomerController@index
+ * — pakai latestOfMany() supaya bisa di-eager-load lewat with() tanpa N+1
+ * walaupun list-nya paginated.
+ */
+public function latestVerification(): HasOne
+{
+    return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
+        ->latestOfMany('id_verification');
+}
+
 }

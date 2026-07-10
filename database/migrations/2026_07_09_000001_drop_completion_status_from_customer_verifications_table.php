@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customer_verifications', function (Blueprint $table) {
-            $table->timestamp('expired_at')->nullable()->after('is_active');
-            $table->string('completion_status', 20)->default('draft')->after('expired_at');
+            $table->dropColumn('completion_status');
         });
     }
 
@@ -23,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('customer_verifications', function (Blueprint $table) {
-            $table->dropColumn(['expired_at', 'completion_status']);
+            $table->string('completion_status', 20)->default('draft')->after('expired_at');
         });
     }
 };

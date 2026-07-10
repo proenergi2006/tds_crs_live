@@ -49,14 +49,16 @@
                 <div>Fax  : {{ c.fax || '-' }}</div>
               </td>
               <td class="px-4 py-3 text-center">
-                <Button
-                  :disabled="busyId === c.id_customer"
-                  @click="getLink(c)"
-                  variant="primary"
-                  size="sm"
-                >
-                  {{ busyId === c.id_customer ? '...' : 'Get Link' }}
-                </Button>
+                <div class="flex items-center justify-center gap-2">
+                  <Button
+                    :disabled="busyId === c.id_customer"
+                    @click="getLink(c)"
+                    variant="primary"
+                    size="sm"
+                  >
+                    {{ busyId === c.id_customer ? '...' : 'Get Link' }}
+                  </Button>
+                </div>
               </td>
             </tr>
             <tr v-if="rows.length === 0">
@@ -95,6 +97,7 @@
   import { FormInput, FormSelect } from '@/components/Base/Form'
   import Pagination from '@/components/Base/Pagination'
   import Lucide from '@/components/Base/Lucide'
+  import { copyToClipboard } from '@/utils/clipboard'
   import { useRouter } from 'vue-router'
 const router = useRouter()
   
@@ -135,10 +138,18 @@ const router = useRouter()
     })
 
     if (result.isConfirmed) {
-      try { await navigator.clipboard.writeText(link) } catch {}
-      await Swal.fire({ icon:'success', title:'Token disalin', timer:1000, showConfirmButton:false })
-      // kembali ke halaman sebelumnya (Customer Verification List)
-      router.back() // atau: router.push({ name: 'customer-verifications' })
+      const copied = await copyToClipboard(link)
+      if (copied) {
+        await Swal.fire({ icon:'success', title:'Token disalin', timer:1000, showConfirmButton:false })
+        // kembali ke halaman sebelumnya (Customer Verification List)
+        router.back() // atau: router.push({ name: 'customer-verifications' })
+      } else {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Gagal menyalin otomatis',
+          html: `<div class="text-left"><div class="text-slate-500 text-xs mb-1">Salin link ini secara manual</div><div class="font-mono break-all"><b>${link}</b></div></div>`,
+        })
+      }
     }
   } catch (e:any) {
     Swal.fire('Error', e.response?.data?.message || 'Gagal membuat link', 'error')

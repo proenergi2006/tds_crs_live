@@ -10,6 +10,17 @@
       </div>
   
       <div class="max-w-6xl mx-auto px-5 py-6">
+        <!-- Token sudah kedaluwarsa -->
+        <Alert v-if="tokenStatus === 'expired'" variant="soft-danger" class="mb-6">
+          Link verifikasi ini sudah kedaluwarsa. Silakan hubungi tim marketing TDS untuk mendapatkan link baru.
+        </Alert>
+
+        <!-- Token sudah pernah dipakai submit -->
+        <Alert v-else-if="tokenStatus === 'used'" variant="soft-success" class="mb-6">
+          Terima kasih, data verifikasi untuk perusahaan Anda sudah pernah dikirim sebelumnya. Tidak ada tindakan lebih lanjut yang diperlukan.
+        </Alert>
+
+        <template v-else>
         <!-- Steps header -->
         <div class="flex flex-wrap items-center gap-2 mb-6">
           <div
@@ -338,7 +349,11 @@
             <div class="border-t pt-4 grid md:grid-cols-2 gap-6">
               <div>
                 <label class="block text-sm mb-1">Payment Type</label>
-                <input v-model="form.payment.payment_type" type="text" class="form" placeholder="Pilih salah satu"/>
+                <FormSelect v-model="form.payment.payment_type" class="form">
+                  <option value="">Pilih Payment Type</option>
+                  <option value="CASH">CASH</option>
+                  <option value="CREDIT">CREDIT</option>
+                </FormSelect>
               </div>
               <div>
                 <label class="block text-sm mb-1">Currency / Mata Uang</label>
@@ -406,9 +421,39 @@
                 <textarea v-model="form.payment.note" rows="3" class="form"></textarea>
               </div>
             </div>
+
+            <!-- PIC Invoice -->
+            <div class="border-t pt-4">
+              <div class="font-semibold mb-2">PIC INVOICE <span class="text-rose-600">*</span></div>
+              <p class="text-xs text-slate-500 mb-3">
+                Nama, Telepon, dan Mobile PIC Invoice wajib diisi sebelum submit.
+              </p>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm mb-1">Nama PIC <span class="text-rose-600">*</span></label>
+                  <input v-model="form.invoice.pic.name" type="text" class="form"/>
+                </div>
+                <div>
+                  <label class="block text-sm mb-1">Jabatan</label>
+                  <input v-model="form.invoice.pic.position" type="text" class="form"/>
+                </div>
+                <div>
+                  <label class="block text-sm mb-1">Telepon <span class="text-rose-600">*</span></label>
+                  <input v-model="form.invoice.pic.telephone" type="text" class="form"/>
+                </div>
+                <div>
+                  <label class="block text-sm mb-1">Mobile / HP <span class="text-rose-600">*</span></label>
+                  <input v-model="form.invoice.pic.mobile" type="text" class="form"/>
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm mb-1">Email</label>
+                  <input v-model="form.invoice.pic.email" type="email" class="form"/>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-  
+
         <!-- =========================
              STEP 4 – SUPPLY SCHEME
              ========================= -->
@@ -628,11 +673,7 @@
             <div>
               <div class="text-lg font-semibold mb-2">Captcha *</div>
   
-              <div v-if="!isPublic" class="text-slate-600 text-sm">
-                CAPTCHA tidak diperlukan untuk akses internal (login). Klik <b>Simpan</b> untuk menyelesaikan.
-              </div>
-  
-              <div v-else class="space-y-3">
+              <div class="space-y-3">
                 <div class="flex items-center gap-4">
                   <img v-if="captcha.image" :src="captcha.image" alt="CAPTCHA" class="border rounded h-12"/>
                   <button type="button" class="btn" @click="refreshCaptcha">Reload</button>
@@ -644,7 +685,8 @@
             </div>
           </div>
         </div>
-  
+        </template>
+
       </div>
     </div>
   </template>
@@ -654,18 +696,22 @@
   import { useRoute, useRouter } from 'vue-router'
   import axios from 'axios'
   import Swal from 'sweetalert2'
-  
+
+  import { FormSelect } from '@/components/Base/Form'
+  import Alert from '@/components/Base/Alert'
+
   const route = useRoute()
   const router = useRouter()
-  
-  // Bisa dibuka via token (public) atau by id (internal)
-  const token   = (route.params.token as string) || undefined
-  const idParam = route.params.id ? Number(route.params.id) : undefined
-  const isPublic = !!token
-  
+
+  // Satu-satunya jalur pengisian: link publik /verify/:token
+  const token = route.params.token as string
+
   const busy = ref(false)
   const step = ref(1)
   const verificationId = ref<number|null>(null)
+
+  /* ====== status lifecycle token dari GET /api/verify/{token} ====== */
+  const tokenStatus = ref<'active'|'expired'|'used'|null>(null)
   
   /* ====== master options ====== */
   type Opt = { id:number; name:string }
@@ -770,7 +816,6 @@
   
   /* ====== captcha load ====== */
   async function loadCaptcha(){
-    if (!isPublic) return
     captchaError.value = ''
     captcha.text = ''
     const { data } = await axios.get('/api/captcha')
@@ -782,52 +827,89 @@
   
   /* ====== load data verifikasi ====== */
   async function load(){
-    await loadProvinsis()
-  
-    const url = isPublic ? `/api/verify/${token}` : `/api/customer-verifications/${idParam}`
-    const { data } = await axios.get(url)
+    const { data } = await axios.get(`/api/verify/${token}`)
     verificationId.value = data.id_verification
-  
+
+    // Tentukan status lifecycle token lebih dulu. Kalau token sudah tidak
+    // aktif, jangan render form / load master data lain — cukup tampilkan
+    // banner status (lihat template).
+    tokenStatus.value = data.status ?? 'active'
+    if (tokenStatus.value !== 'active') return
+
+    await loadProvinsis()
+
     // Prefill dari relasi customer (pertama kali masuk)
     if (data.customer) {
       const c = data.customer
-      form.corporate.nama        = c.nama_perusahaan || ''
-      form.corporate.email       = c.email || ''
-      form.corporate.alamat      = c.alamat_perusahaan || ''
-      form.corporate.telepon     = c.telepon || ''
-      form.corporate.fax         = c.fax || ''
-      form.corporate.postal_code = c.postal_code || ''
-  
-      form.corporate.id_provinsi  = c.id_provinsi ?? null
-      await loadKabupatens(form.corporate.id_provinsi)
-      form.corporate.id_kabupaten = c.id_kabupaten ?? null
+      form.corporate.nama        = c.nama_perusahaan || form.corporate.nama
+      form.corporate.email       = c.email || form.corporate.email
+      form.corporate.alamat      = c.alamat_perusahaan || form.corporate.alamat
+      form.corporate.telepon     = c.telepon || form.corporate.telepon
+      form.corporate.fax         = c.fax || form.corporate.fax
+      form.corporate.postal_code = c.postal_code || form.corporate.postal_code
+
+      if (c.id_provinsi != null) {
+        form.corporate.id_provinsi = c.id_provinsi
+        await loadKabupatens(form.corporate.id_provinsi)
+        form.corporate.id_kabupaten = c.id_kabupaten ?? null
+      }
     }
-  
-    // Prefill dari JSON simpanan bila ada
+
+    // Prefill dari JSON simpanan bila ada. Snapshot ini bisa datang dari dua
+    // skema berbeda tergantung siapa yang terakhir menyimpan:
+    // - updateByToken (publik, lama): legal_data{corporate,registered,delivery,docs_meta,agreement},
+    //   finance_data{invoice,payment,registered,delivery}, logistik_data{logistic,supply}
+    // - updateInternal (internal, baru): legal_data{corporate,registered,delivery,documents,agreement},
+    //   finance_data{contacts,payment}, logistik_data{logistik,supply}
     try {
       const legal = JSON.parse(data.legal_data || '{}')
       if (legal.corporate)  Object.assign(form.corporate,  legal.corporate)
       if (legal.registered) Object.assign(form.registered, legal.registered)
       if (legal.delivery)   Object.assign(form.delivery,   legal.delivery)
       if (legal.agreement)  Object.assign(form.agreement,  legal.agreement)
+
+      const docsSrc = legal.documents || legal.docs_meta
+      if (docsSrc) {
+        form.docs.certificate_number = docsSrc.nomor_sertifikat ?? docsSrc.certificate_number ?? form.docs.certificate_number
+        form.docs.npwp_number        = docsSrc.nomor_npwp        ?? docsSrc.npwp_number        ?? form.docs.npwp_number
+        form.docs.siup_number        = docsSrc.nomor_siup        ?? docsSrc.siup_number        ?? form.docs.siup_number
+        form.docs.tdp_number         = docsSrc.nomor_tdp         ?? docsSrc.tdp_number          ?? form.docs.tdp_number
+        form.docs.other_doc          = docsSrc.dokumen_lainnya   ?? docsSrc.other_doc           ?? form.docs.other_doc
+      }
     } catch {}
     try {
       const finance = JSON.parse(data.finance_data || '{}')
-      if (finance.invoice)    Object.assign(form.invoice,    finance.invoice)
       if (finance.payment)    Object.assign(form.payment,    finance.payment)
       if (finance.registered) Object.assign(form.registered, finance.registered)
       if (finance.delivery)   Object.assign(form.delivery,   finance.delivery)
+
+      // skema lama: finance.invoice = { delivery_address, pic }
+      if (finance.invoice) Object.assign(form.invoice, finance.invoice)
+
+      // skema baru: finance.contacts = { pic_invoice, invoice_delivery_addr_primary, ... }
+      const picInvoice = finance.contacts?.pic_invoice
+      if (picInvoice) {
+        form.invoice.pic.name      = picInvoice.name      ?? form.invoice.pic.name
+        form.invoice.pic.position  = picInvoice.position  ?? form.invoice.pic.position
+        form.invoice.pic.telephone = picInvoice.telp      ?? form.invoice.pic.telephone
+        form.invoice.pic.mobile    = picInvoice.mobile    ?? form.invoice.pic.mobile
+        form.invoice.pic.email     = picInvoice.email     ?? form.invoice.pic.email
+      }
+      if (finance.contacts?.invoice_delivery_addr_primary) {
+        form.invoice.delivery_address = finance.contacts.invoice_delivery_addr_primary
+      }
     } catch {}
     try {
       const logistik = JSON.parse(data.logistik_data || '{}')
-      if (logistik.logistic) Object.assign(form.logistic, logistik.logistic)
-      if (logistik.supply)   Object.assign(form.supply,   logistik.supply)
+      const lg = logistik.logistik || logistik.logistic
+      if (lg) Object.assign(form.logistic, lg)
+      if (logistik.supply) Object.assign(form.supply, logistik.supply)
     } catch {}
-  
+
     // registered kabupaten jika ada
     await loadRegisteredKabupatens(form.registered.id_provinsi)
-  
-    if (isPublic && step.value === 6) await loadCaptcha()
+
+    if (step.value === 6) await loadCaptcha()
   }
   onMounted(load)
   
@@ -875,22 +957,24 @@
   
   /* ====== save ====== */
   async function save(){
-    // Agreement wajib saat public
-    if (isPublic) {
-      if (!form.agreement.updated_by?.trim()) {
-        return Swal.fire('Validasi', 'Updated By wajib diisi pada bagian Agreement.', 'warning')
-      }
-      if (!form.agreement.agree) {
-        return Swal.fire('Validasi', 'Centang pernyataan kebenaran data pada Agreement.', 'warning')
-      }
+    // Agreement wajib
+    if (!form.agreement.updated_by?.trim()) {
+      return Swal.fire('Validasi', 'Updated By wajib diisi pada bagian Agreement.', 'warning')
     }
-  
-    const saveUrl = isPublic ? `/api/verify/${token}` : `/api/customer-verifications/${verificationId.value}`
-  
+    if (!form.agreement.agree) {
+      return Swal.fire('Validasi', 'Centang pernyataan kebenaran data pada Agreement.', 'warning')
+    }
+
+    // PIC Invoice wajib diisi sebelum submit
+    const pic = form.invoice.pic
+    if (!pic.name?.trim() || !pic.telephone?.trim() || !pic.mobile?.trim()) {
+      return Swal.fire('Validasi', 'PIC Invoice (Nama, Telepon, dan Mobile) wajib diisi sebelum submit.', 'warning')
+    }
+
     try {
       busy.value = true
       captchaError.value = ''
-  
+
       const payload:any = {
         legal_data: JSON.stringify({
           corporate:  form.corporate,
@@ -918,17 +1002,15 @@
         is_reviewed: 0,
         is_evaluated: 0
       }
-  
-      if (isPublic) {
-        payload.captcha_key  = captcha.key
-        payload.captcha_text = captcha.text
-      }
-  
-      await axios.put(saveUrl, payload)
+
+      payload.captcha_key  = captcha.key
+      payload.captcha_text = captcha.text
+
+      await axios.put(`/api/verify/${token}`, payload)
       Swal.fire({ icon:'success', title:'Tersimpan', text:'Data verifikasi berhasil disimpan.' })
       router.push({ name: 'customer-verifications' })
     } catch (e:any) {
-      if (e?.response?.status === 422 && isPublic) {
+      if (e?.response?.status === 422) {
         captchaError.value = e?.response?.data?.message || 'Captcha tidak valid'
         refreshCaptcha()
       } else {
