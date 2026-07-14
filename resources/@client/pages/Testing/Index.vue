@@ -6,6 +6,7 @@
 import Button from '@/components/Base/Button';
 import Lucide from '@/components/Base/Lucide';
 import Table from '@/components/Base/Table';
+import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue';
 
 const hargaProdukFields = [
   { label: 'Periode Awal', value: '01 Januari 2026' },
@@ -54,6 +55,47 @@ const items = [
   { name: 'Batu Split 1-2', jenis: 'Agregat', ukuran: '1-2 cm / Ton', persen: '60', volume: '6.000' },
   { name: 'Abu Batu', jenis: 'Agregat', ukuran: '0-5 mm / Ton', persen: '25', volume: '2.500' },
   { name: 'Batu Screening', jenis: 'Agregat', ukuran: '5-10 mm / Ton', persen: '15', volume: '1.500' },
+];
+
+/* Section: Stepper component demo — SystemDesign/Stepper, horizontal & vertical,
+   variasi jumlah step untuk uji koneksi connector-based architecture. */
+function buildSteps(count: number, activeIndex: number): StepItem[] {
+  return Array.from({ length: count }, (_, i): StepItem => ({
+    title: `Step ${i + 1}`,
+    status: i < activeIndex ? 'completed' : i === activeIndex ? 'active' : 'pending',
+  }));
+}
+
+const stepperDemos: { label: string; steps: StepItem[] }[] = [
+  {
+    label: '2 Step — Konfirmasi Sederhana',
+    steps: [
+      { title: 'Isi Data', description: 'Lengkapi form pengajuan.', status: 'completed' },
+      { title: 'Konfirmasi', description: 'Tinjau dan kirim.', status: 'active' },
+    ],
+  },
+  {
+    label: '3 Step — Approval Penawaran',
+    steps: [
+      { title: 'Draft', description: 'Penawaran dibuat.', status: 'completed', timestamp: '20 Jun 2026' },
+      { title: 'Waiting BM', description: 'Menunggu verifikasi Branch Manager.', status: 'active' },
+      { title: 'Approved BM', description: 'Diteruskan ke Operations Manager.', status: 'pending' },
+    ],
+  },
+  {
+    label: '5 Step — Onboarding Customer',
+    steps: [
+      { title: 'Corporate Details', status: 'completed' },
+      { title: 'Documentation', status: 'completed' },
+      { title: 'Payment Info', status: 'active' },
+      { title: 'Supply Scheme', status: 'pending' },
+      { title: 'Summary', status: 'pending' },
+    ],
+  },
+  {
+    label: '10 Step — Uji Skalabilitas Connector',
+    steps: buildSteps(10, 6),
+  },
 ];
 
 const approvalSteps = [
@@ -144,6 +186,52 @@ const stats = [
             <div class="flex shrink-0 items-center gap-2">
               <span class="font-caption hidden sm:inline">{{ n.role }}</span>
               <code class="cls-tag">.{{ n.cls }}</code>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEPPER DEMO — SystemDesign/Stepper, horizontal & vertical, berbagai jumlah step -->
+      <section class="rounded-lg bg-white p-6 shadow-sm">
+        <h2 class="font-header">Stepper Component</h2>
+        <p class="font-body mt-1">
+          <code class="cls-tag">SystemDesign/Stepper</code> — arsitektur connector-based, horizontal & vertical
+          memakai layout flex yang sama, otomatis menyesuaikan jumlah step.
+        </p>
+
+        <div class="mt-6 flex flex-col gap-8">
+          <div v-for="demo in stepperDemos" :key="demo.label"
+            class="rounded-xl border border-slate-200 p-5">
+            <h3 class="font-section mb-4">{{ demo.label }} <span class="font-caption">({{ demo.steps.length }} step)</span></h3>
+
+            <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              <div>
+                <p class="font-label mb-3">Horizontal</p>
+                <div class="overflow-x-auto rounded-lg bg-slate-50 p-4">
+                  <div class="min-w-[560px]">
+                    <Stepper :steps="demo.steps" direction="horizontal" size="sm" show-label />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p class="font-label mb-3">Vertical</p>
+                <div class="rounded-lg bg-slate-50 p-4">
+                  <Stepper :steps="demo.steps" direction="vertical" size="sm" show-label />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variasi ukuran (size) pakai contoh 3-step -->
+          <div class="rounded-xl border border-slate-200 p-5">
+            <h3 class="font-section mb-4">Variasi Ukuran <span class="font-caption">(sm / md / lg)</span></h3>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div v-for="s in (['sm', 'md', 'lg'] as const)" :key="s">
+                <p class="font-label mb-3">size="{{ s }}"</p>
+                <div class="rounded-lg bg-slate-50 p-4">
+                  <Stepper :steps="stepperDemos[1].steps" direction="vertical" :size="s" show-status-badge />
+                </div>
+              </div>
             </div>
           </div>
         </div>

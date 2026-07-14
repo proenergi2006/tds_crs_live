@@ -12,16 +12,16 @@ export const customerNavigation: NavItem[] = [
         activePageNames: ["customers-create", "customers-edit"],
         permission: "penawaran.tds.manage",
       },
-      {
-        icon: "User",
-        pageName: "customers-list-proenergi",
-        title: "Customer (Proenergi)",
-        activePageNames: [
-          "customers-create-proenergi",
-          "customers-edit-proenergi",
-        ],
-        permission: "penawaran.proenergi.manage",
-      },
+      // {
+      //   icon: "User",
+      //   pageName: "customers-list-proenergi",
+      //   title: "Customer (Proenergi)",
+      //   activePageNames: [
+      //     "customers-create-proenergi",
+      //     "customers-edit-proenergi",
+      //   ],
+      //   permission: "penawaran.proenergi.manage",
+      // },
       {
         icon: "File",
         pageName: "penawarans-list",
@@ -33,17 +33,17 @@ export const customerNavigation: NavItem[] = [
         ],
         permission: "penawaran.tds.manage",
       },
-      {
-        icon: "File",
-        pageName: "penawarans-list-proenergi",
-        title: "Quotation (Proenergi)",
-        activePageNames: [
-          "penawarans-create-proenergi",
-          "penawarans-edit-proenergi",
-          "penawarans-detail-proenergi",
-        ],
-        permission: "penawaran.proenergi.manage",
-      },
+      // {
+      //   icon: "File",
+      //   pageName: "penawarans-list-proenergi",
+      //   title: "Quotation (Proenergi)",
+      //   activePageNames: [
+      //     "penawarans-create-proenergi",
+      //     "penawarans-edit-proenergi",
+      //     "penawarans-detail-proenergi",
+      //   ],
+      //   permission: "penawaran.proenergi.manage",
+      // },
       {
         icon: "ShoppingCart",
         pageName: "po-customers-index",

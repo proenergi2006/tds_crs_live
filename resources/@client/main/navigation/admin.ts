@@ -27,6 +27,13 @@ export const adminNavigation: NavItem[] = [
         activePageNames: ['review-data-customer-admin-detail'],
         permission: 'sales-confirmation.manage',
       },
+      {
+        icon: 'Workflow',
+        pageName: 'approval-templates',
+        title: 'Approval Template',
+        activePageNames: ['approval-templates-create', 'approval-templates-edit'],
+        permission: 'approval-template.manage',
+      },
     ],
   },
 ]

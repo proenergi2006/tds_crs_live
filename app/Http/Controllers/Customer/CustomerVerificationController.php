@@ -15,7 +15,6 @@ use App\Models\DocumentApprovalStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Arr;
@@ -30,19 +29,24 @@ class CustomerVerificationController extends Controller
     private const APPROVAL_TEMPLATE_CODE = 'customer_verification';
 
     /**
-     * step_order & id_role template customer_verification (diverifikasi ke
-     * tabel roles asli via tinker, cocok dengan
-     * ApprovalTemplateCustomerVerificationSeeder & plan Prioritas A/B —
-     * JANGAN diambil dari CLAUDE.md role-ID table, itu eksplisit ditandai
-     * belum lengkap/stale).
+     * id_role template customer_verification (diverifikasi ke tabel roles
+     * asli via tinker, cocok dengan ApprovalTemplateCustomerVerificationSeeder
+     * & plan Prioritas A/B — JANGAN diambil dari CLAUDE.md role-ID table, itu
+     * eksplisit ditandai belum lengkap/stale).
      *
      * (CA-Amend, pivot 2026-07-10) 2 step formal: Admin Finance -> BM.
      * Marketing bukan lagi step approval formal (lihat createDocumentApprovalCycle()
      * & saveReview()) sehingga STEP_MARKETING/ROLE_MARKETING dihapus dari sini.
+     *
+     * (Prioritas H, 2026-07-13) STEP_ADMIN_FINANCE/STEP_BM (step_order literal)
+     * DIHAPUS — step_order sekarang selalu di-resolve dinamis saat runtime dari
+     * `approval_template_steps` (lihat activeApprovalTemplate()/
+     * resolveStepOrderForRole() di bawah), supaya reorder step lewat CRUD
+     * master data (Prioritas H4, di luar scope H1-H3) benar-benar mengubah
+     * behavior. ROLE_ADMIN_FINANCE/ROLE_BM TETAP hardcoded — itu representasi
+     * "role method ini", bukan bagian yang dijadikan dinamis (keputusan final,
+     * lihat batasan Prioritas H di plan).
      */
-    private const STEP_ADMIN_FINANCE = 1;
-    private const STEP_BM            = 2;
-
     private const ROLE_ADMIN_FINANCE = 9;
     private const ROLE_BM            = 8;
 
@@ -70,9 +74,7 @@ class CustomerVerificationController extends Controller
      */
     private function createDocumentApprovalCycle(CustomerVerification $cv): void
     {
-        $template = ApprovalTemplate::with('steps')
-            ->where('code', self::APPROVAL_TEMPLATE_CODE)
-            ->first();
+        $template = $this->activeApprovalTemplate();
 
         if (!$template || $template->steps->count() < 2) {
             Log::error('Approval template customer_verification tidak ditemukan/tidak lengkap saat forward verification.', [
@@ -84,23 +86,55 @@ class CustomerVerificationController extends Controller
             throw new \RuntimeException('Approval template customer_verification belum ter-setup dengan benar.');
         }
 
-        $stepIdsByOrder = $template->steps->pluck('id_step', 'step_order');
-
+        // (Prioritas H1) Iterasi step apa adanya sesuai master data (jumlah &
+        // urutan berapapun), bukan hardcode [1, 2] — $template->steps sudah
+        // terurut step_order asc lewat relasi ApprovalTemplate::steps().
         $approval = $cv->documentApprovals()->create([
             'id_template'        => $template->id_template,
             'status'             => DocumentApprovalStatus::InProgress,
-            'current_step_order' => 1,
+            'current_step_order' => $template->steps->min('step_order'),
             'started_at'         => now(),
         ]);
 
-        foreach ([1, 2] as $order) {
+        foreach ($template->steps as $step) {
             DocumentApprovalStep::create([
                 'id_approval'      => $approval->id_approval,
-                'id_template_step' => $stepIdsByOrder->get($order),
-                'step_order'       => $order,
+                'id_template_step' => $step->id_step,
+                'step_order'       => $step->step_order,
                 'status'           => DocumentApprovalStepStatus::Pending,
             ]);
         }
+    }
+
+    /**
+     * (Prioritas H1) Template approval aktif untuk domain customer_verification
+     * (APPROVAL_TEMPLATE_CODE), berikut steps-nya (sudah terurut step_order
+     * lewat relasi ApprovalTemplate::steps()). Dipakai oleh
+     * createDocumentApprovalCycle(), pendingStepQuery(), dan entry-point
+     * method (saveEvaluation()/bmVerify()) supaya query lookup template ini
+     * tidak diduplikasi di banyak tempat.
+     */
+    private function activeApprovalTemplate(): ?ApprovalTemplate
+    {
+        return ApprovalTemplate::with('steps')
+            ->where('code', self::APPROVAL_TEMPLATE_CODE)
+            ->first();
+    }
+
+    /**
+     * (Prioritas H1/H2) Resolve step_order di $template yang id_role-nya
+     * cocok dengan $idRole. Dipakai supaya method domain-spesifik
+     * (saveEvaluation()/bmVerify()) dan queue (pendingStepQuery()) tidak
+     * perlu tahu step_order literal — cukup tahu role mereka sendiri
+     * (ROLE_ADMIN_FINANCE/ROLE_BM). Return null kalau template tidak punya
+     * step dengan role tersebut (mis. admin mengganti role step lewat CRUD
+     * master data tanpa ada step baru untuk role lama) — caller wajib
+     * menangani null ini secara defensif (silent no-op + Log::warning,
+     * bukan throw/500 baru).
+     */
+    private function resolveStepOrderForRole(ApprovalTemplate $template, int $idRole): ?int
+    {
+        return $template->steps->firstWhere('id_role', $idRole)?->step_order;
     }
 
     /**
@@ -108,12 +142,21 @@ class CustomerVerificationController extends Controller
      * approved/rejected untuk siklus approval yang sedang `in_progress` milik
      * verification ini, lalu majukan/tutup document_approvals induknya:
      *
-     * - approved & bukan step terakhir (order < 2) -> current_step_order maju
-     *   ke step berikutnya, document_approvals tetap in_progress.
-     * - approved & step terakhir (order 2 / BM)    -> document_approvals
-     *   ditutup status=approved, completed_at=now(), current_step_order=null.
-     * - rejected (di step manapun)                  -> document_approvals
-     *   ditutup status=rejected, completed_at=now(), current_step_order=null.
+     * - approved & bukan step terakhir -> current_step_order maju ke step
+     *   berikutnya yang benar-benar ada di template (bukan blind +1),
+     *   document_approvals tetap in_progress.
+     * - approved & step terakhir (step_order === max step_order milik
+     *   template cycle ini) -> document_approvals ditutup status=approved,
+     *   completed_at=now(), current_step_order=null.
+     * - rejected (di step manapun) -> document_approvals ditutup
+     *   status=rejected, completed_at=now(), current_step_order=null.
+     *
+     * (Prioritas H1, 2026-07-13) "Step terakhir" & "step berikutnya" DULU
+     * hardcode (`$stepOrder >= 2`, `$stepOrder + 1`) — sekarang di-resolve
+     * dinamis dari `$approval->template->steps` (di-eager-load di bawah),
+     * supaya reorder/tambah step lewat CRUD master data (Prioritas H4, di
+     * luar scope H1-H3) benar-benar mengubah behavior tanpa perlu ubah kode
+     * ini lagi.
      *
      * Sengaja mencari siklus yang `in_progress` (bukan sekadar approval
      * terbaru) supaya tidak menyentuh siklus lama yang sudah closed. Kalau
@@ -131,6 +174,7 @@ class CustomerVerificationController extends Controller
         ?string $note
     ): ?DocumentApproval {
         $approval = $cv->documentApprovals()
+            ->with('template.steps')
             ->where('status', DocumentApprovalStatus::InProgress)
             ->latest('id_approval')
             ->first();
@@ -168,17 +212,77 @@ class CustomerVerificationController extends Controller
                 'current_step_order' => null,
                 'completed_at'       => now(),
             ]);
-        } elseif ($stepOrder >= 2) {
+
+            return $approval;
+        }
+
+        $templateSteps = $approval->template?->steps ?? collect();
+
+        if ($templateSteps->isEmpty()) {
+            // Defensif: seharusnya tidak terjadi (template sudah divalidasi
+            // punya >=2 step saat cycle dibuat, lihat createDocumentApprovalCycle()),
+            // tapi kalau terjadi (mis. template dihapus di tengah cycle
+            // in_progress) treat sebagai final step daripada membiarkan cycle
+            // macet in_progress selamanya tanpa cara untuk close.
+            Log::warning('Template/steps tidak ditemukan untuk document_approvals ini saat menentukan step terakhir — cycle ditutup sebagai approved untuk mencegah macet.', [
+                'id_verification' => $cv->id_verification,
+                'id_approval'     => $approval->id_approval,
+                'step_order'      => $stepOrder,
+            ]);
+
             $approval->update([
                 'status'             => DocumentApprovalStatus::Approved,
                 'current_step_order' => null,
                 'completed_at'       => now(),
             ]);
-        } else {
-            $approval->update([
-                'current_step_order' => $stepOrder + 1,
-            ]);
+
+            return $approval;
         }
+
+        $maxStepOrder = $templateSteps->max('step_order');
+
+        if ($stepOrder === $maxStepOrder) {
+            $approval->update([
+                'status'             => DocumentApprovalStatus::Approved,
+                'current_step_order' => null,
+                'completed_at'       => now(),
+            ]);
+
+            return $approval;
+        }
+
+        // Step berikutnya = step_order riil berikutnya yang ada di template
+        // (bukan blind +1) — mengakomodasi step_order non-kontigu hasil
+        // reorder/tambah step lewat CRUD master data.
+        $nextStepOrder = $templateSteps->pluck('step_order')
+            ->filter(fn ($order) => $order > $stepOrder)
+            ->sort()
+            ->first();
+
+        if ($nextStepOrder === null) {
+            // Defensif: bukan max step_order tapi tidak ada step berikutnya
+            // (data template tidak konsisten) — log supaya ketahuan, treat
+            // sebagai final step supaya cycle tidak macet in_progress tanpa
+            // current_step_order yang valid.
+            Log::warning('Step ini bukan step_order maksimum tapi step berikutnya tidak ditemukan (data template_step tidak konsisten) — cycle ditutup sebagai approved untuk mencegah macet.', [
+                'id_verification' => $cv->id_verification,
+                'id_approval'     => $approval->id_approval,
+                'step_order'      => $stepOrder,
+                'max_step_order'  => $maxStepOrder,
+            ]);
+
+            $approval->update([
+                'status'             => DocumentApprovalStatus::Approved,
+                'current_step_order' => null,
+                'completed_at'       => now(),
+            ]);
+
+            return $approval;
+        }
+
+        $approval->update([
+            'current_step_order' => $nextStepOrder,
+        ]);
 
         return $approval;
     }
@@ -194,9 +298,30 @@ class CustomerVerificationController extends Controller
      * "belum pernah diputuskan"), lalu dicocokkan lagi ke step
      * document_approval_steps pada step_order & id_role (via id_template_step)
      * yang diminta sebagai double-check konsistensi data.
+     *
+     * (Prioritas H1, 2026-07-13) Signature diubah: sebelumnya $stepOrder
+     * dikirim hardcoded literal dari caller (self::STEP_ADMIN_FINANCE/
+     * self::STEP_BM) — sekarang di-resolve sendiri oleh method ini dari
+     * template customer_verification AKTIF (APPROVAL_TEMPLATE_CODE), by
+     * $idRole. Pragmatis: resolve sekali dari 1 template "aktif" (bukan
+     * per-cycle/per-document_approval), karena domain ini hanya punya 1
+     * template aktif untuk saat ini (lihat batasan Prioritas H di plan) — kalau
+     * template tidak punya step untuk role ini, return query kosong (bukan
+     * throw) supaya queue tampil 0 row alih-alih 500.
      */
-    private function pendingStepQuery(int $stepOrder, int $idRole)
+    private function pendingStepQuery(int $idRole)
     {
+        $template  = $this->activeApprovalTemplate();
+        $stepOrder = $template ? $this->resolveStepOrderForRole($template, $idRole) : null;
+
+        if ($stepOrder === null) {
+            Log::warning('Tidak menemukan step_order untuk role ini di template customer_verification aktif saat membangun antrean pending.', [
+                'id_role' => $idRole,
+            ]);
+
+            return CustomerVerification::query()->whereNull('id_verification');
+        }
+
         return CustomerVerification::query()
             ->whereHas('documentApprovals', function ($approvalQuery) use ($stepOrder, $idRole) {
                 $approvalQuery->where('status', DocumentApprovalStatus::InProgress)
@@ -474,7 +599,7 @@ class CustomerVerificationController extends Controller
     {
         $request->validate([
             'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,siup_file,tdp_file,other_file',
+            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
         ]);
 
         $path = $request->file('file')->store(
@@ -500,7 +625,7 @@ class CustomerVerificationController extends Controller
 
         $request->validate([
             'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,siup_file,tdp_file,other_file',
+            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
         ]);
 
         $path = $request->file('file')->store(
@@ -517,19 +642,17 @@ class CustomerVerificationController extends Controller
 
     public function updateByToken(Request $request, string $token)
     {
-        // 1) CAPTCHA (wajib)
+        // 1) Validasi payload dasar.
+        // (Prioritas redesain CustomerUpdateForm, 2026-07-13) Validasi
+        // captcha (captcha_key/captcha_text vs Cache::get('captcha:'.$key))
+        // DIHAPUS dari sini — form baru tidak lagi memakai captcha. Endpoint
+        // GET /api/captcha TETAP ada (tidak dihapus), cuma tidak lagi
+        // dipanggil dari form ini.
         $request->validate([
-            'captcha_key'   => 'required|string',
-            'captcha_text'  => 'required|string',
             'legal_data'    => 'required|string',
             'finance_data'  => 'required|string',
             'logistik_data' => 'required|string',
         ]);
-        $expected = Cache::get('captcha:' . $request->captcha_key);
-        if (!$expected || strtoupper(trim($request->captcha_text)) !== $expected) {
-            return response()->json(['message' => 'Captcha tidak valid'], 422);
-        }
-        Cache::forget('captcha:' . $request->captcha_key);
 
         // 2) Ambil verification + customer
         $cv = CustomerVerification::where('token_verification', $token)
@@ -604,10 +727,42 @@ class CustomerVerificationController extends Controller
         $mapEnv = ['Industri' => 1, 'Pemukiman' => 2, 'Other' => 9];
         $mapStorage = ['Indoor' => 1, 'Outdoor' => 2, 'Other' => 9];
         $mapHours = ['08.00 - 17.00' => 1, '24 Hours' => 2, 'Other' => 9];
-        $mapVolume = ["PRO ENERGY'S TANK LORRY" => 1, 'Flowmeter' => 2, 'Other' => 9];
+        // (Redesain CustomerUpdateForm, 2026-07-13) "Quantity Checking" —
+        // dulu "Volume Measurement" dengan 3 opsi (PRO ENERGY'S TANK
+        // LORRY/Flowmeter/Other). Diganti total jadi 7 opsi baru, kolom DB
+        // yang dipakai tetap sama (customer_logistik.logistik_volume). Tidak
+        // ada opsi "Other" lagi di 7 opsi ini — logistik_volume_other tetap
+        // ada di skema tapi tidak diisi/divalidasi dari mapping ini.
+        $mapVolume = [
+            'Weighbridge (Truck Scale)'    => 1,
+            'Platform Scale'               => 2,
+            'Volume Measurement'           => 3,
+            'Truck Counting'               => 4,
+            'Delivery Order Verification'  => 5,
+            'Net Weight Verification'      => 6,
+            'Sampling'                     => 7,
+        ];
         $mapQuality = ['DENSITY' => 1, 'OTHER' => 2]; // else null
         $mapSchedule = ['Every Day' => 1, 'Other' => 9];
         $mapPayMethod = ['Cash' => 1, 'Transfer' => 2, 'Cheque / Giro' => 3, 'Bank Guarantee' => 4, 'Other' => 9];
+        // (Redesain CustomerUpdateForm, 2026-07-13) "Supply Scheme Details"
+        // — dulu teks bebas diparse lewat $intOrNull, sekarang dropdown
+        // tetap: Delivery / Self Pickup.
+        $mapSupplyScheme = ['Delivery' => 1, 'Self Pickup' => 2];
+        // (Redesain CustomerUpdateForm, 2026-07-13) "Inco Terms" — dulu teks
+        // bebas diparse lewat $intOrNull, sekarang dropdown Incoterms
+        // standar (field TETAP di Section 4/Supply Scheme, tidak
+        // dipindah/rename).
+        $mapIncoterms = [
+            'EXW' => 1,
+            'FOB' => 2,
+            'CIF' => 3,
+            'CFR' => 4,
+            'DDP' => 5,
+            'DAP' => 6,
+            'FCA' => 7,
+            'CPT' => 8,
+        ];
 
         $tipeBisnisCode = $mapTipeBisnis[Arr::get($corp, 'tipe_bisnis', '')] ?? null;
         $ownershipCode  = $mapOwnership[Arr::get($corp, 'ownership', '')] ?? null;
@@ -634,6 +789,8 @@ class CustomerVerificationController extends Controller
             $mapQuality,
             $mapSchedule,
             $mapPayMethod,
+            $mapSupplyScheme,
+            $mapIncoterms,
             $legal,
             $finance,
             $logistik
@@ -662,6 +819,12 @@ class CustomerVerificationController extends Controller
 
                     'kecamatan_customer'    => Arr::get($corp, 'kecamatan'),
                     'kelurahan_customer'    => Arr::get($corp, 'kelurahan'),
+
+                    // (Redesain CustomerUpdateForm, 2026-07-13) NIB
+                    // menggantikan SIUP/TDP — reuse pola Arr::get() yang
+                    // sama seperti field corporate lain di atas.
+                    'nib'                   => Arr::get($corp, 'nib_number'),
+                    'nib_file'              => Arr::get($corp, 'nib_file'),
 
                     'lastupdate_time'       => now(),
                     'lastupdate_by'         => Arr::get($agreement ?? [], 'updated_by'),
@@ -742,10 +905,13 @@ class CustomerVerificationController extends Controller
                 'logistik_truck_other'   => null,
 
                 // ⬇️ yang bikin error: pastikan integer/NULL
-                'supply_shceme'          => $intOrNull(Arr::get($supply, 'scheme_details')),
+                // (Redesain CustomerUpdateForm, 2026-07-13) supply_shceme &
+                // nico sekarang dropdown tetap (bukan lagi teks bebas
+                // diparse $intOrNull) — lihat $mapSupplyScheme/$mapIncoterms.
+                'supply_shceme'          => $mapSupplyScheme[Arr::get($supply, 'scheme_details', '')] ?? null,
                 'specify_product'        => $intOrNull(Arr::get($supply, 'specify_product')), // pakai ini jika kolom INT
                 'volume_per_month'       => $intOrNull(Arr::get($supply, 'volume_per_month')),
-                'nico'                   => $intOrNull(Arr::get($supply, 'inco_terms')),       // kalau kolom INT
+                'nico'                   => $mapIncoterms[Arr::get($supply, 'inco_terms', '')] ?? null,
 
                 // kalau kolom2 di atas ternyata TEXT/VARCHAR, cukup ganti ke Arr::get(..., '')
                 // dan hapus $intOrNull
@@ -1389,7 +1555,7 @@ class CustomerVerificationController extends Controller
         $per = (int) $r->query('per_page', 25);
         $q   = trim((string) $r->query('q', ''));
 
-        $rows = $this->pendingStepQuery(self::STEP_ADMIN_FINANCE, self::ROLE_ADMIN_FINANCE)
+        $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
             ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
@@ -1411,7 +1577,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewAdminStats()
     {
-        $queue = $this->pendingStepQuery(self::STEP_ADMIN_FINANCE, self::ROLE_ADMIN_FINANCE)->count();
+        $queue = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)->count();
 
         return response()->json(['queue' => $queue]);
     }
@@ -1596,18 +1762,38 @@ class CustomerVerificationController extends Controller
             ]);
 
             // (CA5, pivot 2026-07-10, dulu C3; gap-fix 2026-07-10 menambah
-            // reject) Approve -> step 1 (Admin Finance) approved,
-            // current_step_order maju ke 2 (BM) di dalam advanceApprovalStep().
-            // Reject -> step 1 rejected, cycle document_approvals ditutup
-            // rejected sepenuhnya di dalam advanceApprovalStep() (tidak perlu
-            // kode eksplisit "kirim balik ke Marketing" -- queue Marketing di
-            // CA7 sudah otomatis menangkap ini via marketingQueueQuery()).
-            $this->advanceApprovalStep(
-                $cv,
-                self::STEP_ADMIN_FINANCE,
-                $decision === 'REJECT' ? DocumentApprovalStepStatus::Rejected : DocumentApprovalStepStatus::Approved,
-                $decision === 'REJECT' ? $notes : ($summary !== '' ? $summary : null)
-            );
+            // reject) Approve -> step Admin Finance approved, current_step_order
+            // maju ke step berikutnya (BM) di dalam advanceApprovalStep().
+            // Reject -> step Admin Finance rejected, cycle document_approvals
+            // ditutup rejected sepenuhnya di dalam advanceApprovalStep() (tidak
+            // perlu kode eksplisit "kirim balik ke Marketing" -- queue
+            // Marketing di CA7 sudah otomatis menangkap ini via
+            // marketingQueueQuery()).
+            //
+            // (Prioritas H2, 2026-07-13) step_order literal (dulu
+            // self::STEP_ADMIN_FINANCE) sekarang di-resolve dinamis: cari
+            // step di template aktif yang id_role-nya cocok ROLE_ADMIN_FINANCE.
+            // Kalau tidak ketemu (mis. admin ganti role step ini lewat CRUD
+            // tanpa update kode), silent no-op + Log::warning -- perilaku
+            // defensif yang sama seperti saat advanceApprovalStep() tidak
+            // menemukan approval/step in_progress, TIDAK ada guard/error baru.
+            $adminFinanceTemplate  = $this->activeApprovalTemplate();
+            $adminFinanceStepOrder = $adminFinanceTemplate
+                ? $this->resolveStepOrderForRole($adminFinanceTemplate, self::ROLE_ADMIN_FINANCE)
+                : null;
+
+            if ($adminFinanceStepOrder !== null) {
+                $this->advanceApprovalStep(
+                    $cv,
+                    $adminFinanceStepOrder,
+                    $decision === 'REJECT' ? DocumentApprovalStepStatus::Rejected : DocumentApprovalStepStatus::Approved,
+                    $decision === 'REJECT' ? $notes : ($summary !== '' ? $summary : null)
+                );
+            } else {
+                Log::warning('Tidak menemukan step_order untuk role Admin Finance di template customer_verification aktif saat saveEvaluation.', [
+                    'id_verification' => $cv->id_verification,
+                ]);
+            }
 
             // Jika SETELAH komite, sinkron ke customers (opsional, tetap dipertahankan)
             if ($jenisDataInt === 2) {
@@ -1670,7 +1856,7 @@ class CustomerVerificationController extends Controller
         $q       = trim((string) $r->query('q', ''));
         $perPage = (int) ($r->query('per_page', 25));
 
-        $rows = $this->pendingStepQuery(self::STEP_BM, self::ROLE_BM)
+        $rows = $this->pendingStepQuery(self::ROLE_BM)
             ->with(['customer']) // pastikan relasi ada
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
@@ -1687,7 +1873,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewBmStats()
     {
-        $queue = $this->pendingStepQuery(self::STEP_BM, self::ROLE_BM)->count();
+        $queue = $this->pendingStepQuery(self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
     }
 
@@ -1734,23 +1920,48 @@ class CustomerVerificationController extends Controller
             $cv->update($updates);
 
             // ===== (CA6, pivot 2026-07-10, dulu C4/C5) sistem approval baru: document_approvals / document_approval_steps =====
-            // BM adalah step 2, FINAL, di model 2-step baru (Marketing bukan
+            // BM adalah step FINAL di model 2-step baru (Marketing bukan
             // step formal lagi, Logistik & OM sudah dihapus dari alur, lihat
             // Prioritas D).
+            //
+            // (Prioritas H2, 2026-07-13) step_order literal `2` (dulu
+            // hardcoded langsung, bukan bahkan lewat konstanta) sekarang
+            // di-resolve dinamis: cari step di template aktif yang
+            // id_role-nya cocok ROLE_BM. Kalau tidak ketemu, silent no-op +
+            // Log::warning di kedua branch (APPROVE/REJECT) -- perilaku
+            // defensif yang sama seperti saat advanceApprovalStep() tidak
+            // menemukan approval/step in_progress, TIDAK ada guard/error
+            // baru.
+            $bmTemplate  = $this->activeApprovalTemplate();
+            $bmStepOrder = $bmTemplate
+                ? $this->resolveStepOrderForRole($bmTemplate, self::ROLE_BM)
+                : null;
+
+            if ($bmStepOrder === null) {
+                Log::warning('Tidak menemukan step_order untuk role BM di template customer_verification aktif saat bmVerify.', [
+                    'id_verification' => $cv->id_verification,
+                    'decision'        => $decision,
+                ]);
+            }
+
             if ($decision === 'APPROVE') {
-                $approval = $this->advanceApprovalStep(
-                    $cv,
-                    2,
-                    DocumentApprovalStepStatus::Approved,
-                    $data['notes'] ?? null
-                );
+                $approval = $bmStepOrder !== null
+                    ? $this->advanceApprovalStep(
+                        $cv,
+                        $bmStepOrder,
+                        DocumentApprovalStepStatus::Approved,
+                        $data['notes'] ?? null
+                    )
+                    : null;
 
                 // (C5 lama, dipertahankan) Efek samping yang dulu dipicu oleh
                 // method OM (sekarang dihapus, lihat Prioritas D1.1) saat
-                // approve direlokasi ke sini: HANYA terpicu kalau step 2 (BM)
-                // benar2 ter-approve di sistem approval baru ($approval tidak
-                // null).
-                if ($approval) {
+                // approve direlokasi ke sini: HANYA terpicu kalau cycle-nya
+                // BENAR-BENAR ditutup approved (bukan cuma "advanceApprovalStep
+                // mengembalikan non-null", yang juga bisa berarti cycle masih
+                // in_progress karena maju ke step berikutnya -- relevan sejak
+                // step_order jadi dinamis/bisa di-reorder lewat CRUD, Prioritas H).
+                if ($approval?->status === DocumentApprovalStatus::Approved) {
                     $cv->update([
                         'is_approved'      => 1,
                         'tanggal_approved' => now(),
@@ -1762,12 +1973,14 @@ class CustomerVerificationController extends Controller
                         ->update(['is_verified' => 1]);
                 }
             } else { // REJECT
-                $this->advanceApprovalStep(
-                    $cv,
-                    2,
-                    DocumentApprovalStepStatus::Rejected,
-                    $data['notes'] ?? null
-                );
+                if ($bmStepOrder !== null) {
+                    $this->advanceApprovalStep(
+                        $cv,
+                        $bmStepOrder,
+                        DocumentApprovalStepStatus::Rejected,
+                        $data['notes'] ?? null
+                    );
+                }
                 // Efek samping approve (is_approved/tanggal_approved/role_approve/
                 // customers.is_verified) SENGAJA tidak terpicu di jalur reject ini.
             }

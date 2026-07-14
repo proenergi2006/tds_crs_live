@@ -3,7 +3,14 @@
     <PageHeader
       title="Permission"
       description="Lihat daftar master permission dan kelola assignment permission per role."
-    />
+    >
+      <template #action>
+        <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
+          <Lucide icon="Plus" class="h-4 w-4" />
+          Tambah Permission
+        </Button>
+      </template>
+    </PageHeader>
 
     <Tab.Group class="mt-4">
       <Tab.List variant="link-tabs">
@@ -38,16 +45,28 @@
                   </span>
                 </Table.Td>
                 <Table.Td class="font-medium text-slate-800">
-                  {{ perm.name }}
+                  <div class="flex items-center gap-2">
+                    <span>{{ perm.name }}</span>
+                    <span class="font-caption inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-slate-600"
+                      :title="`Digunakan oleh ${perm.roles_count ?? 0} role`">
+                      {{ perm.roles_count ?? 0 }} role
+                    </span>
+                  </div>
                 </Table.Td>
                 <Table.Td class="text-slate-600">
                   {{ perm.description || '-' }}
                 </Table.Td>
                 <Table.Td class="text-center">
-                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
-                    @click="openEdit(perm)">
-                    <Lucide icon="Edit" class="h-4 w-4" />
-                  </Button>
+                  <div class="inline-flex items-center justify-center gap-2">
+                    <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
+                      @click="openEdit(perm)">
+                      <Lucide icon="Edit" class="h-4 w-4" />
+                    </Button>
+                    <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
+                      @click="confirmDelete(perm)">
+                      <Lucide icon="Trash2" class="h-4 w-4" />
+                    </Button>
+                  </div>
                 </Table.Td>
               </Table.Tr>
             </template>
@@ -61,9 +80,13 @@
       </Tab.Panels>
     </Tab.Group>
 
-    <!-- Edit Modal (module + description only) -->
-    <PermissionFormModal :open="formModal" :item="selectedPermission" @close="formModal = false"
-      @success="handleFormSuccess" />
+    <!-- Create/Edit Modal (create: name + module; edit: module + description only) -->
+    <PermissionFormModal :open="formModal" :item="selectedPermission" :module-options="moduleOptions"
+      @close="formModal = false" @success="handleFormSuccess" />
+
+    <!-- Delete Confirmation Modal -->
+    <DeleteRecordDialog :open="deleteModal" title="Hapus Permission?" :description="deleteDescription"
+      :loading="deleteLoading" @close="deleteModal = false" @confirm="submitDelete" />
   </div>
 </template>
 
@@ -75,12 +98,15 @@ import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import PermissionMatrix from './Matrix.vue'
 import PermissionFormModal from './Form.vue'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 const permissionApi = createResourceApi('/permissions')
+const { success, error: notifyError } = useNotification()
 
 /* Section: Types */
 interface Permission {
@@ -89,6 +115,7 @@ interface Permission {
   guard_name?: string
   module: string
   description: string
+  roles_count?: number
 }
 
 interface PermissionGroup {
@@ -108,10 +135,27 @@ const currentPage = ref(1)
 const formModal = ref(false)
 const selectedPermission = ref<Permission | null>(null)
 
+/* Section: Delete state */
+const deleteModal = ref(false)
+const deleteLoading = ref(false)
+const deleteTarget = ref<Permission | null>(null)
+
 /* Section: Computed — flatten grouped-by-module response into a single list */
 const allPermissions = computed<Permission[]>(() =>
   permissionGroups.value.flatMap(group => group.permissions),
 )
+
+const moduleOptions = computed<string[]>(() =>
+  Array.from(new Set(permissionGroups.value.map(group => group.module))).sort(),
+)
+
+const deleteDescription = computed(() => {
+  const count = deleteTarget.value?.roles_count ?? 0
+
+  return count > 0
+    ? `Permission "${deleteTarget.value?.name}" digunakan oleh ${count} role.`
+    : `Permission "${deleteTarget.value?.name}" belum digunakan role manapun.`
+})
 
 const filteredPermissions = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -164,6 +208,11 @@ async function loadPermissions() {
 }
 
 /* Section: Form actions */
+function openCreate() {
+  selectedPermission.value = null
+  formModal.value = true
+}
+
 function openEdit(perm: Permission) {
   selectedPermission.value = perm
   formModal.value = true
@@ -175,6 +224,31 @@ function handleFormSuccess() {
   // backend rather than patch the grouping client-side.
   formModal.value = false
   loadPermissions()
+}
+
+/* Section: Delete actions */
+function confirmDelete(perm: Permission) {
+  deleteTarget.value = perm
+  deleteModal.value = true
+}
+
+async function submitDelete() {
+  if (!deleteTarget.value) return
+
+  deleteLoading.value = true
+
+  try {
+    await permissionApi.destroy(deleteTarget.value.id)
+
+    deleteModal.value = false
+    success('Berhasil', 'Permission berhasil dihapus')
+    loadPermissions()
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Terjadi kesalahan saat menghapus permission.')
+  } finally {
+    deleteLoading.value = false
+    deleteTarget.value = null
+  }
 }
 
 /* Section: Lifecycle */

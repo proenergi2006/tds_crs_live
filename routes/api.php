@@ -10,6 +10,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
+use App\Http\Controllers\MasterData\ApprovalTemplateController;
 use App\Http\Controllers\MasterData\JenisProdukController;
 use App\Http\Controllers\MasterData\ProdukController;
 use App\Http\Controllers\MasterData\ProdukHargaController;
@@ -82,16 +83,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', fn(Request $req) => $req->user());
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
 
-    // b) Roles CRUD + permission matrix
-    Route::apiResource('roles', RoleController::class);
-    Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
-    Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
-    Route::get('permissions',               [PermissionController::class, 'index']);
-    Route::put('permissions/{id}',          [PermissionController::class, 'update']);
+    // b) Roles CRUD + permission matrix, c) Users CRUD — admin-only. Pakai middleware `can`
+    // (alias existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize, sudah
+    // terhubung ke Spatie Gate::before + admin bypass id_role=1 di AuthServiceProvider) supaya
+    // endpoint role/permission/user benar-benar digerbangi backend, bukan cuma disembunyikan
+    // di menu FE. Mirrors the `can:approval-template.manage` block below.
+    Route::middleware('can:admin.users.manage')->group(function () {
+        Route::apiResource('roles', RoleController::class);
+        Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
+        Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
+        Route::get('permissions',               [PermissionController::class, 'index']);
+        Route::post('permissions',              [PermissionController::class, 'store']);
+        Route::put('permissions/{id}',          [PermissionController::class, 'update']);
+        Route::delete('permissions/{id}',       [PermissionController::class, 'destroy']);
 
-    // c) Users CRUD
-    Route::apiResource('users', UserController::class);
-    Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+        Route::apiResource('users', UserController::class);
+        Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+    });
 
     // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class, 'generate']);
@@ -112,6 +120,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/produk-hargas/by-date', [ProdukHargaController::class, 'byDate']);
     Route::apiResource('produk-hargas', ProdukHargaController::class);
     Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
+
+    // Approval Template master data (admin-only, Prioritas H4 -
+    // approval-system-customer-verification.md). Pakai middleware `can` (alias
+    // existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize,
+    // sudah terhubung ke Spatie Gate::before + admin bypass id_role=1 di
+    // AuthServiceProvider) supaya endpoint ini benar-benar digerbangi backend,
+    // bukan cuma disembunyikan di menu FE.
+    Route::middleware('can:approval-template.manage')->group(function () {
+        Route::apiResource('approval-templates', ApprovalTemplateController::class);
+    });
 
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::apiResource('provinsis', ProvinsiController::class);

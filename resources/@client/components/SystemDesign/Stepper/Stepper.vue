@@ -40,7 +40,7 @@ const sz = computed(() => {
       numText: 'text-[10px]',
       gap: 'gap-3',
       contentPt: 'pt-0.5',
-      stepPb: 'pb-6',
+      connectorGap: 'min-h-6',
       labelText: 'text-[9px]',
       titleText: 'text-xs',
       descText: 'text-[10px]',
@@ -55,7 +55,7 @@ const sz = computed(() => {
       numText: 'text-xs',
       gap: 'gap-4',
       contentPt: 'pt-0.5',
-      stepPb: 'pb-8',
+      connectorGap: 'min-h-8',
       labelText: 'text-[10px]',
       titleText: 'text-sm',
       descText: 'text-xs',
@@ -70,7 +70,7 @@ const sz = computed(() => {
       numText: 'text-sm',
       gap: 'gap-5',
       contentPt: 'pt-1',
-      stepPb: 'pb-10',
+      connectorGap: 'min-h-10',
       labelText: 'text-xs',
       titleText: 'text-base',
       descText: 'text-sm',
@@ -80,40 +80,6 @@ const sz = computed(() => {
   } as const;
 
   return configs[props.size];
-});
-
-// Half of iconWrapH (h-7/h-9/h-12) → circle center offset for horizontal track
-const halfCircleH = computed(() => ({ sm: 14, md: 18, lg: 24 } as const)[props.size]);
-
-// Half of iconWrapV (h-6/h-8/h-10) → circle center offset for vertical track
-const halfCircleV = computed(() => ({ sm: 12, md: 16, lg: 20 } as const)[props.size]);
-
-const progressFraction = computed(() => {
-  if (props.steps.length < 2) return 0;
-
-  const activeIndex = props.steps.findIndex(s => s.status === 'active');
-  const lastCompleted = props.steps.reduce((last, s, i) =>
-    s.status === 'completed' ? i : last, -1);
-
-  const targetIndex = activeIndex >= 0 ? activeIndex : lastCompleted;
-
-  if (targetIndex < 0) return 0;
-  return targetIndex / (props.steps.length - 1);
-});
-
-// f × (100% − 2×halfCircle) = fraction of track from circle-center-0 to circle-center-(n-1)
-const progressWidth = computed(() => {
-  if (progressFraction.value === 0) return '0px';
-  const f = progressFraction.value;
-  const h = halfCircleH.value;
-  return `calc(${halfCircleH.value}px + ${(f * 100).toFixed(2)}% - ${(f * 2 * h).toFixed(2)}px)`;
-});
-
-const progressHeight = computed(() => {
-  if (progressFraction.value === 0) return '0px';
-  const f = progressFraction.value;
-  const v = halfCircleV.value;
-  return `calc(${(f * 100).toFixed(2)}% - ${(f * 2 * v).toFixed(2)}px)`;
 });
 
 function getStepLabel(step: StepItem, index: number): string {
@@ -158,26 +124,18 @@ function badgeClass(status: StepItem['status']): string {
     status === 'pending' && 'bg-slate-100 text-slate-500',
   );
 }
+
+function isConnectorFilled(step: StepItem): boolean {
+  return step.status === 'completed';
+}
 </script>
 
 <template>
   <!-- Vertical Stepper -->
-  <div v-if="direction === 'vertical'" class="relative flex flex-col">
-    <!-- Background track -->
-    <div class="absolute z-0 w-1.5 bg-slate-200"
-      :style="{ top: `${halfCircleV}px`, bottom: `${halfCircleV * 2}px`, left: `${halfCircleV - 3}px` }" />
-
-    <!-- Progress -->
-    <div class="absolute z-0 w-1.5 bg-success transition-all duration-500" :style="{
-      top: `${halfCircleV}px`,
-      left: `${halfCircleV - 2}px`,
-      height: progressHeight,
-    }" />
-
-    <div v-for="(step, index) in steps" :key="index" class="relative z-10 flex"
-      :class="[sz.gap, index < steps.length - 1 && sz.stepPb]">
-      <!-- Icon -->
-      <div class="shrink-0">
+  <div v-if="direction === 'vertical'" class="flex flex-col">
+    <div v-for="(step, index) in steps" :key="index" class="flex" :class="sz.gap">
+      <!-- Icon + connector -->
+      <div class="flex flex-col items-center">
         <div :class="circleClass(step.status, sz.iconWrapV)">
           <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
@@ -187,6 +145,9 @@ function badgeClass(status: StepItem['status']): string {
             :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" /> -->
           <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
+
+        <div v-if="index < steps.length - 1" class="w-1.5 flex-1 transition-colors duration-500"
+          :class="[sz.connectorGap, isConnectorFilled(step) ? 'bg-success' : 'bg-slate-200']" />
       </div>
 
       <!-- Content -->
@@ -220,29 +181,32 @@ function badgeClass(status: StepItem['status']): string {
   </div>
 
   <!-- Horizontal Stepper -->
-  <div v-else class="relative flex w-full justify-between">
-    <!-- Background track -->
-    <div class="absolute z-0 h-0.5 bg-slate-200"
-      :style="{ top: `${halfCircleH}px`, left: `${halfCircleH * 2}px`, right: `${halfCircleH}px` }" />
+  <div v-else class="flex w-full items-start">
+    <div v-for="(step, index) in steps" :key="index" class="flex flex-1 min-w-0 flex-col items-center">
+      <div class="flex w-full items-center">
+        <!-- left half: represents the connector coming FROM the previous step -->
+        <div v-if="index > 0" class="h-0.5 flex-1 transition-colors duration-500"
+          :class="isConnectorFilled(steps[index - 1]) ? 'bg-success' : 'bg-slate-200'" />
+        <div v-else class="flex-1" />
 
-    <!-- Progress -->
-    <div class="absolute z-0 h-0.5 bg-success transition-all duration-500" :style="{
-      top: `${halfCircleH}px`,
-      left: `${halfCircleH * 2}px`,
-      width: progressWidth,
-    }" />
+        <div :class="circleClass(step.status, sz.iconWrapH)">
+          <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
+          <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
+          <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
+          <span v-else-if="step.status === 'active'"
+            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
+          <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
+        </div>
 
-    <div v-for="(step, index) in steps" :key="index" class="relative z-10 flex flex-col items-center">
-      <div :class="circleClass(step.status, sz.iconWrapH)">
-        <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
-        <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
-        <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
-        <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
-        <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
+        <!-- right half: represents the connector going TO the next step -->
+        <div v-if="index < steps.length - 1" class="h-0.5 flex-1 transition-colors duration-500"
+          :class="isConnectorFilled(step) ? 'bg-success' : 'bg-slate-200'" />
+        <div v-else class="flex-1" />
       </div>
 
       <div class="mt-2 text-center">
-        <p v-if="showLabel" :class="twMerge('font-barlow font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+        <p v-if="showLabel"
+          :class="twMerge('font-barlow font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
           {{ getStepLabel(step, index) }}
         </p>
         <p :class="titleClass(step.status)">{{ step.title }}</p>

@@ -28,6 +28,11 @@ export const useAuthStore = defineStore('auth', {
     // sehingga getter ini cukup array.includes() tanpa perlu bypass khusus di FE.
     can: (state) => (permission: string): boolean =>
       state.user?.permissions?.includes(permission) ?? false,
+
+    // Expose module-level isLoggingOut flag agar router guard bisa cek apakah
+    // forceLogout() sedang/baru saja menangani sebuah 401, sebelum guard lain
+    // melakukan clear+redirect-nya sendiri (cegah double-redirect).
+    isForceLoggingOut: (): boolean => isLoggingOut,
   },
 
   actions: {
