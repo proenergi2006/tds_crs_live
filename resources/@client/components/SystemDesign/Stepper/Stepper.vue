@@ -96,17 +96,17 @@ function getStatusText(step: StepItem): string {
 // Solid bg agar lingkaran menutup garis track yang ada di belakangnya.
 function circleClass(status: StepItem['status'], wrapSize: string): string {
   return twMerge(
-    'flex shrink-0 items-center justify-center rounded-full border-2',
+    'flex shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-300',
     wrapSize,
-    status === 'completed' && 'border-success bg-success text-white',
-    status === 'active' && 'relative border-success bg-white text-success',
+    status === 'completed' && 'border-success bg-success text-white step-pop',
+    status === 'active' && 'relative border-success bg-white text-success step-pop',
     status === 'pending' && 'border-slate-200 bg-white text-slate-400',
   );
 }
 
 function titleClass(status: StepItem['status']): string {
   return twMerge(
-    'font-barlow font-bold',
+    'font-barlow font-bold transition-colors duration-300',
     sz.value.titleText,
     status === 'completed' && 'text-slate-700',
     status === 'active' && 'text-slate-800',
@@ -116,7 +116,7 @@ function titleClass(status: StepItem['status']): string {
 
 function badgeClass(status: StepItem['status']): string {
   return twMerge(
-    'inline-flex items-center gap-1 rounded font-barlow font-semibold uppercase tracking-wide',
+    'inline-flex items-center gap-1 rounded font-barlow font-semibold uppercase tracking-wide transition-colors duration-300',
     sz.value.badgePad,
     sz.value.badgeText,
     status === 'completed' && 'bg-emerald-100 text-emerald-700',
@@ -245,8 +245,28 @@ function isConnectorFilled(step: StepItem): boolean {
   }
 }
 
+/* Pop sekali saat circle baru berpindah status (pending → active / active → completed).
+   Class-nya baru muncul di DOM tepat saat status berubah, jadi animasi otomatis
+   terpicu ulang tiap kali circleClass() menghasilkan string berbeda. */
+.step-pop {
+  animation: step-pop 0.35s ease-out;
+}
+
+@keyframes step-pop {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .step-arc {
+  .step-arc,
+  .step-pop {
     animation: none;
   }
 }

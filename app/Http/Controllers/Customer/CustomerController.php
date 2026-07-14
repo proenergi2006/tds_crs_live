@@ -18,11 +18,20 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->cant('customer.viewAny') && $user->cant('customer.viewOwn')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $q = Customer::query()
             ->with(['user', 'provinsi', 'kabupaten', 'cabang'])
-            // ->where('id_user', $request->user()->id)
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as jumlah_penawaran']);
+
+        if ($user->cant('customer.viewAny')) {
+            $q->where('id_user', $user->id);
+        }
 
         if ($search = $request->query('search')) {
             $q->where(function ($q) use ($search) {
@@ -134,6 +143,10 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request)
     {
+        if ($request->user()->cant('customer.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $request->validated();
 
         $data['id_user']      = $request->user()->id;
@@ -152,7 +165,12 @@ class CustomerController extends Controller
 
     public function show(Request $request, Customer $customer)
     {
-        if ($customer->id_user !== $request->user()->id) {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $customer->id_user === $user->id);
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -161,13 +179,17 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
-        if ($customer->id_user !== $request->user()->id) {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $data = $request->validated();
 
-        $data['id_user']         = $request->user()->id;
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name;
         $data['nama_perusahaan'] = $this->normalizeName($data['nama_perusahaan'] ?? null);
@@ -179,7 +201,12 @@ class CustomerController extends Controller
 
     public function destroy(Request $request, Customer $customer)
     {
-        if ($customer->id_user !== $request->user()->id) {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

@@ -8,9 +8,16 @@ use Illuminate\Support\Facades\DB;
 class PermissionSeeder extends Seeder
 {
     /**
-     * Daftar 23 permission + mapping ke id_role.
+     * Daftar permission + mapping ke id_role.
      * Format name: module.action (kebab-case).
      * Mapping dari audit meta.roles di router/index.ts + roleMenuMapping.ts.
+     *
+     * Permission Customer & Penawaran TDS (`customer.*` dan `penawaran.*`) menggantikan
+     * skema lama `penawaran.tds.manage` (Customer+Penawaran CRUD digabung satu
+     * permission) dan `penawaran.verify-bm`/`penawaran.verify-om` (approval
+     * per-tahap) -- lihat .claude/plans/rbac-phase-2-customer-verification-review.md
+     * ("Update 2026-07-14") untuk konteks keputusan. Permission lama dihapus
+     * eksplisit di run(), bukan cuma dibiarkan hilang dari array ini.
      */
     private array $permissions = [
         // Tata Kelola
@@ -105,24 +112,56 @@ class PermissionSeeder extends Seeder
             'roles'       => [5],
         ],
 
-        // Customer & Penawaran TDS
+        // Customer TDS
         [
-            'name'        => 'penawaran.tds.manage',
-            'module'      => 'penawaran',
-            'description' => 'Kelola Customer TDS dan Penawaran TDS',
+            'name'        => 'customer.viewOwn',
+            'module'      => 'customer',
+            'description' => 'Lihat customer milik sendiri (Marketing/Key Account)',
             'roles'       => [4, 12],
         ],
         [
-            'name'        => 'penawaran.verify-bm',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran sebagai Branch Manager (BM TDS)',
-            'roles'       => [8],
+            'name'        => 'customer.viewAny',
+            'module'      => 'customer',
+            'description' => 'Lihat semua customer lintas-marketing (Administrator/Admin Finance/BM/OM)',
+            'roles'       => [1, 9, 8, 10],
         ],
         [
-            'name'        => 'penawaran.verify-om',
+            'name'        => 'customer.manage',
+            'module'      => 'customer',
+            'description' => 'Tambah, edit, hapus customer',
+            'roles'       => [4, 12],
+        ],
+        [
+            'name'        => 'customer.verify',
+            'module'      => 'customer',
+            'description' => 'Akses modul verifikasi customer (BM & Admin Finance)',
+            'roles'       => [8, 9],
+        ],
+
+        // Penawaran TDS
+        [
+            'name'        => 'penawaran.viewOwn',
             'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran sebagai OM / CEO / CFO (TDS)',
-            'roles'       => [2, 3, 10],
+            'description' => 'Lihat penawaran milik sendiri (Marketing/Key Account)',
+            'roles'       => [4, 12],
+        ],
+        [
+            'name'        => 'penawaran.viewAny',
+            'module'      => 'penawaran',
+            'description' => 'Lihat semua penawaran lintas-marketing (Administrator/Admin Finance/BM/OM)',
+            'roles'       => [1, 9, 8, 10],
+        ],
+        [
+            'name'        => 'penawaran.manage',
+            'module'      => 'penawaran',
+            'description' => 'Tambah, edit, hapus penawaran',
+            'roles'       => [4, 12],
+        ],
+        [
+            'name'        => 'penawaran.verify',
+            'module'      => 'penawaran',
+            'description' => 'Akses modul approval penawaran (BM/CFO/CEO/OM)',
+            'roles'       => [8, 2, 3, 10],
         ],
 
         // Customer & Penawaran Proenergi
@@ -216,5 +255,46 @@ class PermissionSeeder extends Seeder
                 );
             }
         }
+
+        $this->cleanupRetiredPermissions();
+    }
+
+    /**
+     * Hapus permission lama yang digantikan skema `customer.*` / `penawaran.*` baru
+     * (lihat "Update 2026-07-14" di rbac-phase-2-customer-verification-review.md):
+     * - penawaran.tds.manage  -> digantikan customer.manage/viewOwn/viewAny + penawaran.manage/viewOwn/viewAny
+     * - penawaran.verify-bm   -> digabung ke penawaran.verify (role 8)
+     * - penawaran.verify-om   -> digabung ke penawaran.verify (role 2, 3, 10)
+     *
+     * Idempotent: aman dijalankan berulang kali walau row-nya sudah tidak ada
+     * (whereIn(...)->delete() tidak error kalau hasilnya 0 row). Hapus
+     * role_has_permissions dulu sebelum permissions supaya tidak ada orphan
+     * row eksplisit di kode -- meskipun FK role_has_permissions.permission_id
+     * sudah ON DELETE CASCADE, urutan ini tetap ditulis eksplisit agar tidak
+     * diam-diam mengandalkan cascade.
+     */
+    private function cleanupRetiredPermissions(): void
+    {
+        $retiredNames = [
+            'penawaran.tds.manage',
+            'penawaran.verify-bm',
+            'penawaran.verify-om',
+        ];
+
+        $retiredIds = DB::table('permissions')
+            ->where('guard_name', 'web')
+            ->whereIn('name', $retiredNames)
+            ->pluck('id');
+
+        if ($retiredIds->isNotEmpty()) {
+            DB::table('role_has_permissions')
+                ->whereIn('permission_id', $retiredIds)
+                ->delete();
+        }
+
+        DB::table('permissions')
+            ->where('guard_name', 'web')
+            ->whereIn('name', $retiredNames)
+            ->delete();
     }
 }

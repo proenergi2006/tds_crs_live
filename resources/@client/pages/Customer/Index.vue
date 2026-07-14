@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { copyToClipboard } from '@/utils/clipboard'
 
@@ -21,6 +22,7 @@ const customerApi = createResourceApi('/customers')
 const { success, error } = useNotification()
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
 /* Brand switching — TDS vs Proenergi (pola sama seperti Penawaran/Form.vue) */
 type Brand = 'tds' | 'proenergi'
@@ -54,6 +56,20 @@ const tabCounts = ref<Partial<Record<VerificationTab, number>>>({})
 const linkBusyId = ref<number | null>(null)
 const linkResultOpen = ref(false)
 const linkResult = reactive({ token: '', link: '', alreadyExists: false })
+
+/* Computed: permission (customer.manage + ownership, lihat Task 1(a)).
+   Proenergi di luar scope restrukturisasi permission ini (lihat CLAUDE.md) — tombol
+   tetap tampil apa adanya untuk brand tersebut, tidak digate ulang di sini. */
+const canManageCustomer = computed(() => isProenergi ? true : auth.can('customer.manage'))
+const canViewAnyCustomer = computed(() => isProenergi ? true : auth.can('customer.viewAny'))
+
+function canManageRow(item: any) {
+  if (isProenergi) return true
+  return (
+    canManageCustomer.value &&
+    (canViewAnyCustomer.value || Number(item.id_user) === Number(auth.user?.id))
+  )
+}
 
 /* Computed: summary cards (Proenergi only) */
 const totalProspect = computed(() => customers.value.filter(c => c.status_customer === 1).length)
@@ -237,7 +253,7 @@ function getVerificationBadgeClass(badge?: string) {
       <PageHeader :title="isProenergi ? 'Master Customers Proenergi' : 'Master Customers'"
         :description="isProenergi ? 'Kelola data customer Proenergi yang kamu tangani' : 'Kelola data customer yang kamu tangani'">
         <template #action>
-          <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button v-if="canManageCustomer" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
             Tambah Customer
           </Button>
@@ -326,12 +342,12 @@ function getVerificationBadgeClass(badge?: string) {
                   @click="openCreatePenawaran(item.id_customer)">
                   <Lucide icon="FilePlus" class="h-4 w-4" />
                 </Button>
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
-                  @click="openEdit(item.id_customer)">
+                <Button v-if="canManageRow(item)" variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                  title="Edit" @click="openEdit(item.id_customer)">
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
-                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
-                  @click="confirmDelete(item.id_customer)">
+                <Button v-if="canManageRow(item)" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                  title="Hapus" @click="confirmDelete(item.id_customer)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>

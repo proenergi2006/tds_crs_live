@@ -143,7 +143,13 @@ async function fetchCustomer() {
       form.id_kabupaten = data.id_kabupaten ? String(data.id_kabupaten) : ''
     }
   } catch (e: any) {
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data customer')
+    const isForbidden = e.response?.status === 403
+    notifyError(
+      isForbidden ? 'Akses Ditolak' : 'Gagal',
+      isForbidden
+        ? 'Kamu tidak punya akses untuk mengedit customer ini.'
+        : e.response?.data?.message ?? 'Gagal memuat data customer',
+    )
     router.push({ name: indexRoute.value })
   } finally {
     pageLoading.value = false

@@ -360,16 +360,46 @@ class CustomerVerificationController extends Controller
             });
     }
 
+    /**
+     * (Task 5, RBAC Fase 2) `customer_verifications` tidak punya kolom
+     * ownership langsung (tidak ada id_user/user_id di tabel/model ini,
+     * sudah diverifikasi ke `App\Models\CustomerVerification` — beda dengan
+     * `Customer` yang punya `id_user`). Ownership untuk keperluan
+     * `customer.viewOwn`/scope manage di controller ini diturunkan lewat
+     * relasi `id_customer` -> `customers.id_user`. Query langsung (bukan
+     * lazy-load relasi `customer` yang di banyak method di-load dengan kolom
+     * terbatas) supaya tidak salah baca id_user yang kebetulan tidak
+     * ter-select di eager-load lain.
+     */
+    private function verificationOwnerId(CustomerVerification $customerVerification): ?int
+    {
+        $ownerId = Customer::where('id_customer', $customerVerification->id_customer)->value('id_user');
+
+        return $ownerId !== null ? (int) $ownerId : null;
+    }
+
     // GET /api/customer-verifications
     public function index(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->cant('customer.viewAny') && $user->cant('customer.viewOwn')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $perPage = (int) $request->query('per_page', 10);
         $search  = trim((string) $request->query('search', ''));
 
         $q = CustomerVerification::query()
             ->with([
-                'customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,email,telepon,fax'
+                'customer:id_customer,id_user,kode_pelanggan,nama_perusahaan,alamat_perusahaan,email,telepon,fax'
             ]);
+
+        if ($user->cant('customer.viewAny')) {
+            $q->whereHas('customer', function ($c) use ($user) {
+                $c->where('id_user', $user->id);
+            });
+        }
 
         if ($search !== '') {
             $q->where(function ($w) use ($search) {
@@ -401,14 +431,32 @@ class CustomerVerificationController extends Controller
     }
 
     // GET /api/customer-verifications/{customerVerification}
-    public function show(CustomerVerification $customerVerification)
+    public function show(Request $request, CustomerVerification $customerVerification)
     {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($customerVerification) === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         return $customerVerification->loadMissing('customer:id_customer,nama_perusahaan');
     }
 
-    public function getAdminEvaluation($id)
+    public function getAdminEvaluation(Request $request, $id)
     {
         $cv = CustomerVerification::with('customer')->findOrFail($id);
+
+        $user = $request->user();
+
+        $allowed = $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $customer = $cv->customer;
 
@@ -457,6 +505,10 @@ class CustomerVerificationController extends Controller
     // POST /api/customer-verifications
     public function store(Request $request)
     {
+        if ($request->user()->cant('customer.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $request->validate([
             'id_customer'        => ['required', 'exists:customers,id_customer'],
             'token_verification' => ['nullable', 'string', 'size:17', 'unique:customer_verifications,token_verification'],
@@ -530,6 +582,15 @@ class CustomerVerificationController extends Controller
     // PUT/PATCH /api/customer-verifications/{customerVerification}  (INTERNAL, tanpa captcha)
     public function update(Request $request, CustomerVerification $customerVerification)
     {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($this->verificationOwnerId($customerVerification) === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $request->validate([
             'id_customer'        => ['sometimes', 'exists:customers,id_customer'],
             'token_verification' => [
@@ -597,6 +658,15 @@ class CustomerVerificationController extends Controller
 
     public function upload(Request $request, CustomerVerification $customerVerification)
     {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($this->verificationOwnerId($customerVerification) === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $request->validate([
             'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
             'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
@@ -961,8 +1031,17 @@ class CustomerVerificationController extends Controller
 
 
     // DELETE /api/customer-verifications/{customerVerification}
-    public function destroy(CustomerVerification $customerVerification)
+    public function destroy(Request $request, CustomerVerification $customerVerification)
     {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($this->verificationOwnerId($customerVerification) === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $customerVerification->delete();
         return response()->noContent();
     }
@@ -976,6 +1055,10 @@ class CustomerVerificationController extends Controller
      */
     public function reviewStats()
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $unreviewed = $this->marketingQueueQuery()->count();
 
         // "reviewed" = sudah pernah di-forward dan siklus TERBARUnya sedang
@@ -1008,6 +1091,10 @@ class CustomerVerificationController extends Controller
      */
     public function reviewIndex(Request $r)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $per    = (int) $r->query('per_page', 25);
         $q      = trim((string) $r->query('q', ''));
         // baca 'tab' (fallback ke 'status' untuk kompatibilitas lama)
@@ -1045,6 +1132,10 @@ class CustomerVerificationController extends Controller
 
     public function setReviewed(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $row = \App\Models\CustomerVerification::findOrFail($id);
         $row->update(['is_reviewed' => 1]);
         return response()->json(['ok' => true]);
@@ -1072,6 +1163,10 @@ class CustomerVerificationController extends Controller
 
     public function reviewShow(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::with([
             'customer:id_customer,nama_perusahaan,alamat_perusahaan,telepon,fax,email'
         ])->findOrFail($id);
@@ -1108,6 +1203,10 @@ class CustomerVerificationController extends Controller
      */
     public function approvalTimeline(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
 
         $cycles = $cv->documentApprovals()
@@ -1147,6 +1246,10 @@ class CustomerVerificationController extends Controller
 
     public function evaluationShow(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv  = CustomerVerification::findOrFail($id);
         $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
 
@@ -1159,6 +1262,10 @@ class CustomerVerificationController extends Controller
 
     public function evaluationAdmin(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::with('customer')->findOrFail($id);
         $cust = $cv->customer;
 
@@ -1176,6 +1283,10 @@ class CustomerVerificationController extends Controller
 
     public function evaluationSave(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
 
         $data = $r->validate([
@@ -1248,6 +1359,10 @@ class CustomerVerificationController extends Controller
 
     public function evaluationUploadFile(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
 
         $r->validate([
@@ -1286,6 +1401,10 @@ class CustomerVerificationController extends Controller
 
     public function saveReviewData(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
         $payload = $r->validate([
             'review_form' => 'required|array',
@@ -1303,6 +1422,10 @@ class CustomerVerificationController extends Controller
 
     public function uploadReviewFile(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
 
         $r->validate([
@@ -1327,6 +1450,10 @@ class CustomerVerificationController extends Controller
 
     public function getReview(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $review = CustomerReview::where('id_verification', $id)->first();
 
         $attachments = [];
@@ -1350,6 +1477,10 @@ class CustomerVerificationController extends Controller
 
     public function saveReview(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         // data inti review
         $data = $r->validate([
             'review_result'            => 'nullable|integer',
@@ -1475,6 +1606,10 @@ class CustomerVerificationController extends Controller
 
     public function uploadReviewAttachment(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $review = CustomerReview::firstOrCreate(
             ['id_verification' => $id],
             ['review_tanggal' => now()]
@@ -1522,6 +1657,10 @@ class CustomerVerificationController extends Controller
 
     public function deleteReviewAttachment(int $id, int $no)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $review = CustomerReview::where('id_verification', $id)->firstOrFail();
         $att = CustomerReviewAttachment::where('id_review', $review->id_review)
             ->where('id_verification', $id)
@@ -1539,6 +1678,10 @@ class CustomerVerificationController extends Controller
 
     public function approve(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::findOrFail($id);
         $cv->update(['disposisi_result' => 1]); // tandai disetujui
         return response()->json(['ok' => true, 'message' => 'Persetujuan dikirim.']);
@@ -1552,6 +1695,10 @@ class CustomerVerificationController extends Controller
      */
     public function reviewAdminIndex(Request $r)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $per = (int) $r->query('per_page', 25);
         $q   = trim((string) $r->query('q', ''));
 
@@ -1577,6 +1724,10 @@ class CustomerVerificationController extends Controller
 
     public function reviewAdminStats()
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $queue = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)->count();
 
         return response()->json(['queue' => $queue]);
@@ -1585,6 +1736,10 @@ class CustomerVerificationController extends Controller
     // OPSIONAL: untuk melanjutkan tahap (misal dari admin -> logistik)
     public function setDisposisi(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $r->validate([
             'to'   => 'required|integer|in:1,2,3,4', // 1=Admin,2=Logistik,3=BM,4=OM
         ]);
@@ -1596,6 +1751,10 @@ class CustomerVerificationController extends Controller
     }
     public function getEvaluation(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv  = \App\Models\CustomerVerification::findOrFail($id);
         $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
 
@@ -1615,6 +1774,10 @@ class CustomerVerificationController extends Controller
 
     public function saveEvaluation(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         // Validasi sesuai payload FE (approval di dalam form)
         $payload = $r->validate([
             // (Prioritas C-Amend gap-fix, 2026-07-10) reject path Admin
@@ -1826,6 +1989,10 @@ class CustomerVerificationController extends Controller
 
     public function logistikShow(int $id)
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $cv = CustomerVerification::with('customer')->findOrFail($id);
 
         // business_type ambil dari legal/corporate kalau ada
@@ -1853,6 +2020,10 @@ class CustomerVerificationController extends Controller
      */
     public function reviewBmIndex(Request $r)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $q       = trim((string) $r->query('q', ''));
         $perPage = (int) ($r->query('per_page', 25));
 
@@ -1873,6 +2044,10 @@ class CustomerVerificationController extends Controller
 
     public function reviewBmStats()
     {
+        if (auth()->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $queue = $this->pendingStepQuery(self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
     }
@@ -1889,6 +2064,10 @@ class CustomerVerificationController extends Controller
      */
     public function bmVerify(Request $r, int $id)
     {
+        if ($r->user()->cant('customer.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $r->validate([
             'notes'    => ['nullable', 'string'],
             'decision' => ['nullable', 'in:APPROVE,REJECT'],
