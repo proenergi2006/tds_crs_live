@@ -212,7 +212,6 @@ async function submitForm() {
         <TomSelect id="permission-module" v-model="form.module" class="w-full"
           :class="v$.module.$error ? 'border-rose-500' : ''" :options="{
             create: true,
-            createOnBlur: true,
             placeholder: 'Pilih atau ketik module baru...',
             dropdownParent: 'body' as const,
           }">

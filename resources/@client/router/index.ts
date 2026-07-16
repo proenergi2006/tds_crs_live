@@ -345,7 +345,7 @@ const routes = [
         path: "/po-verification",
         name: "po-verification-list",
         component: () => import("@/pages/Verification/PoSupplier/Index.vue"),
-        meta: { permission: "po-supplier.verify" },
+        meta: { permission: "verification.po-supplier" },
       },
 
       {
@@ -384,12 +384,6 @@ const routes = [
         name: "penawarans-create-proenergi",
         component: () => import("@/pages/Penawaran/Form.vue"),
         meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
-      },
-
-      {
-        path: "/penawarans/createlubricant",
-        name: "penawarans-create-lubricant",
-        component: () => import("@/pages/PenawaranFormLubricant.vue"),
       },
 
       {
@@ -571,7 +565,7 @@ const routes = [
         meta: {
           role: "bm",
           brand: "reguler",
-          permission: "penawaran.verify",
+          permission: "verification.quotation",
         },
       },
       {
@@ -591,7 +585,7 @@ const routes = [
         meta: {
           role: "om",
           brand: "reguler",
-          permission: "penawaran.verify",
+          permission: "verification.quotation",
         },
       },
       {
@@ -608,7 +602,7 @@ const routes = [
         path: "/penawarans/:id/verifikasi",
         name: "penawarans-verifikasi-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "bm", brand: "reguler", permission: "penawaran.verify" },
+        meta: { role: "bm", brand: "reguler", permission: "verification.quotation" },
       },
       {
         path: "/penawarans-proenergi/:id/verifikasi",
@@ -623,7 +617,7 @@ const routes = [
         meta: {
           role: "om",
           brand: "reguler",
-          permission: "penawaran.verify",
+          permission: "verification.quotation",
         },
       },
       {
@@ -692,7 +686,7 @@ const routes = [
         name: "review-data-customer",
         component: () =>
           import("@/pages/CustomerVerification/Marketing/Index.vue"),
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review-data-customer/:id",
@@ -700,14 +694,14 @@ const routes = [
         component: () =>
           import("@/pages/CustomerVerification/Marketing/Detail.vue"),
         props: true,
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
         component: () =>
           import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer/:id",
@@ -715,20 +709,20 @@ const routes = [
         component: () =>
           import("@/pages/CustomerVerification/AdminFinance/Detail.vue"),
         props: true,
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review/bm",
         name: "verify-data-customer-bm",
         component: () => import("@/pages/CustomerVerification/Bm/Index.vue"),
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review/bm/:id",
         name: "bm-customer-detail",
         props: true,
         component: () => import("@/pages/CustomerVerification/Bm/Detail.vue"),
-        meta: { permission: "customer.verify" },
+        meta: { permission: "verification.customer" },
       },
 
       {

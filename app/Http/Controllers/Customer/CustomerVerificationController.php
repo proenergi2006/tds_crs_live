@@ -1055,7 +1055,7 @@ class CustomerVerificationController extends Controller
      */
     public function reviewStats()
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1091,7 +1091,7 @@ class CustomerVerificationController extends Controller
      */
     public function reviewIndex(Request $r)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1132,7 +1132,7 @@ class CustomerVerificationController extends Controller
 
     public function setReviewed(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1163,7 +1163,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewShow(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1203,7 +1203,7 @@ class CustomerVerificationController extends Controller
      */
     public function approvalTimeline(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1246,7 +1246,7 @@ class CustomerVerificationController extends Controller
 
     public function evaluationShow(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1262,7 +1262,7 @@ class CustomerVerificationController extends Controller
 
     public function evaluationAdmin(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1283,7 +1283,7 @@ class CustomerVerificationController extends Controller
 
     public function evaluationSave(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1359,7 +1359,7 @@ class CustomerVerificationController extends Controller
 
     public function evaluationUploadFile(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1401,7 +1401,7 @@ class CustomerVerificationController extends Controller
 
     public function saveReviewData(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1422,7 +1422,7 @@ class CustomerVerificationController extends Controller
 
     public function uploadReviewFile(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1450,7 +1450,7 @@ class CustomerVerificationController extends Controller
 
     public function getReview(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1477,7 +1477,7 @@ class CustomerVerificationController extends Controller
 
     public function saveReview(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1606,7 +1606,7 @@ class CustomerVerificationController extends Controller
 
     public function uploadReviewAttachment(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1657,7 +1657,7 @@ class CustomerVerificationController extends Controller
 
     public function deleteReviewAttachment(int $id, int $no)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1678,7 +1678,7 @@ class CustomerVerificationController extends Controller
 
     public function approve(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1695,7 +1695,7 @@ class CustomerVerificationController extends Controller
      */
     public function reviewAdminIndex(Request $r)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1724,7 +1724,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewAdminStats()
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1736,7 +1736,7 @@ class CustomerVerificationController extends Controller
     // OPSIONAL: untuk melanjutkan tahap (misal dari admin -> logistik)
     public function setDisposisi(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1751,7 +1751,7 @@ class CustomerVerificationController extends Controller
     }
     public function getEvaluation(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1774,7 +1774,7 @@ class CustomerVerificationController extends Controller
 
     public function saveEvaluation(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1989,7 +1989,7 @@ class CustomerVerificationController extends Controller
 
     public function logistikShow(int $id)
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -2020,7 +2020,7 @@ class CustomerVerificationController extends Controller
      */
     public function reviewBmIndex(Request $r)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -2044,7 +2044,7 @@ class CustomerVerificationController extends Controller
 
     public function reviewBmStats()
     {
-        if (auth()->user()->cant('customer.verify')) {
+        if (auth()->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -2064,7 +2064,7 @@ class CustomerVerificationController extends Controller
      */
     public function bmVerify(Request $r, int $id)
     {
-        if ($r->user()->cant('customer.verify')) {
+        if ($r->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

@@ -59,29 +59,29 @@ export const customerNavigation: NavItem[] = [
       },
     ],
   },
-  {
-    icon: "UserPlus",
-    title: "Customer Onboarding",
-    subMenu: [
-      {
-        icon: "Link2",
-        pageName: "link-customers",
-        title: "Link Customers",
-        permission: "customer.manage",
-      },
-      {
-        icon: "File",
-        pageName: "review-data-customer",
-        title: "Review Data Customer",
-        activePageNames: ["review-customer-detail"],
-        permission: "customer.verify",
-      },
-      {
-        icon: "CheckSquare",
-        pageName: "customer-verifications",
-        title: "Daftar Verifikasi Customer",
-        permission: "customer.viewOwn",
-      },
-    ],
-  },
+  // {
+  //   icon: "UserPlus",
+  //   title: "Customer Onboarding",
+  //   subMenu: [
+  //     {
+  //       icon: "Link2",
+  //       pageName: "link-customers",
+  //       title: "Link Customers",
+  //       permission: "customer.manage",
+  //     },
+  //     {
+  //       icon: "File",
+  //       pageName: "review-data-customer",
+  //       title: "Review Data Customer",
+  //       activePageNames: ["review-customer-detail"],
+  //       permission: "verification.customer",
+  //     },
+  //     {
+  //       icon: "CheckSquare",
+  //       pageName: "customer-verifications",
+  //       title: "Daftar Verifikasi Customer",
+  //       permission: "customer.viewOwn",
+  //     },
+  //   ],
+  // },
 ];

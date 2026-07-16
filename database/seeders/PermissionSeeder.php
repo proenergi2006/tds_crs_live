@@ -88,8 +88,8 @@ class PermissionSeeder extends Seeder
             'roles'       => [5],
         ],
         [
-            'name'        => 'po-supplier.verify',
-            'module'      => 'po-supplier',
+            'name'        => 'verification.po-supplier',
+            'module'      => 'verification',
             'description' => 'Verifikasi / approve PO Supplier (CFO & CEO)',
             'roles'       => [2, 3],
         ],
@@ -132,8 +132,8 @@ class PermissionSeeder extends Seeder
             'roles'       => [4, 12],
         ],
         [
-            'name'        => 'customer.verify',
-            'module'      => 'customer',
+            'name'        => 'verification.customer',
+            'module'      => 'verification',
             'description' => 'Akses modul verifikasi customer (BM & Admin Finance)',
             'roles'       => [8, 9],
         ],
@@ -158,8 +158,8 @@ class PermissionSeeder extends Seeder
             'roles'       => [4, 12],
         ],
         [
-            'name'        => 'penawaran.verify',
-            'module'      => 'penawaran',
+            'name'        => 'verification.quotation',
+            'module'      => 'verification',
             'description' => 'Akses modul approval penawaran (BM/CFO/CEO/OM)',
             'roles'       => [8, 2, 3, 10],
         ],
@@ -279,6 +279,9 @@ class PermissionSeeder extends Seeder
             'penawaran.tds.manage',
             'penawaran.verify-bm',
             'penawaran.verify-om',
+            'customer.verify',
+            'penawaran.verify',
+            'po-supplier.verify',
         ];
 
         $retiredIds = DB::table('permissions')
