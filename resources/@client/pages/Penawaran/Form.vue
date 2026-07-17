@@ -35,12 +35,14 @@ const BRAND_CONFIG = {
   tds: {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
+    detailRoute: 'penawarans-detail',
     usePe: false,   // harga dari kolom harga_price_list
     showAcuan: false,
   },
   proenergi: {
     apiBase: '/api/penawarans-proenergi',
     listRoute: 'penawarans-list-proenergi',
+    detailRoute: 'penawarans-detail-proenergi',
     usePe: true,    // harga_price_list_pe ?? harga_price_list (via param pe=1)
     showAcuan: true,
   },
@@ -66,7 +68,6 @@ const oaSelectKey = ref(0)
 /* State: misc */
 const loading = ref(false)
 const canSeeHarga = ref(false)
-const disposisiPenawaran = ref<number | null>(null)
 const periodeRange = ref('')
 const hargaMap = ref<Record<string, number | null>>({})
 const hargaLoading = ref(false)
@@ -85,13 +86,27 @@ interface ItemLine {
 }
 
 const form = reactive({
+  // Section 1: Informasi Penawaran
+  nomor_penawaran: '',
   id_customer: '',
   id_cabang: '' as number | '',
-  nomor_penawaran: '',
   masa_berlaku: '',
   sampai_dengan: '',
-  items: [] as ItemLine[],
+  kepada: '',
+  nama: '',
+  jabatan: '',
+  telepon: '',
+  alamat: '',
 
+  // Section 2: Detail Pengiriman & Daftar Produk
+  type_pengiriman: '',
+  metode: '',
+  ukuran_dasar: '',
+  items: [] as ItemLine[],
+  lokasi_pengiriman: '',
+  keterangan: '',
+
+  // Section 3: Pembayaran & Lainnya
   tipe_pembayaran: '',
   acuan_pembayaran: '',    // Proenergi: acuan pembayaran
   dp_persen: '',
@@ -100,28 +115,19 @@ const form = reactive({
   repayment_hari: '',
   order_method: '',
   toleransi_penyusutan: '',
-  lokasi_pengiriman: '',
-  type_pengiriman: '',
-  metode: '',
+  abrasi: '',
   refund: 0,
   other_cost: 0,
-  perhitungan: '',
-  keterangan: '',
-  catatan: '',
-  syarat_ketentuan: '',
-  pengiriman_via: 'truck+kapal',
-  ukuran_dasar: '',
+
+  // Section 4: Perhitungan Harga Dasar
+  harga_dasar: 0,
+  oat: 0,
   // TODO: discount input — tersembunyi, akan diimplementasi di task terpisah
   discount: 0,
-  oat: 0,
-  jenis_penawaran: '1',
-  kepada: '',
-  nama: '',
-  jabatan: '',
-  telepon: '',
-  alamat: '',
-  abrasi: '',
-  harga_dasar: 0,
+
+  // Sidebar: Catatan & Syarat
+  catatan: '',
+  syarat_ketentuan: '',
 })
 
 /* Computed: totals */
@@ -299,6 +305,10 @@ onMounted(async () => {
   await Promise.all([fetchSelects(), fetchTransportirWilayahVolume()])
   if (!isEdit) {
     form.items.push({ id_produk: '', volume_order: '', harga_tebus: '', persen: 0 } as ItemLine)
+    evenSplitPersen(form.items)
+    if (route.query.customer_id) {
+      form.id_customer = String(route.query.customer_id)
+    }
   } else {
     await fetchPenawaran()
   }
@@ -356,7 +366,7 @@ watch(() => [oaKapalInput.id_transportir, oaKapalInput.id_angkut_wilayah, oaKapa
 })
 
 watch(() => [oaTruckInput.id_transportir, oaTruckInput.id_angkut_wilayah, oaTruckInput.id_volume], async () => {
-  if (form.metode !== 'DAP') return
+  if (form.metode !== 'DAP' && form.metode !== 'FOT') return
   if (!oaTruckInput.id_transportir || !oaTruckInput.id_angkut_wilayah || !oaTruckInput.id_volume) return
   try {
     const { data } = await axios.get('/api/ongkos-trucks/check', { params: toRaw(oaTruckInput) })
@@ -396,43 +406,49 @@ async function fetchTransportirWilayahVolume() {
 async function fetchPenawaran() {
   try {
     const { data } = await axios.get(`${cfg.apiBase}/${idParam}`)
-    disposisiPenawaran.value = data.disposisi_penawaran != null ? Number(data.disposisi_penawaran) : null
 
     if (data.masa_berlaku && data.sampai_dengan) {
       periodeRange.value = `${data.masa_berlaku} - ${data.sampai_dengan}`
     }
 
     Object.assign(form, {
+      // Section 1: Informasi Penawaran
+      nomor_penawaran: data.nomor_penawaran,
       id_customer: data.id_customer ? String(data.id_customer) : '',
       id_cabang: data.id_cabang,
-      nomor_penawaran: data.nomor_penawaran,
       masa_berlaku: data.masa_berlaku,
       sampai_dengan: data.sampai_dengan,
-      tipe_pembayaran: data.tipe_pembayaran || '',
-      acuan_pembayaran: data.acuan_pembayaran || '',
-      order_method: data.order_method || '',
-      dp_persen: formatInt(data.dp_persen),
-      dp_keterangan: data.dp_keterangan || '',
-      repayment_persen: formatInt(data.repayment_persen),
-      repayment_hari: formatInt(data.repayment_hari),
-      toleransi_penyusutan: data.toleransi_penyusutan ? String(Number(data.toleransi_penyusutan)) : '',
-      refund: data.refund != null ? Number(data.refund) : 0,
-      other_cost: data.other_cost != null ? Number(data.other_cost) : 0,
-      lokasi_pengiriman: data.lokasi_pengiriman || '',
-      type_pengiriman: data.type_pengiriman || '',
-      metode: data.metode || '',
-      perhitungan: data.perhitungan || '',
-      keterangan: data.keterangan || '',
-      catatan: data.catatan || '',
-      syarat_ketentuan: data.syarat_ketentuan || '',
-      pengiriman_via: data.pengiriman_via || 'truck+kapal',
       kepada: data.kepada || '',
       nama: data.nama || '',
       jabatan: data.jabatan || '',
       telepon: data.telepon || '',
       alamat: data.alamat || '',
+
+      // Section 2: Detail Pengiriman & Daftar Produk
+      type_pengiriman: data.type_pengiriman || '',
+      metode: data.metode || '',
+      lokasi_pengiriman: data.lokasi_pengiriman || '',
+      keterangan: data.keterangan || '',
+
+      // Section 3: Pembayaran & Lainnya
+      tipe_pembayaran: data.tipe_pembayaran || '',
+      acuan_pembayaran: data.acuan_pembayaran || '',
+      dp_persen: formatInt(data.dp_persen),
+      dp_keterangan: data.dp_keterangan || '',
+      repayment_persen: formatInt(data.repayment_persen),
+      repayment_hari: formatInt(data.repayment_hari),
+      order_method: data.order_method || '',
+      toleransi_penyusutan: data.toleransi_penyusutan ? String(Number(data.toleransi_penyusutan)) : '',
       abrasi: data.abrasi || '',
+      refund: data.refund != null ? Number(data.refund) : 0,
+      other_cost: data.other_cost != null ? Number(data.other_cost) : 0,
+
+      // Section 4: Perhitungan Harga Dasar
       harga_dasar: data.harga_dasar != null ? Number(data.harga_dasar) : 0,
+
+      // Sidebar: Catatan & Syarat
+      catatan: data.catatan || '',
+      syarat_ketentuan: data.syarat_ketentuan || '',
     })
 
     const ongkosList = Array.isArray(data.ongkos) ? data.ongkos : []
@@ -488,10 +504,68 @@ const produkSelectOptions = {
 /* Item actions */
 function addItem() {
   form.items.push({ id_produk: '', volume_order: '', harga_tebus: '', persen: 0 } as ItemLine)
+  if (form.items.length === 1) {
+    evenSplitPersen(form.items)
+    form.items.forEach(it => updateHargaTebus(it))
+  }
 }
 
 function removeItem(idx: number) {
   form.items.splice(idx, 1)
+  evenSplitPersen(form.items)
+  form.items.forEach(it => updateHargaTebus(it))
+}
+
+/* Persen: evenSplitPersen dipakai saat jumlah baris berubah (baris pertama / hapus baris),
+   redistributePersen dipakai saat user mengedit persen salah satu baris secara manual. */
+function evenSplitPersen(items: ItemLine[]) {
+  const n = items.length
+  if (n === 0) return
+  if (n === 1) {
+    items[0].persen = 100
+    return
+  }
+  const base = Math.floor(100 / n)
+  items.forEach((it) => { it.persen = base })
+  items[n - 1].persen = base + (100 - base * n)
+}
+
+function redistributePersen(items: ItemLine[], changedIdx: number) {
+  const n = items.length
+  if (n <= 1) {
+    if (n === 1) items[0].persen = 100
+    return
+  }
+  const changedVal = Math.max(0, Math.min(100, Math.round(toFloat(items[changedIdx].persen))))
+  items[changedIdx].persen = changedVal
+  const remaining = 100 - changedVal
+  const otherIdxs = items.map((_, i) => i).filter(i => i !== changedIdx)
+  const sumOthersOld = otherIdxs.reduce((s, i) => s + toFloat(items[i].persen), 0)
+
+  let shares: number[]
+  if (sumOthersOld <= 0) {
+    const base = Math.floor(remaining / otherIdxs.length)
+    shares = otherIdxs.map(() => base)
+    let leftover = remaining - base * otherIdxs.length
+    for (let i = shares.length - 1; leftover > 0; i--, leftover--) shares[i] += 1
+  } else {
+    const rawShares = otherIdxs.map(i => remaining * (toFloat(items[i].persen) / sumOthersOld))
+    const floorShares = rawShares.map(Math.floor)
+    let leftover = remaining - floorShares.reduce((s, v) => s + v, 0)
+    const fracOrder = rawShares
+      .map((v, k) => ({ k, frac: v - Math.floor(v) }))
+      .sort((a, b) => b.frac - a.frac)
+    shares = floorShares.slice()
+    for (let k = 0; k < leftover; k++) shares[fracOrder[k % fracOrder.length].k] += 1
+  }
+  otherIdxs.forEach((idx, k) => { items[idx].persen = shares[k] })
+}
+
+function handlePersenChange(idx: number) {
+  if (form.items.length >= 2) {
+    redistributePersen(form.items, idx)
+  }
+  form.items.forEach(it => updateHargaTebus(it))
 }
 
 function applyHarga(item: ItemLine) {
@@ -577,59 +651,66 @@ async function submitForm() {
     }
 
     const payload = {
+      // Section 1: Informasi Penawaran
       id_customer: Number(form.id_customer),
       id_cabang: form.id_cabang,
       masa_berlaku: form.masa_berlaku,
       sampai_dengan: form.sampai_dengan,
-      ongkos: payloadOngkos,
-      items: payloadItems,
-      tipe_pembayaran: form.tipe_pembayaran,
-      ...(isProenergi ? {
-        acuan_pembayaran: form.acuan_pembayaran,
-      } : {}),
-      order_method: form.order_method,
-      dp_persen: parseInt((form.dp_persen || '0').replace(/\./g, ''), 10) || 0,
-      dp_keterangan: form.dp_keterangan,
-      repayment_persen: parseInt((form.repayment_persen || '0').replace(/\./g, ''), 10) || 0,
-      repayment_hari: parseInt((form.repayment_hari || '0').replace(/\./g, ''), 10) || 0,
-      toleransi_penyusutan: parseInt((form.toleransi_penyusutan || '0').replace(/\./g, ''), 10) || 0,
-      lokasi_pengiriman: form.lokasi_pengiriman,
-      type_pengiriman: form.type_pengiriman,
-      metode: form.metode,
-      refund: form.refund,
-      other_cost: form.other_cost,
-      perhitungan: form.perhitungan,
-      keterangan: form.keterangan,
-      catatan: form.catatan,
-      syarat_ketentuan: form.syarat_ketentuan,
       kepada: form.kepada,
       nama: form.nama,
       jabatan: form.jabatan,
       telepon: form.telepon,
       alamat: form.alamat,
+
+      // Section 2: Detail Pengiriman & Daftar Produk
+      type_pengiriman: form.type_pengiriman,
+      metode: form.metode,
+      ongkos: payloadOngkos,
+      items: payloadItems,
+      lokasi_pengiriman: form.lokasi_pengiriman,
+      keterangan: form.keterangan,
+
+      // Section 3: Pembayaran & Lainnya
+      tipe_pembayaran: form.tipe_pembayaran,
+      ...(isProenergi ? {
+        acuan_pembayaran: form.acuan_pembayaran,
+      } : {}),
+      dp_persen: parseInt((form.dp_persen || '0').replace(/\./g, ''), 10) || 0,
+      dp_keterangan: form.dp_keterangan,
+      repayment_persen: parseInt((form.repayment_persen || '0').replace(/\./g, ''), 10) || 0,
+      repayment_hari: parseInt((form.repayment_hari || '0').replace(/\./g, ''), 10) || 0,
+      order_method: form.order_method,
+      toleransi_penyusutan: parseInt((form.toleransi_penyusutan || '0').replace(/\./g, ''), 10) || 0,
       abrasi: form.abrasi,
+      refund: form.refund,
+      other_cost: form.other_cost,
+
+      // Section 4: Perhitungan Harga Dasar
+      harga_dasar: form.harga_dasar,
+      oat: form.oat,
       subtotal: subtotal.value,
       ppn11: ppn11.value,
       total: grandTotalHargaTebusSetelahDiskon.value + ppn11.value,
       total_with_oat: grandTotalWithOAT.value,
       discount: form.discount,
       harga_tebus_setelah_diskon: grandTotalHargaTebusSetelahDiskon.value,
-      harga_dasar: form.harga_dasar,
       ppn_harga_dasar: ppnHargaDasar.value,
       grand_total_harga_dasar: grandTotalHargaDasar.value,
-      oat: form.oat,
-      pengiriman_via: form.pengiriman_via,
-      jenis_penawaran: form.jenis_penawaran,
+
+      // Sidebar: Catatan & Syarat
+      catatan: form.catatan,
+      syarat_ketentuan: form.syarat_ketentuan,
     }
 
     if (isEdit) {
       await axios.put(`${cfg.apiBase}/${idParam}`, payload)
       success('Berhasil', 'Penawaran berhasil diupdate.')
+      router.push({ name: cfg.detailRoute, params: { id: idParam } })
     } else {
-      await axios.post(cfg.apiBase, payload)
+      const { data } = await axios.post(cfg.apiBase, payload)
       success('Berhasil', 'Penawaran berhasil dibuat.')
+      router.push({ name: cfg.detailRoute, params: { id: data.id_penawaran } })
     }
-    goBack()
   } catch (e: any) {
     if (e.response?.status === 422 && e.response.data.errors) {
       const items = Object.values(e.response.data.errors).flat() as string[]
@@ -715,9 +796,9 @@ function formatCurrency(v: number | string = 0) {
 
     <!-- Section 1: Informasi Penawaran -->
     <CardSection title="Informasi Penawaran" description="Customer, cabang invoice dan informasi penerima"
-      icon="FileText" :collapsible="true">
+      icon="FileText">
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 md:col-span-4">
+        <div class="col-span-12 md:col-span-5">
 
           <div class="rounded-xl border border-slate-200 p-4 space-y-3">
             <div>
@@ -735,7 +816,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-                }}</small>
+              }}</small>
             </div>
 
             <div>
@@ -750,10 +831,18 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('id_cabang')" class="block input-error-text">{{ fieldError('id_cabang') }}</small>
             </div>
+
+            <div>
+              <FormLabel>Masa Berlaku
+                <RequiredAsterisk />
+              </FormLabel>
+              <DateRangeField v-model="periodeRange" placeholder="Pilih tanggal mulai – akhir"
+                :error="fieldError('masa_berlaku') || fieldError('sampai_dengan')" />
+            </div>
           </div>
         </div>
 
-        <div class="col-span-12 md:col-span-8">
+        <div class="col-span-12 md:col-span-7">
           <div class="rounded-xl border border-slate-200 px-4 py-3">
             <div class="grid grid-cols-12 gap-4">
               <div class="col-span-12 md:col-span-6">
@@ -788,34 +877,157 @@ function formatCurrency(v: number | string = 0) {
     </CardSection>
 
     <!-- Section 2: Rincian Item -->
-    <CardSection title="Rincian Item" description="Produk, volume, dan persentase order" icon="Boxes"
-      :collapsible="true" icon-class="bg-indigo-100 text-indigo-600">
-      <div>
-        <FormLabel>Periode Harga (Masa Berlaku s/d Sampai Dengan)
-          <RequiredAsterisk />
-        </FormLabel>
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
-          <div class="flex-1">
-            <DateRangeField v-model="periodeRange" placeholder="Pilih tanggal mulai – akhir"
-              :error="fieldError('masa_berlaku') || fieldError('sampai_dengan')" />
-          </div>
+    <CardSection title="Detail Pengiriman & Daftar Produk"
+      description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
+      icon-class="bg-indigo-100 text-indigo-600">
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 md:col-span-6">
+          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div>
+              <FormLabel>Type Pengiriman
+                <RequiredAsterisk />
+              </FormLabel>
+              <FormSelect v-model="form.type_pengiriman" class="w-full" :class="inputClass('type_pengiriman')">
+                <option value="" disabled>Pilih Type Pengiriman…</option>
+                <option value="PROJECT">Project</option>
+                <option value="RETAIL">Retail</option>
+              </FormSelect>
+              <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
+                fieldError('type_pengiriman')
+                }}</small>
+            </div>
 
-          <Button v-if="hargaFetched && !hargaLoading" type="button" variant="outline-primary"
+            <div>
+              <FormLabel>Metode
+                <RequiredAsterisk />
+              </FormLabel>
+              <FormSelect v-model="form.metode" class="w-full" :class="inputClass('metode')">
+                <option value="" disabled>Pilih Metode…</option>
+                <template v-if="form.type_pengiriman === 'PROJECT'">
+                  <option value="FOB">Free On Board (FOB)</option>
+                  <option value="CIF">Cost Insurance & Freight (CIF)</option>
+                  <option value="DAP">Delivery At Place (DAP)</option>
+                </template>
+                <template v-else-if="form.type_pengiriman === 'RETAIL'">
+                  <option value="FOT">Free On Truck (FOT)</option>
+                  <option value="FRANCO">Franco</option>
+                </template>
+              </FormSelect>
+              <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode') }}</small>
+            </div>
+            <!-- OA Kapal (conditional) -->
+            <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
+              class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h4 class="font-section mb-3">Ongkos Kapal</h4>
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Transportir</FormLabel>
+                  <FormSelect v-model="oaKapalInput.id_transportir" :key="oaSelectKey">
+                    <option value="">Pilih Transportir</option>
+                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}</option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Wilayah Angkut</FormLabel>
+                  <FormSelect v-model="oaKapalInput.id_angkut_wilayah" :key="oaSelectKey">
+                    <option value="">Pilih Wilayah</option>
+                    <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
+                      {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                    </option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Volume</FormLabel>
+                  <FormSelect v-model="oaKapalInput.id_volume" :key="oaSelectKey">
+                    <option value="">Pilih Volume</option>
+                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12">
+                  <CurrencyField label="Ongkos Kapal" :model-value="oaKapal" :readonly="true" />
+                </div>
+              </div>
+            </div>
+
+            <!-- OA Truck (conditional) -->
+            <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
+              class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h4 class="font-section mb-3">Ongkos Truck</h4>
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Transportir</FormLabel>
+                  <FormSelect v-model="oaTruckInput.id_transportir" :key="oaSelectKey">
+                    <option value="">Pilih Transportir</option>
+                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}</option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Wilayah Angkut</FormLabel>
+                  <FormSelect v-model="oaTruckInput.id_angkut_wilayah" :key="oaSelectKey">
+                    <option value="">Pilih Wilayah</option>
+                    <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
+                      {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                    </option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12 md:col-span-4">
+                  <FormLabel>Volume</FormLabel>
+                  <FormSelect v-model="oaTruckInput.id_volume" :key="oaSelectKey">
+                    <option value="">Pilih Volume</option>
+                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
+                  </FormSelect>
+                </div>
+
+                <div class="col-span-12">
+                  <CurrencyField label="Ongkos Truck" :model-value="oaTruck" :readonly="true" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-span-12 md:col-span-6">
+          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div>
+              <FormLabel>Lokasi Pengiriman</FormLabel>
+              <FormTextarea v-model="form.lokasi_pengiriman" :rows="3" :auto-resize="true"
+                placeholder="Lokasi pengiriman..." />
+            </div>
+
+            <div>
+              <FormLabel>Titik Serah Terima & T&C Bongkar</FormLabel>
+              <FormTextarea v-model="form.keterangan" :rows="3" :auto-resize="true"
+                placeholder="Titik serah terima & T&C bongkar..." />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4" />
+
+      <!-- Rincian Item -->
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div v-if="hargaFetched && !hargaLoading">
+          <Button type="button" variant="outline-primary"
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap sm:mb-0.5"
             @click="priceRefOpen = true">
             <Lucide icon="Receipt" class="h-4 w-4" />
             Referensi Harga
           </Button>
+          <span class="text-xs text-slate-500 ml-2"><i>* berdasarkan masa berlaku</i></span>
+        </div>
 
-          <div v-else-if="hargaLoading"
-            class="inline-flex items-center gap-2 font-body whitespace-nowrap !text-slate-400 sm:mb-2.5">
-            <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
-            Memuat harga…
-          </div>
+        <div v-else-if="hargaLoading"
+          class="inline-flex items-center gap-2 font-body whitespace-nowrap !text-slate-400 sm:mb-2.5">
+          <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
+          Memuat harga…
         </div>
       </div>
-
-      <!-- Rincian Item -->
       <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
         <table class="w-full min-w-[760px] divide-y divide-slate-200">
           <thead class="bg-slate-50">
@@ -850,12 +1062,13 @@ function formatCurrency(v: number | string = 0) {
                   </TomSelect>
                 </div>
                 <small v-if="itemError(idx, 'id_produk')" class="block input-error-text">{{ itemError(idx, 'id_produk')
-                  }}</small>
+                }}</small>
               </td>
 
               <td class="px-4 py-3">
                 <NumberField class="w-full" v-model="item.persen" placeholder="100" suffix="%" :min="0" :max="100"
-                  :decimals="0" :error="itemError(idx, 'persen')" @update:model-value="updateHargaTebus(item)" />
+                  :decimals="0" :disabled="form.items.length === 1" :error="itemError(idx, 'persen')"
+                  @update:model-value="handlePersenChange(idx)" />
               </td>
 
               <td class="px-4 py-3">
@@ -902,7 +1115,7 @@ function formatCurrency(v: number | string = 0) {
               </td>
               <td class="px-4 py-3 font-num text-right">{{ totalVolume }}</td>
               <td class="px-4 py-3 font-num text-right">{{ formatCurrency(avgHargaPriceList)
-              }}
+                }}
               </td>
               <td v-if="canSeeHarga" colspan="2" class="px-4 py-3"></td>
               <td class="px-4 py-3"></td>
@@ -921,7 +1134,7 @@ function formatCurrency(v: number | string = 0) {
               <tr v-if="totalDiskon > 0" class="bg-yellow-50">
                 <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
                 <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
-                }}</td>
+                  }}</td>
                 <td></td>
                 <td></td>
               </tr>
@@ -938,135 +1151,9 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </CardSection>
 
-    <!-- Section 3: Detail Pengiriman -->
-    <CardSection title="Detail Pengiriman" description="Metode dan lokasi tujuan pengiriman" icon="Truck"
-      :collapsible="true" icon-class="bg-violet-100 text-violet-600">
-      <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 md:col-span-6">
-          <FormLabel>Type Pengiriman
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormSelect v-model="form.type_pengiriman" class="w-full" :class="inputClass('type_pengiriman')">
-            <option value="" disabled>Pilih Type Pengiriman…</option>
-            <option value="PROJECT">Project</option>
-            <option value="RETAIL">Retail</option>
-          </FormSelect>
-          <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{ fieldError('type_pengiriman')
-            }}</small>
-        </div>
-
-        <div class="col-span-12 md:col-span-6">
-          <FormLabel>Metode
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormSelect v-model="form.metode" class="w-full" :class="inputClass('metode')">
-            <option value="" disabled>Pilih Metode…</option>
-            <template v-if="form.type_pengiriman === 'PROJECT'">
-              <option value="FOB">Free On Board (FOB)</option>
-              <option value="CIF">Cost Insurance & Freight (CIF)</option>
-              <option value="DAP">Delivery At Place (DAP)</option>
-            </template>
-            <template v-else-if="form.type_pengiriman === 'RETAIL'">
-              <option value="FOT">Free On Truck (FOT)</option>
-              <option value="FRANCO">Franco</option>
-            </template>
-          </FormSelect>
-          <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode') }}</small>
-        </div>
-      </div>
-
-      <!-- OA Kapal (conditional) -->
-      <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
-        class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 class="font-section mb-3">Ongkos Kapal</h4>
-        <div class="grid grid-cols-12 gap-4">
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Transportir</FormLabel>
-            <FormSelect v-model="oaKapalInput.id_transportir" :key="oaSelectKey">
-              <option value="">Pilih Transportir</option>
-              <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}</option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Wilayah Angkut</FormLabel>
-            <FormSelect v-model="oaKapalInput.id_angkut_wilayah" :key="oaSelectKey">
-              <option value="">Pilih Wilayah</option>
-              <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
-                {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
-              </option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Volume</FormLabel>
-            <FormSelect v-model="oaKapalInput.id_volume" :key="oaSelectKey">
-              <option value="">Pilih Volume</option>
-              <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12">
-            <CurrencyField label="Ongkos Kapal" :model-value="oaKapal" :readonly="true" />
-          </div>
-        </div>
-      </div>
-
-      <!-- OA Truck (conditional) -->
-      <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
-        class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 class="font-section mb-3">Ongkos Truck</h4>
-        <div class="grid grid-cols-12 gap-4">
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Transportir</FormLabel>
-            <FormSelect v-model="oaTruckInput.id_transportir" :key="oaSelectKey">
-              <option value="">Pilih Transportir</option>
-              <option v-for="t in transportirs" :key="t.id" :value="t.id">{{ t.nama_perusahaan }}</option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Wilayah Angkut</FormLabel>
-            <FormSelect v-model="oaTruckInput.id_angkut_wilayah" :key="oaSelectKey">
-              <option value="">Pilih Wilayah</option>
-              <option v-for="w in wilayahs" :key="w.id" :value="w.id">
-                {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
-              </option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12 md:col-span-4">
-            <FormLabel>Volume</FormLabel>
-            <FormSelect v-model="oaTruckInput.id_volume" :key="oaSelectKey">
-              <option value="">Pilih Volume</option>
-              <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
-            </FormSelect>
-          </div>
-
-          <div class="col-span-12">
-            <CurrencyField label="Ongkos Truck" :model-value="oaTruck" :readonly="true" />
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-4 grid grid-cols-12 gap-4">
-        <div class="col-span-12 md:col-span-6">
-          <FormLabel>Lokasi Pengiriman</FormLabel>
-          <FormTextarea v-model="form.lokasi_pengiriman" :rows="3" :auto-resize="true"
-            placeholder="Lokasi pengiriman..." />
-        </div>
-
-        <div class="col-span-12 md:col-span-6">
-          <FormLabel>Titik Serah Terima & T&C Bongkar</FormLabel>
-          <FormTextarea v-model="form.keterangan" :rows="3" :auto-resize="true"
-            placeholder="Titik serah terima & T&C bongkar..." />
-        </div>
-      </div>
-    </CardSection>
-
-    <!-- Section 4: Pembayaran dan Lainnya -->
+    <!-- Section 3: Pembayaran dan Lainnya -->
     <CardSection title="Pembayaran & Lainnya" description="Metode pembayaran dan detail lainnya" icon="Wallet"
-      :collapsible="true" icon-class="bg-amber-100 text-amber-600">
+      icon-class="bg-amber-100 text-amber-600">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12 md:col-span-6">
           <div class="rounded-xl border border-slate-200 p-4 space-y-3">
@@ -1086,7 +1173,7 @@ function formatCurrency(v: number | string = 0) {
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
                   fieldError('tipe_pembayaran')
-                }}</small>
+                  }}</small>
               </div>
 
               <!-- Proenergi: Acuan Pembayaran -->
@@ -1119,7 +1206,7 @@ function formatCurrency(v: number | string = 0) {
                         placeholder="PO / 7 days" />
                     </div>
                     <small v-if="fieldError('dp_persen')" class="block input-error-text">{{ fieldError('dp_persen')
-                    }}</small>
+                      }}</small>
                   </div>
 
                   <div class="">
@@ -1135,7 +1222,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                       fieldError('repayment_persen')
-                    }}</small>
+                      }}</small>
                   </div>
                 </div>
                 <p class="font-caption mt-2">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.</p>
@@ -1179,9 +1266,9 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </CardSection>
 
-    <!-- Section 6: Perhitungan Harga Dasar -->
+    <!-- Section 4: Perhitungan Harga Dasar -->
     <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
-      :collapsible="true" icon-class="bg-emerald-100 text-emerald-600">
+      icon-class="bg-emerald-100 text-emerald-600">
       <div class="overflow-x-auto">
         <Table bordered sm class="font-body">
           <Table.Thead class="bg-slate-50">
@@ -1316,7 +1403,7 @@ function formatCurrency(v: number | string = 0) {
     <!-- Sidebar: Catatan & Syarat Ketentuan -->
     <template #sidebar>
       <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
-        :collapsible="true" icon-class="bg-rose-100 text-rose-600">
+        icon-class="bg-rose-100 text-rose-600">
         <div class="space-y-4">
           <div>
             <FormLabel>Catatan</FormLabel>

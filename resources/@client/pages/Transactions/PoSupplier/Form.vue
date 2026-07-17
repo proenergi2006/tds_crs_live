@@ -14,6 +14,7 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import Table from '@/components/Base/Table'
 import dayjs from 'dayjs'
+import Alert from '@/components/Base/Alert/Alert.vue'
 
 interface Item {
   id_produk: number | null | ''
@@ -42,6 +43,7 @@ const loading = ref(false)
 const pageLoading = ref(false)
 const error = ref('')
 const termsChecked = ref(false)
+const showUnreleaseAlert = ref(false)
 
 const vendors = ref<any[]>([])
 const terminals = ref<any[]>([])
@@ -63,14 +65,6 @@ const form = reactive({
 })
 
 const calcSubtotal = computed(() => form.items.reduce((sum, item) => sum + item.total_harga, 0))
-
-/**
- * Kode tax sekarang tidak lagi berada di header level, disesuikan agar bisa mendefinisikan tax per item
- * Dengan begitu, ppn11% tidak relevan lagi. Gunakan totalTax untuk menggantikan ppn11%
- * Field di db tetap sama, namun tujuannya sekarang digunakan untuk menyimpan totalTax per item
- */
-// const calcPPN = computed(() => Math.round(calcSubtotal.value * 0.11))
-
 const calcTotalTax = computed(() => form.items.reduce((sum, item) => sum + item.tax_amount, 0))
 const calcTotalOrder = computed(() => calcSubtotal.value + calcTotalTax.value)
 
@@ -163,6 +157,8 @@ async function fetchPo() {
   if (form.items.length === 0) {
     form.items = [makeEmptyItem()]
   }
+
+  showUnreleaseAlert.value = po.status_po?.key === 'Approved';
 
   computeAllTotals()
 }
@@ -314,6 +310,22 @@ function cancel() {
         Kembali
       </Button>
     </template>
+
+
+    <div v-if="showUnreleaseAlert" class="p-4 mb-4 rounded-lg border-l-4 border-red-500 bg-red-500/10 text-red-500">
+      <div class="flex items-center gap-3">
+        <Lucide icon="AlertCircle" class="h-8 w-8" />
+        <div>
+          <div class="text-lg font-medium">
+            PO ini sudah disetujui.Apakah anda ingin melakukan <strong>Unrelease</strong> PO ini?
+          </div>
+          <div class="text-xs">
+            Simpan perubahan untuk melakukan unrelease PO. Setelah PO di unrelease, status PO akan dikembalikan ke
+            <strong>Draft</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
 
     <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
       <div class="grid grid-cols-12 gap-4">
