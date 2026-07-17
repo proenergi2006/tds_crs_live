@@ -14,6 +14,7 @@ import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { formatDate } from '@/utils/format'
+import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
 // Composables
 const router = useRouter()
@@ -171,6 +172,10 @@ function isEditableState(key?: string): boolean {
   return key !== 'Approved'
 }
 
+function isUnreleaseState(key?: string): boolean {
+  return key === 'Approved'
+}
+
 function isDestroyableState(key?: string): boolean {
   return key !== 'WaitingCeo' && key !== 'Approved'
 }
@@ -259,7 +264,7 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
           <Table.Th>Vendor</Table.Th>
           <Table.Th>Terminal</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
-          <Table.Th class="text-right">Aksi</Table.Th>
+          <Table.Th class="text-center">Aksi</Table.Th>
         </template>
 
         <template #body>
@@ -278,28 +283,31 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
                 {{ statusLabel(po.status_po) }}
               </span>
             </Table.Td>
-            <Table.Td class="text-right">
+            <Table.Td class="text-center w-[320px]">
               <div class="inline-flex items-center justify-center gap-1">
-                <Button variant="soft-dark" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Detail"
-                  @click="goDetail(po.id_po)">
+                <ExtendableButton variant="soft-dark" rounded label="Detail" @click="goDetail(po.id_po)">
                   <Lucide icon="Eye" class="h-4 w-4" />
-                </Button>
-                <Button v-if="isEditableState(po.status_po?.key)" variant="soft-pending" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Edit" @click="goEdit(po.id_po)">
+                </ExtendableButton>
+                <ExtendableButton v-if="isEditableState(po.status_po?.key)" variant="soft-pending" rounded label="Edit"
+                  @click="goEdit(po.id_po)">
                   <Lucide icon="Edit" class="h-4 w-4" />
-                </Button>
-                <Button v-if="isDestroyableState(po.status_po?.key)" variant="soft-danger" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
-                <Button v-if="po.status_po?.key === 'Approved'" variant="soft-success" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Good Receipt" @click="goReceive(po.id_po)">
+                </ExtendableButton>
+                <ExtendableButton v-if="isUnreleaseState(po.status_po?.key)" variant="soft-danger" rounded
+                  label="Unrelease" @click="goEdit(po.id_po)">
+                  <Lucide icon="Undo2" class="h-4 w-4" />
+                </ExtendableButton>
+                <ExtendableButton v-if="isDestroyableState(po.status_po?.key)" variant="soft-danger" rounded
+                  label="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
+                  <Lucide icon="Trash2" class="h-4 w-4 shrink-0" />
+                </ExtendableButton>
+                <ExtendableButton v-if="po.status_po?.key === 'Approved'" variant="soft-success" rounded
+                  label="Good Receipt" @click="goReceive(po.id_po)">
                   <Lucide icon="PackageCheck" class="h-4 w-4" />
-                </Button>
-                <Button v-if="po.status_po?.key === 'Approved'" variant="soft-secondary" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Cetak" @click="previewPdf(po.id_po)">
+                </ExtendableButton>
+                <ExtendableButton v-if="po.status_po?.key === 'Approved'" variant="soft-secondary" rounded label="Cetak"
+                  @click="previewPdf(po.id_po)">
                   <Lucide icon="Printer" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
               </div>
             </Table.Td>
           </Table.Tr>

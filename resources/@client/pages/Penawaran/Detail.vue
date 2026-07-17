@@ -27,13 +27,17 @@ const BRAND_CONFIG = {
     resourceEndpoint: '/penawarans',
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
+    editRoute: 'penawarans-edit',
     title: 'Detail Penawaran',
+    description: 'Informasi lengkap penawaran dan status verifikasi.',
   },
   proenergi: {
     resourceEndpoint: '/penawarans-proenergi',
     apiBase: '/api/penawarans-proenergi',
     listRoute: 'penawarans-list-proenergi',
+    editRoute: 'penawarans-edit-proenergi',
     title: 'Detail Penawaran Proenergi',
+    description: 'Informasi lengkap dan status persetujuan penawaran Proenergi',
   },
 }
 const cfg = BRAND_CONFIG[brand]
@@ -52,32 +56,6 @@ const canSeeHarga = ref(false)
 const items = computed<any[]>(() => penawaran.value.items || [])
 
 const dash = (v: any) => (v === null || v === undefined || v === '' ? '-' : v)
-
-/* Section: Informasi Penawaran */
-const infoPenawaranFields = computed(() => {
-  const p = penawaran.value
-  return [
-    { label: 'Customer', value: p.customer?.nama_perusahaan },
-    { label: 'Cabang', value: p.cabang?.nama_cabang },
-    { label: 'Nomor Penawaran', value: p.nomor_penawaran },
-    { label: 'Kepada', value: p.kepada },
-    { label: 'Nama (UP.)', value: p.nama },
-    { label: 'Jabatan', value: p.jabatan },
-    { label: 'Telepon', value: p.telepon },
-    { label: 'Alamat', value: p.alamat, span: 2 },
-  ]
-})
-
-/* Section: Detail Pengiriman */
-const deliveryFields = computed(() => {
-  const p = penawaran.value
-  return [
-    { label: 'Type Pengiriman', value: p.type_pengiriman },
-    { label: 'Metode Pengiriman', value: p.metode },
-    { label: 'Lokasi Pengiriman', value: p.lokasi_pengiriman, span: 2 },
-    { label: 'Titik Serah Terima & T&C Bongkar', value: p.keterangan, span: 2 },
-  ]
-})
 
 /* Section: Pembayaran & Lainnya */
 const paymentFields = computed(() => {
@@ -116,6 +94,27 @@ const totalDiskon = computed(() =>
   Math.min(Math.max(Number(penawaran.value.discount) || 0, 0), subtotal.value)
 )
 const grandTotalHargaTebusSetelahDiskon = computed(() => subtotal.value - totalDiskon.value)
+
+/* Section: Rincian Item — Volume/Persen totals footer, hanya tampil saat items > 2 */
+const totalVolume = computed(() =>
+  items.value.reduce((sum: number, it: any) => sum + (Number(it.volume_order) || 0), 0)
+)
+const totalPersen = computed(() =>
+  items.value.reduce((sum: number, it: any) => sum + (Number(it.persen) || 0), 0)
+)
+
+/* Section: Ongkos Angkut — mirror kondisi tampil Form.vue:982,1019 */
+const ongkosList = computed<any[]>(() => penawaran.value.ongkos || [])
+const showOngkosKapal = computed(() => penawaran.value.metode === 'CIF' || penawaran.value.metode === 'DAP')
+const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penawaran.value.metode === 'FOT')
+const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
+const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
+
+function wilayahLabel(w: any) {
+  if (!w) return null
+  const parts = [w.provinsi?.nama_provinsi, w.kabupaten?.nama_kabupaten, w.destinasi].filter(Boolean)
+  return parts.length ? parts.join(' - ') : null
+}
 
 const approvalSteps = computed<StepItem[]>(() => {
   const s = penawaran.value.status
@@ -199,6 +198,10 @@ function goBack() {
   router.push({ name: cfg.listRoute })
 }
 
+function openEdit() {
+  router.push({ name: cfg.editRoute, params: { id } })
+}
+
 function formatCurrency(v: number | string = 0) {
   const n = Number(v) || 0
   return `Rp. ${n.toLocaleString('id-ID')}`
@@ -218,16 +221,12 @@ function formatNumber(v: number | string = 0) {
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="font-display">{{ cfg.title }}</h2>
-          <p class="font-lead mt-1">
-            Informasi lengkap penawaran <code>{{ penawaran.nomor_penawaran || '-' }}</code>
-          </p>
+          <p class="font-lead mt-1">{{ cfg.description }}</p>
         </div>
-        <div>
-          <Button variant="outline-secondary" @click="goBack">
-            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
-            Kembali
-          </Button>
-        </div>
+        <Button variant="outline-secondary" @click="goBack">
+          <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+          Kembali
+        </Button>
       </div>
 
       <!-- 2-COLUMN LAYOUT -->
@@ -237,45 +236,189 @@ function formatNumber(v: number | string = 0) {
         <div class="space-y-6 xl:col-span-2">
 
           <!-- Section 1: Informasi Penawaran -->
-          <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText"
-            :collapsible="true">
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div v-for="f in infoPenawaranFields" :key="f.label"
-                :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
-                <dt class="font-label">{{ f.label }}</dt>
-                <dd class="font-strong mt-1 whitespace-pre-line">{{ dash(f.value) }}</dd>
+          <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText">
+            <div class="grid grid-cols-12 gap-4">
+              <div class="col-span-12 md:col-span-5">
+                <div class="space-y-3">
+                  <div>
+                    <div class="font-label">Nomor Penawaran</div>
+                    <div
+                      class="font-strong mt-1 whitespace-pre-line text-danger border border-danger/20 rounded px-2 py-1 inline-block bg-danger/5 text-xs">
+                      {{ dash(penawaran.nomor_penawaran) }}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="font-label">Masa Berlaku</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">
+                      {{
+                        penawaran.masa_berlaku
+                          ? `${formatDate(penawaran.masa_berlaku)} – ${formatDate(penawaran.sampai_dengan)}`
+                          : '-'
+                      }}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="font-label">Customer</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">
+                      {{ dash(penawaran.customer?.nama_perusahaan) }}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="font-label">Cabang</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">
+                      {{ dash(penawaran.cabang?.nama_cabang) }}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </dl>
+
+              <div class="col-span-12 md:col-span-7">
+                <div class="font-label mx-2 mb-1">Kontak Tujuan</div>
+                <div>
+                  <div class="rounded-xl border border-slate-200 px-4 py-3">
+                    <div class="grid grid-cols-12 gap-4">
+                      <div class="col-span-12 md:col-span-6">
+                        <div class="font-label">Kepada (Perusahaan / Dept.)</div>
+                        <div class="font-strong mt-1">
+                          {{ dash(penawaran.kepada) }}
+                        </div>
+                      </div>
+
+                      <div class="col-span-12 md:col-span-6">
+                        <div class="font-label">Nama (UP.)</div>
+                        <div class="font-strong mt-1">
+                          {{ dash(penawaran.nama) }}
+                        </div>
+                      </div>
+
+                      <div class="col-span-12 md:col-span-6">
+                        <div class="font-label">Jabatan</div>
+                        <div class="font-strong mt-1">
+                          {{ dash(penawaran.jabatan) }}
+                        </div>
+                      </div>
+
+                      <div class="col-span-12 md:col-span-6">
+                        <div class="font-label">Telepon</div>
+                        <div class="font-strong mt-1">
+                          {{ dash(penawaran.telepon) }}
+                        </div>
+                      </div>
+
+                      <div class="col-span-12">
+                        <div class="font-label">Alamat</div>
+                        <div class="font-strong mt-1">
+                          {{ dash(penawaran.alamat) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </CardSection>
 
-          <!-- Section 2: Rincian Item -->
-          <CardSection title="Rincian Item" description="Daftar produk dan periode harga penawaran" icon="Boxes"
-            icon-class="bg-indigo-100 text-indigo-600" :collapsible="true">
+          <!-- Section 2: Detail Pengiriman & Daftar Produk (merged) -->
+          <CardSection title="Detail Pengiriman & Daftar Produk"
+            description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
+            icon-class="bg-indigo-100 text-indigo-600">
+            <div class="grid grid-cols-12 gap-4">
+              <div class="col-span-12 md:col-span-6">
+                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                  <div>
+                    <div class="font-label">Tipe Pengiriman</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
+                  </div>
+                  <div>
+                    <div class="font-label">Metode</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                  </div>
 
-            <!-- Periode Harga -->
-            <dl class="mb-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <dt class="font-label">Periode Harga</dt>
-                <dd class="font-strong mt-1">
-                  {{
-                    penawaran.masa_berlaku
-                      ? `${formatDate(penawaran.masa_berlaku)} – ${formatDate(penawaran.sampai_dengan)}`
-                      : '-'
-                  }}
-                </dd>
+                  <!-- Ongkos Kapal (conditional, ported from old standalone Ongkos Angkut section) -->
+                  <div v-if="showOngkosKapal" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div class="font-label mb-2">Ongkos Kapal</div>
+                    <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
+                      Belum ada data ongkos kapal.
+                    </div>
+                    <div v-for="oa in ongkosKapal" :key="oa.id"
+                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
+                      <div class="grid grid-cols-12 gap-4">
+                        <div class="col-span-12 md:col-span-4">
+                          <div class="font-label">Transportir</div>
+                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                        </div>
+                        <div class="col-span-12 md:col-span-4">
+                          <div class="font-label">Wilayah Angkut</div>
+                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                        </div>
+                        <div class="col-span-6 md:col-span-2">
+                          <div class="font-label">Volume</div>
+                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                        </div>
+                        <div class="col-span-6 md:col-span-2">
+                          <div class="font-label">Ongkos</div>
+                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Ongkos Truck (conditional, ported from old standalone Ongkos Angkut section) -->
+                  <div v-if="showOngkosTruck" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div class="font-label mb-2">Ongkos Truck</div>
+                    <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
+                      Belum ada data ongkos truck.
+                    </div>
+                    <div v-for="oa in ongkosTruck" :key="oa.id"
+                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
+                      <div class="grid grid-cols-12 gap-4">
+                        <div class="col-span-12 md:col-span-4">
+                          <div class="font-label">Transportir</div>
+                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                        </div>
+                        <div class="col-span-12 md:col-span-4">
+                          <div class="font-label">Wilayah Angkut</div>
+                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                        </div>
+                        <div class="col-span-6 md:col-span-2">
+                          <div class="font-label">Volume</div>
+                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                        </div>
+                        <div class="col-span-6 md:col-span-2">
+                          <div class="font-label">Ongkos</div>
+                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </dl>
 
-            <Table bordered sm class="font-body">
+              <div class="col-span-12 md:col-span-6">
+                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                  <div>
+                    <div class="font-label">Lokasi Pengiriman</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
+                  </div>
+                  <div>
+                    <div class="font-label">Titik Serah Terima & T&C Bongkar</div>
+                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Table bordered sm class="font-body mt-4">
               <Table.Thead class="bg-slate-50">
                 <Table.Th>Produk</Table.Th>
                 <Table.Th class="w-28 text-right">Persen</Table.Th>
                 <Table.Th class="w-40 text-right">Volume</Table.Th>
-                <Table.Th v-if="canSeeHarga" class="w-40 text-right">Harga Tebus</Table.Th>
-                <Table.Th v-if="canSeeHarga" class="w-44 text-right">Jumlah Harga</Table.Th>
               </Table.Thead>
               <Table.Tbody class="bg-white">
-                <Table.Tr v-for="item in items" :key="item.id_penawaran_item" class="transition hover:bg-slate-50">
+                <Table.Tr v-for="item in items" :key="item.id_penawaran_item">
                   <Table.Td>
                     <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
                     <div class="font-caption mt-0.5">
@@ -284,30 +427,42 @@ function formatNumber(v: number | string = 0) {
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="font-num-lg text-xl text-right">{{ formatNumber(item.persen) }}%</Table.Td>
-                  <Table.Td class="font-num-lg text-xl text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
-                  <Table.Td v-if="canSeeHarga" class="font-num-lg text-xl text-right">
-                    {{ formatCurrency(item.harga_tebus) }}
+                  <Table.Td class="font-num text-lg text-right">
+                    {{ formatNumber(item.persen) }}%
                   </Table.Td>
-                  <Table.Td v-if="canSeeHarga" class="font-num-lg text-xl text-right">
-                    {{ formatCurrency(item.jumlah_harga) }}
-                  </Table.Td>
+                  <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+
+              <Table.Tbody v-if="items.length > 2" class="border-t border-slate-200 bg-slate-50">
+                <Table.Tr>
+                  <Table.Td class="py-2.5 pr-6 text-right font-header">Total</Table.Td>
+                  <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalPersen) }}%</Table.Td>
+                  <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalVolume) }}</Table.Td>
+                  <Table.Td v-if="canSeeHarga" colspan="2"></Table.Td>
                 </Table.Tr>
               </Table.Tbody>
 
               <Table.Tbody v-if="canSeeHarga" class="border-t border-slate-200 bg-slate-50">
                 <Table.Tr>
-                  <Table.Td :colspan="4" class="py-2.5 pr-6 text-right font-header">Subtotal Harga Tebus</Table.Td>
+                  <Table.Td :colspan="items.length > 2 ? 4 : 3" class="py-2.5 pr-6 text-right font-header">
+                    Subtotal Harga Tebus
+                  </Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatCurrency(subtotal) }}</Table.Td>
                 </Table.Tr>
                 <Table.Tr v-if="totalDiskon > 0" class="bg-yellow-50">
-                  <Table.Td :colspan="4" class="py-2.5 pr-6 text-right font-header !text-yellow-700">Diskon</Table.Td>
+                  <Table.Td :colspan="items.length > 2 ? 4 : 3"
+                    class="py-2.5 pr-6 text-right font-header !text-yellow-700">
+                    Diskon
+                  </Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right !text-yellow-800">
                     - {{ formatCurrency(totalDiskon) }}
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr class="bg-emerald-50">
-                  <Table.Td :colspan="4" class="py-2.5 pr-6 text-right font-header !text-emerald-700">Setelah Diskon
+                  <Table.Td :colspan="items.length > 2 ? 4 : 3"
+                    class="py-2.5 pr-6 text-right font-header !text-emerald-700">
+                    Setelah Diskon
                   </Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right !text-emerald-800">
                     {{ formatCurrency(grandTotalHargaTebusSetelahDiskon) }}
@@ -317,59 +472,76 @@ function formatNumber(v: number | string = 0) {
             </Table>
           </CardSection>
 
-          <!-- Section 3: Detail Pengiriman -->
-          <CardSection title="Detail Pengiriman" description="Metode dan lokasi tujuan pengiriman" icon="Truck"
-            icon-class="bg-violet-100 text-violet-600" :collapsible="true">
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div v-for="f in deliveryFields" :key="f.label" :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
-                <dt class="font-label">{{ f.label }}</dt>
-                <dd class="font-strong mt-1 whitespace-pre-line">{{ dash(f.value) }}</dd>
-              </div>
-            </dl>
-          </CardSection>
+          <div class="flex flex-col gap-6 xl:flex-row">
+            <div class="flex-1">
+              <!-- Section 3: Pembayaran & Lainnya (now standalone, no longer flex-paired) -->
+              <CardSection title="Pembayaran & Lainnya" description="Ketentuan pembayaran dan info lainnya"
+                icon="Wallet" icon-class="bg-amber-100 text-amber-600">
+                <div class="grid grid-cols-12 gap-4">
+                  <div v-for="field in paymentFields" :key="field.label" class="col-span-12 md:col-span-6">
+                    <div class="font-label">{{ field.label }}</div>
+                    <div class="font-strong mt-1 whitespace-pre-line"
+                      :class="field.tone === 'red' ? 'text-danger' : ''">
+                      {{ dash(field.value) }}
+                    </div>
+                  </div>
+                </div>
+              </CardSection>
+            </div>
 
-          <!-- Section 4: Pembayaran & Lainnya -->
-          <CardSection title="Pembayaran & Lainnya" description="Ketentuan pembayaran dan toleransi" icon="Wallet"
-            icon-class="bg-amber-100 text-amber-600" :collapsible="true">
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div v-for="f in paymentFields" :key="f.label">
-                <dt class="font-label">{{ f.label }}</dt>
-                <dd class="font-num-lg text-xl mt-1"
-                  :class="(f as any).tone === 'red' ? '!text-red-600' : '!text-slate-800'">
-                  {{ dash(f.value) }}
-                </dd>
-              </div>
-            </dl>
-          </CardSection>
+            <div class="flex-none">
+              <!-- Section 4: Perhitungan Harga Dasar -->
+              <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dasar dan estimasi PPN"
+                icon="Calculator" icon-class="bg-emerald-100 text-emerald-600">
+                <dl class="flex flex-col gap-4 px-4">
+                  <div class="flex-row gap-4 flex items-center justify-between">
+                    <div class="grow bg-slate-100 p-4 rounded-lg text-right">
+                      <dt class="font-label">Harga Dasar</dt>
+                      <dd class="font-num-lg text-lg mt-1 !text-slate-800">{{ formatCurrency(penawaran.harga_dasar) }}
+                      </dd>
+                    </div>
+                    <div class="grow bg-slate-100 p-4 rounded-lg text-right">
+                      <dt class="font-label">OAT per Volume</dt>
+                      <div class="font-num-lg text-lg mt-1 !text-slate-800">{{ formatCurrency(penawaran.oat) }}</div>
+                    </div>
+                  </div>
+                  <div class="grow bg-slate-100 p-4 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <dt class="font-label">Subtotal (DPP)</dt>
+                      <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(dppHargaDasar) }}</dd>
+                    </div>
+                  </div>
+                  <div class="grow bg-slate-100 p-4 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <dt class="font-label">PPN 11%</dt>
+                      <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(ppnHargaDasar) }}</dd>
+                    </div>
+                  </div>
+                  <div class="grow bg-slate-100 p-4 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <dt class="font-label">TOTAL</dt>
+                      <dd class="font-num-lg text-xl mt-1 !text-emerald-700">{{ formatCurrency(grandTotalHargaDasar)
+                        }}</dd>
+                    </div>
+                  </div>
+                </dl>
+              </CardSection>
+            </div>
+          </div>
 
-          <!-- Section 5: Perhitungan Harga Dasar -->
-          <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dasar dan estimasi PPN"
-            icon="Calculator" icon-class="bg-emerald-100 text-emerald-600" :collapsible="true">
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <dt class="font-label">Harga Dasar</dt>
-                <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(penawaran.harga_dasar) }}</dd>
+          <!-- Catatan & Syarat -->
+          <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
+            <div class="flex flex-row gap-4">
+              <div class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="font-label">Catatan</div>
+                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
               </div>
-              <div>
-                <dt class="font-label">OAT per Volume</dt>
-                <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(penawaran.oat) }} / volume</dd>
+              <div class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="font-label">Syarat & Ketentuan</div>
+                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
               </div>
-              <div>
-                <dt class="font-label">Subtotal (DPP)</dt>
-                <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(dppHargaDasar) }}</dd>
-              </div>
-              <div>
-                <dt class="font-label">PPN 11%</dt>
-                <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(ppnHargaDasar) }}</dd>
-              </div>
-              <div>
-                <dt class="font-label">TOTAL</dt>
-                <dd class="font-num-lg text-xl mt-1 text-xl !text-emerald-700">{{ formatCurrency(grandTotalHargaDasar)
-                  }}</dd>
-              </div>
-            </dl>
+            </div>
           </CardSection>
-
         </div>
 
         <!-- KANAN: Sticky sidebar -->
@@ -408,20 +580,6 @@ function formatNumber(v: number | string = 0) {
                     <Lucide icon="Send" class="h-4 w-4" />
                     Ajukan ke Branch Manager
                   </Button>
-                </div>
-              </div>
-            </CardSection>
-
-            <!-- Catatan & Syarat -->
-            <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
-              <div class="space-y-4">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">Catatan</div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">Syarat & Ketentuan</div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
                 </div>
               </div>
             </CardSection>

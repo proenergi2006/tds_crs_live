@@ -13,6 +13,7 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { formatDate, formatDateTime } from '@/utils/format'
+import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -70,7 +71,7 @@ async function fetchCabangs() {
   try {
     const res = await axios.get('/api/cabangs', { params: { per_page: 200 } })
     cabangs.value = res.data.data || res.data
-  } catch {}
+  } catch { }
 }
 
 async function fetchData(page = 1) {
@@ -142,18 +143,18 @@ function getDisposisiLabel(value: string | number): string {
     case '4': return 'Disetujui OM'
     case '5': return 'Ditolak BM'
     case '6': return 'Ditolak OM'
-    default:  return '-'
+    default: return '-'
   }
 }
 
 function disposisiClass(v: string | number) {
   const val = String(v)
   return {
-    'bg-slate-100 text-slate-600':     val === '1',
-    'bg-amber-100 text-amber-700':     val === '2',
-    'bg-orange-100 text-orange-700':   val === '3',
+    'bg-slate-100 text-slate-600': val === '1',
+    'bg-amber-100 text-amber-700': val === '2',
+    'bg-orange-100 text-orange-700': val === '3',
     'bg-emerald-100 text-emerald-700': val === '4',
-    'bg-rose-100 text-rose-700':       val === '5' || val === '6',
+    'bg-rose-100 text-rose-700': val === '5' || val === '6',
   }
 }
 
@@ -180,22 +181,11 @@ function getDisposisiTanggal(pen: any): string {
         </template>
       </PageHeader>
 
-      <DataList
-        v-model:search="searchQuery"
-        v-model:per-page="perPage"
-        :loading="loading"
-        :empty="penawarans.length === 0"
-        :colspan="8"
-        :show-footer="true"
-        :show-toolbar="true"
-        :total="totalRecords"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        search-placeholder="Cari nomor atau customer..."
-        loading-text="Memuat data penawaran..."
-        empty-description="Belum ada penawaran untuk ditampilkan."
-        @page-change="goToPage"
-      >
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+        :empty="penawarans.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor atau customer..."
+        loading-text="Memuat data penawaran..." empty-description="Belum ada penawaran untuk ditampilkan."
+        @page-change="goToPage">
         <template #toolbar-extra>
           <FormSelect v-model="filterCabang" class="w-48 !box">
             <option value="">— Semua Cabang —</option>
@@ -217,11 +207,7 @@ function getDisposisiTanggal(pen: any): string {
         </template>
 
         <template #body>
-          <Table.Tr
-            v-for="(pen, idx) in penawarans"
-            :key="pen.id_penawaran"
-            class="transition hover:bg-slate-50"
-          >
+          <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="transition hover:bg-slate-50">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
@@ -242,10 +228,8 @@ function getDisposisiTanggal(pen: any): string {
             </Table.Td>
             <Table.Td class="text-center">
               <div class="flex flex-col items-center gap-1">
-                <span
-                  class="font-label inline-flex items-center rounded-full px-3 py-1"
-                  :class="disposisiClass(pen.disposisi_penawaran)"
-                >
+                <span class="font-label inline-flex items-center rounded-full px-3 py-1"
+                  :class="disposisiClass(pen.disposisi_penawaran)">
                   {{ getDisposisiLabel(pen.disposisi_penawaran) }}
                 </span>
                 <span v-if="getDisposisiTanggal(pen)" class="font-caption italic">
@@ -253,51 +237,30 @@ function getDisposisiTanggal(pen: any): string {
                 </span>
               </div>
             </Table.Td>
-            <Table.Td class="text-center">
+            <Table.Td class="text-center w-[260px]">
               <div class="inline-flex items-center justify-center gap-1">
-                <Button
-                  variant="soft-dark"
-                  rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Detail"
-                  @click="openDetail(pen.id_penawaran)"
-                >
+                <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openDetail(pen.id_penawaran)">
                   <Lucide icon="Eye" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
 
-                <Button
-                  variant="soft-pending"
-                  rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Edit"
-                  @click="openEdit(pen.id_penawaran)"
-                >
+                <ExtendableButton variant="soft-pending" rounded label="Edit" @click="openEdit(pen.id_penawaran)">
                   <Lucide icon="Edit" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
 
-                <Button
+                <ExtendableButton
                   v-if="String(pen.disposisi_penawaran) === '1' || String(pen.disposisi_penawaran) === '2'"
-                  variant="soft-danger"
-                  rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Hapus"
-                  @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)"
-                >
+                  variant="soft-danger" rounded label="Hapus"
+                  @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
               </div>
             </Table.Td>
           </Table.Tr>
         </template>
       </DataList>
 
-      <DeleteRecordDialog
-        :open="deleteModal"
-        :title="`Hapus Penawaran ${deleteTarget?.nomor ?? ''}`"
-        :loading="deleteLoading"
-        @close="deleteModal = false"
-        @confirm="submitDelete"
-      />
+      <DeleteRecordDialog :open="deleteModal" :title="`Hapus Penawaran ${deleteTarget?.nomor ?? ''}`"
+        :loading="deleteLoading" @close="deleteModal = false" @confirm="submitDelete" />
     </div>
   </div>
 </template>
