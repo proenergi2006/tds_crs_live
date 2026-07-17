@@ -972,7 +972,7 @@ class CustomerVerificationController extends Controller
                     : (Arr::get($lg, 'quality_other_enabled') ? 'OTHER' : '')] ?? null,
                 'logistik_quality_other' => Arr::get($lg, 'quality_other'),
                 'logistik_truck'         => $intOrNull(Arr::get($lg, 'max_truck_capacity')), // "8 KL" -> 8
-                'logistik_truck_other'   => null,
+                'logistik_truck_other'   => Arr::get($lg, 'max_truck_capacity_other'),
 
                 // ⬇️ yang bikin error: pastikan integer/NULL
                 // (Redesain CustomerUpdateForm, 2026-07-13) supply_shceme &
