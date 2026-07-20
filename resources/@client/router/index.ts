@@ -219,6 +219,12 @@ const routes = [
         meta: { permission: "master-data.wilayah.manage" },
       },
       {
+        path: "master-address",
+        name: "master-address",
+        component: () => import("@/pages/MasterAddress/Index.vue"),
+        meta: { permission: "master-data.address.view" },
+      },
+      {
         path: "customers",
         name: "customers-list",
         component: () => import("@/pages/Customer/Index.vue"),

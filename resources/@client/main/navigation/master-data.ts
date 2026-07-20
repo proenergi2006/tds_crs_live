@@ -87,6 +87,12 @@ export const masterDataNavigation: NavItem[] = [
             title: "Kabupaten",
             permission: "master-data.wilayah.manage",
           },
+          {
+            icon: "Globe",
+            pageName: "master-address",
+            title: "Master Address",
+            permission: "master-data.address.view",
+          },
         ],
       },
     ],

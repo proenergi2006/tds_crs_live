@@ -54,6 +54,12 @@ class PermissionSeeder extends Seeder
             'roles'       => [2],
         ],
         [
+            'name'        => 'master-data.address.view',
+            'module'      => 'master-data',
+            'description' => 'Lihat halaman Master Address (province/regency/district/village BPS)',
+            'roles'       => [1],
+        ],
+        [
             'name'        => 'master-data.vendor.manage',
             'module'      => 'master-data',
             'description' => 'Tambah / edit vendor',
