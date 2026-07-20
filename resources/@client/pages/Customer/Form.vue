@@ -3,8 +3,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required } from '@vuelidate/validators'
-import axios from 'axios'
 
+import Alert from '@/components/Base/Alert'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import TomSelect from '@/components/Base/TomSelect'
@@ -13,6 +13,7 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useRegionCascade } from '@/composables/useRegionCascade'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
 
@@ -35,14 +36,18 @@ const loading = ref(false)
 const pageLoading = ref(false)
 const formError = ref<string | null>(null)
 
-/* State: lookups */
-const provinsis = ref<any[]>([])
-const kabupatens = ref<any[]>([])
+/* State: lookups (cascading province -> regency, BPS data via useRegionCascade) */
+const region = useRegionCascade()
+
+/* State: fallback notice untuk record lama yang cuma punya id_provinsi/
+   id_kabupaten (skema pra-migrasi BPS), belum punya province_id/regency_id */
+const hasLegacyAddressOnly = ref(false)
+const legacyAddressLabel = ref('')
 
 const form = reactive({
   email: '',
-  id_provinsi: '',
-  id_kabupaten: '',
+  province_id: '',
+  regency_id: '',
   telepon: '',
   jenis_customer: '',
   nama_perusahaan: '',
@@ -55,11 +60,11 @@ const rules = {
   nama_perusahaan: {
     required: helpers.withMessage('Nama perusahaan wajib diisi', required),
   },
-  id_provinsi: {
+  province_id: {
     required: helpers.withMessage('Provinsi wajib dipilih', required),
   },
-  id_kabupaten: {
-    required: helpers.withMessage('Kabupaten wajib dipilih', required),
+  regency_id: {
+    required: helpers.withMessage('Kabupaten/Kota wajib dipilih', required),
   },
   telepon: {
     required: helpers.withMessage('Telepon wajib diisi', required),
@@ -87,39 +92,19 @@ const submitText = computed(() =>
 )
 
 watch(
-  () => form.id_provinsi,
+  () => form.province_id,
   async (newProv) => {
-    form.id_kabupaten = ''
-    if (!newProv) {
-      kabupatens.value = []
-      return
-    }
-    try {
-      const res = await axios.get('/api/kabupatens', {
-        params: { id_provinsi: newProv, per_page: 500 },
-      })
-      kabupatens.value = res.data.data || res.data
-    } catch {
-      kabupatens.value = []
-    }
+    form.regency_id = ''
+    await region.fetchRegencies(newProv || null)
   }
 )
 
 onMounted(async () => {
-  await fetchProvinsis()
+  await region.fetchProvinces()
   if (mode.value === 'edit') {
     await fetchCustomer()
   }
 })
-
-async function fetchProvinsis() {
-  try {
-    const res = await axios.get('/api/provinsis', { params: { per_page: 100 } })
-    provinsis.value = res.data.data || res.data
-  } catch {
-    provinsis.value = []
-  }
-}
 
 async function fetchCustomer() {
   pageLoading.value = true
@@ -127,7 +112,6 @@ async function fetchCustomer() {
     const { data } = await customerApi.getById(customerId.value)
     Object.assign(form, {
       email: data.email || '',
-      id_provinsi: data.id_provinsi ? String(data.id_provinsi) : '',
       telepon: data.telepon || '',
       jenis_customer: data.jenis_customer || '',
       nama_perusahaan: data.nama_perusahaan || '',
@@ -135,12 +119,19 @@ async function fetchCustomer() {
       fax: data.fax || '',
       postal_code: data.postal_code || '',
     })
-    if (data.id_provinsi) {
-      const res = await axios.get('/api/kabupatens', {
-        params: { id_provinsi: data.id_provinsi, per_page: 500 },
-      })
-      kabupatens.value = res.data.data || res.data
-      form.id_kabupaten = data.id_kabupaten ? String(data.id_kabupaten) : ''
+
+    if (data.province_id) {
+      form.province_id = String(data.province_id)
+      await region.fetchRegencies(form.province_id)
+      form.regency_id = data.regency_id ? String(data.regency_id) : ''
+    } else if (data.id_provinsi) {
+      // Record lama (sebelum migrasi BPS) cuma punya id_provinsi/id_kabupaten,
+      // belum punya province_id/regency_id — tampilkan info dari relasi lama
+      // dan minta user pilih ulang dari daftar wilayah BPS baru di bawah.
+      hasLegacyAddressOnly.value = true
+      legacyAddressLabel.value = [data.provinsi?.nama_provinsi, data.kabupaten?.nama_kabupaten]
+        .filter(Boolean)
+        .join(', ') || 'Data lokasi lama tidak lengkap'
     }
   } catch (e: any) {
     const isForbidden = e.response?.status === 403
@@ -173,8 +164,6 @@ async function submit() {
     const payload = {
       ...form,
       nama_perusahaan: form.nama_perusahaan.trim().toUpperCase(),
-      id_provinsi: Number(form.id_provinsi),
-      id_kabupaten: Number(form.id_kabupaten),
     }
 
     if (mode.value === 'create') {
@@ -275,41 +264,46 @@ function cancel() {
     </CardSection>
 
     <!-- Section: Lokasi & Wilayah -->
-    <CardSection title="Lokasi & Wilayah" description="Area customer berdasarkan provinsi dan kabupaten">
+    <CardSection title="Lokasi & Wilayah" description="Area customer berdasarkan provinsi dan kabupaten/kota">
+      <Alert v-if="hasLegacyAddressOnly" variant="soft-warning" class="mb-4">
+        Data lokasi customer ini masih pakai skema lama: <strong>{{ legacyAddressLabel }}</strong>.
+        Silakan pilih ulang Provinsi &amp; Kabupaten/Kota di bawah berdasarkan daftar wilayah terbaru
+        agar tersimpan dengan skema baru.
+      </Alert>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <FormLabel for="id_provinsi">
+          <FormLabel for="province_id">
             Provinsi
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect id="id_provinsi" v-model="form.id_provinsi" class="w-full"
-            :class="getFieldError('id_provinsi') ? 'border-rose-500' : ''" @change="v$.id_provinsi.$touch()">
+          <TomSelect id="province_id" v-model="form.province_id" class="w-full"
+            :class="getFieldError('province_id') ? 'border-rose-500' : ''" @change="v$.province_id.$touch()">
             <option value="">Cari Provinsi</option>
-            <option v-for="p in provinsis" :key="p.id_provinsi" :value="String(p.id_provinsi)">
-              {{ p.nama_provinsi }}
+            <option v-for="p in region.provinces.value" :key="p.id" :value="p.id">
+              {{ p.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('id_provinsi')" class="font-caption !text-rose-600">
-            {{ getFieldError('id_provinsi') }}
+          <small v-if="getFieldError('province_id')" class="font-caption !text-rose-600">
+            {{ getFieldError('province_id') }}
           </small>
         </div>
 
         <div>
-          <FormLabel for="id_kabupaten">
-            Kabupaten
+          <FormLabel for="regency_id">
+            Kabupaten/Kota
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect id="id_kabupaten" v-model="form.id_kabupaten" class="w-full"
-            :class="getFieldError('id_kabupaten') ? 'border-rose-500' : ''" @change="v$.id_kabupaten.$touch()">
+          <TomSelect id="regency_id" v-model="form.regency_id" class="w-full"
+            :class="getFieldError('regency_id') ? 'border-rose-500' : ''" @change="v$.regency_id.$touch()">
             <option value="">
-              {{ form.id_provinsi ? 'Cari Kabupaten' : '-- Pilih Provinsi dulu --' }}
+              {{ form.province_id ? 'Cari Kabupaten/Kota' : '-- Pilih Provinsi dulu --' }}
             </option>
-            <option v-for="k in kabupatens" :key="k.id_kabupaten" :value="String(k.id_kabupaten)">
-              {{ k.nama_kabupaten }}
+            <option v-for="k in region.regencies.value" :key="k.id" :value="k.id">
+              {{ k.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('id_kabupaten')" class="font-caption !text-rose-600">
-            {{ getFieldError('id_kabupaten') }}
+          <small v-if="getFieldError('regency_id')" class="font-caption !text-rose-600">
+            {{ getFieldError('regency_id') }}
           </small>
         </div>
       </div>

@@ -92,17 +92,14 @@
                   <FormLabel class="font-label !mb-1 block">Province / Provinsi
                     <RequiredAsterisk />
                   </FormLabel>
-
-                  <!-- select jika master ada, kalau tidak fallback ke input -->
-                  <FormSelect v-if="provinsiOptions.length" v-model="form.corporate.id_provinsi"
-                    :class="inputClass('corporate.id_provinsi')">
-                    <option :value="null" disabled>Select province</option>
-                    <option v-for="p in provinsiOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  <FormSelect :value="form.corporate.province_id ?? ''" @change="onCorporateProvinceChange"
+                    :class="inputClass('corporate.province_id')">
+                    <option value="" disabled>Select province</option>
+                    <option v-for="p in corporateRegion.provinces.value" :key="p.id" :value="p.id">{{ p.name }}
+                    </option>
                   </FormSelect>
-                  <FormInput v-else v-model="form.corporate.provinsi_text" type="text" placeholder="Province"
-                    :class="inputClass('corporate.id_provinsi')" />
-                  <small v-if="fieldError('corporate.id_provinsi')" class="block input-error-text">{{
-                    fieldError('corporate.id_provinsi') }}</small>
+                  <small v-if="fieldError('corporate.province_id')" class="block input-error-text">{{
+                    fieldError('corporate.province_id') }}</small>
                 </div>
 
                 <!-- Kabupaten -->
@@ -110,25 +107,42 @@
                   <FormLabel class="font-label !mb-1 block">City / Kota (Kabupaten)
                     <RequiredAsterisk />
                   </FormLabel>
-
-                  <FormSelect v-if="kabupatenOptions.length" v-model="form.corporate.id_kabupaten"
-                    :disabled="!form.corporate.id_provinsi" :class="inputClass('corporate.id_kabupaten')">
-                    <option :value="null" disabled>Select city/regency</option>
-                    <option v-for="k in kabupatenOptions" :key="k.id" :value="k.id">{{ k.name }}</option>
+                  <FormSelect :value="form.corporate.regency_id ?? ''" @change="onCorporateRegencyChange"
+                    :disabled="!form.corporate.province_id" :class="inputClass('corporate.regency_id')">
+                    <option value="" disabled>
+                      {{ form.corporate.province_id ? 'Select city/regency' : '-- Select province first --' }}
+                    </option>
+                    <option v-for="k in corporateRegion.regencies.value" :key="k.id" :value="k.id">{{ k.name }}
+                    </option>
                   </FormSelect>
-                  <FormInput v-else v-model="form.corporate.kabupaten_text" type="text" placeholder="City/Regency"
-                    :class="inputClass('corporate.id_kabupaten')" />
-                  <small v-if="fieldError('corporate.id_kabupaten')" class="block input-error-text">{{
-                    fieldError('corporate.id_kabupaten') }}</small>
+                  <small v-if="fieldError('corporate.regency_id')" class="block input-error-text">{{
+                    fieldError('corporate.regency_id') }}</small>
                 </div>
 
+                <!-- Kecamatan (dropdown, mengganti free-text lama) -->
                 <div>
                   <FormLabel class="font-label !mb-1 block">Districts / Kecamatan</FormLabel>
-                  <FormInput v-model="form.corporate.kecamatan" type="text" />
+                  <FormSelect :value="form.corporate.district_id ?? ''" @change="onCorporateDistrictChange"
+                    :disabled="!form.corporate.regency_id">
+                    <option value="">
+                      {{ form.corporate.regency_id ? 'Select district' : '-- Select city/regency first --' }}
+                    </option>
+                    <option v-for="d in corporateRegion.districts.value" :key="d.id" :value="d.id">{{ d.name }}
+                    </option>
+                  </FormSelect>
                 </div>
+
+                <!-- Kelurahan (dropdown, mengganti free-text lama) -->
                 <div>
                   <FormLabel class="font-label !mb-1 block">Sub-Districts / Kelurahan</FormLabel>
-                  <FormInput v-model="form.corporate.kelurahan" type="text" />
+                  <FormSelect :value="form.corporate.village_id ?? ''" @change="onCorporateVillageChange"
+                    :disabled="!form.corporate.district_id">
+                    <option value="">
+                      {{ form.corporate.district_id ? 'Select sub-district' : '-- Select district first --' }}
+                    </option>
+                    <option v-for="v in corporateRegion.villages.value" :key="v.id" :value="v.id">{{ v.name }}
+                    </option>
+                  </FormSelect>
                 </div>
               </div>
 
@@ -185,30 +199,30 @@
                   <FormLabel class="font-label !mb-1 block">Province / Provinsi
                     <RequiredAsterisk />
                   </FormLabel>
-                  <FormSelect v-if="provinsiOptions.length" v-model="form.registered.id_provinsi"
-                    :class="inputClass('registered.id_provinsi')">
-                    <option :value="null" disabled>Select province</option>
-                    <option v-for="p in provinsiOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  <FormSelect :value="form.registered.province_id ?? ''" @change="onRegisteredProvinceChange"
+                    :class="inputClass('registered.province_id')">
+                    <option value="" disabled>Select province</option>
+                    <option v-for="p in registeredRegion.provinces.value" :key="p.id" :value="p.id">{{ p.name }}
+                    </option>
                   </FormSelect>
-                  <FormInput v-else v-model="form.registered.provinsi_text" type="text" placeholder="Province"
-                    :class="inputClass('registered.id_provinsi')" />
-                  <small v-if="fieldError('registered.id_provinsi')" class="block input-error-text">{{
-                    fieldError('registered.id_provinsi') }}</small>
+                  <small v-if="fieldError('registered.province_id')" class="block input-error-text">{{
+                    fieldError('registered.province_id') }}</small>
                 </div>
 
                 <div>
                   <FormLabel class="font-label !mb-1 block">City / Kabupaten
                     <RequiredAsterisk />
                   </FormLabel>
-                  <FormSelect v-if="registeredKabupatenOptions.length" v-model="form.registered.id_kabupaten"
-                    :disabled="!form.registered.id_provinsi" :class="inputClass('registered.id_kabupaten')">
-                    <option :value="null" disabled>Select city/regency</option>
-                    <option v-for="k in registeredKabupatenOptions" :key="k.id" :value="k.id">{{ k.name }}</option>
+                  <FormSelect :value="form.registered.regency_id ?? ''" @change="onRegisteredRegencyChange"
+                    :disabled="!form.registered.province_id" :class="inputClass('registered.regency_id')">
+                    <option value="" disabled>
+                      {{ form.registered.province_id ? 'Select city/regency' : '-- Select province first --' }}
+                    </option>
+                    <option v-for="k in registeredRegion.regencies.value" :key="k.id" :value="k.id">{{ k.name }}
+                    </option>
                   </FormSelect>
-                  <FormInput v-else v-model="form.registered.kabupaten_text" type="text" placeholder="City/Regency"
-                    :class="inputClass('registered.id_kabupaten')" />
-                  <small v-if="fieldError('registered.id_kabupaten')" class="block input-error-text">{{
-                    fieldError('registered.id_kabupaten') }}</small>
+                  <small v-if="fieldError('registered.regency_id')" class="block input-error-text">{{
+                    fieldError('registered.regency_id') }}</small>
                 </div>
               </div>
             </div>
@@ -819,6 +833,7 @@ import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Steppe
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useRegionCascade, type RegionOption } from '@/composables/useRegionCascade'
 import logoUrl from '@/assets/images/putih-tulisan-atas.png'
 import logoUrl2 from '@/assets/images/tds-crs-new.png'
 
@@ -846,11 +861,12 @@ const stepperItems = computed<StepItem[]>(() =>
   })
 )
 
-/* ====== master options ====== */
-type Opt = { id: number; name: string }
-const provinsiOptions = ref<Opt[]>([])
-const kabupatenOptions = ref<Opt[]>([])
-const registeredKabupatenOptions = ref<Opt[]>([])
+/* ====== master options: cascading province -> regency -> district -> village
+   (laravel-nusa-address-full-migration Task 8), satu instance terpisah per
+   blok alamat (corporate vs registered) supaya opsi masing-masing tidak
+   saling menimpa. ====== */
+const corporateRegion = useRegionCascade()
+const registeredRegion = useRegionCascade()
 
 /* ====== lists ====== */
 const typeBusiness = [
@@ -889,15 +905,28 @@ const form = reactive<any>({
   corporate: {
     nama: '', holding: '', print_product: '',
     email: '', website: '', alamat: '',
+    // id_provinsi/id_kabupaten: LEGACY, hidden pass-through — TIDAK ada
+    // UI-nya lagi (lihat blok address di template). customers.id_provinsi/
+    // id_kabupaten masih NOT NULL di DB (belum dilonggarkan di Fase 2), jadi
+    // field ini dipertahankan apa adanya dari data existing customer di
+    // load() dan ikut ter-echo balik lewat spread `...form.corporate` di
+    // save() supaya update tidak menabrak constraint tsb. Lihat catatan di
+    // load() dan laporan Apollo untuk detail — TIDAK diedit user.
     id_provinsi: null as number | null, id_kabupaten: null as number | null,
-    provinsi_text: '', kabupaten_text: '',
-    kecamatan: '', kelurahan: '', postal_code: '', telepon: '', fax: '',
+    // Kolom baru berbasis kode BPS (string), province -> regency -> district
+    // -> village, menggantikan dropdown provinsi/kabupaten lama + free-text
+    // kecamatan/kelurahan lama.
+    province_id: null as string | null, regency_id: null as string | null,
+    district_id: null as string | null, village_id: null as string | null,
+    postal_code: '', telepon: '', fax: '',
     tipe_bisnis: '', tipe_bisnis_lain: '', ownership: '', ownership_lain: ''
   },
   registered: {
     email: '', alamat: '',
-    id_provinsi: null as number | null, id_kabupaten: null as number | null,
-    provinsi_text: '', kabupaten_text: ''
+    // customer_payment.prov_billing/kab_billing nullable di DB, jadi alamat
+    // billing bisa full cutover ke kolom baru tanpa perlu pass-through
+    // legacy id (beda dengan corporate di atas).
+    province_id: null as string | null, regency_id: null as string | null,
   },
   delivery: { alamat1: '', alamat2: '', alamat3: '' },
   invoice: { delivery_address: '', pic: { name: '', position: '', telephone: '', mobile: '', email: '' } },
@@ -929,13 +958,10 @@ const form = reactive<any>({
 })
 
 /* ====== summary (step 6) — ringkasan lengkap, dikelompokkan per step asal field ====== */
-/* Resolve nama wilayah dari master by id; fallback ke teks bebas kalau id kosong (mis. master belum tersedia). */
-function resolveRegionName(id: number | null | undefined, textFallback: string | null | undefined, options: Opt[]): string {
-  if (id != null) {
-    const found = options.find((o) => o.id === id)
-    if (found) return found.name
-  }
-  return textFallback || '-'
+/* Resolve nama wilayah dari daftar opsi cascade yang sedang termuat by id. */
+function resolveRegionName(id: string | null | undefined, options: RegionOption[]): string {
+  if (!id) return '-'
+  return options.find((o) => o.id === id)?.name || '-'
 }
 
 function qualityCheckingSummary(): string {
@@ -959,11 +985,19 @@ const summarySections = computed(() => [
       { label: 'Head Office Address', value: form.corporate.alamat || '-' },
       {
         label: 'Head Office Province',
-        value: resolveRegionName(form.corporate.id_provinsi, form.corporate.provinsi_text, provinsiOptions.value),
+        value: resolveRegionName(form.corporate.province_id, corporateRegion.provinces.value),
       },
       {
         label: 'Head Office City/Regency',
-        value: resolveRegionName(form.corporate.id_kabupaten, form.corporate.kabupaten_text, kabupatenOptions.value),
+        value: resolveRegionName(form.corporate.regency_id, corporateRegion.regencies.value),
+      },
+      {
+        label: 'Head Office District/Kecamatan',
+        value: resolveRegionName(form.corporate.district_id, corporateRegion.districts.value),
+      },
+      {
+        label: 'Head Office Sub-District/Kelurahan',
+        value: resolveRegionName(form.corporate.village_id, corporateRegion.villages.value),
       },
       { label: 'Postal Code', value: form.corporate.postal_code || '-' },
       { label: 'Telephone', value: form.corporate.telepon || '-' },
@@ -972,11 +1006,11 @@ const summarySections = computed(() => [
       { label: 'NPWP Address', value: form.registered.alamat || '-' },
       {
         label: 'NPWP Province (Registered)',
-        value: resolveRegionName(form.registered.id_provinsi, form.registered.provinsi_text, provinsiOptions.value),
+        value: resolveRegionName(form.registered.province_id, registeredRegion.provinces.value),
       },
       {
         label: 'NPWP City/Regency (Registered)',
-        value: resolveRegionName(form.registered.id_kabupaten, form.registered.kabupaten_text, registeredKabupatenOptions.value),
+        value: resolveRegionName(form.registered.regency_id, registeredRegion.regencies.value),
       },
       { label: 'Delivery Address 1', value: form.delivery.alamat1 || '-' },
       { label: 'Delivery Address 2', value: form.delivery.alamat2 || '-' },
@@ -1120,34 +1154,22 @@ const validationRules = computed(() => ({
     nama: { required: helpers.withMessage('Nama perusahaan wajib diisi.', required) },
     email: { required: helpers.withMessage('Email kantor pusat wajib diisi.', required) },
     alamat: { required: helpers.withMessage('Alamat kantor pusat wajib diisi.', required) },
-    id_provinsi: {
-      requiredOneOf: helpers.withMessage(
-        'Provinsi kantor pusat wajib diisi.',
-        () => !!(form.corporate.id_provinsi || form.corporate.provinsi_text),
-      ),
+    province_id: {
+      required: helpers.withMessage('Provinsi kantor pusat wajib diisi.', required),
     },
-    id_kabupaten: {
-      requiredOneOf: helpers.withMessage(
-        'Kabupaten/Kota kantor pusat wajib diisi.',
-        () => !!(form.corporate.id_kabupaten || form.corporate.kabupaten_text),
-      ),
+    regency_id: {
+      required: helpers.withMessage('Kabupaten/Kota kantor pusat wajib diisi.', required),
     },
     telepon: { required: helpers.withMessage('Telepon kantor pusat wajib diisi.', required) },
   },
   registered: {
     email: { required: helpers.withMessage('Email Alamat NPWP (Registered) wajib diisi.', required) },
     alamat: { required: helpers.withMessage('Alamat NPWP (Registered) wajib diisi.', required) },
-    id_provinsi: {
-      requiredOneOf: helpers.withMessage(
-        'Provinsi Alamat NPWP (Registered) wajib diisi.',
-        () => !!(form.registered.id_provinsi || form.registered.provinsi_text),
-      ),
+    province_id: {
+      required: helpers.withMessage('Provinsi Alamat NPWP (Registered) wajib diisi.', required),
     },
-    id_kabupaten: {
-      requiredOneOf: helpers.withMessage(
-        'Kabupaten/Kota Alamat NPWP (Registered) wajib diisi.',
-        () => !!(form.registered.id_kabupaten || form.registered.kabupaten_text),
-      ),
+    regency_id: {
+      required: helpers.withMessage('Kabupaten/Kota Alamat NPWP (Registered) wajib diisi.', required),
     },
   },
   docs: {
@@ -1186,9 +1208,9 @@ const v$ = useVuelidate(validationRules, form)
 /* Peta field → nomor step, dipakai untuk lompat otomatis ke step pertama yang invalid. */
 const FIELD_STEP_MAP: Record<string, number> = {
   'corporate.nama': 1, 'corporate.email': 1, 'corporate.alamat': 1,
-  'corporate.id_provinsi': 1, 'corporate.id_kabupaten': 1, 'corporate.telepon': 1,
+  'corporate.province_id': 1, 'corporate.regency_id': 1, 'corporate.telepon': 1,
   'registered.email': 1, 'registered.alamat': 1,
-  'registered.id_provinsi': 1, 'registered.id_kabupaten': 1,
+  'registered.province_id': 1, 'registered.regency_id': 1,
   'docs.npwp_number': 2, 'docs.nib_number': 2,
   'payment.payment_method': 3, 'payment.schedule': 3,
   'invoice.pic.name': 3, 'invoice.pic.telephone': 3, 'invoice.pic.mobile': 3,
@@ -1220,76 +1242,80 @@ function collectErrorMessages(): string[] {
   return msgs
 }
 
-/* ====== helpers ====== */
-function normalizeList(raw: any): Opt[] {
-  const arr = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : [])
-  return arr.map((x: any) => ({
-    id: x.id ?? x.id_provinsi ?? x.id_kabupaten,
-    name: x.name ?? x.nama_provinsi ?? x.nama_kabupaten
-  }))
+/* ====== cascading province -> regency -> district -> village ======
+   Handler di bawah dipicu murni oleh interaksi user (native @change) —
+   BUKAN lewat watch() — supaya tidak race dengan assignment terprogram di
+   load()/copyHeadOfficeToRegistered() (pola watch() lama pernah butuh
+   urutan assignment yang sangat hati-hati untuk masalah serupa, lihat riwayat
+   git file ini). Prefill di load() memakai primeCorporateRegion()/
+   primeRegisteredRegion() di bawah, bukan handler ini. */
+function onCorporateProvinceChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value || null
+  form.corporate.province_id = value
+  form.corporate.regency_id = null
+  form.corporate.district_id = null
+  form.corporate.village_id = null
+  corporateRegion.fetchRegencies(value)
+}
+function onCorporateRegencyChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value || null
+  form.corporate.regency_id = value
+  form.corporate.district_id = null
+  form.corporate.village_id = null
+  corporateRegion.fetchDistricts(value)
+}
+function onCorporateDistrictChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value || null
+  form.corporate.district_id = value
+  form.corporate.village_id = null
+  corporateRegion.fetchVillages(value)
+}
+function onCorporateVillageChange(e: Event) {
+  form.corporate.village_id = (e.target as HTMLSelectElement).value || null
+}
+function onRegisteredProvinceChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value || null
+  form.registered.province_id = value
+  form.registered.regency_id = null
+  registeredRegion.fetchRegencies(value)
+}
+function onRegisteredRegencyChange(e: Event) {
+  form.registered.regency_id = (e.target as HTMLSelectElement).value || null
 }
 
-/* ====== load masters (support beberapa endpoint) ====== */
-async function loadProvinsis() {
-  try {
-    let data
-    try { ({ data } = await axios.get('/api/masters/provinsis')) }        // jika punya endpoint masters publik
-    catch { ({ data } = await axios.get('/api/provinsis')) }               // fallback ke resource standar (butuh auth)
-    provinsiOptions.value = normalizeList(data)
-  } catch { provinsiOptions.value = [] }
+/* Muat opsi cascade sampai level yang sudah ter-set di form (dipakai setelah
+   prefill/load supaya dropdown menampilkan pilihan yang benar). */
+async function primeCorporateRegion() {
+  if (!form.corporate.province_id) return
+  await corporateRegion.fetchRegencies(form.corporate.province_id)
+  if (!form.corporate.regency_id) return
+  await corporateRegion.fetchDistricts(form.corporate.regency_id)
+  if (!form.corporate.district_id) return
+  await corporateRegion.fetchVillages(form.corporate.district_id)
 }
-async function loadKabupatens(provId: number | null) {
-  kabupatenOptions.value = []
-  if (!provId) return
-  try {
-    let data
-    try { ({ data } = await axios.get('/api/masters/kabupatens', { params: { provinsi_id: provId } })) }
-    catch { ({ data } = await axios.get('/api/kabupatens', { params: { provinsi_id: provId } })) }
-    kabupatenOptions.value = normalizeList(data)
-  } catch { kabupatenOptions.value = [] }
-}
-async function loadRegisteredKabupatens(provId: number | null) {
-  registeredKabupatenOptions.value = []
-  if (!provId) return
-  try {
-    let data
-    try { ({ data } = await axios.get('/api/masters/kabupatens', { params: { provinsi_id: provId } })) }
-    catch { ({ data } = await axios.get('/api/kabupatens', { params: { provinsi_id: provId } })) }
-    registeredKabupatenOptions.value = normalizeList(data)
-  } catch { registeredKabupatenOptions.value = [] }
+async function primeRegisteredRegion() {
+  if (!form.registered.province_id) return
+  await registeredRegion.fetchRegencies(form.registered.province_id)
 }
 
 /* ====== shortcut: samakan Alamat NPWP (registered) dengan Alamat Kantor Pusat ======
-   Checked → copy dari corporate; unchecked → field registered di-reset kosong.
-   Provinsi & kabupaten HARUS di-set berurutan (bukan Object.assign polos) karena watcher
-   `form.registered.id_provinsi` mereset id_kabupaten & reload registeredKabupatenOptions
-   setiap kali provinsi berubah — kalau kabupaten di-assign duluan/bareng, nilainya
-   akan ke-null-kan balik oleh watcher tersebut. */
+   Checked → copy dari corporate; unchecked → field registered di-reset kosong. */
 const sameAsHeadOffice = ref(false)
 async function copyHeadOfficeToRegistered() {
   form.registered.email = form.corporate.email
   form.registered.alamat = form.corporate.alamat
-  form.registered.provinsi_text = form.corporate.provinsi_text
-  form.registered.kabupaten_text = form.corporate.kabupaten_text
-  if (form.corporate.id_provinsi != null) {
-    form.registered.id_provinsi = form.corporate.id_provinsi
-    await loadRegisteredKabupatens(form.corporate.id_provinsi)
-    form.registered.id_kabupaten = form.corporate.id_kabupaten
-  }
+  form.registered.province_id = form.corporate.province_id
+  form.registered.regency_id = form.corporate.regency_id
+  await primeRegisteredRegion()
 }
 function resetRegisteredAddress() {
   form.registered.email = ''
   form.registered.alamat = ''
-  form.registered.provinsi_text = ''
-  form.registered.kabupaten_text = ''
-  form.registered.id_provinsi = null
-  form.registered.id_kabupaten = null
+  form.registered.province_id = null
+  form.registered.regency_id = null
+  registeredRegion.regencies.value = []
 }
 watch(sameAsHeadOffice, (checked) => { if (checked) copyHeadOfficeToRegistered(); else resetRegisteredAddress() })
-
-/* ====== watchers master ====== */
-watch(() => form.corporate.id_provinsi, (v) => { form.corporate.id_kabupaten = null; loadKabupatens(v) })
-watch(() => form.registered.id_provinsi, (v) => { form.registered.id_kabupaten = null; loadRegisteredKabupatens(v) })
 
 /* ====== load data verifikasi ====== */
 async function load() {
@@ -1302,7 +1328,8 @@ async function load() {
   tokenStatus.value = data.status ?? 'active'
   if (tokenStatus.value !== 'active') return
 
-  await loadProvinsis()
+  await corporateRegion.fetchProvinces()
+  await registeredRegion.fetchProvinces()
 
   // Prefill dari relasi customer (pertama kali masuk)
   if (data.customer) {
@@ -1314,11 +1341,19 @@ async function load() {
     form.corporate.fax = c.fax || form.corporate.fax
     form.corporate.postal_code = c.postal_code || form.corporate.postal_code
 
-    if (c.id_provinsi != null) {
-      form.corporate.id_provinsi = c.id_provinsi
-      await loadKabupatens(form.corporate.id_provinsi)
-      form.corporate.id_kabupaten = c.id_kabupaten ?? null
-    }
+    // Legacy id_provinsi/id_kabupaten — TIDAK ada UI-nya lagi, cuma
+    // dipertahankan apa adanya dari data existing customer supaya update ke
+    // `customers` tidak menabrak kolom NOT NULL tsb (lihat catatan di
+    // deklarasi form.corporate di atas).
+    form.corporate.id_provinsi = c.id_provinsi ?? null
+    form.corporate.id_kabupaten = c.id_kabupaten ?? null
+
+    // Kolom baru berbasis kode BPS, kalau customer ini sudah pernah
+    // termigrasi (Task 4/5) atau pernah submit lewat form baru ini.
+    form.corporate.province_id = c.province_id ?? null
+    form.corporate.regency_id = c.regency_id ?? null
+    form.corporate.district_id = c.district_id ?? null
+    form.corporate.village_id = c.village_id ?? null
   }
 
   // Prefill dari JSON simpanan bila ada. Snapshot ini bisa datang dari dua
@@ -1374,8 +1409,11 @@ async function load() {
     if (logistik.supply) Object.assign(form.supply, logistik.supply)
   } catch { }
 
-  // registered kabupaten jika ada
-  await loadRegisteredKabupatens(form.registered.id_provinsi)
+  // Muat opsi cascade sampai level yang sudah ter-set (dari relasi customer
+  // dan/atau override snapshot JSON di atas), supaya dropdown menampilkan
+  // pilihan yang benar saat form pertama kali dirender.
+  await primeCorporateRegion()
+  await primeRegisteredRegion()
 }
 onMounted(load)
 

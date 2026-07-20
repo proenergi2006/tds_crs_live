@@ -20,7 +20,7 @@
                 :key="w.id"
                 :value="w.id"
               >
-                {{ w.provinsi?.nama_provinsi || '-' }} - {{ w.kabupaten?.nama_kabupaten || '-' }} - {{ w.destinasi }}
+                {{ w.province?.name || w.provinsi?.nama_provinsi || '-' }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten || '-' }} - {{ w.destinasi }}
               </option>
             </FormSelect>
           </div>

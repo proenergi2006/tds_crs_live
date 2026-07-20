@@ -16,6 +16,9 @@ class CustomerPayment extends Model
         'id_customer',
         'email_billing','alamat_billing',
         'prov_billing','kab_billing','postalcode_billing',
+        // Kolom baru berbasis kode BPS (laravel-nusa-address-full-migration),
+        // di samping prov_billing/kab_billing lama — lama TIDAK dihapus.
+        'province_id','regency_id','district_id','village_id',
         'telp_billing','fax_billing',
         'payment_schedule','payment_schedule_other',
         'payment_method','payment_method_other',
@@ -49,5 +52,30 @@ class CustomerPayment extends Model
     public function kabupatenBilling(): BelongsTo
     {
         return $this->belongsTo(Kabupaten::class, 'kab_billing', 'id_kabupaten');
+    }
+
+    /*
+     * Relasi baru berbasis data BPS (laravel-nusa-address-full-migration),
+     * di samping provinsiBilling()/kabupatenBilling() lama di atas — lama
+     * tidak dihapus.
+     */
+    public function provinceBilling(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'province_id', 'id');
+    }
+
+    public function regencyBilling(): BelongsTo
+    {
+        return $this->belongsTo(Regency::class, 'regency_id', 'id');
+    }
+
+    public function districtBilling(): BelongsTo
+    {
+        return $this->belongsTo(District::class, 'district_id', 'id');
+    }
+
+    public function villageBilling(): BelongsTo
+    {
+        return $this->belongsTo(Village::class, 'village_id', 'id');
     }
 }

@@ -300,6 +300,10 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             'ongkos.transportir',
             'ongkos.wilayah.provinsi',
             'ongkos.wilayah.kabupaten',
+            // Kolom BPS baru (laravel-nusa-address-full-migration Task 8.2),
+            // di samping provinsi/kabupaten lama di atas — lama tidak dihapus.
+            'ongkos.wilayah.province',
+            'ongkos.wilayah.regency',
         ])->findOrFail($id);
 
         $user = $request->user();

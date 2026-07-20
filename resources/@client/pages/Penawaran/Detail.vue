@@ -110,9 +110,17 @@ const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penaw
 const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
 const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
 
+// province/regency (BPS baru) dipakai kalau tersedia, fallback ke
+// provinsi/kabupaten lama untuk record yang belum termigrasi ATAU selama
+// PenawaranController belum eager-load ongkos.wilayah.province/regency
+// (laravel-nusa-address-full-migration Task 8 — lihat laporan Apollo).
 function wilayahLabel(w: any) {
   if (!w) return null
-  const parts = [w.provinsi?.nama_provinsi, w.kabupaten?.nama_kabupaten, w.destinasi].filter(Boolean)
+  const parts = [
+    w.province?.name || w.provinsi?.nama_provinsi,
+    w.regency?.name || w.kabupaten?.nama_kabupaten,
+    w.destinasi,
+  ].filter(Boolean)
   return parts.length ? parts.join(' - ') : null
 }
 

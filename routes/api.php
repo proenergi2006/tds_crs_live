@@ -21,6 +21,7 @@ use App\Http\Controllers\MasterData\VendorController;
 use App\Http\Controllers\AttachmentHargaDasarController;
 use App\Http\Controllers\ProvinsiController;
 use App\Http\Controllers\KabupatenController;
+use App\Http\Controllers\MasterData\AddressController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
@@ -344,6 +345,20 @@ Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'u
     ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
 Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
+
+// Lookup alamat BPS 4 level (laravel-nusa-address-full-migration Task 7) —
+// pengganti fungsi /masters/provinsis + /masters/kabupatens lama di atas,
+// diperluas ke province/regency/district/village. Publik (tanpa auth) —
+// dipakai juga oleh portal onboarding /verify/:token yang tidak punya token
+// Bearer. Route lama TIDAK dihapus.
+Route::get('/provinces',                       [AddressController::class, 'provinces']);
+Route::get('/provinces/{province}',             [AddressController::class, 'showProvince']);
+Route::get('/provinces/{province}/regencies',   [AddressController::class, 'regencies']);
+Route::get('/regencies/{regency}',              [AddressController::class, 'showRegency']);
+Route::get('/regencies/{regency}/districts',    [AddressController::class, 'districts']);
+Route::get('/districts/{district}',             [AddressController::class, 'showDistrict']);
+Route::get('/districts/{district}/villages',    [AddressController::class, 'villages']);
+Route::get('/villages/{village}',               [AddressController::class, 'showVillage']);
 Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('throttle:30,1');
 
 // Public PO detail (contoh)
