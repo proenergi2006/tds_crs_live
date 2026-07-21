@@ -36,7 +36,6 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
     detailRoute: 'penawarans-detail',
-    detailRoute: 'penawarans-detail',
     usePe: false,   // harga dari kolom harga_price_list
     showAcuan: false,
   },
@@ -879,25 +878,6 @@ function formatCurrency(v: number | string = 0) {
 
     <!-- Section 2: Rincian Item -->
     <CardSection title="Detail Pengiriman & Daftar Produk"
-      description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
-      icon-class="bg-indigo-100 text-indigo-600">
-      <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 md:col-span-6">
-          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div>
-              <FormLabel>Type Pengiriman
-                <RequiredAsterisk />
-              </FormLabel>
-              <FormSelect v-model="form.type_pengiriman" class="w-full" :class="inputClass('type_pengiriman')">
-                <option value="" disabled>Pilih Type Pengiriman…</option>
-                <option value="PROJECT">Project</option>
-                <option value="RETAIL">Retail</option>
-              </FormSelect>
-              <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
-                fieldError('type_pengiriman')
-              }}</small>
-            </div>
-            <CardSection title="Detail Pengiriman & Daftar Produk"
               description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
               icon-class="bg-indigo-100 text-indigo-600">
               <div class="grid grid-cols-12 gap-4">
@@ -955,7 +935,8 @@ function formatCurrency(v: number | string = 0) {
                           <FormSelect v-model="oaKapalInput.id_angkut_wilayah" :key="oaSelectKey">
                             <option value="">Pilih Wilayah</option>
                             <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
-                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name ||
+                                w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
                             </option>
                           </FormSelect>
                         </div>
@@ -994,7 +975,8 @@ function formatCurrency(v: number | string = 0) {
                           <FormSelect v-model="oaTruckInput.id_angkut_wilayah" :key="oaSelectKey">
                             <option value="">Pilih Wilayah</option>
                             <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
-                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name ||
+                                w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
                             </option>
                           </FormSelect>
                         </div>
