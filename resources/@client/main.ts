@@ -61,6 +61,7 @@ import router from "./router";
 import "./assets/css/app.css";
 import "sweetalert2/dist/sweetalert2.min.css";
 import Vue3SignaturePad from "vue3-signature-pad";
+import { useAuthStore } from "./stores/auth";
 
 // ganti sesuai URL Laravel Anda
 console.log("📌 axios baseURL:", axios.defaults.baseURL);
@@ -75,9 +76,16 @@ axios.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      // token expired / session expired
-      //   const auth = useAuthStore(pinia)
-      //   auth.forceLogout()
+      // token expired / session expired — abaikan kalau yang gagal adalah
+      // request login itu sendiri (401 di sana berarti kredensial salah,
+      // bukan token expired), jangan trigger forceLogout untuk kasus itu.
+      const requestUrl: string = err.config?.url || "";
+      const isLoginRequest = requestUrl.includes("/login");
+
+      if (!isLoginRequest) {
+        const auth = useAuthStore();
+        auth.forceLogout();
+      }
     }
     return Promise.reject(err);
   },

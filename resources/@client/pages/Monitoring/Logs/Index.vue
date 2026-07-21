@@ -71,7 +71,7 @@ async function fetchData() {
 
   try {
     const { data } = await axios.get('/api/logs', { params: { limit: 200 } })
-    allLogs.value = Array.isArray(data.data) ? data.data : []
+    allLogs.value = Array.isArray(data.data) ? [...data.data].reverse() : []
     currentPage.value = 1
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat log aplikasi')
@@ -119,14 +119,9 @@ function levelClass(level: string | null): string {
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
 
-      <PageHeader title="Application Logs" description="200 log terbaru dari aplikasi">
+      <PageHeader title="Application Logs" description="Log terbaru dari aplikasi">
         <template #action>
-          <Button
-            variant="white"
-            class="inline-flex items-center gap-2"
-            :disabled="loading"
-            @click="fetchData"
-          >
+          <Button variant="white" class="inline-flex items-center gap-2" :disabled="loading" @click="fetchData">
             <Lucide icon="RefreshCw" class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
             Refresh
           </Button>
@@ -134,44 +129,27 @@ function levelClass(level: string | null): string {
       </PageHeader>
 
       <div>
-        <DataList
-          v-model:search="searchQuery"
-          v-model:per-page="perPage"
-          :loading="loading"
-          :empty="paginatedLogs.length === 0"
-          :colspan="5"
-          :show-footer="true"
-          :show-toolbar="true"
-          :total="totalRecords"
-          :current-page="currentPage"
-          :total-pages="totalPages"
-          :active-filter-count="activeFilterCount"
-          search-placeholder="Cari pesan atau keyword..."
-          loading-text="Memuat log aplikasi..."
-          empty-description="Tidak ada log yang sesuai dengan filter."
-          @page-change="goToPage"
-        >
+        <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
+          :empty="paginatedLogs.length === 0" :colspan="5" :show-footer="true" :show-toolbar="true"
+          :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+          :active-filter-count="activeFilterCount" search-placeholder="Cari pesan atau keyword..."
+          loading-text="Memuat log aplikasi..." empty-description="Tidak ada log yang sesuai dengan filter."
+          @page-change="goToPage">
           <template #filters="{ close }">
             <div>
               <div class="font-section px-3 pb-2 pt-1">Level</div>
               <div class="space-y-1">
-                <button
-                  type="button"
+                <button type="button"
                   class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
                   :class="filterLevel === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
-                  @click="filterLevel = ''; close()"
-                >
+                  @click="filterLevel = ''; close()">
                   Semua Level
                   <Lucide v-if="filterLevel === ''" icon="Check" class="h-4 w-4" />
                 </button>
-                <button
-                  v-for="lvl in levelOptions"
-                  :key="lvl"
-                  type="button"
+                <button v-for="lvl in levelOptions" :key="lvl" type="button"
                   class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
                   :class="filterLevel === lvl ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
-                  @click="filterLevel = lvl; close()"
-                >
+                  @click="filterLevel = lvl; close()">
                   {{ lvl }}
                   <Lucide v-if="filterLevel === lvl" icon="Check" class="h-4 w-4" />
                 </button>
@@ -190,11 +168,8 @@ function levelClass(level: string | null): string {
           <template #body>
             <template v-for="(log, idx) in paginatedLogs" :key="log.id">
 
-              <Table.Tr
-                class="transition hover:bg-slate-50"
-                :class="log.trace ? 'cursor-pointer' : ''"
-                @click="log.trace ? toggleTrace(log.id) : undefined"
-              >
+              <Table.Tr class="transition hover:bg-slate-50" :class="log.trace ? 'cursor-pointer' : ''"
+                @click="log.trace ? toggleTrace(log.id) : undefined">
                 <Table.Td class="font-num text-center text-slate-400">
                   {{ (currentPage - 1) * perPage + idx + 1 }}
                 </Table.Td>
@@ -202,10 +177,8 @@ function levelClass(level: string | null): string {
                   {{ log.timestamp ?? '-' }}
                 </Table.Td>
                 <Table.Td>
-                  <span
-                    class="inline-block rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
-                    :class="levelClass(log.level)"
-                  >
+                  <span class="inline-block rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
+                    :class="levelClass(log.level)">
                     {{ log.level ?? '-' }}
                   </span>
                 </Table.Td>
@@ -215,18 +188,16 @@ function levelClass(level: string | null): string {
                 <Table.Td>
                   <div class="flex items-start justify-between gap-2">
                     <span class="font-body break-words">{{ log.message || '-' }}</span>
-                    <Lucide
-                      v-if="log.trace"
-                      :icon="expandedIds.has(log.id) ? 'ChevronUp' : 'ChevronDown'"
-                      class="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
-                    />
+                    <Lucide v-if="log.trace" :icon="expandedIds.has(log.id) ? 'ChevronUp' : 'ChevronDown'"
+                      class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                   </div>
                 </Table.Td>
               </Table.Tr>
 
               <Table.Tr v-if="log.trace && expandedIds.has(log.id)" :key="`${log.id}-trace`">
                 <Table.Td :colspan="5" class="bg-slate-50 p-0">
-                  <pre class="overflow-x-auto whitespace-pre-wrap break-all px-4 py-3 font-caption text-xs leading-relaxed text-slate-600">{{ log.trace }}</pre>
+                  <pre
+                    class="overflow-x-auto whitespace-pre-wrap break-all px-4 py-3 font-caption text-xs leading-relaxed text-slate-600">{{ log.trace }}</pre>
                 </Table.Td>
               </Table.Tr>
 

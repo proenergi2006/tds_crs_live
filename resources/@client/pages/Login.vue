@@ -82,20 +82,16 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div
-    :class="[
-      'relative min-h-screen overflow-hidden bg-primary xl:bg-white dark:bg-darkmode-800 xl:dark:bg-darkmode-600',
-      'before:hidden before:xl:block before:content-[\'\'] before:w-[57%] before:-mt-[28%] before:-mb-[16%] before:-ml-[13%] before:absolute before:inset-y-0 before:left-0 before:transform before:rotate-[-4.5deg] before:bg-primary/20 before:rounded-[100%] before:z-20 before:dark:bg-darkmode-400',
-      'after:hidden after:xl:block after:content-[\'\'] after:w-[57%] after:-mt-[20%] after:-mb-[13%] after:-ml-[13%] after:absolute after:inset-y-0 after:left-0 before:transform after:rotate-[-4.5deg] after:bg-primary after:rounded-[100%] after:z-20 after:dark:bg-darkmode-700',
-    ]"
-  >
+  <div :class="[
+    'relative min-h-screen overflow-hidden bg-primary xl:bg-white dark:bg-darkmode-800 xl:dark:bg-darkmode-600',
+    'before:hidden before:xl:block before:content-[\'\'] before:w-[57%] before:-mt-[28%] before:-mb-[16%] before:-ml-[13%] before:absolute before:inset-y-0 before:left-0 before:transform before:rotate-[-4.5deg] before:bg-primary/20 before:rounded-[100%] before:z-20 before:dark:bg-darkmode-400',
+    'after:hidden after:xl:block after:content-[\'\'] after:w-[57%] after:-mt-[20%] after:-mb-[13%] after:-ml-[13%] after:absolute after:inset-y-0 after:left-0 before:transform after:rotate-[-4.5deg] after:bg-primary after:rounded-[100%] after:z-20 after:dark:bg-darkmode-700',
+  ]">
     <ThemeSwitcher />
 
     <!-- Background quarry full -->
-    <div
-      class="absolute inset-0 hidden xl:block bg-center bg-cover bg-no-repeat"
-      :style="{ backgroundImage: `url(${bgLogin})` }"
-    ></div>
+    <div class="absolute inset-0 hidden xl:block bg-center bg-cover bg-no-repeat"
+      :style="{ backgroundImage: `url(${bgLogin})` }"></div>
 
     <!-- Overlay putih global -->
     <div class="absolute inset-0 hidden xl:block bg-white/80"></div>
@@ -124,10 +120,8 @@ async function onSubmit() {
 
       <!-- Right Form -->
       <div class="relative flex min-h-screen items-center justify-center px-6 py-10 xl:px-16">
-        <div
-          class="relative z-10 w-full max-w-[460px] rounded-2xl bg-white/70 px-8 py-10 shadow-xl backdrop-blur-md
-                 dark:bg-darkmode-600/80"
-        >
+        <div class="relative z-10 w-full max-w-[460px] rounded-2xl bg-white/70 px-8 py-10 shadow-xl backdrop-blur-md
+                 dark:bg-darkmode-600/80">
           <h2 class="text-2xl font-bold text-center intro-x xl:text-3xl xl:text-left">
             Sign In
           </h2>
@@ -141,42 +135,22 @@ async function onSubmit() {
           </div>
 
           <form @submit.prevent="onSubmit" class="mt-8 intro-x">
-            <FormInput
-              v-model="email"
-              type="text"
-              name="email"
-              autocomplete="username"
-              placeholder="Email"
-              class="block min-w-full px-4 py-3"
-            />
+            <FormInput v-model="email" type="text" name="email" autocomplete="username" placeholder="Email"
+              class="block min-w-full px-4 py-3" />
 
             <div class="relative mt-4">
-              <FormInput
-                v-model="password"
-                :type="showPassword ? 'text' : 'password'"
-                name="password"
-                autocomplete="current-password"
-                placeholder="Password"
-                class="block min-w-full px-4 py-3 pr-12"
-              />
+              <FormInput v-model="password" :type="showPassword ? 'text' : 'password'" name="password"
+                autocomplete="current-password" placeholder="Password" class="block min-w-full px-4 py-3 pr-12" />
 
-              <button
-                type="button"
-                @click="showPassword = !showPassword"
-                class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
-              >
+              <button type="button" @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700">
                 <Lucide :icon="showPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
               </button>
             </div>
 
             <div class="mt-4 flex text-xs text-slate-600 dark:text-darkmode-300 sm:text-sm">
               <div class="mr-auto flex items-center">
-                <FormCheck.Input
-                  v-model="remember"
-                  id="remember-me"
-                  type="checkbox"
-                  class="mr-2 border"
-                />
+                <FormCheck.Input v-model="remember" id="remember-me" type="checkbox" class="mr-2 border" />
                 <label for="remember-me" class="cursor-pointer select-none">
                   Remember me
                 </label>
@@ -184,12 +158,7 @@ async function onSubmit() {
             </div>
 
             <div class="mt-5 text-center xl:mt-8 xl:text-left">
-              <Button
-                type="submit"
-                variant="primary"
-                :disabled="isLoading"
-                class="w-full px-4 py-3 xl:w-32"
-              >
+              <Button type="submit" variant="primary" :disabled="isLoading" class="w-full px-4 py-3 xl:w-32">
                 <span v-if="isLoading">Logging in...</span>
                 <span v-else>Login</span>
               </Button>

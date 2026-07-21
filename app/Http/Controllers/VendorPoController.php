@@ -25,7 +25,8 @@ class VendorPoController extends Controller
         if ($search = $request->query('search')) {
             $q->where(function ($sub) use ($search) {
                 $sub->where('nomor_po', 'like', "%{$search}%")
-                    ->orWhere('keterangan', 'like', "%{$search}%");
+                    ->orWhere('vendor.nama_vendor', 'like', "%{$search}%")
+                    ->orWhere('terminal.nama_terminal', 'like', "%{$search}%");
             });
         }
 

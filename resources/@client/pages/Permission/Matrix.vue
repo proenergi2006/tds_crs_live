@@ -1,0 +1,243 @@
+<template>
+  <CardSection title="Matrix Permission" description="Setiap baris permission, setiap kolom role." icon="LayoutGrid"
+    content-class="!px-0 !pb-0" class="my-4">
+    <!-- Loading -->
+    <div v-if="isLoading" class="flex items-center justify-center py-24 text-slate-500">
+      <Lucide icon="Loader" class="mr-2 h-5 w-5 animate-spin" />
+      Memuat permission matrix...
+    </div>
+
+    <!-- Matrix Table -->
+    <template v-else>
+      <div class="overflow-hidden border border-slate-200 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-max divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th
+                  class="sticky left-0 z-20 min-w-[260px] bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
+                  Permission
+                </th>
+                <th v-for="role in roles" :key="role.id_role"
+                  class="min-w-[110px] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span class="block max-w-[100px] break-words leading-tight">{{ role.role_name }}</span>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <template v-for="group in permissionGroups" :key="group.module">
+                <!-- Module header row -->
+                <tr class="border-t border-slate-200 bg-slate-100">
+                  <td
+                    class="sticky left-0 z-10 bg-slate-100 px-5 py-2 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-600">
+                      {{ group.module }}
+                    </span>
+                  </td>
+                  <td :colspan="roles.length"></td>
+                </tr>
+
+                <!-- Permission rows -->
+                <tr v-for="perm in group.permissions" :key="perm.id"
+                  class="group border-t border-slate-100 transition hover:bg-slate-50">
+                  <td
+                    class="sticky left-0 z-10 min-w-[260px] bg-white px-5 py-3 group-hover:bg-slate-50 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
+                    <div class="text-sm font-medium text-slate-800">{{ perm.name }}</div>
+                    <div class="mt-0.5 text-xs text-slate-500">{{ perm.description }}</div>
+                  </td>
+                  <td v-for="role in roles" :key="role.id_role" class="px-3 py-3 text-center">
+                    <input type="checkbox" class="h-4 w-4 cursor-pointer rounded border-slate-300"
+                      :checked="matrix[perm.id]?.[role.id_role] ?? false"
+                      @change="toggle(perm.id, role.id_role, ($event.target as HTMLInputElement).checked)" />
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+  </CardSection>
+
+  <!-- Sticky save bar -->
+  <div v-if="!isLoading"
+    class="sticky bottom-0 z-10 -mx-6 -mb-6 flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4"
+    style="box-shadow: 0 -2px 8px rgba(0,0,0,0.06)">
+    <span class="text-sm text-slate-500">
+      <template v-if="isDirty">
+        <span class="font-semibold text-amber-600">{{ changedRoleCount }} role</span>
+        memiliki perubahan yang belum disimpan.
+      </template>
+      <template v-else>
+        Tidak ada perubahan.
+      </template>
+    </span>
+
+    <Button variant="primary" :disabled="!isDirty || isSaving" class="inline-flex items-center gap-2"
+      @click="saveChanges">
+      <Lucide v-if="isSaving" icon="Loader" class="h-4 w-4 animate-spin" />
+      Save Changes
+    </Button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import axios from 'axios'
+import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
+import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
+import Button from '@/components/Base/Button'
+import Lucide from '@/components/Base/Lucide'
+import { createResourceApi } from '@/utils/resourceApi.js'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+
+const roleApi = createResourceApi('/roles')
+
+/* Section: Types */
+interface Permission {
+  id: number
+  name: string
+  module: string
+  description: string
+}
+
+interface PermissionGroup {
+  module: string
+  permissions: Permission[]
+}
+
+interface RoleItem {
+  id_role: number
+  role_name: string
+  is_active: boolean
+}
+
+/* Section: State */
+const { success, error } = useNotification()
+
+const isLoading = ref(true)
+const isSaving = ref(false)
+
+const permissionGroups = ref<PermissionGroup[]>([])
+const roles = ref<RoleItem[]>([])
+
+// matrix[permId][roleId] = boolean
+const matrix = ref<Record<number, Record<number, boolean>>>({})
+const originalMatrix = ref<Record<number, Record<number, boolean>>>({})
+
+/* Section: Computed */
+const allPermIds = computed(() =>
+  permissionGroups.value.flatMap(g => g.permissions.map(p => p.id))
+)
+
+const isDirty = computed(() =>
+  JSON.stringify(matrix.value) !== JSON.stringify(originalMatrix.value)
+)
+
+const changedRoleCount = computed(() =>
+  roles.value.filter(role => {
+    const roleId = role.id_role
+    return allPermIds.value.some(
+      permId =>
+        (matrix.value[permId]?.[roleId] ?? false) !==
+        (originalMatrix.value[permId]?.[roleId] ?? false),
+    )
+  }).length
+)
+
+/* Section: Helpers */
+function toggle(permId: number, roleId: number, checked: boolean) {
+  if (!matrix.value[permId]) matrix.value[permId] = {}
+  matrix.value[permId][roleId] = checked
+}
+
+function getPermissionIdsForRole(
+  roleId: number,
+  src: Record<number, Record<number, boolean>>,
+): number[] {
+  return allPermIds.value.filter(permId => src[permId]?.[roleId] === true)
+}
+
+function snapshotMatrix(): Record<number, Record<number, boolean>> {
+  return JSON.parse(JSON.stringify(matrix.value))
+}
+
+/* Section: Data fetching */
+async function loadData() {
+  isLoading.value = true
+  try {
+    const [permRes, roleRes] = await Promise.all([
+      axios.get('/api/permissions'),
+      roleApi.getAll({ as_list: true }),
+    ])
+
+    permissionGroups.value = permRes.data.data as PermissionGroup[]
+    roles.value = (roleRes.data as RoleItem[]).filter(r => r.id_role !== 1)
+
+    // Inisialisasi matrix dengan false untuk setiap pasangan (permId, roleId)
+    permissionGroups.value.forEach(group => {
+      group.permissions.forEach(perm => {
+        matrix.value[perm.id] = {}
+        roles.value.forEach(role => {
+          matrix.value[perm.id][role.id_role] = false
+        })
+      })
+    })
+
+    // Fetch permissions tiap role secara paralel
+    await Promise.all(
+      roles.value.map(async role => {
+        const { data } = await axios.get(`/api/roles/${role.id_role}/permissions`)
+          ; (data.data as number[]).forEach(permId => {
+            if (matrix.value[permId]) {
+              matrix.value[permId][role.id_role] = true
+            }
+          })
+      }),
+    )
+
+    originalMatrix.value = snapshotMatrix()
+  } catch {
+    error('Gagal', 'Gagal memuat permission matrix')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+/* Section: Save */
+async function saveChanges() {
+  if (!isDirty.value || isSaving.value) return
+
+  const changedRoles = roles.value.filter(role => {
+    const roleId = role.id_role
+    return allPermIds.value.some(
+      permId =>
+        (matrix.value[permId]?.[roleId] ?? false) !==
+        (originalMatrix.value[permId]?.[roleId] ?? false),
+    )
+  })
+
+  isSaving.value = true
+  try {
+    await Promise.all(
+      changedRoles.map(role =>
+        axios.put(`/api/roles/${role.id_role}/permissions`, {
+          permission_ids: getPermissionIdsForRole(role.id_role, matrix.value),
+        }),
+      ),
+    )
+
+    originalMatrix.value = snapshotMatrix()
+    success('Permissions berhasil disimpan')
+  } catch {
+    error('Gagal', 'Gagal menyimpan permissions')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+/* Section: Lifecycle */
+onMounted(loadData)
+</script>

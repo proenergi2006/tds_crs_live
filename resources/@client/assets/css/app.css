@@ -47,5 +47,11 @@
 @tailwind utilities;
 
 .page-content-wrapper {
-  padding: 32px;
+  padding: 24px 32px;
+}
+
+@media screen and (max-width: 600px) {
+  .page-content-wrapper {
+    padding: 16px;
+  }
 }
