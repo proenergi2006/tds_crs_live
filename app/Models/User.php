@@ -148,6 +148,29 @@ class User extends Authenticatable
     }
 
     /**
+     * Override Spatie's hasDirectPermission() — implementasi asli Spatie mengakses
+     * $this->loadMissing('permissions')->permissions (relasi morphToMany bawaan
+     * Spatie ke model_has_permissions), tapi model ini punya accessor
+     * getPermissionsAttribute() dengan nama SAMA ('permissions', untuk payload FE,
+     * lihat $appends di atas). Eloquent selalu memprioritaskan accessor di atas
+     * relasi saat property access ($this->permissions), walau relasinya sudah
+     * di-load — jadi implementasi asli Spatie selalu mendapat array string dari
+     * accessor kita (bukan Collection), lalu crash saat panggil ->contains().
+     * Query langsung ke model_has_permissions sebagai gantinya, tidak lewat
+     * property/relasi 'permissions' sama sekali.
+     */
+    public function hasDirectPermission($permission): bool
+    {
+        $permission = $this->filterPermission($permission);
+
+        return DB::table('model_has_permissions')
+            ->where('permission_id', $permission->getKey())
+            ->where('model_id', $this->getKey())
+            ->where('model_type', static::class)
+            ->exists();
+    }
+
+    /**
      * Kembalikan semua permission_id milik role user ini dari role_has_permissions.
      * Hasil di-cache di instance (request-scoped) agar tidak N+1 ketika
      * hasPermissionTo() atau getRolePermissionNames() dipanggil berkali-kali

@@ -18,7 +18,8 @@ class Volume extends Model
     ];
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'volume' => 'integer',
     ];
 
     public function satuan()

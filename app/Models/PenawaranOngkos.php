@@ -27,4 +27,14 @@ class PenawaranOngkos extends Model
     return $this->belongsTo(\App\Models\Volume::class, 'volume_id', 'id_volume');
 }
 
+    public function transportir()
+    {
+        return $this->belongsTo(\App\Models\Transportir::class, 'transportir_id');
+    }
+
+    public function wilayah()
+    {
+        return $this->belongsTo(\App\Models\WilayahAngkut::class, 'wilayah_id');
+    }
+
 }

@@ -10,7 +10,7 @@ export const customerNavigation: NavItem[] = [
         pageName: "customers-list",
         title: "Customer",
         activePageNames: ["customers-create", "customers-edit"],
-        permission: "penawaran.tds.manage",
+        permission: "customer.viewOwn",
       },
       // {
       //   icon: "User",
@@ -31,7 +31,7 @@ export const customerNavigation: NavItem[] = [
           "penawarans-edit",
           "penawarans-detail",
         ],
-        permission: "penawaran.tds.manage",
+        permission: "penawaran.viewOwn",
       },
       // {
       //   icon: "File",
@@ -59,29 +59,29 @@ export const customerNavigation: NavItem[] = [
       },
     ],
   },
-  {
-    icon: "UserPlus",
-    title: "Customer Onboarding",
-    subMenu: [
-      {
-        icon: "Link2",
-        pageName: "link-customers",
-        title: "Link Customers",
-        permission: "penawaran.tds.manage",
-      },
-      {
-        icon: "File",
-        pageName: "review-data-customer",
-        title: "Review Data Customer",
-        activePageNames: ["review-customer-detail"],
-        permission: "penawaran.tds.manage",
-      },
-      {
-        icon: "CheckSquare",
-        pageName: "customer-verifications",
-        title: "Daftar Verifikasi Customer",
-        permission: "penawaran.tds.manage",
-      },
-    ],
-  },
+  // {
+  //   icon: "UserPlus",
+  //   title: "Customer Onboarding",
+  //   subMenu: [
+  //     {
+  //       icon: "Link2",
+  //       pageName: "link-customers",
+  //       title: "Link Customers",
+  //       permission: "customer.manage",
+  //     },
+  //     {
+  //       icon: "File",
+  //       pageName: "review-data-customer",
+  //       title: "Review Data Customer",
+  //       activePageNames: ["review-customer-detail"],
+  //       permission: "verification.customer",
+  //     },
+  //     {
+  //       icon: "CheckSquare",
+  //       pageName: "customer-verifications",
+  //       title: "Daftar Verifikasi Customer",
+  //       permission: "customer.viewOwn",
+  //     },
+  //   ],
+  // },
 ];

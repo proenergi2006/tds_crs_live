@@ -222,7 +222,7 @@ const routes = [
         path: "customers",
         name: "customers-list",
         component: () => import("@/pages/Customer/Index.vue"),
-        meta: { permission: "penawaran.tds.manage", brand: "tds" },
+        meta: { permission: "customer.viewOwn", brand: "tds" },
       },
       {
         path: "customers-proenergi",
@@ -234,7 +234,7 @@ const routes = [
         path: "customers/create",
         name: "customers-create",
         component: () => import("@/pages/Customer/Form.vue"),
-        meta: { permission: "penawaran.tds.manage" },
+        meta: { permission: "customer.manage" },
       },
       {
         path: "customers-proenergi/create",
@@ -245,7 +245,7 @@ const routes = [
         path: "customers/:id/edit",
         name: "customers-edit",
         component: () => import("@/pages/Customer/Form.vue"),
-        meta: { permission: "penawaran.tds.manage" },
+        meta: { permission: "customer.manage" },
       },
       {
         path: "customers-proenergi/:id/edit",
@@ -345,7 +345,7 @@ const routes = [
         path: "/po-verification",
         name: "po-verification-list",
         component: () => import("@/pages/Verification/PoSupplier/Index.vue"),
-        meta: { permission: "po-supplier.verify" },
+        meta: { permission: "verification.po-supplier" },
       },
 
       {
@@ -365,7 +365,7 @@ const routes = [
         path: "/penawarans",
         name: "penawarans-list",
         component: () => import("@/pages/Penawaran/Index.vue"),
-        meta: { brand: "tds", permission: "penawaran.tds.manage" },
+        meta: { brand: "tds", permission: "penawaran.viewOwn" },
       },
       {
         path: "/penawarans-proenergi",
@@ -377,7 +377,7 @@ const routes = [
         path: "/penawarans/create",
         name: "penawarans-create",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "tds", permission: "penawaran.tds.manage" },
+        meta: { brand: "tds", permission: "penawaran.manage" },
       },
       {
         path: "/penawarans-proenergi/create",
@@ -387,16 +387,10 @@ const routes = [
       },
 
       {
-        path: "/penawarans/createlubricant",
-        name: "penawarans-create-lubricant",
-        component: () => import("@/pages/PenawaranFormLubricant.vue"),
-      },
-
-      {
         path: "/penawarans/:id/edit",
         name: "penawarans-edit",
         component: () => import("@/pages/Penawaran/Form.vue"),
-        meta: { brand: "tds", permission: "penawaran.tds.manage" },
+        meta: { brand: "tds", permission: "penawaran.manage" },
       },
 
       {
@@ -409,7 +403,7 @@ const routes = [
         path: "/penawarans/:id",
         name: "penawarans-detail",
         component: () => import("@/pages/Penawaran/Detail.vue"),
-        meta: { brand: "tds", permission: "penawaran.tds.manage" },
+        meta: { brand: "tds", permission: "penawaran.viewOwn" },
       },
       {
         path: "/penawarans-proenergi/:id",
@@ -571,7 +565,7 @@ const routes = [
         meta: {
           role: "bm",
           brand: "reguler",
-          permission: "penawaran.verify-bm",
+          permission: "verification.quotation",
         },
       },
       {
@@ -591,7 +585,7 @@ const routes = [
         meta: {
           role: "om",
           brand: "reguler",
-          permission: "penawaran.verify-om",
+          permission: "verification.quotation",
         },
       },
       {
@@ -608,7 +602,7 @@ const routes = [
         path: "/penawarans/:id/verifikasi",
         name: "penawarans-verifikasi-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "bm", brand: "reguler" },
+        meta: { role: "bm", brand: "reguler", permission: "verification.quotation" },
       },
       {
         path: "/penawarans-proenergi/:id/verifikasi",
@@ -623,7 +617,7 @@ const routes = [
         meta: {
           role: "om",
           brand: "reguler",
-          permission: "penawaran.verify-om",
+          permission: "verification.quotation",
         },
       },
       {
@@ -637,6 +631,7 @@ const routes = [
         path: "/po-customer/create",
         name: "penawarans-po",
         component: () => import("@/pages/PenawaranCustomerPO.vue"),
+        meta: { permission: "penawaran.manage" },
       },
 
       {
@@ -678,17 +673,20 @@ const routes = [
         path: "/customer-verifications",
         name: "customer-verifications",
         component: () => import("@/pages/CustomerVerification/Index.vue"),
+        meta: { permission: "customer.viewOwn" },
       },
       {
         path: "/link-customers",
         name: "link-customers",
         component: () => import("@/pages/ListLinkCustomer.vue"),
+        meta: { permission: "customer.manage" },
       },
       {
         path: "/review-data-customer",
         name: "review-data-customer",
         component: () =>
           import("@/pages/CustomerVerification/Marketing/Index.vue"),
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review-data-customer/:id",
@@ -696,13 +694,14 @@ const routes = [
         component: () =>
           import("@/pages/CustomerVerification/Marketing/Detail.vue"),
         props: true,
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
         component: () =>
           import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
-        meta: { permission: "sales-confirmation.manage" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer/:id",
@@ -710,18 +709,20 @@ const routes = [
         component: () =>
           import("@/pages/CustomerVerification/AdminFinance/Detail.vue"),
         props: true,
-        meta: { permission: "sales-confirmation.manage" },
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review/bm",
         name: "verify-data-customer-bm",
         component: () => import("@/pages/CustomerVerification/Bm/Index.vue"),
+        meta: { permission: "verification.customer" },
       },
       {
         path: "/review/bm/:id",
         name: "bm-customer-detail",
         props: true,
         component: () => import("@/pages/CustomerVerification/Bm/Detail.vue"),
+        meta: { permission: "verification.customer" },
       },
 
       {

@@ -10,20 +10,22 @@ export const verificationNavigation: NavItem[] = [
         icon: "CheckSquare",
         pageName: "po-verification-list",
         title: "PO Supplier",
-        permission: "po-supplier.verify",
+        permission: "verification.po-supplier",
+      },
+      {
+        icon: "Users",
+        pageName: "customers-verification-list",
+        title: "Customer",
+        permission: "verification.customer",
       },
       {
         icon: "File",
         pageName: "penawarans-verifikasi",
-        title: "Quotation (BM)",
-        permission: "penawaran.verify-bm",
-      },
-      {
-        icon: "File",
-        pageName: "penawarans-verifikasi-om",
-        title: "Quotation (OM)",
-        activePageNames: ["penawarans-verifikasi-om-detail"],
-        permission: "penawaran.verify-om",
+        title: "Quotation",
+        permission: "verification.quotation",
+        activePageNames: [
+          "penawarans-verifikasi-detail"
+        ]
       },
       // {
       //   icon: 'File',
@@ -46,16 +48,6 @@ export const verificationNavigation: NavItem[] = [
           "sales-confirmations-bm-detail-po",
         ],
         permission: "sales-confirmation.manage",
-      },
-      {
-        icon: "File",
-        pageName: "verify-data-customer-bm",
-        title: "Review Data Customer (BM)",
-        activePageNames: ["bm-customer-detail"],
-        // Sementara tanpa permission gate (keputusan sadar, lihat
-        // .claude/plans/rbac-phase-2-customer-verification-review.md).
-        // Route belum punya meta.permission — entry ini akan tampil
-        // untuk semua role sampai fase RBAC dedicated menambahkan gate-nya.
       },
     ],
   },

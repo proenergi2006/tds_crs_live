@@ -39,22 +39,23 @@ const init = (
   computedOptions: RecursivePartial<TomSettings>,
   emit: TomSelectEmit
 ) => {
-  // On option add
-  if (Array.isArray(props.modelValue)) {
-    computedOptions = {
-      onOptionAdd: function (value: string | number) {
-        // Add new option
-        const newOption = document.createElement("option");
-        newOption.value = value.toString();
-        newOption.text = value.toString();
-        originalEl.add(newOption);
+  // On option add — wire this regardless of modelValue shape (array or single string) so
+  // single-select comboboxes with create:true also persist newly typed options back into
+  // the original <select>; otherwise updateValue()'s "remove stale options" pass strips
+  // them on the next re-render because they were never added to originalEl.
+  computedOptions = {
+    onOptionAdd: function (value: string | number) {
+      // Add new option
+      const newOption = document.createElement("option");
+      newOption.value = value.toString();
+      newOption.text = value.toString();
+      originalEl.add(newOption);
 
-        // Emit option add
-        emit("optionAdd", value);
-      },
-      ...computedOptions,
-    };
-  }
+      // Emit option add
+      emit("optionAdd", value);
+    },
+    ...computedOptions,
+  };
 
   clonedEl.TomSelect = new TomSelect(clonedEl, computedOptions);
 

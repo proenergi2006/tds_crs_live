@@ -8,8 +8,9 @@ use App\Models\PenawaranOngkos;
 use App\Models\Cabang;
 use App\Models\Role;
 use App\Models\User;
+use App\Http\Requests\Penawaran\StorePenawaranRequest;
+use App\Http\Requests\Penawaran\UpdatePenawaranRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -33,12 +34,21 @@ class PenawaranController extends Controller
     /** GET /api/penawarans */
     public function index(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->cant('penawaran.viewAny') && $user->cant('penawaran.viewOwn')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
         $query = Penawaran::with(['customer', 'cabang', 'items.produk'])
-            ->withSum('items as total_volume', 'volume_order')
-            ->where('user_id', optional($request->user())->id);
+            ->withSum('items as total_volume', 'volume_order');
+
+        if ($user->cant('penawaran.viewAny')) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -52,9 +62,13 @@ class PenawaranController extends Controller
         return response()->json($data);
     }
 
-    /** GET /api/penawarans/bm */
+    /** GET /api/penawarans/bm — antrian approval BM, lintas-user by design */
     public function indexForBranchManager(Request $request)
     {
+        if ($request->user()->cant('penawaran.viewAny')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
@@ -274,7 +288,7 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
     // }
 
     /** GET /api/penawarans/{id} */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $penawaran = Penawaran::with([
             'customer',
@@ -283,7 +297,18 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             'items.produk.ukuran.satuan',
             'produk_harga', // relasi baru
             'ongkos.volume', // ✅
+            'ongkos.transportir',
+            'ongkos.wilayah.provinsi',
+            'ongkos.wilayah.kabupaten',
         ])->findOrFail($id);
+
+        $user = $request->user();
+        $allowed = $user->can('penawaran.viewAny')
+            || ($user->can('penawaran.viewOwn') && (int) $penawaran->user_id === (int) $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         if (!$penawaran->produk_harga && $penawaran->items->isNotEmpty()) {
             $firstProdukId = $penawaran->items->first()->id_produk;
@@ -299,66 +324,9 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
         return response()->json($penawaran);
     }
 
-    public function store(Request $request)
+    public function store(StorePenawaranRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'id_customer'          => 'required|exists:customers,id_customer',
-            'id_cabang'            => 'required|exists:cabangs,id_cabang',
-            'masa_berlaku'         => 'required|date',
-            'sampai_dengan'        => 'required|date|after_or_equal:masa_berlaku',
-
-              // ===== ONGKOS =====
-        'ongkos' => 'nullable|array',
-       'ongkos.*.jenis' => 'required|in:KAPAL,TRUCK', // ✅ aktifkan
-        'ongkos.*.id_angkut_wilayah' => 'required|exists:wilayah_angkuts,id',
-        'ongkos.*.id_transportir' => 'required|exists:transportirs,id',
-        'ongkos.*.id_volume' => 'required|exists:volumes,id_volume', 
-        'ongkos.*.ongkos' => 'required|numeric|min:0',
-
-
-            'items'                => 'required|array|min:1',
-            'items.*.id_produk'    => 'required|exists:produks,id_produk',
-            'items.*.persen' => 'required|numeric|min:0|max:100',
-            'items.*.volume_order' => 'required|numeric|min:0',
-            'items.*.harga_tebus'  => 'required|numeric|min:0',
-            'type_pengiriman' => 'nullable|in:PROJECT,RETAIL',
-            'tipe_pembayaran'      => 'nullable|string|max:100',
-            'dp_persen'        => 'nullable|numeric|min:0|max:100',
-            'dp_keterangan'    => 'nullable|string|max:100',
-            'repayment_persen' => 'nullable|numeric|min:0|max:100',
-            'repayment_hari'   => 'nullable|numeric|min:0',
-
-
-            'order_method'         => 'nullable|string|max:100',
-            'toleransi_penyusutan' => 'nullable|numeric|min:0',
-            'lokasi_pengiriman'    => 'nullable|string|max:255',
-            'metode'               => 'nullable|string|max:100',
-            'refund'               => 'nullable|numeric|min:0',
-            'other_cost'           => 'nullable|numeric|min:0',
-            'perhitungan'          => 'nullable|string',
-            'keterangan'           => 'nullable|string',
-            'catatan'              => 'nullable|string',
-            'syarat_ketentuan'     => 'nullable|string',
-            'discount'             => 'nullable|numeric|min:0',
-            'oat'                  => 'nullable|numeric|min:0',
-            'jenis_penawaran'      => 'nullable|string|max:100',
-            'kepada'   => 'nullable|string|max:255',
-            'nama'     => 'nullable|string|max:255',
-            'jabatan'  => 'nullable|string|max:255',
-            'telepon'  => 'nullable|string|max:255',
-            'alamat'   => 'nullable|string',
-          'abrasi' => 'nullable|string|max:100',
-
-            'user_id'  => 'nullable|exists:users,id',
-            'harga_dasar' => 'nullable|numeric|min:0',
-            'ppn_harga_dasar' => 'nullable|numeric|min:0',
-            'grand_total_harga_dasar' => 'nullable|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-        $data = $validator->validated();
+        $data = $request->validated();
         $data['user_id'] = $request->user()->id ?? ($data['user_id'] ?? null);
 
         // nomor penawaran per cabang
@@ -472,66 +440,17 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
     }
 
     /** PUT /api/penawarans/{id} — DISKON = nominal rupiah */
-    public function update(Request $request, $id)
+    public function update(UpdatePenawaranRequest $request, $id)
     {
         $penawaran = Penawaran::findOrFail($id);
 
-        $validator = Validator::make($request->all(), [
-            'id_customer'          => 'required|exists:customers,id_customer',
-            'id_cabang'            => 'required|exists:cabangs,id_cabang',
-            'masa_berlaku'         => 'required|date',
-            'sampai_dengan'        => 'required|date|after_or_equal:masa_berlaku',
+        $data = $request->validated();
 
-          'ongkos' => 'nullable|array',
-          'ongkos.*.jenis' => 'required|in:KAPAL,TRUCK', // ✅ aktifkan
-          'ongkos.*.id_angkut_wilayah' => 'required|exists:wilayah_angkuts,id',
-          'ongkos.*.id_transportir' => 'required|exists:transportirs,id',
-       'ongkos.*.id_volume' => 'required|exists:volumes,id_volume',  // ✅
-            'ongkos.*.ongkos' => 'required|numeric|min:0',
-
-
-            'items'                => 'required|array|min:1',
-            'items.*.id_produk'    => 'required|exists:produks,id_produk',
-            'items.*.persen' => 'required|numeric|min:0|max:100',
-            'items.*.volume_order' => 'required|numeric|min:0',
-            'items.*.harga_tebus'  => 'required|numeric|min:0',
-            'tipe_pembayaran'      => 'nullable|string|max:100',
-            'dp_persen'        => 'nullable|numeric|min:0|max:100',
-            'dp_keterangan'    => 'nullable|string|max:100',
-            'repayment_persen' => 'nullable|numeric|min:0|max:100',
-            'repayment_hari'   => 'nullable|numeric|min:0',
-
-            'order_method'         => 'nullable|string|max:100',
-            'toleransi_penyusutan' => 'nullable|numeric|min:0',
-            'lokasi_pengiriman'    => 'nullable|string|max:255',
-            'type_pengiriman' => 'nullable|in:PROJECT,RETAIL',
-            'metode'               => 'nullable|string|max:100',
-            'refund'               => 'nullable|numeric|min:0',
-            'other_cost'           => 'nullable|numeric|min:0',
-            'perhitungan'          => 'nullable|string',
-            'keterangan'           => 'nullable|string',
-            'catatan'              => 'nullable|string',
-            'syarat_ketentuan'     => 'nullable|string',
-            'discount'             => 'nullable|numeric|min:0',
-            'oat'                  => 'nullable|numeric|min:0',
-            'kepada'   => 'nullable|string|max:255',
-            'nama'     => 'nullable|string|max:255',
-            'jabatan'  => 'nullable|string|max:255',
-            'telepon'  => 'nullable|string|max:255',
-            'alamat'   => 'nullable|string',
-           'abrasi' => 'nullable|string|max:100',
-
-            'user_id' => 'nullable|exists:users,id',
-
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-        $data = $validator->validated();
-
-        $data['user_id'] = $request->user()->id ?? ($data['user_id'] ?? null);
-
+        // NOTE: ownership (user_id) sengaja TIDAK di-set/overwrite di sini.
+        // Kolom ini hanya diisi sekali saat store() (create). Mengubahnya di update()
+        // akan diam-diam memindahkan kepemilikan record ke siapapun yang sedang mengedit
+        // (termasuk pemegang penawaran.viewAny yang mengedit milik user lain) — lihat
+        // catatan bug serupa yang sudah diperbaiki di CustomerController::update().
 
         $subtotal = 0.0;
         foreach ($data['items'] as $it) {
@@ -572,7 +491,7 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
             // ✅ RESET DISPOSISI & APPROVAL karena penawaran diubah
                 $penawaran->forceFill([
                     'status'             => 'draft', // opsional kalau mau status juga balik draft
-                    'disposisi_penawaran'=> 0,       // sesuai permintaan kamu (draft)
+                    'disposisi_penawaran'=> '1',     // draft — samakan dengan nilai store() agar Index.vue's getDisposisiLabel tetap match
 
                     // BM reset
                     'bm_result'          => 0,
@@ -649,9 +568,17 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
 }
 
 
-public function destroy($id)
+public function destroy(Request $request, $id)
 {
     $penawaran = Penawaran::findOrFail($id);
+
+    $user = $request->user();
+    $allowed = $user->can('penawaran.manage')
+        && ((int) $penawaran->user_id === (int) $user->id || $user->can('penawaran.viewAny'));
+
+    if (!$allowed) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
 
     // simpan data yang dibutuhkan sebelum record dihapus
     $idPenawaran = (int)($penawaran->id_penawaran ?? $penawaran->id);
@@ -843,6 +770,14 @@ public function ajukan($id)
 
     public function verifikasi(Request $request, $id)
 {
+    if ($request->user()->cant('verification.quotation')) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    if ((int) $request->user()->id_role !== 8) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
     $penawaran = Penawaran::with(['customer','cabang'])->findOrFail($id);
     $request->validate(['catatan' => 'nullable|string']);
 
@@ -955,6 +890,14 @@ public function ajukan($id)
     /** POST /api/penawarans/{id}/tolak-bm */
     public function tolakbm(Request $request, $id)
     {
+        if ($request->user()->cant('verification.quotation')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ((int) $request->user()->id_role !== 8) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $penawaran = Penawaran::with(['customer','cabang'])->findOrFail($id);
         $request->validate(['catatan' => 'nullable|string']);
 
@@ -985,6 +928,14 @@ public function ajukan($id)
     /** POST /api/penawarans/{id}/tolak-om */
     public function tolakom(Request $request, $id)
     {
+        if ($request->user()->cant('verification.quotation')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (!in_array((int) $request->user()->id_role, [2, 3, 10], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $penawaran = Penawaran::with(['customer','cabang'])->findOrFail($id);
         $request->validate(['catatan' => 'nullable|string']);
 
@@ -1012,9 +963,13 @@ public function ajukan($id)
         return response()->json(['message' => 'Status penawaran Ditolak']);
     }
 
-    /** GET /api/penawarans/om */
+    /** GET /api/penawarans/om — antrian approval OM, lintas-user by design */
     public function indexForOperationalManager(Request $request)
     {
+        if ($request->user()->cant('penawaran.viewAny')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
@@ -1036,6 +991,14 @@ public function ajukan($id)
     /** POST /api/penawarans/{id}/verifikasi-om */
     public function verifikasiOm(Request $request, $id)
     {
+        if ($request->user()->cant('verification.quotation')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (!in_array((int) $request->user()->id_role, [2, 3, 10], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $penawaran = Penawaran::findOrFail($id);
         $request->validate(['catatan' => 'nullable|string']);
 
