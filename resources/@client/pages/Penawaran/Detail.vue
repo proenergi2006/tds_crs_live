@@ -7,6 +7,7 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
+import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -27,6 +28,7 @@ const BRAND_CONFIG = {
     resourceEndpoint: '/penawarans',
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
+    editRoute: 'penawarans-edit',
     editRoute: 'penawarans-edit',
     title: 'Detail Penawaran',
     description: 'Informasi lengkap penawaran dan status verifikasi.',
@@ -529,7 +531,7 @@ function formatNumber(v: number | string = 0) {
                     <div class="flex items-start justify-between">
                       <dt class="font-label">TOTAL</dt>
                       <dd class="font-num-lg text-xl mt-1 !text-emerald-700">{{ formatCurrency(grandTotalHargaDasar)
-                        }}</dd>
+                      }}</dd>
                     </div>
                   </div>
                 </dl>

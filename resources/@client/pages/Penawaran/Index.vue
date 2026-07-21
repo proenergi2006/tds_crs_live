@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { debounce } from 'lodash'
@@ -12,12 +12,14 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
 import { formatDate, formatDateTime } from '@/utils/format'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
 const router = useRouter()
 const route = useRoute()
 const { success, error } = useNotification()
+const auth = useAuthStore()
 
 /* Brand: index ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta. */
 type Brand = 'tds' | 'proenergi'
@@ -58,6 +60,20 @@ const loading = ref(false)
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
+
+/* Computed: permission (penawaran.manage + ownership, lihat Task 1(a)).
+   Proenergi di luar scope restrukturisasi permission ini (lihat CLAUDE.md) — tombol
+   tetap tampil apa adanya untuk brand tersebut, tidak digate ulang di sini. */
+const canManagePenawaran = computed(() => brand === 'proenergi' ? true : auth.can('penawaran.manage'))
+const canViewAnyPenawaran = computed(() => brand === 'proenergi' ? true : auth.can('penawaran.viewAny'))
+
+function canManageRow(pen: any) {
+  if (brand === 'proenergi') return true
+  return (
+    canManagePenawaran.value &&
+    (canViewAnyPenawaran.value || Number(pen.user_id) === Number(auth.user?.id))
+  )
+}
 
 onMounted(() => {
   fetchCabangs()
@@ -111,6 +127,10 @@ function openDetail(id: number) {
 
 function openEdit(id: number) {
   router.push({ name: cfg.editRoute, params: { id } })
+}
+
+function openCreateSalesOrder(id: number) {
+  router.push({ name: 'penawarans-po', query: { id_penawaran: id } })
 }
 
 function confirmDelete(id: number, nomor: string) {
@@ -174,7 +194,7 @@ function getDisposisiTanggal(pen: any): string {
     <div class="intro-y flex flex-col gap-4">
       <PageHeader :title="cfg.title" :description="cfg.description">
         <template #action>
-          <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button v-if="canManagePenawaran" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="PlusCircle" class="h-4 w-4" />
             Tambah Penawaran
           </Button>

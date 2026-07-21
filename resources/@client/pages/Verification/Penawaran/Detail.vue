@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -416,7 +416,7 @@ onMounted(fetchPenawaran)
                   <dt class="font-label">Total Harga Dasar</dt>
                   <dd class="font-num-lg text-xl mt-1 text-success">{{
                     formatCurrency(penawaran.grand_total_harga_dasar)
-                  }}</dd>
+                    }}</dd>
                 </div>
               </dl>
 
