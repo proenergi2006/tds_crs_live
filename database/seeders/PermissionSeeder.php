@@ -52,6 +52,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Tambah / edit vendor',
             'roles'       => [5],
         ],
+        [
+            'name'        => 'approval-template.manage',
+            'module'      => 'approval-template',
+            'description' => 'Kelola master data approval template/step',
+            'roles'       => [1],
+        ],
 
         // Harga Produk
         [
@@ -168,26 +174,47 @@ class PermissionSeeder extends Seeder
         ],
     ];
 
+    /**
+     * Idempotent: aman dijalankan berulang kali. `permissions.name` (+
+     * guard_name) sudah punya unique constraint di DB, jadi insertGetId()
+     * polos akan crash pada re-run -- di-upsert manual (cek dulu by name,
+     * update kalau ada / insert kalau belum) supaya re-run aman. Pivot
+     * role_has_permissions pakai updateOrInsert (PK compound [permission_id,
+     * id_role]) dengan alasan yang sama.
+     */
     public function run(): void
     {
         $now = now();
 
         foreach ($this->permissions as $perm) {
-            $permissionId = DB::table('permissions')->insertGetId([
-                'name'        => $perm['name'],
-                'guard_name'  => 'web',
-                'module'      => $perm['module'],
-                'description' => $perm['description'],
-                'created_at'  => $now,
-                'updated_at'  => $now,
-            ]);
+            $permissionId = DB::table('permissions')
+                ->where('name', $perm['name'])
+                ->where('guard_name', 'web')
+                ->value('id');
 
-            $pivotRows = array_map(
-                fn ($roleId) => ['permission_id' => $permissionId, 'id_role' => $roleId],
-                $perm['roles']
-            );
+            if ($permissionId) {
+                DB::table('permissions')->where('id', $permissionId)->update([
+                    'module'      => $perm['module'],
+                    'description' => $perm['description'],
+                    'updated_at'  => $now,
+                ]);
+            } else {
+                $permissionId = DB::table('permissions')->insertGetId([
+                    'name'        => $perm['name'],
+                    'guard_name'  => 'web',
+                    'module'      => $perm['module'],
+                    'description' => $perm['description'],
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ]);
+            }
 
-            DB::table('role_has_permissions')->insert($pivotRows);
+            foreach ($perm['roles'] as $roleId) {
+                DB::table('role_has_permissions')->updateOrInsert(
+                    ['permission_id' => $permissionId, 'id_role' => $roleId],
+                    []
+                );
+            }
         }
     }
 }

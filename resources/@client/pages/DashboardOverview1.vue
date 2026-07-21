@@ -5,6 +5,7 @@ import Lucide from "@/components/Base/Lucide";
 import Button from "@/components/Base/Button";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import Marketing from "@/pages/Dashboard/Marketing.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -19,10 +20,14 @@ const summary = ref({
 });
 
 const agenRoles = [13, 14, 15, 16];
+const marketingRoles = [12, 4];
 
 const currentUser = computed(() => auth.user || {});
 const isAgenRole = computed(() =>
   agenRoles.includes(Number(currentUser.value?.id_role)),
+);
+const isMarketingRole = computed(() =>
+  marketingRoles.includes(Number(currentUser.value?.id_role)),
 );
 
 const displayName = computed(() => currentUser.value?.name || "User");
@@ -76,8 +81,13 @@ onMounted(async () => {
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
+      <!-- DASHBOARD KHUSUS MARKETING / KEY ACCOUNT -->
+      <template v-if="isMarketingRole">
+        <Marketing />
+      </template>
+
       <!-- DASHBOARD KHUSUS AGENT -->
-      <template v-if="isAgenRole">
+      <template v-else-if="isAgenRole">
         <!-- HERO -->
         <div
           class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-theme-1 via-sky-600 to-cyan-700 px-8 py-8 text-white shadow-xl">

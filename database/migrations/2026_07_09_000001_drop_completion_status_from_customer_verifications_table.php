@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('vendors', function (Blueprint $table) {
-            $table->integer('urut_po')->default(0)->after('is_active');
+        Schema::table('customer_verifications', function (Blueprint $table) {
+            $table->dropColumn('completion_status');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('vendors', function (Blueprint $table) {
-            $table->dropColumn('urut_po');
+        Schema::table('customer_verifications', function (Blueprint $table) {
+            $table->string('completion_status', 20)->default('draft')->after('expired_at');
         });
     }
 };

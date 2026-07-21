@@ -10,6 +10,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
+use App\Http\Controllers\MasterData\ApprovalTemplateController;
 use App\Http\Controllers\MasterData\JenisProdukController;
 use App\Http\Controllers\MasterData\ProdukController;
 use App\Http\Controllers\MasterData\ProdukHargaController;
@@ -82,16 +83,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', fn(Request $req) => $req->user());
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
 
-    // b) Roles CRUD + permission matrix
-    Route::apiResource('roles', RoleController::class);
-    Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
-    Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
-    Route::get('permissions',               [PermissionController::class, 'index']);
-    Route::put('permissions/{id}',          [PermissionController::class, 'update']);
+    // b) Roles CRUD + permission matrix, c) Users CRUD — admin-only. Pakai middleware `can`
+    // (alias existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize, sudah
+    // terhubung ke Spatie Gate::before + admin bypass id_role=1 di AuthServiceProvider) supaya
+    // endpoint role/permission/user benar-benar digerbangi backend, bukan cuma disembunyikan
+    // di menu FE. Mirrors the `can:approval-template.manage` block below.
+    Route::middleware('can:admin.users.manage')->group(function () {
+        Route::apiResource('roles', RoleController::class);
+        Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
+        Route::put('roles/{role}/permissions',  [RoleController::class, 'syncPermissions']);
+        Route::get('permissions',               [PermissionController::class, 'index']);
+        Route::post('permissions',              [PermissionController::class, 'store']);
+        Route::put('permissions/{id}',          [PermissionController::class, 'update']);
+        Route::delete('permissions/{id}',       [PermissionController::class, 'destroy']);
 
-    // c) Users CRUD
-    Route::apiResource('users', UserController::class);
-    Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+        Route::apiResource('users', UserController::class);
+        Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+    });
 
     // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class, 'generate']);
@@ -112,6 +120,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/produk-hargas/by-date', [ProdukHargaController::class, 'byDate']);
     Route::apiResource('produk-hargas', ProdukHargaController::class);
     Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
+
+    // Approval Template master data (admin-only, Prioritas H4 -
+    // approval-system-customer-verification.md). Pakai middleware `can` (alias
+    // existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize,
+    // sudah terhubung ke Spatie Gate::before + admin bypass id_role=1 di
+    // AuthServiceProvider) supaya endpoint ini benar-benar digerbangi backend,
+    // bukan cuma disembunyikan di menu FE.
+    Route::middleware('can:approval-template.manage')->group(function () {
+        Route::apiResource('approval-templates', ApprovalTemplateController::class);
+    });
 
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::apiResource('provinsis', ProvinsiController::class);
@@ -198,6 +216,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/approval-timeline', [CustomerVerificationController::class, 'approvalTimeline'])->whereNumber('id');
     Route::patch('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
 
@@ -236,31 +255,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
     });
 
-    Route::prefix('review/logistik')->group(function () {
-        Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewLogistikIndex']);
-        Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewLogistikStats']);
-        // reuse method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
-        Route::get('/customer-verifications/{id}',    [CustomerVerificationController::class, 'logistikShow'])->whereNumber('id');
-        Route::patch('/customer-verifications/{id}',  [CustomerVerificationController::class, 'logistikSave'])->whereNumber('id');
-        Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'logistikVerify']);
-    });
-
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
         Route::patch('customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
         // simpan verifikasi BM
         Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
-    });
-
-    Route::prefix('review/om')->group(function () {
-        Route::get('/customer-verifications',        [CustomerVerificationController::class, 'reviewOmIndex']);
-        Route::get('/customer-verifications/stats',  [CustomerVerificationController::class, 'reviewOmStats']);
-        Route::patch('/customer-verifications/{id}/verify', [CustomerVerificationController::class, 'omVerify'])->whereNumber('id');
-
-        // opsional: kirim balik ke BM atau finalize → gunakan method setDisposisi yang sudah ada
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
     });
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
@@ -323,6 +323,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Monitoring — hanya Administrator (id_role=1)
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
+    // Link Customer (butuh login — dipindah dari luar grup auth:sanctum)
+    Route::get('/link-customers', [LinkCustomerController::class, 'index']);
+    Route::post('/link-customers/{customer}/generate', [LinkCustomerController::class, 'generate']);
 
 
 
@@ -341,8 +344,6 @@ Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'u
     ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
 Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
-Route::get('/link-customers', [LinkCustomerController::class, 'index']);
-Route::post('/link-customers/{customer}/generate', [LinkCustomerController::class, 'generate']);
 Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('throttle:30,1');
 
 // Public PO detail (contoh)

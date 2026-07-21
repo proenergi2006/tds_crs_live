@@ -33,12 +33,6 @@ export const logistikNavigation: NavItem[] = [
           { icon: 'Truck',   pageName: 'oa-trucks-list',       title: 'OA Truck',      permission: 'logistik.master.manage' },
         ],
       },
-      {
-        icon: 'File',
-        pageName: 'review-data-customer-logistik',
-        title: 'Review Data Customer',
-        permission: 'logistik.master.manage',
-      },
     ],
   },
 ]

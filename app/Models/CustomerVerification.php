@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class CustomerVerification extends Model
 {
@@ -17,6 +19,7 @@ class CustomerVerification extends Model
         'is_evaluated',
         'is_reviewed',
         'is_active',
+        'expired_at',
 
         'legal_data',
         'legal_summary',
@@ -89,6 +92,7 @@ class CustomerVerification extends Model
         'cfo_tgl_proses'      => 'datetime',
         'ceo_tgl_proses'      => 'datetime',
         'tanggal_approved'    => 'datetime',
+        'expired_at'          => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -96,5 +100,27 @@ class CustomerVerification extends Model
         return $this->belongsTo(\App\Models\Customer::class, 'id_customer', 'id_customer');
     }
 
-    
+    /**
+     * Riwayat approval polymorphic (sistem approval generik baru). `morphMany`
+     * (bukan `morphOne`) karena `document_approvals` tidak mendukung
+     * reopen/multiple cycle per row saat ini — tidak ada guard yang mencegah
+     * lebih dari satu row approval per verification di masa depan (mis. re-submit
+     * setelah reject), jadi morphMany lebih aman sebagai default daripada
+     * mengasumsikan strictly-one.
+     */
+    public function documentApprovals(): MorphMany
+    {
+        return $this->morphMany(\App\Models\DocumentApproval::class, 'approvable', 'approvable_type', 'approvable_id', 'id_verification');
+    }
+
+    /**
+     * (CA7) Siklus approval TERBARU (per id_approval) untuk verification ini,
+     * dipakai queue Marketing untuk mengecek "apakah siklus terakhir rejected"
+     * tanpa perlu subquery manual -- standar Eloquent one-of-many
+     * (`latestOfMany`) di atas relasi morphMany yang sudah ada.
+     */
+    public function latestDocumentApproval(): MorphOne
+    {
+        return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
 }

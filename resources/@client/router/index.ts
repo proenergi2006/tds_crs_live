@@ -36,6 +36,12 @@ const routes = [
   },
 
   {
+    path: "/verify/:token",
+    name: "verify-customer",
+    component: () => import("@/pages/CustomerUpdateForm.vue"),
+  },
+
+  {
     path: "/",
     component: () => import("@/themes/Layout.vue"),
     children: [
@@ -269,6 +275,31 @@ const routes = [
         name: "terminals-list",
         component: () => import("@/pages/MasterData/Terminal/Index.vue"),
         meta: { permission: "master-data.view" },
+      },
+      {
+        path: "approval-templates",
+        name: "approval-templates",
+        component: () =>
+          import("@/pages/MasterData/ApprovalTemplate/Index.vue"),
+        meta: { permission: "approval-template.manage" },
+      },
+      {
+        path: "approval-templates/create",
+        name: "approval-templates-create",
+        component: () => import("@/pages/MasterData/ApprovalTemplate/Form.vue"),
+        meta: {
+          permission: "approval-template.manage",
+          breadcrumbTitle: "Tambah Approval Template",
+        },
+      },
+      {
+        path: "approval-templates/:id/edit",
+        name: "approval-templates-edit",
+        component: () => import("@/pages/MasterData/ApprovalTemplate/Form.vue"),
+        meta: {
+          permission: "approval-template.manage",
+          breadcrumbTitle: "Edit Approval Template",
+        },
       },
 
       {
@@ -646,7 +677,7 @@ const routes = [
       {
         path: "/customer-verifications",
         name: "customer-verifications",
-        component: () => import("@/pages/CustomerVerificationList.vue"),
+        component: () => import("@/pages/CustomerVerification/Index.vue"),
       },
       {
         path: "/link-customers",
@@ -654,69 +685,43 @@ const routes = [
         component: () => import("@/pages/ListLinkCustomer.vue"),
       },
       {
-        path: "/verify/:token",
-        name: "verify-customer",
-        component: () => import("@/pages/CustomerUpdateForm.vue"),
-      },
-      {
-        path: "/review-customer",
-        name: "review-customer",
-        component: () => import("@/pages/CustomerReviewList.vue"),
-      },
-      {
         path: "/review-data-customer",
         name: "review-data-customer",
-        component: () => import("@/pages/ReviewDataCustomer.vue"),
-        // bawa state tab/search/paging lewat query
+        component: () =>
+          import("@/pages/CustomerVerification/Marketing/Index.vue"),
       },
-
       {
         path: "/review-data-customer/:id",
         name: "review-customer-detail",
-        component: () => import("@/pages/ReviewCustomerDetail.vue"),
+        component: () =>
+          import("@/pages/CustomerVerification/Marketing/Detail.vue"),
         props: true,
       },
       {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
-        component: () => import("@/pages/ReviewDataCustomerAdmin.vue"),
+        component: () =>
+          import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
         meta: { permission: "sales-confirmation.manage" },
       },
       {
-        path: "/review/logistik",
-        name: "review-data-customer-logistik",
-        component: () => import("@/pages/ReviewDataCustomerLogistik.vue"),
-        meta: { permission: "logistik.master.manage" },
-      },
-      {
-        path: "/review/logistik/:id",
-        name: "review-customer-detail-logistik",
-        component: () => import("@/pages//LogistikCustomerDetail.vue"),
+        path: "/admin/review-data-customer/:id",
+        name: "review-data-customer-admin-detail",
+        component: () =>
+          import("@/pages/CustomerVerification/AdminFinance/Detail.vue"),
+        props: true,
+        meta: { permission: "sales-confirmation.manage" },
       },
       {
         path: "/review/bm",
         name: "verify-data-customer-bm",
-        component: () => import("@/pages/VerifyDataCustomerBM.vue"),
+        component: () => import("@/pages/CustomerVerification/Bm/Index.vue"),
       },
-
       {
         path: "/review/bm/:id",
         name: "bm-customer-detail",
         props: true,
-        component: () => import("@/pages/BMCustomerDetail.vue"),
-      },
-
-      // OM (list antrean + detail)
-      {
-        path: "/review/om",
-        name: "verify-data-customer-om",
-        component: () => import("@/pages/VerifyDataCustomerOM.vue"),
-      },
-      {
-        path: "/review/om/:id",
-        name: "om-customer-detail",
-        props: true,
-        component: () => import("@/pages/OMCustomerDetail.vue"),
+        component: () => import("@/pages/CustomerVerification/Bm/Detail.vue"),
       },
 
       {
@@ -796,11 +801,6 @@ const routes = [
       {
         path: "testing-page",
         name: "testing-page",
-        component: () => import("@/pages/Dropdown.vue"),
-      },
-      {
-        path: "/testing-page",
-        name: "testing-page-2",
         component: () => import("@/pages/Testing/Index.vue"),
       },
     ],
@@ -867,6 +867,22 @@ router.beforeEach(async (to, from, next) => {
     to.name !== "forgot-password"
   ) {
     // stop lebih cepat saat redirect agar tidak menggantung
+    stopRouteLoading(150);
+    return next({ name: "login", query: { logged_out: "1" } });
+  }
+
+  // Token ada tapi fetchUser() gagal (401 atau non-401) → auth.user tetap null.
+  // Jangan biarkan navigasi lolos dengan user null (topbar akan fallback ke "Guest").
+  // Skip kalau forceLogout() sedang menangani 401 yang sama, supaya tidak double-redirect.
+  if (
+    !auth.user &&
+    to.name !== "login" &&
+    to.name !== "two-factor" &&
+    to.name !== "verify-customer" &&
+    to.name !== "forgot-password" &&
+    !auth.isForceLoggingOut
+  ) {
+    auth.clear();
     stopRouteLoading(150);
     return next({ name: "login", query: { logged_out: "1" } });
   }

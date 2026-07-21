@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { debounce } from 'lodash'
+import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
+import { copyToClipboard } from '@/utils/clipboard'
+
+type VerificationTab = 'all' | 'verified' | 'unverified'
 
 const customerApi = createResourceApi('/customers')
 const { success, error } = useNotification()
@@ -36,6 +41,20 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
 
+/* State: verification tab */
+const activeTab = ref<VerificationTab>('all')
+const tabOptions: { value: VerificationTab; label: string }[] = [
+  { value: 'all', label: 'All Data' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'unverified', label: 'Unverified' },
+]
+const tabCounts = ref<Partial<Record<VerificationTab, number>>>({})
+
+/* State: link generate/regenerate, and result dialog */
+const linkBusyId = ref<number | null>(null)
+const linkResultOpen = ref(false)
+const linkResult = reactive({ token: '', link: '', alreadyExists: false })
+
 /* Computed: summary cards (Proenergi only) */
 const totalProspect = computed(() => customers.value.filter(c => c.status_customer === 1).length)
 const totalTetap = computed(() => customers.value.filter(c => c.status_customer === 2).length)
@@ -43,10 +62,18 @@ const totalPenawaran = computed(() =>
   customers.value.reduce((sum, c) => sum + Number(c.jumlah_penawaran ?? 0), 0)
 )
 
+const linkResultTitle = computed(() => (linkResult.alreadyExists ? 'Token Sudah Ada' : 'Token Dibuat'))
+const linkResultDescription = computed(() =>
+  linkResult.alreadyExists
+    ? 'Link verifikasi untuk customer ini masih aktif dan belum kedaluwarsa.'
+    : 'Link verifikasi baru berhasil dibuat untuk customer ini.'
+)
+
 onMounted(() => fetchData())
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
+watch(activeTab, () => fetchData(1))
 
 async function fetchData(page = currentPage.value) {
   loading.value = true
@@ -55,16 +82,28 @@ async function fetchData(page = currentPage.value) {
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
+      tab: activeTab.value,
     })
     customers.value = data.data ?? []
     currentPage.value = data.current_page ?? 1
     totalPages.value = data.last_page ?? 1
     totalRecords.value = data.total ?? 0
+    tabCounts.value = data.tab_counts ?? tabCounts.value
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data customer')
   } finally {
     loading.value = false
   }
+}
+
+function selectTab(tab: VerificationTab) {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
+}
+
+function tabLabel(opt: { value: VerificationTab; label: string }) {
+  const count = tabCounts.value[opt.value]
+  return typeof count === 'number' ? `${opt.label} (${count})` : opt.label
 }
 
 function goToPage(page: number) {
@@ -82,6 +121,54 @@ function openEdit(id: number) {
 function openCreatePenawaran(id: number) {
   const routeName = isProenergi ? 'penawarans-create-proenergi' : 'penawarans-create'
   router.push({ name: routeName, query: { customer_id: id } })
+}
+
+function openReview(idVerification: number) {
+  router.push({ name: 'review-customer-detail', params: { id: idVerification } })
+}
+
+async function generateLink(item: any) {
+  try {
+    linkBusyId.value = item.id_customer
+    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+
+    linkResult.token = data.verification?.token_verification ?? '-'
+    linkResult.link = data.link
+    linkResult.alreadyExists = !!data.already_exists
+    linkResultOpen.value = true
+
+    fetchData(currentPage.value)
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message ?? 'Gagal membuat link verifikasi.')
+  } finally {
+    linkBusyId.value = null
+  }
+}
+
+async function copyLinkResult() {
+  const copied = await copyToClipboard(linkResult.link)
+  if (copied) {
+    linkResultOpen.value = false
+    success('Link disalin', 'Link verifikasi berhasil disalin ke clipboard.')
+  } else {
+    error('Gagal menyalin', 'Link tidak berhasil disalin otomatis. Silakan salin manual dari kotak token di atas.')
+  }
+}
+
+function closeLinkResult() {
+  linkResultOpen.value = false
+}
+
+async function openCustomerLink(item: any) {
+  try {
+    linkBusyId.value = item.id_customer
+    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+    window.open(data.link, '_blank')
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message ?? 'Gagal membuka link verifikasi.')
+  } finally {
+    linkBusyId.value = null
+  }
 }
 
 function confirmDelete(id: number) {
@@ -116,15 +203,39 @@ function getStatusClass(status?: number) {
   if (status === 2) return 'bg-emerald-100 text-emerald-700'
   return 'bg-slate-100 text-slate-500'
 }
+
+function getVerificationBadgeLabel(item: any) {
+  switch (item.verification_badge) {
+    case 'verified': return 'Verified'
+    case 'belum_ada_link': return 'Belum Ada Link'
+    case 'menunggu_customer': return 'Menunggu Customer'
+    case 'link_kedaluwarsa': return 'Link Kedaluwarsa'
+    case 'perlu_direview': return 'Perlu Direview'
+    case 'proses_internal': return `Proses Internal (${item.latest_verification?.stage_label ?? '-'})`
+    case 'ditolak': return 'Ditolak'
+    default: return '-'
+  }
+}
+
+function getVerificationBadgeClass(badge?: string) {
+  switch (badge) {
+    case 'verified': return 'bg-emerald-100 text-emerald-700'
+    case 'belum_ada_link': return 'bg-slate-100 text-slate-500'
+    case 'menunggu_customer': return 'bg-amber-100 text-amber-700'
+    case 'link_kedaluwarsa': return 'bg-red-100 text-red-700'
+    case 'perlu_direview': return 'bg-sky-100 text-sky-700'
+    case 'proses_internal': return 'bg-indigo-100 text-indigo-700'
+    case 'ditolak': return 'bg-red-100 text-red-700'
+    default: return 'bg-slate-100 text-slate-500'
+  }
+}
 </script>
 
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <PageHeader
-        :title="isProenergi ? 'Master Customers Proenergi' : 'Master Customers'"
-        :description="isProenergi ? 'Kelola data customer Proenergi yang kamu tangani' : 'Kelola data customer yang kamu tangani'"
-      >
+      <PageHeader :title="isProenergi ? 'Master Customers Proenergi' : 'Master Customers'"
+        :description="isProenergi ? 'Kelola data customer Proenergi yang kamu tangani' : 'Kelola data customer yang kamu tangani'">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
@@ -151,6 +262,14 @@ function getStatusClass(status?: number) {
           <div class="font-label">Total Penawaran</div>
           <div class="font-num-display mt-1 !text-primary">{{ totalPenawaran }}</div>
         </div>
+      </div>
+
+      <!-- Verification tab selector -->
+      <div class="flex flex-wrap items-center gap-2">
+        <Button v-for="opt in tabOptions" :key="opt.value"
+          :variant="activeTab === opt.value ? 'primary' : 'outline-primary'" size="sm" @click="selectTab(opt.value)">
+          {{ tabLabel(opt) }}
+        </Button>
       </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
@@ -202,8 +321,8 @@ function getStatusClass(status?: number) {
               {{ item.jumlah_penawaran ?? 0 }}
             </Table.Td>
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Buat Penawaran"
+              <div v-if="activeTab === 'all'" class="inline-flex items-center justify-center gap-2">
+                <Button variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Buat Quotation"
                   @click="openCreatePenawaran(item.id_customer)">
                   <Lucide icon="FilePlus" class="h-4 w-4" />
                 </Button>
@@ -216,6 +335,30 @@ function getStatusClass(status?: number) {
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>
+
+              <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
+                <Button v-if="item.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Generate Link" :disabled="linkBusyId === item.id_customer"
+                  @click="generateLink(item)">
+                  <Lucide icon="Link" class="h-4 w-4" />
+                </Button>
+                <Button
+                  v-else-if="item.verification_badge === 'link_kedaluwarsa' || item.verification_badge === 'ditolak'"
+                  variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Regenerate Link"
+                  :disabled="linkBusyId === item.id_customer" @click="generateLink(item)">
+                  <Lucide icon="RefreshCw" class="h-4 w-4" />
+                </Button>
+                <Button v-else-if="item.verification_badge === 'menunggu_customer'" variant="soft-warning" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Buka Link" :disabled="linkBusyId === item.id_customer"
+                  @click="openCustomerLink(item)">
+                  <Lucide icon="ExternalLink" class="h-4 w-4" />
+                </Button>
+                <Button v-else-if="item.verification_badge === 'perlu_direview'" variant="soft-info" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Verifikasi Marketing"
+                  @click="openReview(item.latest_verification.id_verification)">
+                  <Lucide icon="ClipboardCheck" class="h-4 w-4" />
+                </Button>
+              </div>
             </Table.Td>
           </Table.Tr>
         </template>
@@ -223,6 +366,15 @@ function getStatusClass(status?: number) {
 
       <DeleteRecordDialog :open="deleteModal" title="Hapus Customer" :loading="deleteLoading"
         @close="deleteModal = false" @confirm="submitDelete" />
+
+      <ConfirmDialog :open="linkResultOpen" :title="linkResultTitle" :description="linkResultDescription"
+        confirm-text="Salin Link" cancel-text="Tutup" icon="Link" icon-class="bg-primary/10 text-primary"
+        variant="primary" @close="closeLinkResult" @confirm="copyLinkResult">
+        <div class="font-caption mb-1">Token Verifikasi</div>
+        <div class="font-mono break-all rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          {{ linkResult.token }}
+        </div>
+      </ConfirmDialog>
     </div>
   </div>
 </template>

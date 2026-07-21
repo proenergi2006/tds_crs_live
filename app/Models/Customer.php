@@ -42,10 +42,8 @@ class Customer extends Model
         'nomor_sertifikat_file',
         'nomor_npwp',
         'nomor_npwp_file',
-        'nomor_siup',
-        'nomor_siup_file',
-        'nomor_tdp',
-        'nomor_tdp_file',
+        'nib',
+        'nib_file',
         'dokumen_lainnya',
         'dokumen_lainnya_file',
         'need_update',
@@ -104,6 +102,18 @@ public function penawarans(): HasMany
 public function verifications()
 {
     return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
+}
+
+/**
+ * Record customer_verifications TERBARU milik customer ini (order by
+ * id_verification desc). Dipakai untuk badge status di CustomerController@index
+ * — pakai latestOfMany() supaya bisa di-eager-load lewat with() tanpa N+1
+ * walaupun list-nya paginated.
+ */
+public function latestVerification(): HasOne
+{
+    return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
+        ->latestOfMany('id_verification');
 }
 
 }
