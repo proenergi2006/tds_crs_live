@@ -157,7 +157,11 @@ private function rules(bool $forUpdate = false): array
     
         // <-- eager load relasi customer, hanya ambil kolom yang diperlukan
         $query = CustomerLcr::with(['customer:id_customer,nama_perusahaan']);
-    
+
+        if ($request->filled('id_customer')) {
+            $query->where('id_customer', (int) $request->query('id_customer'));
+        }
+
         if ($q !== '') {
             // filter ke kolom LCR
             $query->where(function ($w) use ($q) {
@@ -267,6 +271,10 @@ private function rules(bool $forUpdate = false): array
 
         $query = CustomerLcr::query()
             ->with(['customer:id_customer,nama_perusahaan']);
+
+        if ($request->filled('id_customer')) {
+            $query->where('id_customer', (int) $request->query('id_customer'));
+        }
 
         // filter status berdasar flag_disposisi
         $query->where(function ($w) use ($status) {
