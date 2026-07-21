@@ -723,6 +723,14 @@ const routes = [
         props: true,
       },
 
+      {
+        path: "/monitoring/app-logs",
+        name: "monitoring-app-logs",
+        component: () => import("@/pages/Monitoring/Logs/Index.vue"),
+        // meta: { breadcrumbTitle: "Detail Delivery Request" },
+        meta: { title: "Application Logs", roles: [1] },
+      },
+
       // {
       //   path: '/po-verification/:id',
       //   name: 'po-verification-detail',

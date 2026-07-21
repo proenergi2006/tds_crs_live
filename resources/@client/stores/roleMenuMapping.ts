@@ -10,7 +10,7 @@ export const UNIVERSAL_MENUS: string[] = ["Profile", "Home"];
 
 export const ROLE_MENU_MAPPING: Record<number, string[]> = {
   // Administrator
-  1: ["Access Control"],
+  1: ["Access Control", "Monitoring"],
 
   // CEO
   2: ["Referensi Data", "Verifikasi"],

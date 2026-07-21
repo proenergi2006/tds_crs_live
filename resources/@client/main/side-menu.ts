@@ -520,6 +520,19 @@ const menu: Array<Menu | "divider"> = [
     pageName: "logistics-delivery-plan", // harus sama dengan name route LIST
     title: "Delivery Plan",
   },
+
+  {
+    icon: "Monitor",
+    pageName: "administrator-monitoring",
+    title: "Monitoring",
+    subMenu: [
+      {
+        icon: "Activity",
+        pageName: "monitoring-app-logs",
+        title: "Application Logs",
+      },
+    ],
+  },
 ];
 
 export default menu;
