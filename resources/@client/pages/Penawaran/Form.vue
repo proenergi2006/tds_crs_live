@@ -36,6 +36,7 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
     detailRoute: 'penawarans-detail',
+    detailRoute: 'penawarans-detail',
     usePe: false,   // harga dari kolom harga_price_list
     showAcuan: false,
   },
@@ -816,7 +817,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-              }}</small>
+                }}</small>
             </div>
 
             <div>
@@ -894,528 +895,560 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
                 fieldError('type_pengiriman')
-                }}</small>
+              }}</small>
             </div>
-
-            <div>
-              <FormLabel>Metode
-                <RequiredAsterisk />
-              </FormLabel>
-              <FormSelect v-model="form.metode" class="w-full" :class="inputClass('metode')">
-                <option value="" disabled>Pilih Metode…</option>
-                <template v-if="form.type_pengiriman === 'PROJECT'">
-                  <option value="FOB">Free On Board (FOB)</option>
-                  <option value="CIF">Cost Insurance & Freight (CIF)</option>
-                  <option value="DAP">Delivery At Place (DAP)</option>
-                </template>
-                <template v-else-if="form.type_pengiriman === 'RETAIL'">
-                  <option value="FOT">Free On Truck (FOT)</option>
-                  <option value="FRANCO">Franco</option>
-                </template>
-              </FormSelect>
-              <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode') }}</small>
-            </div>
-            <!-- OA Kapal (conditional) -->
-            <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
-              class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <h4 class="font-section mb-3">Ongkos Kapal</h4>
+            <CardSection title="Detail Pengiriman & Daftar Produk"
+              description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
+              icon-class="bg-indigo-100 text-indigo-600">
               <div class="grid grid-cols-12 gap-4">
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Transportir</FormLabel>
-                  <FormSelect v-model="oaKapalInput.id_transportir" :key="oaSelectKey">
-                    <option value="">Pilih Transportir</option>
-                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}</option>
-                  </FormSelect>
+                <div class="col-span-12 md:col-span-6">
+                  <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <div>
+                      <FormLabel>Type Pengiriman
+                        <RequiredAsterisk />
+                      </FormLabel>
+                      <FormSelect v-model="form.type_pengiriman" class="w-full" :class="inputClass('type_pengiriman')">
+                        <option value="" disabled>Pilih Type Pengiriman…</option>
+                        <option value="PROJECT">Project</option>
+                        <option value="RETAIL">Retail</option>
+                      </FormSelect>
+                      <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
+                        fieldError('type_pengiriman')
+                        }}</small>
+                    </div>
+
+                    <div>
+                      <FormLabel>Metode
+                        <RequiredAsterisk />
+                      </FormLabel>
+                      <FormSelect v-model="form.metode" class="w-full" :class="inputClass('metode')">
+                        <option value="" disabled>Pilih Metode…</option>
+                        <template v-if="form.type_pengiriman === 'PROJECT'">
+                          <option value="FOB">Free On Board (FOB)</option>
+                          <option value="CIF">Cost Insurance & Freight (CIF)</option>
+                          <option value="DAP">Delivery At Place (DAP)</option>
+                        </template>
+                        <template v-else-if="form.type_pengiriman === 'RETAIL'">
+                          <option value="FOT">Free On Truck (FOT)</option>
+                          <option value="FRANCO">Franco</option>
+                        </template>
+                      </FormSelect>
+                      <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
+                        }}</small>
+                    </div>
+                    <!-- OA Kapal (conditional) -->
+                    <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
+                      class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <h4 class="font-section mb-3">Ongkos Kapal</h4>
+                      <div class="grid grid-cols-12 gap-4">
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Transportir</FormLabel>
+                          <FormSelect v-model="oaKapalInput.id_transportir" :key="oaSelectKey">
+                            <option value="">Pilih Transportir</option>
+                            <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Wilayah Angkut</FormLabel>
+                          <FormSelect v-model="oaKapalInput.id_angkut_wilayah" :key="oaSelectKey">
+                            <option value="">Pilih Wilayah</option>
+                            <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
+                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Volume</FormLabel>
+                          <FormSelect v-model="oaKapalInput.id_volume" :key="oaSelectKey">
+                            <option value="">Pilih Volume</option>
+                            <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12">
+                          <CurrencyField label="Ongkos Kapal" :model-value="oaKapal" :readonly="true" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- OA Truck (conditional) -->
+                    <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
+                      class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <h4 class="font-section mb-3">Ongkos Truck</h4>
+                      <div class="grid grid-cols-12 gap-4">
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Transportir</FormLabel>
+                          <FormSelect v-model="oaTruckInput.id_transportir" :key="oaSelectKey">
+                            <option value="">Pilih Transportir</option>
+                            <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Wilayah Angkut</FormLabel>
+                          <FormSelect v-model="oaTruckInput.id_angkut_wilayah" :key="oaSelectKey">
+                            <option value="">Pilih Wilayah</option>
+                            <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
+                              {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12 md:col-span-4">
+                          <FormLabel>Volume</FormLabel>
+                          <FormSelect v-model="oaTruckInput.id_volume" :key="oaSelectKey">
+                            <option value="">Pilih Volume</option>
+                            <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}
+                            </option>
+                          </FormSelect>
+                        </div>
+
+                        <div class="col-span-12">
+                          <CurrencyField label="Ongkos Truck" :model-value="oaTruck" :readonly="true" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Wilayah Angkut</FormLabel>
-                  <FormSelect v-model="oaKapalInput.id_angkut_wilayah" :key="oaSelectKey">
-                    <option value="">Pilih Wilayah</option>
-                    <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
-                      {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
-                    </option>
-                  </FormSelect>
-                </div>
+                <div class="col-span-12 md:col-span-6">
+                  <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <div>
+                      <FormLabel>Lokasi Pengiriman</FormLabel>
+                      <FormTextarea v-model="form.lokasi_pengiriman" :rows="3" :auto-resize="true"
+                        placeholder="Lokasi pengiriman..." />
+                    </div>
 
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Volume</FormLabel>
-                  <FormSelect v-model="oaKapalInput.id_volume" :key="oaSelectKey">
-                    <option value="">Pilih Volume</option>
-                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
-                  </FormSelect>
-                </div>
-
-                <div class="col-span-12">
-                  <CurrencyField label="Ongkos Kapal" :model-value="oaKapal" :readonly="true" />
+                    <div>
+                      <FormLabel>Titik Serah Terima & T&C Bongkar</FormLabel>
+                      <FormTextarea v-model="form.keterangan" :rows="3" :auto-resize="true"
+                        placeholder="Titik serah terima & T&C bongkar..." />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- OA Truck (conditional) -->
-            <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
-              class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <h4 class="font-section mb-3">Ongkos Truck</h4>
-              <div class="grid grid-cols-12 gap-4">
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Transportir</FormLabel>
-                  <FormSelect v-model="oaTruckInput.id_transportir" :key="oaSelectKey">
-                    <option value="">Pilih Transportir</option>
-                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}</option>
-                  </FormSelect>
-                </div>
+              <hr class="my-4" />
 
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Wilayah Angkut</FormLabel>
-                  <FormSelect v-model="oaTruckInput.id_angkut_wilayah" :key="oaSelectKey">
-                    <option value="">Pilih Wilayah</option>
-                    <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
-                      {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
-                    </option>
-                  </FormSelect>
-                </div>
-
-                <div class="col-span-12 md:col-span-4">
-                  <FormLabel>Volume</FormLabel>
-                  <FormSelect v-model="oaTruckInput.id_volume" :key="oaSelectKey">
-                    <option value="">Pilih Volume</option>
-                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}</option>
-                  </FormSelect>
-                </div>
-
-                <div class="col-span-12">
-                  <CurrencyField label="Ongkos Truck" :model-value="oaTruck" :readonly="true" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-span-12 md:col-span-6">
-          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div>
-              <FormLabel>Lokasi Pengiriman</FormLabel>
-              <FormTextarea v-model="form.lokasi_pengiriman" :rows="3" :auto-resize="true"
-                placeholder="Lokasi pengiriman..." />
-            </div>
-
-            <div>
-              <FormLabel>Titik Serah Terima & T&C Bongkar</FormLabel>
-              <FormTextarea v-model="form.keterangan" :rows="3" :auto-resize="true"
-                placeholder="Titik serah terima & T&C bongkar..." />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <hr class="my-4" />
-
-      <!-- Rincian Item -->
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
-        <div v-if="hargaFetched && !hargaLoading">
-          <Button type="button" variant="outline-primary"
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap sm:mb-0.5"
-            @click="priceRefOpen = true">
-            <Lucide icon="Receipt" class="h-4 w-4" />
-            Referensi Harga
-          </Button>
-          <span class="text-xs text-slate-500 ml-2"><i>* berdasarkan masa berlaku</i></span>
-        </div>
-
-        <div v-else-if="hargaLoading"
-          class="inline-flex items-center gap-2 font-body whitespace-nowrap !text-slate-400 sm:mb-2.5">
-          <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
-          Memuat harga…
-        </div>
-      </div>
-      <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-        <table class="w-full min-w-[760px] divide-y divide-slate-200">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="w-12 px-4 py-3 font-label text-center">No</th>
-              <th class="px-4 py-3 font-label text-left">Produk</th>
-              <th class="w-28 px-4 py-3 font-label text-right">Persen (%)</th>
-              <th class="w-32 px-4 py-3 font-label text-right">Volume</th>
-              <th class="w-44 px-4 py-3 font-label text-right">Harga Price List</th>
-              <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
-                Harga
-                Tebus</th>
-              <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
-                Jumlah
-                Harga</th>
-              <th class="w-16 px-4 py-3 font-label text-center">Aksi</th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-slate-200 bg-white">
-            <tr v-for="(item, idx) in form.items" :key="idx" class="transition hover:bg-slate-50">
-              <td class="px-4 py-3 font-num text-center">{{ idx + 1 }}.</td>
-
-              <td class="px-4 py-3">
-                <div>
-                  <TomSelect v-model="item.id_produk" class="min-w-52" :class="itemInputClass(idx, 'id_produk')"
-                    :options="produkSelectOptions" @update:model-value="checkHarga(item)">
-                    <option value="">Pilih Produk…</option>
-                    <option v-for="p in produks" :key="p.id_produk" :value="String(p.id_produk)"
-                      :data-jenis="p.jenis?.nama || ''" :data-ukuran="p.ukuran?.nama_ukuran || ''"
-                      :data-satuan="p.ukuran?.satuan?.nama_satuan || ''">{{ p.nama_produk }}</option>
-                  </TomSelect>
-                </div>
-                <small v-if="itemError(idx, 'id_produk')" class="block input-error-text">{{ itemError(idx, 'id_produk')
-                }}</small>
-              </td>
-
-              <td class="px-4 py-3">
-                <NumberField class="w-full" v-model="item.persen" placeholder="100" suffix="%" :min="0" :max="100"
-                  :decimals="0" :disabled="form.items.length === 1" :error="itemError(idx, 'persen')"
-                  @update:model-value="handlePersenChange(idx)" />
-              </td>
-
-              <td class="px-4 py-3">
-                <FormInput v-model="item.volume_order" type="text" inputmode="numeric" placeholder="0"
-                  class="text-right" @input="formatNumeric(item, 'volume_order', $event)" />
-              </td>
-
-              <td class="px-4 py-3 font-num text-right">
-                {{ formatCurrency(item.harga_price_list || 0) }}
-              </td>
-
-              <td v-if="canSeeHarga" class="px-4 py-3">
-                <CurrencyField :model-value="toNum(item.harga_tebus)" :readonly="true" />
-              </td>
-
-              <td v-if="canSeeHarga" class="px-4 py-3 font-num text-right">
-                {{ formatCurrency(lineTotal(item)) }}
-              </td>
-
-              <td class="px-4 py-3 text-center">
-                <Button v-if="form.items.length > 1" type="button" variant="soft-danger" rounded
-                  class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus" @click="removeItem(idx)">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-
-          <tfoot class="border-t border-slate-200 bg-slate-50">
-            <tr>
-              <td class="px-4 py-3 font-strong text-right" colspan="2">
-                <div class="flex items-center justify-between">
-                  <Button type="button" size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
-                    @click="addItem">
-                    <Lucide icon="Plus" class="h-4 w-4" />
-                    Tambah Baris
+              <!-- Rincian Item -->
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <div v-if="hargaFetched && !hargaLoading">
+                  <Button type="button" variant="outline-primary"
+                    class="inline-flex items-center justify-center gap-2 whitespace-nowrap sm:mb-0.5"
+                    @click="priceRefOpen = true">
+                    <Lucide icon="Receipt" class="h-4 w-4" />
+                    Referensi Harga
                   </Button>
-                  <p>Total</p>
+                  <span class="text-xs text-slate-500 ml-2"><i>* berdasarkan masa berlaku</i></span>
                 </div>
-              </td>
-              <td class="px-4 py-3 font-num text-right"
-                :class="totalPersenNumber !== 100 ? 'text-red-600' : 'text-slate-800'">
-                {{ totalPersenDisplay }}%
-              </td>
-              <td class="px-4 py-3 font-num text-right">{{ totalVolume }}</td>
-              <td class="px-4 py-3 font-num text-right">{{ formatCurrency(avgHargaPriceList)
-                }}
-              </td>
-              <td v-if="canSeeHarga" colspan="2" class="px-4 py-3"></td>
-              <td class="px-4 py-3"></td>
-            </tr>
 
-            <template v-if="canSeeHarga">
-              <tr class="bg-slate-100">
-                <td colspan="5" class="px-4 py-2 font-strong text-right">Subtotal Harga Tebus
-                </td>
-                <td class="px-4 py-2 font-num text-right">{{
-                  formatCurrency(grandTotalHargaTebus) }}</td>
-                <td></td>
-                <td></td>
-              </tr>
-              <!-- TODO: discount input (form.discount) — tersembunyi, akan diimplementasi di task terpisah -->
-              <tr v-if="totalDiskon > 0" class="bg-yellow-50">
-                <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
-                <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
-                  }}</td>
-                <td></td>
-                <td></td>
-              </tr>
-              <tr class="bg-emerald-50">
-                <td colspan="5" class="px-4 py-2 font-strong text-right !text-emerald-700">Setelah Diskon</td>
-                <td class="px-4 py-2 font-num text-right !text-emerald-800">{{
-                  formatCurrency(grandTotalHargaTebusSetelahDiskon) }}</td>
-                <td></td>
-                <td></td>
-              </tr>
+                <div v-else-if="hargaLoading"
+                  class="inline-flex items-center gap-2 font-body whitespace-nowrap !text-slate-400 sm:mb-2.5">
+                  <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
+                  Memuat harga…
+                </div>
+              </div>
+              <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                <table class="w-full min-w-[760px] divide-y divide-slate-200">
+                  <thead class="bg-slate-50">
+                    <tr>
+                      <th class="w-12 px-4 py-3 font-label text-center">No</th>
+                      <th class="px-4 py-3 font-label text-left">Produk</th>
+                      <th class="w-28 px-4 py-3 font-label text-right">Persen (%)</th>
+                      <th class="w-32 px-4 py-3 font-label text-right">Volume</th>
+                      <th class="w-44 px-4 py-3 font-label text-right">Harga Price List</th>
+                      <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
+                        Harga
+                        Tebus</th>
+                      <th v-if="canSeeHarga" class="w-40 px-4 py-3 font-label text-right">
+                        Jumlah
+                        Harga</th>
+                      <th class="w-16 px-4 py-3 font-label text-center">Aksi</th>
+                    </tr>
+                  </thead>
+
+                  <tbody class="divide-y divide-slate-200 bg-white">
+                    <tr v-for="(item, idx) in form.items" :key="idx" class="transition hover:bg-slate-50">
+                      <td class="px-4 py-3 font-num text-center">{{ idx + 1 }}.</td>
+
+                      <td class="px-4 py-3">
+                        <div>
+                          <TomSelect v-model="item.id_produk" class="min-w-52" :class="itemInputClass(idx, 'id_produk')"
+                            :options="produkSelectOptions" @update:model-value="checkHarga(item)">
+                            <option value="">Pilih Produk…</option>
+                            <option v-for="p in produks" :key="p.id_produk" :value="String(p.id_produk)"
+                              :data-jenis="p.jenis?.nama || ''" :data-ukuran="p.ukuran?.nama_ukuran || ''"
+                              :data-satuan="p.ukuran?.satuan?.nama_satuan || ''">{{ p.nama_produk }}</option>
+                          </TomSelect>
+                        </div>
+                        <small v-if="itemError(idx, 'id_produk')" class="block input-error-text">{{ itemError(idx,
+                          'id_produk')
+                          }}</small>
+                      </td>
+
+                      <td class="px-4 py-3">
+                        <NumberField class="w-full" v-model="item.persen" placeholder="100" suffix="%" :min="0"
+                          :max="100" :decimals="0" :disabled="form.items.length === 1" :error="itemError(idx, 'persen')"
+                          @update:model-value="handlePersenChange(idx)" />
+                      </td>
+
+                      <td class="px-4 py-3">
+                        <FormInput v-model="item.volume_order" type="text" inputmode="numeric" placeholder="0"
+                          class="text-right" @input="formatNumeric(item, 'volume_order', $event)" />
+                      </td>
+
+                      <td class="px-4 py-3 font-num text-right">
+                        {{ formatCurrency(item.harga_price_list || 0) }}
+                      </td>
+
+                      <td v-if="canSeeHarga" class="px-4 py-3">
+                        <CurrencyField :model-value="toNum(item.harga_tebus)" :readonly="true" />
+                      </td>
+
+                      <td v-if="canSeeHarga" class="px-4 py-3 font-num text-right">
+                        {{ formatCurrency(lineTotal(item)) }}
+                      </td>
+
+                      <td class="px-4 py-3 text-center">
+                        <Button v-if="form.items.length > 1" type="button" variant="soft-danger" rounded
+                          class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus" @click="removeItem(idx)">
+                          <Lucide icon="Trash2" class="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  </tbody>
+
+                  <tfoot class="border-t border-slate-200 bg-slate-50">
+                    <tr>
+                      <td class="px-4 py-3 font-strong text-right" colspan="2">
+                        <div class="flex items-center justify-between">
+                          <Button type="button" size="sm" variant="outline-primary"
+                            class="inline-flex items-center gap-2" @click="addItem">
+                            <Lucide icon="Plus" class="h-4 w-4" />
+                            Tambah Baris
+                          </Button>
+                          <p>Total</p>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 font-num text-right"
+                        :class="totalPersenNumber !== 100 ? 'text-red-600' : 'text-slate-800'">
+                        {{ totalPersenDisplay }}%
+                      </td>
+                      <td class="px-4 py-3 font-num text-right">{{ totalVolume }}</td>
+                      <td class="px-4 py-3 font-num text-right">{{ formatCurrency(avgHargaPriceList)
+                        }}
+                      </td>
+                      <td v-if="canSeeHarga" colspan="2" class="px-4 py-3"></td>
+                      <td class="px-4 py-3"></td>
+                    </tr>
+
+                    <template v-if="canSeeHarga">
+                      <tr class="bg-slate-100">
+                        <td colspan="5" class="px-4 py-2 font-strong text-right">Subtotal Harga Tebus
+                        </td>
+                        <td class="px-4 py-2 font-num text-right">{{
+                          formatCurrency(grandTotalHargaTebus) }}</td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                      <!-- TODO: discount input (form.discount) — tersembunyi, akan diimplementasi di task terpisah -->
+                      <tr v-if="totalDiskon > 0" class="bg-yellow-50">
+                        <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
+                        <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
+                          }}</td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                      <tr class="bg-emerald-50">
+                        <td colspan="5" class="px-4 py-2 font-strong text-right !text-emerald-700">Setelah Diskon</td>
+                        <td class="px-4 py-2 font-num text-right !text-emerald-800">{{
+                          formatCurrency(grandTotalHargaTebusSetelahDiskon) }}</td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    </template>
+                  </tfoot>
+                </table>
+              </div>
+            </CardSection>
+
+            <!-- Section 3: Pembayaran dan Lainnya -->
+            <CardSection title="Pembayaran & Lainnya" description="Metode pembayaran dan detail lainnya" icon="Wallet"
+              icon-class="bg-amber-100 text-amber-600">
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 md:col-span-6">
+                  <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <div class="grid grid-cols-12 gap-4">
+                      <div class="col-span-12" :class="isProenergi ? 'md:col-span-6' : ''">
+                        <FormLabel>Tipe Pembayaran
+                          <RequiredAsterisk />
+                        </FormLabel>
+                        <FormSelect v-model="form.tipe_pembayaran" class="w-full"
+                          :class="inputClass('tipe_pembayaran')">
+                          <option value="" disabled>Pilih…</option>
+                          <option value="COD">COD</option>
+                          <option value="CBD">CBD</option>
+                          <option value="TOP 7">TOP 7</option>
+                          <option value="TOP 14">TOP 14</option>
+                          <option v-if="!isProenergi" value="TOP 30">TOP 30</option>
+                          <option value="CUSTOM">CUSTOM</option>
+                        </FormSelect>
+                        <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
+                          fieldError('tipe_pembayaran')
+                          }}</small>
+                      </div>
+
+                      <!-- Proenergi: Acuan Pembayaran -->
+                      <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
+                        <FormLabel>Acuan Pembayaran</FormLabel>
+                        <FormSelect v-model="form.acuan_pembayaran" class="w-full">
+                          <option value="" disabled>Pilih…</option>
+                          <option value="After loading">After loading</option>
+                          <option value="Before loading">Before loading</option>
+                          <option value="After unloading">After unloading</option>
+                          <option value="Before unloading">Before unloading</option>
+                          <option value="After invoice received">After invoice received</option>
+                        </FormSelect>
+                      </div>
+                    </div>
+
+                    <!-- Panel CUSTOM -->
+                    <transition name="fade">
+                      <div v-if="form.tipe_pembayaran === 'CUSTOM'"
+                        class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <h4 class="font-section mb-3">Detail Pembayaran Custom</h4>
+                        <div class="flex flex-col gap-4">
+                          <div class="">
+                            <FormLabel>Down Payment (%)</FormLabel>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <NumberField class="w-20" v-model="form.dp_persen" placeholder="100" suffix="%" :min="0"
+                                :max="100" :decimals="0" :error="fieldError('dp_persen')" />
+                              <span class="font-body">After</span>
+                              <FormInput v-model="form.dp_keterangan" type="text" class="min-w-40 flex-1"
+                                placeholder="PO / 7 days" />
+                            </div>
+                            <small v-if="fieldError('dp_persen')" class="block input-error-text">{{
+                              fieldError('dp_persen')
+                              }}</small>
+                          </div>
+
+                          <div class="">
+                            <FormLabel>Repayment (%)</FormLabel>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <FormInput v-model="form.repayment_persen" type="text" inputmode="numeric"
+                                placeholder="80" class="w-20 text-right" :class="inputClass('repayment_persen')"
+                                @input="formatNumeric(form, 'repayment_persen', $event)" />
+                              <span class="font-body">% TOP</span>
+                              <FormInput v-model="form.repayment_hari" type="text" inputmode="numeric" placeholder="7"
+                                class="w-20 text-right" @input="formatNumeric(form, 'repayment_hari', $event)" />
+                              <span class="font-body">days</span>
+                            </div>
+                            <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
+                              fieldError('repayment_persen')
+                              }}</small>
+                          </div>
+                        </div>
+                        <p class="font-caption mt-2">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.
+                        </p>
+                      </div>
+                    </transition>
+
+                    <div>
+                      <FormLabel>Metode Pemesanan</FormLabel>
+                      <FormInput v-model="form.order_method" type="text" placeholder="Metode pemesanan…" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-span-12 md:col-span-6">
+                  <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <div class="flex flex-col gap-4">
+                      <div>
+                        <FormLabel>Toleransi Penyusutan</FormLabel>
+                        <div class="relative">
+                          <FormInput v-model="form.toleransi_penyusutan" type="text" inputmode="decimal" placeholder="0"
+                            class="pr-8 text-right" @input="formatDecimalInput(form, 'toleransi_penyusutan', $event)" />
+                          <span class="absolute font-caption right-3 top-2.5">%</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <FormLabel>Abrasi</FormLabel>
+                        <FormInput v-model="form.abrasi" type="text"
+                          placeholder="Contoh isian: 0-5% atau sesuai kondisi" />
+                      </div>
+
+                      <div>
+                        <CurrencyField v-model="form.refund" label="Refund" />
+                      </div>
+
+                      <div>
+                        <CurrencyField v-model="form.other_cost" label="Other Cost" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardSection>
+
+            <!-- Section 4: Perhitungan Harga Dasar -->
+            <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
+              icon-class="bg-emerald-100 text-emerald-600">
+              <div class="overflow-x-auto">
+                <Table bordered sm class="font-body">
+                  <Table.Thead class="bg-slate-50">
+                    <Table.Tr>
+                      <Table.Th class="w-12 font-label text-center">No</Table.Th>
+                      <Table.Th class="font-label text-left">Rincian</Table.Th>
+                      <Table.Th class="w-60 font-label text-right">Harga (Rp)</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+
+                  <Table.Tbody class="bg-white">
+                    <Table.Tr>
+                      <Table.Td class="text-center text-slate-500">1.</Table.Td>
+                      <Table.Td class="text-slate-700">Harga Dasar</Table.Td>
+                      <Table.Td>
+                        <CurrencyField v-model="form.harga_dasar" />
+                      </Table.Td>
+                    </Table.Tr>
+
+                    <Table.Tr>
+                      <Table.Td class="text-center text-slate-500">2.</Table.Td>
+                      <Table.Td class="text-slate-700">Ongkos Angkut (OAT per Volume)</Table.Td>
+                      <Table.Td>
+                        <CurrencyField v-model="form.oat" :error="fieldError('oat')" />
+                      </Table.Td>
+                    </Table.Tr>
+
+                    <Table.Tr>
+                      <Table.Td colspan="2" class="font-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
+                      <Table.Td class="font-num-lg text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
+                    </Table.Tr>
+
+                    <Table.Tr>
+                      <Table.Td colspan="2" class="font-strong text-right">PPN (11%)</Table.Td>
+                      <Table.Td class="font-num-lg text-right">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
+                    </Table.Tr>
+
+                    <Table.Tr>
+                      <Table.Td colspan="2" class="font-header text-right">TOTAL</Table.Td>
+                      <Table.Td class="font-num-lg text-right !text-emerald-700">{{
+                        formatCurrency(grandTotalHargaDasar) }}</Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </div>
+            </CardSection>
+
+            <!-- SlideOver: Referensi harga produk untuk periode & cabang terpilih -->
+            <Slideover size="lg" :open="priceRefOpen" @close="priceRefOpen = false">
+              <Slideover.Panel>
+                <a href="#" class="absolute left-0 right-auto top-0 -ml-12 mt-4" @click.prevent="priceRefOpen = false">
+                  <Lucide icon="X" class="h-8 w-8 text-slate-400" />
+                </a>
+
+                <Slideover.Title class="p-5">
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <h2 class="font-header truncate">Referensi Harga Produk</h2>
+                    <p class="font-caption truncate">
+                      {{ selectedCabangName }} · {{ form.masa_berlaku || '-' }} s/d {{ form.sampai_dengan || '-' }}
+                    </p>
+                  </div>
+                </Slideover.Title>
+
+                <Slideover.Description class="p-5">
+                  <!-- Ringkasan -->
+                  <div class="mb-4 flex flex-wrap gap-2">
+                    <span
+                      class="inline-flex items-center rounded-full bg-slate-100 font-label px-2.5 py-0.5 !text-slate-600">
+                      Total {{ priceRefSummary.total }} produk
+                    </span>
+                    <span
+                      class="inline-flex items-center rounded-full bg-emerald-50 font-label px-2.5 py-0.5 !text-emerald-700">
+                      {{ priceRefSummary.withPrice }} ada harga
+                    </span>
+                    <span
+                      class="inline-flex items-center rounded-full bg-amber-50 font-label px-2.5 py-0.5 !text-amber-700">
+                      {{ priceRefSummary.without }} belum ada
+                    </span>
+                  </div>
+
+                  <!-- Pencarian -->
+                  <div class="relative mb-4">
+                    <Lucide icon="Search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <FormInput v-model="priceRefSearch" type="text" placeholder="Cari produk / jenis..." class="pl-9" />
+                  </div>
+
+                  <!-- Daftar -->
+                  <div class="overflow-hidden rounded-xl border border-slate-200">
+                    <table class="w-full divide-y divide-slate-200">
+                      <thead class="bg-slate-50">
+                        <tr>
+                          <th class="w-10 px-3 py-2.5 font-label text-center">No</th>
+                          <th class="px-3 py-2.5 font-label text-left">Produk</th>
+                          <th class="px-3 py-2.5 font-label text-right">Harga Price List
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody class="divide-y divide-slate-200 bg-white">
+                        <tr v-for="(row, idx) in priceReferenceRows" :key="row.id_produk"
+                          class="transition hover:bg-slate-50">
+                          <td class="px-3 py-2.5 font-num text-center">{{ idx + 1 }}</td>
+
+                          <td class="px-3 py-2.5">
+                            <div class="font-strong">
+                              {{ row.nama }}
+                              <span v-if="row.jenis" class="font-body">— {{ row.jenis }}</span>
+                            </div>
+                            <div v-if="row.ukuran" class="font-caption">{{ row.ukuran }}</div>
+                          </td>
+
+                          <td class="px-3 py-2.5 text-right">
+                            <span v-if="row.harga != null" class="font-strong">
+                              {{ formatCurrency(row.harga) }}
+                            </span>
+                            <span v-else
+                              class="inline-flex items-center rounded-full bg-amber-50 font-label px-2 py-0.5 !text-amber-600">
+                              Belum ada harga
+                            </span>
+                          </td>
+                        </tr>
+
+                        <tr v-if="priceReferenceRows.length === 0">
+                          <td colspan="3" class="px-3 py-8 font-body text-center">
+                            Tidak ada produk yang cocok dengan pencarian.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </Slideover.Description>
+              </Slideover.Panel>
+            </Slideover>
+
+            <!-- Sidebar: Catatan & Syarat Ketentuan -->
+            <template #sidebar>
+              <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
+                icon-class="bg-rose-100 text-rose-600">
+                <div class="space-y-4">
+                  <div>
+                    <FormLabel>Catatan</FormLabel>
+                    <FormTextarea v-model="form.catatan" :rows="3" placeholder="Catatan tambahan…" />
+                  </div>
+
+                  <div>
+                    <FormLabel>Syarat & Ketentuan</FormLabel>
+                    <FormTextarea v-model="form.syarat_ketentuan" :rows="5" placeholder="Syarat dan ketentuan…" />
+                  </div>
+                </div>
+              </CardSection>
             </template>
-          </tfoot>
-        </table>
-      </div>
-    </CardSection>
-
-    <!-- Section 3: Pembayaran dan Lainnya -->
-    <CardSection title="Pembayaran & Lainnya" description="Metode pembayaran dan detail lainnya" icon="Wallet"
-      icon-class="bg-amber-100 text-amber-600">
-      <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-12 md:col-span-6">
-          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div class="grid grid-cols-12 gap-4">
-              <div class="col-span-12" :class="isProenergi ? 'md:col-span-6' : ''">
-                <FormLabel>Tipe Pembayaran
-                  <RequiredAsterisk />
-                </FormLabel>
-                <FormSelect v-model="form.tipe_pembayaran" class="w-full" :class="inputClass('tipe_pembayaran')">
-                  <option value="" disabled>Pilih…</option>
-                  <option value="COD">COD</option>
-                  <option value="CBD">CBD</option>
-                  <option value="TOP 7">TOP 7</option>
-                  <option value="TOP 14">TOP 14</option>
-                  <option v-if="!isProenergi" value="TOP 30">TOP 30</option>
-                  <option value="CUSTOM">CUSTOM</option>
-                </FormSelect>
-                <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
-                  fieldError('tipe_pembayaran')
-                  }}</small>
-              </div>
-
-              <!-- Proenergi: Acuan Pembayaran -->
-              <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
-                <FormLabel>Acuan Pembayaran</FormLabel>
-                <FormSelect v-model="form.acuan_pembayaran" class="w-full">
-                  <option value="" disabled>Pilih…</option>
-                  <option value="After loading">After loading</option>
-                  <option value="Before loading">Before loading</option>
-                  <option value="After unloading">After unloading</option>
-                  <option value="Before unloading">Before unloading</option>
-                  <option value="After invoice received">After invoice received</option>
-                </FormSelect>
-              </div>
-            </div>
-
-            <!-- Panel CUSTOM -->
-            <transition name="fade">
-              <div v-if="form.tipe_pembayaran === 'CUSTOM'"
-                class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <h4 class="font-section mb-3">Detail Pembayaran Custom</h4>
-                <div class="flex flex-col gap-4">
-                  <div class="">
-                    <FormLabel>Down Payment (%)</FormLabel>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <NumberField class="w-20" v-model="form.dp_persen" placeholder="100" suffix="%" :min="0"
-                        :max="100" :decimals="0" :error="fieldError('dp_persen')" />
-                      <span class="font-body">After</span>
-                      <FormInput v-model="form.dp_keterangan" type="text" class="min-w-40 flex-1"
-                        placeholder="PO / 7 days" />
-                    </div>
-                    <small v-if="fieldError('dp_persen')" class="block input-error-text">{{ fieldError('dp_persen')
-                      }}</small>
-                  </div>
-
-                  <div class="">
-                    <FormLabel>Repayment (%)</FormLabel>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <FormInput v-model="form.repayment_persen" type="text" inputmode="numeric" placeholder="80"
-                        class="w-20 text-right" :class="inputClass('repayment_persen')"
-                        @input="formatNumeric(form, 'repayment_persen', $event)" />
-                      <span class="font-body">% TOP</span>
-                      <FormInput v-model="form.repayment_hari" type="text" inputmode="numeric" placeholder="7"
-                        class="w-20 text-right" @input="formatNumeric(form, 'repayment_hari', $event)" />
-                      <span class="font-body">days</span>
-                    </div>
-                    <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
-                      fieldError('repayment_persen')
-                      }}</small>
-                  </div>
-                </div>
-                <p class="font-caption mt-2">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.</p>
-              </div>
-            </transition>
-
-            <div>
-              <FormLabel>Metode Pemesanan</FormLabel>
-              <FormInput v-model="form.order_method" type="text" placeholder="Metode pemesanan…" />
-            </div>
-          </div>
-        </div>
-
-        <div class="col-span-12 md:col-span-6">
-          <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div class="flex flex-col gap-4">
-              <div>
-                <FormLabel>Toleransi Penyusutan</FormLabel>
-                <div class="relative">
-                  <FormInput v-model="form.toleransi_penyusutan" type="text" inputmode="decimal" placeholder="0"
-                    class="pr-8 text-right" @input="formatDecimalInput(form, 'toleransi_penyusutan', $event)" />
-                  <span class="absolute font-caption right-3 top-2.5">%</span>
-                </div>
-              </div>
-
-              <div>
-                <FormLabel>Abrasi</FormLabel>
-                <FormInput v-model="form.abrasi" type="text" placeholder="Contoh isian: 0-5% atau sesuai kondisi" />
-              </div>
-
-              <div>
-                <CurrencyField v-model="form.refund" label="Refund" />
-              </div>
-
-              <div>
-                <CurrencyField v-model="form.other_cost" label="Other Cost" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </CardSection>
-
-    <!-- Section 4: Perhitungan Harga Dasar -->
-    <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
-      icon-class="bg-emerald-100 text-emerald-600">
-      <div class="overflow-x-auto">
-        <Table bordered sm class="font-body">
-          <Table.Thead class="bg-slate-50">
-            <Table.Tr>
-              <Table.Th class="w-12 font-label text-center">No</Table.Th>
-              <Table.Th class="font-label text-left">Rincian</Table.Th>
-              <Table.Th class="w-60 font-label text-right">Harga (Rp)</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-
-          <Table.Tbody class="bg-white">
-            <Table.Tr>
-              <Table.Td class="text-center text-slate-500">1.</Table.Td>
-              <Table.Td class="text-slate-700">Harga Dasar</Table.Td>
-              <Table.Td>
-                <CurrencyField v-model="form.harga_dasar" />
-              </Table.Td>
-            </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td class="text-center text-slate-500">2.</Table.Td>
-              <Table.Td class="text-slate-700">Ongkos Angkut (OAT per Volume)</Table.Td>
-              <Table.Td>
-                <CurrencyField v-model="form.oat" :error="fieldError('oat')" />
-              </Table.Td>
-            </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td colspan="2" class="font-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
-              <Table.Td class="font-num-lg text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
-            </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td colspan="2" class="font-strong text-right">PPN (11%)</Table.Td>
-              <Table.Td class="font-num-lg text-right">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
-            </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td colspan="2" class="font-header text-right">TOTAL</Table.Td>
-              <Table.Td class="font-num-lg text-right !text-emerald-700">{{
-                formatCurrency(grandTotalHargaDasar) }}</Table.Td>
-            </Table.Tr>
-          </Table.Tbody>
-        </Table>
-      </div>
-    </CardSection>
-
-    <!-- SlideOver: Referensi harga produk untuk periode & cabang terpilih -->
-    <Slideover size="lg" :open="priceRefOpen" @close="priceRefOpen = false">
-      <Slideover.Panel>
-        <a href="#" class="absolute left-0 right-auto top-0 -ml-12 mt-4" @click.prevent="priceRefOpen = false">
-          <Lucide icon="X" class="h-8 w-8 text-slate-400" />
-        </a>
-
-        <Slideover.Title class="p-5">
-          <div class="flex min-w-0 flex-col gap-1">
-            <h2 class="font-header truncate">Referensi Harga Produk</h2>
-            <p class="font-caption truncate">
-              {{ selectedCabangName }} · {{ form.masa_berlaku || '-' }} s/d {{ form.sampai_dengan || '-' }}
-            </p>
-          </div>
-        </Slideover.Title>
-
-        <Slideover.Description class="p-5">
-          <!-- Ringkasan -->
-          <div class="mb-4 flex flex-wrap gap-2">
-            <span class="inline-flex items-center rounded-full bg-slate-100 font-label px-2.5 py-0.5 !text-slate-600">
-              Total {{ priceRefSummary.total }} produk
-            </span>
-            <span
-              class="inline-flex items-center rounded-full bg-emerald-50 font-label px-2.5 py-0.5 !text-emerald-700">
-              {{ priceRefSummary.withPrice }} ada harga
-            </span>
-            <span class="inline-flex items-center rounded-full bg-amber-50 font-label px-2.5 py-0.5 !text-amber-700">
-              {{ priceRefSummary.without }} belum ada
-            </span>
-          </div>
-
-          <!-- Pencarian -->
-          <div class="relative mb-4">
-            <Lucide icon="Search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <FormInput v-model="priceRefSearch" type="text" placeholder="Cari produk / jenis..." class="pl-9" />
-          </div>
-
-          <!-- Daftar -->
-          <div class="overflow-hidden rounded-xl border border-slate-200">
-            <table class="w-full divide-y divide-slate-200">
-              <thead class="bg-slate-50">
-                <tr>
-                  <th class="w-10 px-3 py-2.5 font-label text-center">No</th>
-                  <th class="px-3 py-2.5 font-label text-left">Produk</th>
-                  <th class="px-3 py-2.5 font-label text-right">Harga Price List
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody class="divide-y divide-slate-200 bg-white">
-                <tr v-for="(row, idx) in priceReferenceRows" :key="row.id_produk" class="transition hover:bg-slate-50">
-                  <td class="px-3 py-2.5 font-num text-center">{{ idx + 1 }}</td>
-
-                  <td class="px-3 py-2.5">
-                    <div class="font-strong">
-                      {{ row.nama }}
-                      <span v-if="row.jenis" class="font-body">— {{ row.jenis }}</span>
-                    </div>
-                    <div v-if="row.ukuran" class="font-caption">{{ row.ukuran }}</div>
-                  </td>
-
-                  <td class="px-3 py-2.5 text-right">
-                    <span v-if="row.harga != null" class="font-strong">
-                      {{ formatCurrency(row.harga) }}
-                    </span>
-                    <span v-else
-                      class="inline-flex items-center rounded-full bg-amber-50 font-label px-2 py-0.5 !text-amber-600">
-                      Belum ada harga
-                    </span>
-                  </td>
-                </tr>
-
-                <tr v-if="priceReferenceRows.length === 0">
-                  <td colspan="3" class="px-3 py-8 font-body text-center">
-                    Tidak ada produk yang cocok dengan pencarian.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Slideover.Description>
-      </Slideover.Panel>
-    </Slideover>
-
-    <!-- Sidebar: Catatan & Syarat Ketentuan -->
-    <template #sidebar>
-      <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
-        icon-class="bg-rose-100 text-rose-600">
-        <div class="space-y-4">
-          <div>
-            <FormLabel>Catatan</FormLabel>
-            <FormTextarea v-model="form.catatan" :rows="3" placeholder="Catatan tambahan…" />
-          </div>
-
-          <div>
-            <FormLabel>Syarat & Ketentuan</FormLabel>
-            <FormTextarea v-model="form.syarat_ketentuan" :rows="5" placeholder="Syarat dan ketentuan…" />
-          </div>
-        </div>
-      </CardSection>
-    </template>
   </FormPage>
 </template>
