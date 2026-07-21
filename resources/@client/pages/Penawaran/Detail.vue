@@ -29,7 +29,6 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
     editRoute: 'penawarans-edit',
-    editRoute: 'penawarans-edit',
     title: 'Detail Penawaran',
     description: 'Informasi lengkap penawaran dan status verifikasi.',
   },
@@ -531,7 +530,7 @@ function formatNumber(v: number | string = 0) {
                     <div class="flex items-start justify-between">
                       <dt class="font-label">TOTAL</dt>
                       <dd class="font-num-lg text-xl mt-1 !text-emerald-700">{{ formatCurrency(grandTotalHargaDasar)
-                      }}</dd>
+                        }}</dd>
                     </div>
                   </div>
                 </dl>
