@@ -25,7 +25,11 @@ class CustomerController extends Controller
         }
 
         $q = Customer::query()
-            ->with(['user', 'provinsi', 'kabupaten', 'cabang'])
+            // 'province'/'regency'/'district'/'village' ditambahkan di
+            // samping 'provinsi'/'kabupaten' lama (laravel-nusa-address-
+            // full-migration Task 7) — lama tetap dieager-load, tidak
+            // dihapus.
+            ->with(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'cabang'])
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as jumlah_penawaran']);
 
@@ -174,7 +178,7 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json($customer->load(['user', 'provinsi', 'kabupaten']));
+        return response()->json($customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village']));
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer)

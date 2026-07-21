@@ -35,6 +35,6 @@ export function formatCurrency(value?: number | string | null): string {
 }
 
 export function formatNumber(v: number | string = 0) {
-  const n = typeof v === "string" ? parseFloat(v) : v;
+  const n = typeof v === "string" ? parseFloat(v) : (v ?? 0);
   return !isNaN(n) ? n.toLocaleString("id-ID") : "-";
 }

@@ -472,8 +472,17 @@ class CustomerVerificationController extends Controller
     // GET /api/verify/{token}  (PUBLIC – dipakai form)
     public function showByToken(string $token)
     {
+        // province_id/regency_id/district_id/village_id + relasi baru
+        // ditambahkan di samping id_provinsi/id_kabupaten lama
+        // (laravel-nusa-address-full-migration Task 7) — dipakai untuk
+        // prefill dropdown alamat baru di FE (Task 8) kalau customer sudah
+        // punya data hasil migrasi (Task 5).
         $row = CustomerVerification::with([
-            'customer:id_customer,nama_perusahaan,id_provinsi,id_kabupaten,postal_code,telepon,fax,email,alamat_perusahaan'
+            'customer:id_customer,nama_perusahaan,id_provinsi,id_kabupaten,province_id,regency_id,district_id,village_id,postal_code,telepon,fax,email,alamat_perusahaan,kecamatan_customer,kelurahan_customer',
+            'customer.province',
+            'customer.regency',
+            'customer.district',
+            'customer.village',
         ])->where('token_verification', $token)->firstOrFail();
 
         // Tentukan status lifecycle token. Tidak menolak/error untuk status
@@ -770,6 +779,16 @@ class CustomerVerificationController extends Controller
             return is_numeric($v) ? (int)$v : null;
         };
         $boolToInt = fn($v) => $v ? 1 : 0;
+        // (laravel-nusa-address-full-migration Task 7) helper utk kolom
+        // baru province_id/regency_id/district_id/village_id — kode BPS
+        // adalah string (mis. "36.71"), bukan integer, jadi tidak lewat
+        // $intOrNull. Trim string kosong -> null supaya tidak menabrak FK
+        // constraint kalau frontend belum kirim (Task 8 blm cutover).
+        $strOrNull = function ($v) {
+            if ($v === null) return null;
+            $v = trim((string) $v);
+            return $v === '' ? null : $v;
+        };
 
         // mapping kode yg kolomnya bertipe integer
         $mapTipeBisnis = [
@@ -849,6 +868,7 @@ class CustomerVerificationController extends Controller
             $lg,
             $agreement,
             $intOrNull,
+            $strOrNull,
             $boolToInt,
             $tipeBisnisCode,
             $ownershipCode,
@@ -866,40 +886,69 @@ class CustomerVerificationController extends Controller
             $logistik
         ) {
             // ---------- customers ----------
+            $customersUpdate = [
+                'nama_perusahaan'       => Arr::get($corp, 'nama'),
+                'alamat_perusahaan'     => Arr::get($corp, 'alamat'),
+
+                'id_provinsi'           => $intOrNull(Arr::get($corp, 'id_provinsi')),
+                'id_kabupaten'          => $intOrNull(Arr::get($corp, 'id_kabupaten')),
+                'postal_code'           => Arr::get($corp, 'postal_code'),
+
+                'telepon'               => Arr::get($corp, 'telepon'),
+                'fax'                   => Arr::get($corp, 'fax'),
+                'email'                 => Arr::get($corp, 'email'),
+                'website_customer'      => Arr::get($corp, 'website'),
+
+                'tipe_bisnis'           => $tipeBisnisCode, // smallint
+                'tipe_bisnis_lain'      => Arr::get($corp, 'tipe_bisnis_lain'),
+                'ownership'             => $ownershipCode,  // smallint
+                'ownership_lain'        => Arr::get($corp, 'ownership_lain'),
+                'induk_perusahaan'      => Arr::get($corp, 'holding'),
+
+                // (Redesain CustomerUpdateForm, 2026-07-13) NIB
+                // menggantikan SIUP/TDP — reuse pola Arr::get() yang
+                // sama seperti field corporate lain di atas.
+                'nib'                   => Arr::get($corp, 'nib_number'),
+                'nib_file'              => Arr::get($corp, 'nib_file'),
+
+                'lastupdate_time'       => now(),
+                'lastupdate_by'         => Arr::get($agreement ?? [], 'updated_by'),
+                'count_update'          => DB::raw('COALESCE(count_update,0)+1'),
+            ];
+
+            // (laravel-nusa-address-full-migration Task 7) kolom baru
+            // province_id/regency_id/district_id/village_id — HANYA ditulis
+            // kalau payload benar-benar mengirim key-nya. Frontend lama
+            // (belum di-cutover Task 8) tidak mengirim key ini sama sekali,
+            // jadi ini menghindari menimpa data hasil migrasi Task 5 dengan
+            // NULL setiap kali customer submit ulang form lama.
+            foreach (['province_id', 'regency_id', 'district_id', 'village_id'] as $addrKey) {
+                if (Arr::has($corp, $addrKey)) {
+                    $customersUpdate[$addrKey] = $strOrNull(Arr::get($corp, $addrKey));
+                }
+            }
+
+            // (laravel-nusa-address-full-migration Task 8 hotfix) sama seperti
+            // guard province_id/regency_id/district_id/village_id di atas —
+            // frontend baru (CustomerUpdateForm setelah Task 8) sudah tidak
+            // lagi mengirim key kecamatan/kelurahan sama sekali (diganti
+            // dropdown district_id/village_id), jadi kalau ditulis tanpa
+            // guard, Arr::get() akan selalu null dan MENGHAPUS data teks lama
+            // yang masih dipakai Task 4 (fuzzy match) & koreksi manual gap
+            // customer (id 5, 6, 73) setiap kali form disubmit ulang.
+            // HANYA ditulis kalau payload benar-benar mengirim key-nya, biar
+            // tetap backward compatible untuk caller lama yang masih kirim
+            // kecamatan/kelurahan teks bebas.
+            if (Arr::has($corp, 'kecamatan')) {
+                $customersUpdate['kecamatan_customer'] = Arr::get($corp, 'kecamatan');
+            }
+            if (Arr::has($corp, 'kelurahan')) {
+                $customersUpdate['kelurahan_customer'] = Arr::get($corp, 'kelurahan');
+            }
+
             DB::table('customers')
                 ->where('id_customer', $cv->id_customer)
-                ->update([
-                    'nama_perusahaan'       => Arr::get($corp, 'nama'),
-                    'alamat_perusahaan'     => Arr::get($corp, 'alamat'),
-
-                    'id_provinsi'           => $intOrNull(Arr::get($corp, 'id_provinsi')),
-                    'id_kabupaten'          => $intOrNull(Arr::get($corp, 'id_kabupaten')),
-                    'postal_code'           => Arr::get($corp, 'postal_code'),
-
-                    'telepon'               => Arr::get($corp, 'telepon'),
-                    'fax'                   => Arr::get($corp, 'fax'),
-                    'email'                 => Arr::get($corp, 'email'),
-                    'website_customer'      => Arr::get($corp, 'website'),
-
-                    'tipe_bisnis'           => $tipeBisnisCode, // smallint
-                    'tipe_bisnis_lain'      => Arr::get($corp, 'tipe_bisnis_lain'),
-                    'ownership'             => $ownershipCode,  // smallint
-                    'ownership_lain'        => Arr::get($corp, 'ownership_lain'),
-                    'induk_perusahaan'      => Arr::get($corp, 'holding'),
-
-                    'kecamatan_customer'    => Arr::get($corp, 'kecamatan'),
-                    'kelurahan_customer'    => Arr::get($corp, 'kelurahan'),
-
-                    // (Redesain CustomerUpdateForm, 2026-07-13) NIB
-                    // menggantikan SIUP/TDP — reuse pola Arr::get() yang
-                    // sama seperti field corporate lain di atas.
-                    'nib'                   => Arr::get($corp, 'nib_number'),
-                    'nib_file'              => Arr::get($corp, 'nib_file'),
-
-                    'lastupdate_time'       => now(),
-                    'lastupdate_by'         => Arr::get($agreement ?? [], 'updated_by'),
-                    'count_update'          => DB::raw('COALESCE(count_update,0)+1'),
-                ]);
+                ->update($customersUpdate);
 
             // ---------- customer_contacts ----------
             DB::table('customer_contacts')->updateOrInsert(
@@ -936,8 +985,6 @@ class CustomerVerificationController extends Controller
                 'payment_method_other'   => Arr::get($pay, 'payment_method_other'),
                 'invoice'                => $boolToInt(Arr::get($pay, 'invoice_tax')),
                 'ket_extra'              => Arr::get($pay, 'note'),
-                'kecamatan_billing'      => Arr::get($corp, 'kecamatan'),
-                'kelurahan_billing'      => Arr::get($corp, 'kelurahan'),
 
                 'calculate_method'       => Arr::get($pay, 'pricing_method'),
                 'bank_name'              => Arr::get($pay, 'bank_name'),
@@ -950,6 +997,41 @@ class CustomerVerificationController extends Controller
             // FK jangan diisi 0 → jika null, hapus supaya tak menabrak constraint NOT NULL
             if (is_null($payUpdate['prov_billing'])) unset($payUpdate['prov_billing']);
             if (is_null($payUpdate['kab_billing']))  unset($payUpdate['kab_billing']);
+
+            // (laravel-nusa-address-full-migration Task 7) kolom baru
+            // province_id/regency_id di customer_payment — sumber dari $reg
+            // (registered address), sama seperti prov_billing/kab_billing
+            // di atas. district_id/village_id dari $corp. HANYA ditulis
+            // kalau payload mengirim key-nya — frontend lama (belum
+            // di-cutover Task 8) tidak mengirim key ini, jadi ini
+            // menghindari menimpa data hasil migrasi Task 5 dengan NULL
+            // setiap kali form lama disubmit ulang. (Task 8 hotfix di bawah
+            // menerapkan guard yang sama untuk kecamatan_billing/
+            // kelurahan_billing, yang sebelumnya masih ditulis tanpa guard.)
+            if (Arr::has($reg, 'province_id')) {
+                $payUpdate['province_id'] = $strOrNull(Arr::get($reg, 'province_id'));
+            }
+            if (Arr::has($reg, 'regency_id')) {
+                $payUpdate['regency_id'] = $strOrNull(Arr::get($reg, 'regency_id'));
+            }
+            if (Arr::has($corp, 'district_id')) {
+                $payUpdate['district_id'] = $strOrNull(Arr::get($corp, 'district_id'));
+            }
+            if (Arr::has($corp, 'village_id')) {
+                $payUpdate['village_id'] = $strOrNull(Arr::get($corp, 'village_id'));
+            }
+
+            // (laravel-nusa-address-full-migration Task 8 hotfix) kecamatan_billing/
+            // kelurahan_billing mengikuti pola kecamatan_customer/kelurahan_customer
+            // di atas — HANYA ditulis kalau payload corporate benar-benar mengirim
+            // key kecamatan/kelurahan. Frontend baru tidak lagi mengirim key ini,
+            // jadi tanpa guard ini kolom akan NULL setiap kali form disubmit ulang.
+            if (Arr::has($corp, 'kecamatan')) {
+                $payUpdate['kecamatan_billing'] = Arr::get($corp, 'kecamatan');
+            }
+            if (Arr::has($corp, 'kelurahan')) {
+                $payUpdate['kelurahan_billing'] = Arr::get($corp, 'kelurahan');
+            }
 
             DB::table('customer_payment')->updateOrInsert(
                 ['id_customer' => $cv->id_customer],

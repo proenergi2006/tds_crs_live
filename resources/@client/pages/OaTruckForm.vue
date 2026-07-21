@@ -16,7 +16,7 @@
             <FormSelect v-model="form.id_angkut_wilayah">
               <option value="">Pilih</option>
               <option v-for="w in wilayahs" :key="w.id" :value="w.id">
-                {{ w.provinsi?.nama_provinsi }} - {{ w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name || w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
               </option>
             </FormSelect>
           </div>
