@@ -178,7 +178,10 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json($customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village']));
+        $customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'latestVerification']);
+        $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
+
+        return response()->json($customer);
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer)

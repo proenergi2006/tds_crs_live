@@ -9,19 +9,13 @@ export const customerNavigation: NavItem[] = [
         icon: "User",
         pageName: "customers-list",
         title: "Customer",
-        activePageNames: ["customers-create", "customers-edit"],
+        activePageNames: [
+          "customer-detail",
+          "customers-create",
+          "customers-edit",
+        ],
         permission: "customer.viewOwn",
       },
-      // {
-      //   icon: "User",
-      //   pageName: "customers-list-proenergi",
-      //   title: "Customer (Proenergi)",
-      //   activePageNames: [
-      //     "customers-create-proenergi",
-      //     "customers-edit-proenergi",
-      //   ],
-      //   permission: "penawaran.proenergi.manage",
-      // },
       {
         icon: "File",
         pageName: "penawarans-list",
@@ -33,17 +27,6 @@ export const customerNavigation: NavItem[] = [
         ],
         permission: "penawaran.viewOwn",
       },
-      // {
-      //   icon: "File",
-      //   pageName: "penawarans-list-proenergi",
-      //   title: "Quotation (Proenergi)",
-      //   activePageNames: [
-      //     "penawarans-create-proenergi",
-      //     "penawarans-edit-proenergi",
-      //     "penawarans-detail-proenergi",
-      //   ],
-      //   permission: "penawaran.proenergi.manage",
-      // },
       {
         icon: "ShoppingCart",
         pageName: "po-customers-index",
@@ -59,29 +42,4 @@ export const customerNavigation: NavItem[] = [
       },
     ],
   },
-  // {
-  //   icon: "UserPlus",
-  //   title: "Customer Onboarding",
-  //   subMenu: [
-  //     {
-  //       icon: "Link2",
-  //       pageName: "link-customers",
-  //       title: "Link Customers",
-  //       permission: "customer.manage",
-  //     },
-  //     {
-  //       icon: "File",
-  //       pageName: "review-data-customer",
-  //       title: "Review Data Customer",
-  //       activePageNames: ["review-customer-detail"],
-  //       permission: "verification.customer",
-  //     },
-  //     {
-  //       icon: "CheckSquare",
-  //       pageName: "customer-verifications",
-  //       title: "Daftar Verifikasi Customer",
-  //       permission: "customer.viewOwn",
-  //     },
-  //   ],
-  // },
 ];

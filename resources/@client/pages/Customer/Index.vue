@@ -15,6 +15,7 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { copyToClipboard } from '@/utils/clipboard'
+import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
 type VerificationTab = 'all' | 'verified' | 'unverified'
 
@@ -139,8 +140,8 @@ function openCreatePenawaran(id: number) {
   router.push({ name: routeName, query: { customer_id: id } })
 }
 
-function openReview(idVerification: number) {
-  router.push({ name: 'review-customer-detail', params: { id: idVerification } })
+function openReview(idCustomer: number) {
+  router.push({ name: 'customer-detail', params: { id: idCustomer } })
 }
 
 async function generateLink(item: any) {
@@ -301,7 +302,7 @@ function getVerificationBadgeClass(badge?: string) {
           <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">LCR</Table.Th>
           <Table.Th class="text-center">Quotations</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
+          <Table.Th class="text-center w-[160px]">Aksi</Table.Th>
         </template>
 
         <template #body>
@@ -369,11 +370,10 @@ function getVerificationBadgeClass(badge?: string) {
                   @click="openCustomerLink(item)">
                   <Lucide icon="ExternalLink" class="h-4 w-4" />
                 </Button>
-                <Button v-else-if="item.verification_badge === 'perlu_direview'" variant="soft-info" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Verifikasi Marketing"
-                  @click="openReview(item.latest_verification.id_verification)">
+                <ExtendableButton v-else-if="item.verification_badge === 'perlu_direview'" variant="soft-info" rounded
+                  label="Verifikasi" @click="openReview(item.id_customer)">
                   <Lucide icon="ClipboardCheck" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
               </div>
             </Table.Td>
           </Table.Tr>

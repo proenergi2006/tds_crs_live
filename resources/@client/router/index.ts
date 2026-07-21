@@ -254,6 +254,13 @@ const routes = [
         meta: { permission: "customer.manage" },
       },
       {
+        path: "customers/:id",
+        name: "customer-detail",
+        component: () => import("@/pages/Customer/Detail.vue"),
+        props: true,
+        meta: { permission: "customer.viewOwn" },
+      },
+      {
         path: "customers-proenergi/:id/edit",
         name: "customers-edit-proenergi",
         component: () => import("@/pages/Customer/Form.vue"),

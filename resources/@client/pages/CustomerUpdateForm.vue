@@ -1542,7 +1542,7 @@ async function save() {
 
     await axios.put(`/api/verify/${token}`, payload)
     success('Tersimpan', 'Data verifikasi berhasil disimpan.')
-    router.push({ name: 'customer-verifications' })
+    tokenStatus.value = 'used'
   } catch (e: any) {
     error('Gagal', e?.response?.data?.message || 'Gagal menyimpan')
   } finally {

@@ -1245,13 +1245,18 @@ class CustomerVerificationController extends Controller
 
     public function reviewShow(int $id)
     {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $user = auth()->user();
 
         $cv = CustomerVerification::with([
             'customer:id_customer,nama_perusahaan,alamat_perusahaan,telepon,fax,email'
         ])->findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         return response()->json([
             'customer'     => $cv->customer,
@@ -1285,11 +1290,16 @@ class CustomerVerificationController extends Controller
      */
     public function approvalTimeline(int $id)
     {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $user = auth()->user();
 
         $cv = CustomerVerification::findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $cycles = $cv->documentApprovals()
             ->with([
@@ -1532,7 +1542,14 @@ class CustomerVerificationController extends Controller
 
     public function getReview(int $id)
     {
-        if (auth()->user()->cant('verification.customer')) {
+        $user = auth()->user();
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1559,7 +1576,14 @@ class CustomerVerificationController extends Controller
 
     public function saveReview(Request $r, int $id)
     {
-        if ($r->user()->cant('verification.customer')) {
+        $user = $r->user();
+
+        $cv = CustomerVerification::select('id_verification', 'id_customer')->findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1610,7 +1634,6 @@ class CustomerVerificationController extends Controller
         if (!is_null($rawCL)) {
             $creditLimit = (int) preg_replace('/\D+/', '', (string) $rawCL);
         }
-        $cv = CustomerVerification::select('id_verification', 'id_customer')->findOrFail($id);
 
         // (CA4, pivot 2026-07-10) Guard eksplisit terhadap double-forward:
         // saveReview() sekarang JUGA berperan sebagai titik pembuatan siklus
@@ -1688,7 +1711,14 @@ class CustomerVerificationController extends Controller
 
     public function uploadReviewAttachment(Request $r, int $id)
     {
-        if ($r->user()->cant('verification.customer')) {
+        $user = $r->user();
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -1739,7 +1769,14 @@ class CustomerVerificationController extends Controller
 
     public function deleteReviewAttachment(int $id, int $no)
     {
-        if (auth()->user()->cant('verification.customer')) {
+        $user = auth()->user();
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        $allowed = $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+
+        if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
