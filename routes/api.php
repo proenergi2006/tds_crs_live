@@ -227,7 +227,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
     Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
-    Route::patch('review/customer-verifications/{id}/approve', [CustomerVerificationController::class, 'approve'])->whereNumber('id');
+    // (Fase 0 / Task F0-C) route 'approve' DIHAPUS -- method-nya sudah
+    // dihapus total (dead code, nol pemakaian FE, menulis disposisi_result
+    // yang sudah di-drop F0-B). Lihat CustomerVerificationController.php.
 
     // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
     Route::get('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
@@ -242,7 +244,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('review/admin')->group(function () {
         Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
         Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-        Route::patch('/customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi'])->whereNumber('id');
+        // (Fase 0 / Task F0-C) route 'set-disposisi' DIHAPUS -- method-nya
+        // sudah dihapus total (dead code, nol pemakaian FE, menulis
+        // disposisi_result yang sudah di-drop F0-B). Lihat
+        // CustomerVerificationController.php.
 
         // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
         Route::prefix('review/customer-verifications')->group(function () {
@@ -259,7 +264,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-        Route::patch('customer-verifications/{id}/set-disposisi', [CustomerVerificationController::class, 'setDisposisi']);
+        // (Fase 0 / Task F0-C) route 'set-disposisi' DIHAPUS -- lihat catatan
+        // di grup review/admin di atas (method sudah dihapus total).
         // simpan verifikasi BM
         Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
     });

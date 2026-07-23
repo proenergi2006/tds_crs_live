@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
@@ -25,10 +26,6 @@ class CustomerController extends Controller
         }
 
         $q = Customer::query()
-            // 'province'/'regency'/'district'/'village' ditambahkan di
-            // samping 'provinsi'/'kabupaten' lama (laravel-nusa-address-
-            // full-migration Task 7) — lama tetap dieager-load, tidak
-            // dihapus.
             ->with(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'cabang'])
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as jumlah_penawaran']);
@@ -48,22 +45,17 @@ class CustomerController extends Controller
 
         $tabCounts = [
             'all'        => (clone $baseQuery)->count(),
-            'verified'   => (clone $baseQuery)->where('is_verified', 1)->count(),
-            'unverified' => (clone $baseQuery)->where('is_verified', 0)->count(),
+            'verified'   => 0,
+            'unverified' => 0,
         ];
 
         $tab = $request->query('tab', 'all');
-        if ($tab === 'verified') {
-            $q->where('is_verified', 1);
-        } elseif ($tab === 'unverified') {
-            $q->where('is_verified', 0);
-        }
 
         if ($request->boolean('as_list')) {
             return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
         }
 
-        $q->with('latestVerification');
+        $q->with('latestVerification.latestDocumentApproval.steps');
 
         $perPage = min((int) $request->query('per_page', 10), 100);
 
@@ -81,36 +73,38 @@ class CustomerController extends Controller
 
     private function resolveVerificationBadge(Customer $customer): string
     {
-        if ((int) $customer->is_verified === 1) {
-            return 'verified';
-        }
-
         $latest = $customer->latestVerification;
 
         if (!$latest || (int) ($customer->is_generated_link ?? 0) === 0) {
             return 'belum_ada_link';
         }
 
+        $latestCycle = $latest->latestDocumentApproval;
+
+        if ($latestCycle?->status === DocumentApprovalStatus::Approved) {
+            return 'verified';
+        }
+
         $isExpired = $latest->expired_at !== null && $latest->expired_at->lte(now());
 
-        if (!$latest->is_evaluated && !$isExpired) {
+        if (!$latest->is_submitted && !$isExpired) {
             return 'menunggu_customer';
         }
 
-        if (!$latest->is_evaluated && $isExpired) {
+        if (!$latest->is_submitted && $isExpired) {
             return 'link_kedaluwarsa';
         }
 
-        if ($latest->is_evaluated && !$latest->is_reviewed) {
+        if ($latest->is_submitted && !$latest->is_forwarded) {
             return 'perlu_direview';
         }
 
-        if ($latest->is_reviewed && in_array((int) $latest->disposisi_result, [1, 2, 3, 4], true)) {
-            return 'proses_internal';
+        if ($latestCycle?->status === DocumentApprovalStatus::Rejected) {
+            return 'ditolak';
         }
 
-        if ((int) $latest->disposisi_result === 5 && !$latest->is_approved) {
-            return 'ditolak';
+        if ($latest->is_forwarded && $latestCycle?->status === DocumentApprovalStatus::InProgress) {
+            return 'proses_internal';
         }
 
         return 'belum_ada_link';
@@ -123,26 +117,13 @@ class CustomerController extends Controller
         }
 
         return [
-            'id_verification'  => $verification->id_verification,
-            'disposisi_result' => (int) $verification->disposisi_result,
-            'is_evaluated'     => (bool) $verification->is_evaluated,
-            'is_reviewed'      => (bool) $verification->is_reviewed,
-            'is_active'        => (bool) $verification->is_active,
-            'expired_at'       => optional($verification->expired_at)->toISOString(),
-            'stage_label'      => $this->stageLabel((int) $verification->disposisi_result),
+            'id_verification' => $verification->id_verification,
+            'is_submitted'    => (bool) $verification->is_submitted,
+            'is_forwarded'    => (bool) $verification->is_forwarded,
+            'is_active'       => (bool) $verification->is_active,
+            'expired_at'      => optional($verification->expired_at)->toISOString(),
+            'stage_label'     => $verification->stageLabel(),
         ];
-    }
-
-    private function stageLabel(int $disposisiResult): string
-    {
-        return match ($disposisiResult) {
-            0 => 'Marketing/Draft',
-            1 => 'Admin',
-            2 => 'Logistik',
-            3 => 'BM',
-            4 => 'OM',
-            default => '-',
-        };
     }
 
     public function store(StoreCustomerRequest $request)
@@ -178,7 +159,7 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'latestVerification']);
+        $customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'latestVerification.latestDocumentApproval.steps']);
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
 
         return response()->json($customer);

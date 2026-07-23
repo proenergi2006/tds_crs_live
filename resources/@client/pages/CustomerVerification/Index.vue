@@ -11,25 +11,6 @@ import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
-/* Section: label & badge untuk disposisi_result (kolom lama, tetap dipakai
-   sebagai indikator status tampilan karena belum ada endpoint ringkasan
-   status approval per-row di list ini — lihat gap timeline di Detail page) */
-const DISPOSISI_LABEL: Record<number, string> = {
-  0: 'Draft / Belum Diforward',
-  1: 'Menunggu Admin Finance',
-  2: 'Diproses Admin Finance',
-  3: 'Ditolak BM',
-  4: 'Disetujui BM',
-}
-
-const DISPOSISI_BADGE: Record<number, string> = {
-  0: 'bg-slate-100 text-slate-700',
-  1: 'bg-amber-100 text-amber-700',
-  2: 'bg-blue-100 text-blue-700',
-  3: 'bg-rose-100 text-rose-700',
-  4: 'bg-emerald-100 text-emerald-700',
-}
-
 const { error } = useNotification()
 const api = createResourceApi('/customer-verifications')
 
@@ -68,13 +49,16 @@ function goToPage(page: number) {
   fetchData(page)
 }
 
-function disposisiLabel(v: any) {
-  return DISPOSISI_LABEL[Number(v) || 0] ?? '-'
-}
-
-function disposisiBadgeClass(v: any) {
-  return DISPOSISI_BADGE[Number(v) || 0] ?? 'bg-slate-100 text-slate-700'
-}
+/* TODO: badge status verifikasi (Fase 0 F0-D) — SEMENTARA dihilangkan dari
+   render (bukan cuma disederhanakan). `disposisi_result` (kolom lama) sudah
+   di-drop backend (F0-B/F0-C) dan endpoint ini (GET /api/customer-verifications,
+   CustomerVerificationController::index()) BELUM expose field pengganti yang
+   layak (stage_label/verification_badge per row) — beda dengan GET
+   /api/customers yang sudah expose itu. Kolom "Status" dipertahankan di tabel
+   (placeholder "-" statis) supaya layout tidak berubah, tapi jangan
+   di-render dari `is_forwarded` lagi (versi kasar sebelumnya sudah dicabut)
+   sampai backend menambahkan field status yang benar-benar mewakili siklus
+   approval untuk list ini. */
 
 onMounted(() => fetchData())
 
@@ -134,8 +118,10 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-3 py-1" :class="disposisiBadgeClass(row.disposisi_result)">
-                {{ disposisiLabel(row.disposisi_result) }}
+              <!-- TODO: menunggu backend expose stage_label/verification_badge
+                   per row di endpoint ini — lihat komentar di script -->
+              <span class="font-label inline-flex items-center rounded-full px-3 py-1 bg-slate-100 text-slate-500">
+                -
               </span>
             </Table.Td>
 

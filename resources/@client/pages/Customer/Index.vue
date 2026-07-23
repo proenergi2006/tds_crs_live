@@ -72,9 +72,13 @@ function canManageRow(item: any) {
   )
 }
 
-/* Computed: summary cards (Proenergi only) */
-const totalProspect = computed(() => customers.value.filter(c => c.status_customer === 1).length)
-const totalTetap = computed(() => customers.value.filter(c => c.status_customer === 2).length)
+/* Computed: summary cards (Proenergi only)
+   TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
+   di-drop dari `customers` (F0-A) dan tidak lagi ada di response API.
+   totalProspect/totalTetap DIHAPUS (bukan sekadar dikosongkan) karena tidak
+   dipakai di manapun lagi di file ini — card-nya sudah placeholder "-" statis
+   di template. Kalau nanti disambungkan lagi ke customer_status (Fase 7),
+   tambahkan ulang computed serupa yang membaca field baru itu. */
 const totalPenawaran = computed(() =>
   customers.value.reduce((sum, c) => sum + Number(c.jumlah_penawaran ?? 0), 0)
 )
@@ -209,17 +213,13 @@ async function submitDelete() {
   }
 }
 
-function getStatusLabel(status?: number) {
-  if (status === 1) return 'Prospect'
-  if (status === 2) return 'Tetap'
-  return '-'
-}
-
-function getStatusClass(status?: number) {
-  if (status === 1) return 'bg-amber-100 text-amber-700'
-  if (status === 2) return 'bg-emerald-100 text-emerald-700'
-  return 'bg-slate-100 text-slate-500'
-}
+/* TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
+   di-drop dari `customers` (F0-A) dan tidak ada lagi di response API.
+   getStatusLabel/getStatusClass DIHAPUS (bukan sekadar dikosongkan) karena
+   tidak dipakai di manapun lagi di file ini — badge kolom "Status" di tabel
+   sudah placeholder "-" statis di template. Kalau nanti disambungkan lagi ke
+   customer_status (Fase 7), tambahkan ulang function serupa yang membaca
+   field baru itu. */
 
 function getVerificationBadgeLabel(item: any) {
   switch (item.verification_badge) {
@@ -267,13 +267,15 @@ function getVerificationBadgeClass(badge?: string) {
           <div class="font-label">Total Customer</div>
           <div class="font-num-display mt-1">{{ totalRecords }}</div>
         </div>
+        <!-- TODO: wire ke customer_status setelah Fase 7 — status_customer
+             sudah di-drop dari API, ditampilkan sebagai placeholder sementara -->
         <div class="box p-4">
           <div class="font-label">Prospect</div>
-          <div class="font-num-display mt-1 !text-amber-600">{{ totalProspect }}</div>
+          <div class="font-num-display mt-1 text-slate-300" title="Belum tersedia — akan disambungkan ke customer_status">-</div>
         </div>
         <div class="box p-4">
           <div class="font-label">Customer Tetap</div>
-          <div class="font-num-display mt-1 !text-emerald-600">{{ totalTetap }}</div>
+          <div class="font-num-display mt-1 text-slate-300" title="Belum tersedia — akan disambungkan ke customer_status">-</div>
         </div>
         <div class="box p-4">
           <div class="font-label">Total Penawaran</div>
@@ -325,9 +327,10 @@ function getVerificationBadgeClass(badge?: string) {
               <div class="font-caption mt-0.5">Fax: {{ item.fax || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-                :class="getStatusClass(item.status_customer)">
-                {{ getStatusLabel(item.status_customer) }}
+              <!-- TODO: wire ke customer_status setelah Fase 7 — status_customer
+                   sudah di-drop dari API, badge ini placeholder sementara -->
+              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-slate-100 text-slate-500">
+                -
               </span>
             </Table.Td>
             <Table.Td class="text-center">

@@ -1536,8 +1536,8 @@ async function save() {
         logistic: form.logistic,
         supply: form.supply
       }),
-      is_reviewed: 0,
-      is_evaluated: 0
+      is_forwarded: 0,
+      is_submitted: 0
     }
 
     await axios.put(`/api/verify/${token}`, payload)

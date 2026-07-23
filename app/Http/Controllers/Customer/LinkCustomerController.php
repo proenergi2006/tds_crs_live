@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\CustomerVerification;
@@ -62,12 +63,14 @@ class LinkCustomerController extends Controller
         if ($existing) {
             $isExpired = $existing->expired_at !== null && $existing->expired_at->lte(now());
 
-            // Verifikasi yang sudah DITOLAK (disposisi_result=5 & is_approved
-            // falsy) tetap is_active=1 dan belum tentu expired — kalau di-reuse
-            // apa adanya, generate() akan mengembalikan token LAMA yang sudah
-            // ditolak alih-alih memulai siklus verifikasi baru. Perlakukan
-            // sama seperti expired: jangan reuse.
-            $isRejected = (int) $existing->disposisi_result === 5 && !$existing->is_approved;
+            // Verifikasi yang sudah DITOLAK (siklus approval generik
+            // document_approvals berstatus Rejected) tetap is_active=1 dan
+            // belum tentu expired — kalau di-reuse apa adanya, generate() akan
+            // mengembalikan token LAMA yang sudah ditolak alih-alih memulai
+            // siklus verifikasi baru. Perlakukan sama seperti expired: jangan
+            // reuse. (disposisi_result/is_approved lama sudah di-drop F0-B —
+            // sumber kebenaran sekarang latestDocumentApproval()'s status.)
+            $isRejected = $existing->latestDocumentApproval?->status === DocumentApprovalStatus::Rejected;
 
             if (!$isExpired && !$isRejected) {
                 if ((int)($customer->is_generated_link ?? 0) === 0) {
@@ -101,8 +104,8 @@ class LinkCustomerController extends Controller
         $cv = CustomerVerification::create([
             'id_customer'        => $customer->id_customer,
             'token_verification' => $token,
-            'is_evaluated'       => 0,
-            'is_reviewed'        => 0,
+            'is_submitted'       => 0,
+            'is_forwarded'       => 0,
             'is_active'          => 1,
             'expired_at'         => now()->addDays(7),
 
@@ -124,30 +127,6 @@ class LinkCustomerController extends Controller
             'logistik_tgl_proses'=> null,
             'logistik_pic'       => '',
 
-            'sm_summary'         => '',
-            'sm_result'          => 0,
-            'sm_tgl_proses'      => null,
-            'sm_pic'             => '',
-
-            'om_summary'         => '',
-            'om_result'          => 0,
-            'om_tgl_proses'      => null,
-            'om_pic'             => '',
-
-            'cfo_summary'        => '',
-            'cfo_result'         => 0,
-            'cfo_tgl_proses'     => null,
-            'cfo_pic'            => '',
-
-            'ceo_summary'        => '',
-            'ceo_result'         => 0,
-            'ceo_tgl_proses'     => null,
-            'ceo_pic'            => '',
-
-            'disposisi_result'   => 0,
-            'is_approved'        => 0,
-            'role_approve'       => null,
-            'tanggal_approved'   => null,
             'jenis_datanya'      => 0,
             'finance_data_kyc'   => null,
         ]);
