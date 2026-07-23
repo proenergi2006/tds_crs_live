@@ -12,6 +12,7 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
+import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -49,6 +50,28 @@ interface DocumentRowState {
   editing: boolean
   uploading: boolean
   error: string
+}
+
+/* Type: kontak customer (customer_contact_types + customer_contacts), Tab 1 */
+interface CustomerContactType {
+  id: number
+  code: string
+  name: string
+  is_active: boolean
+}
+interface CustomerContactRecord {
+  id: number
+  id_customer: number
+  id_contact_type: number
+  contact_type: { id: number; code: string; name: string } | null
+  id_lcr: number | null
+  full_name: string
+  position: string | null
+  phone: string | null
+  mobile: string | null
+  email: string | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 const route = useRoute()
@@ -90,6 +113,34 @@ const documentRowState = reactive<Record<number, DocumentRowState>>({})
 const deleteDocumentDialogOpen = ref(false)
 const deleteDocumentTarget = ref<CustomerDocumentRecord | null>(null)
 const deleteDocumentLoading = ref(false)
+
+/* State: Tab 1 — Kontak Customer (customer_contact_types + customer_contacts) */
+const contactTypesApi = createResourceApi('/customer-contact-types')
+const customerContactsApi = createResourceApi(`/customers/${idCustomer}/contacts`)
+
+const contactTypesLoading = ref(true)
+const contactsLoading = ref(true)
+const contactTypes = ref<CustomerContactType[]>([])
+const customerContacts = ref<CustomerContactRecord[]>([])
+
+const contactFormOpen = ref(false)
+const contactFormMode = ref<'create' | 'edit'>('create')
+const contactFormSaving = ref(false)
+const contactFormError = ref<string | null>(null)
+const contactFormErrors = ref<Record<string, string[]>>({})
+const contactForm = reactive({
+  id: null as number | null,
+  id_contact_type: '' as number | '',
+  full_name: '',
+  position: '',
+  phone: '',
+  mobile: '',
+  email: '',
+})
+
+const deleteContactDialogOpen = ref(false)
+const deleteContactTarget = ref<CustomerContactRecord | null>(null)
+const deleteContactLoading = ref(false)
 
 /* State: Tab 2 — Sales Review (editable) */
 const reviewForm = reactive({
@@ -257,6 +308,9 @@ const documentRows = computed(() =>
   })),
 )
 
+/* Computed: Tab 1 — jenis kontak aktif, dipakai dropdown form tambah/edit kontak */
+const activeContactTypes = computed(() => contactTypes.value.filter(t => t.is_active))
+
 /* Computed: Tab 3 — mode create/edit & preview peta */
 const lcrMode = computed(() => (lcrId.value ? 'edit' : 'create'))
 const lcrMapUrl = computed(() => {
@@ -271,6 +325,8 @@ onMounted(loadCustomer)
 onMounted(loadLcr)
 onMounted(fetchDocumentTypes)
 onMounted(fetchCustomerDocuments)
+onMounted(fetchContactTypes)
+onMounted(fetchCustomerContacts)
 
 /* Watch: auto isi id_wilayah dari cabang yang dipilih (Tab 3) */
 watch(() => lcrForm.value.id_cabang, async (id) => {
@@ -462,6 +518,142 @@ function formatDocumentDate(value: string | null) {
     return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
   } catch {
     return value
+  }
+}
+
+/* Fetch: Tab 1 — jenis kontak aktif (master, CSR-first — data kecil) */
+async function fetchContactTypes() {
+  contactTypesLoading.value = true
+  try {
+    const { data } = await contactTypesApi.getAll({ as_list: true })
+    contactTypes.value = Array.isArray(data) ? data : []
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat jenis kontak customer.')
+  } finally {
+    contactTypesLoading.value = false
+  }
+}
+
+/* Fetch: Tab 1 — kontak customer ini (tidak dipaginate) */
+async function fetchCustomerContacts() {
+  contactsLoading.value = true
+  try {
+    const { data } = await customerContactsApi.getAll()
+    customerContacts.value = Array.isArray(data) ? data : []
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat kontak customer.')
+  } finally {
+    contactsLoading.value = false
+  }
+}
+
+function resetContactForm() {
+  contactFormError.value = null
+  contactFormErrors.value = {}
+  Object.assign(contactForm, {
+    id: null,
+    id_contact_type: '',
+    full_name: '',
+    position: '',
+    phone: '',
+    mobile: '',
+    email: '',
+  })
+}
+
+function openCreateContact() {
+  contactFormMode.value = 'create'
+  resetContactForm()
+  contactFormOpen.value = true
+}
+
+function openEditContact(contact: CustomerContactRecord) {
+  contactFormMode.value = 'edit'
+  resetContactForm()
+  Object.assign(contactForm, {
+    id: contact.id,
+    id_contact_type: contact.id_contact_type,
+    full_name: contact.full_name,
+    position: contact.position ?? '',
+    phone: contact.phone ?? '',
+    mobile: contact.mobile ?? '',
+    email: contact.email ?? '',
+  })
+  contactFormOpen.value = true
+}
+
+function closeContactForm() {
+  contactFormOpen.value = false
+}
+
+/* Action: Tab 1 — simpan kontak (create atau update, tergantung contactFormMode) */
+async function submitContactForm() {
+  contactFormError.value = null
+  contactFormErrors.value = {}
+
+  if (!contactForm.id_contact_type) {
+    contactFormError.value = 'Tipe kontak wajib dipilih.'
+    return
+  }
+  if (!contactForm.full_name.trim()) {
+    contactFormError.value = 'Nama wajib diisi.'
+    return
+  }
+
+  const payload = {
+    id_contact_type: contactForm.id_contact_type,
+    full_name: contactForm.full_name.trim(),
+    position: contactForm.position.trim() || null,
+    phone: contactForm.phone.trim() || null,
+    mobile: contactForm.mobile.trim() || null,
+    email: contactForm.email.trim() || null,
+  }
+
+  contactFormSaving.value = true
+  try {
+    if (contactFormMode.value === 'edit' && contactForm.id) {
+      const { data } = await customerContactsApi.update(contactForm.id, payload)
+      const index = customerContacts.value.findIndex(c => c.id === data.id)
+      if (index !== -1) customerContacts.value[index] = data
+      success('Berhasil', 'Kontak berhasil diperbarui.')
+    } else {
+      const { data } = await customerContactsApi.store(payload)
+      customerContacts.value.push(data)
+      success('Berhasil', 'Kontak berhasil ditambahkan.')
+    }
+    contactFormOpen.value = false
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      contactFormErrors.value = e.response?.data?.errors || {}
+      contactFormError.value = Object.values(contactFormErrors.value)[0]?.[0] as string || 'Periksa kembali input Anda.'
+    } else {
+      contactFormError.value = e.response?.data?.message ?? 'Gagal menyimpan kontak.'
+    }
+  } finally {
+    contactFormSaving.value = false
+  }
+}
+
+function confirmDeleteContact(contact: CustomerContactRecord) {
+  deleteContactTarget.value = contact
+  deleteContactDialogOpen.value = true
+}
+
+async function performDeleteContact() {
+  const target = deleteContactTarget.value
+  if (!target) return
+
+  deleteContactLoading.value = true
+  try {
+    await customerContactsApi.destroy(target.id)
+    customerContacts.value = customerContacts.value.filter(c => c.id !== target.id)
+    success('Berhasil', 'Kontak berhasil dihapus.')
+    deleteContactDialogOpen.value = false
+    deleteContactTarget.value = null
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus kontak.')
+  } finally {
+    deleteContactLoading.value = false
   }
 }
 
@@ -1006,6 +1198,114 @@ const SearchableRemoteSelect = defineComponent({
               :description="`Dokumen ${deleteDocumentTarget?.document_type?.name ?? ''} milik customer ini akan dihapus permanen.`"
               :loading="deleteDocumentLoading" @close="deleteDocumentDialogOpen = false"
               @confirm="performDeleteDocument" />
+
+            <CardSection title="Kontak Customer"
+              description="Kelola PIC/kontak customer per tipe (Direktur, Procurement, Finance, PIC Site, dst)."
+              icon="Users" icon-class="bg-cyan-100 text-cyan-600" class="mt-4">
+              <template #action>
+                <Button size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
+                  @click="openCreateContact">
+                  <Lucide icon="Plus" class="h-4 w-4" />
+                  Tambah Kontak
+                </Button>
+              </template>
+
+              <div v-if="contactTypesLoading || contactsLoading"
+                class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
+                <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
+                <span class="font-body">Memuat kontak...</span>
+              </div>
+
+              <div v-else-if="customerContacts.length === 0"
+                class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+                <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
+                <div class="font-body">Belum ada kontak yang ditambahkan.</div>
+              </div>
+
+              <div v-else class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                  <thead class="bg-slate-50">
+                    <tr>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Tipe</th>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Nama</th>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Posisi</th>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Telepon</th>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Mobile</th>
+                      <th class="px-3 py-2 text-xs uppercase text-left">Email</th>
+                      <th class="px-3 py-2 text-xs uppercase text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="contact in customerContacts" :key="contact.id" class="border-b">
+                      <td class="px-3 py-2">
+                        <span
+                          class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          {{ contact.contact_type?.name ?? '-' }}
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 font-strong">{{ contact.full_name }}</td>
+                      <td class="px-3 py-2">{{ contact.position || '-' }}</td>
+                      <td class="px-3 py-2">{{ contact.phone || '-' }}</td>
+                      <td class="px-3 py-2">{{ contact.mobile || '-' }}</td>
+                      <td class="px-3 py-2">{{ contact.email || '-' }}</td>
+                      <td class="px-3 py-2 text-center space-x-2">
+                        <Button size="sm" variant="soft-pending" title="Edit" class="!h-8 !w-8 !p-0 !shadow-none"
+                          @click="openEditContact(contact)">
+                          <Lucide icon="Edit" class="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="soft-danger" title="Hapus" class="!h-8 !w-8 !p-0 !shadow-none"
+                          @click="confirmDeleteContact(contact)">
+                          <Lucide icon="Trash2" class="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardSection>
+
+            <FormModal :open="contactFormOpen" :title="contactFormMode === 'create' ? 'Tambah Kontak' : 'Edit Kontak'"
+              description="Data kontak/PIC customer." :loading="contactFormSaving" :error="contactFormError"
+              :submit-text="contactFormMode === 'create' ? 'Tambah' : 'Simpan'"
+              :submit-icon="contactFormMode === 'create' ? 'PlusCircle' : 'Save'" @close="closeContactForm"
+              @submit="submitContactForm">
+              <div class="space-y-3">
+                <div>
+                  <FormLabel>Tipe Kontak *</FormLabel>
+                  <FormSelect v-model="contactForm.id_contact_type">
+                    <option value="">- Pilihan -</option>
+                    <option v-for="t in activeContactTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  </FormSelect>
+                </div>
+                <div>
+                  <FormLabel>Nama Lengkap *</FormLabel>
+                  <FormInput v-model="contactForm.full_name" placeholder="Nama lengkap" />
+                </div>
+                <div>
+                  <FormLabel>Posisi/Jabatan</FormLabel>
+                  <FormInput v-model="contactForm.position" placeholder="Contoh: Finance Manager" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <FormLabel>Telepon</FormLabel>
+                    <FormInput v-model="contactForm.phone" placeholder="021-xxxxxxx" />
+                  </div>
+                  <div>
+                    <FormLabel>Mobile</FormLabel>
+                    <FormInput v-model="contactForm.mobile" placeholder="08xx-xxxx-xxxx" />
+                  </div>
+                </div>
+                <div>
+                  <FormLabel>Email</FormLabel>
+                  <FormInput v-model="contactForm.email" type="email" placeholder="nama@email.com" />
+                </div>
+              </div>
+            </FormModal>
+
+            <DeleteRecordDialog :open="deleteContactDialogOpen" title="Hapus Kontak"
+              :description="`Kontak ${deleteContactTarget?.full_name ?? ''} akan dihapus permanen.`"
+              :loading="deleteContactLoading" @close="deleteContactDialogOpen = false"
+              @confirm="performDeleteContact" />
           </Tab.Panel>
 
           <!-- TAB 2: Sales Review (editable) -->

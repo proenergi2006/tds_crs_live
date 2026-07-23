@@ -127,6 +127,16 @@ public function documents(): HasMany
     return $this->hasMany(\App\Models\CustomerDocument::class, 'id_customer', 'id_customer');
 }
 
+public function addresses(): HasMany
+{
+    return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
+}
+
+public function contacts(): HasMany
+{
+    return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
+}
+
 public function verifications()
 {
     return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');

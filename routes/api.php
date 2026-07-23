@@ -11,6 +11,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
 use App\Http\Controllers\MasterData\ApprovalTemplateController;
+use App\Http\Controllers\MasterData\CustomerContactTypeController;
 use App\Http\Controllers\MasterData\CustomerDocumentTypeController;
 use App\Http\Controllers\MasterData\JenisProdukController;
 use App\Http\Controllers\MasterData\ProdukController;
@@ -24,6 +25,8 @@ use App\Http\Controllers\ProvinsiController;
 use App\Http\Controllers\KabupatenController;
 use App\Http\Controllers\MasterData\AddressController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\Customer\CustomerAddressController;
+use App\Http\Controllers\Customer\CustomerContactController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Customer\CustomerDocumentController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
@@ -156,6 +159,21 @@ Route::middleware('auth:sanctum')->group(function () {
             ->only(['store', 'update', 'destroy']);
     });
 
+    // Customer Contact Type master data. Read/write digerbangi terpisah dengan
+    // pola sama seperti customer-document-types di atas -- read akan dikonsumsi
+    // juga oleh Customer/Detail.vue untuk role yang lebih luas dari
+    // Administrator.
+    //
+    // READ: cukup authenticated, TIDAK digerbangi permission tambahan.
+    Route::apiResource('customer-contact-types', CustomerContactTypeController::class)
+        ->only(['index', 'show']);
+
+    // WRITE: admin-only.
+    Route::middleware('can:master-data.customer-contact-type.manage')->group(function () {
+        Route::apiResource('customer-contact-types', CustomerContactTypeController::class)
+            ->only(['store', 'update', 'destroy']);
+    });
+
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::apiResource('provinsis', ProvinsiController::class);
     Route::apiResource('kabupatens', KabupatenController::class);
@@ -170,6 +188,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customers/{customer}/documents', [CustomerDocumentController::class, 'index']);
     Route::post('customers/{customer}/documents', [CustomerDocumentController::class, 'store']);
     Route::delete('customers/{customer}/documents/{document}', [CustomerDocumentController::class, 'destroy']);
+
+    // customer_addresses, scoped id_customer -- alamat berbasis sistem BPS
+    // (province_id/regency_id/district_id/village_id), bukan legacy
+    // id_provinsi/id_kabupaten. Authorization sama pola dengan
+    // customer_documents di atas (ownership check di dalam controller).
+    Route::get('customers/{customer}/addresses', [CustomerAddressController::class, 'index']);
+    Route::post('customers/{customer}/addresses', [CustomerAddressController::class, 'store']);
+    Route::put('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'update']);
+    Route::delete('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy']);
+
+    // customer_contacts, scoped id_customer -- multi-row PIC per customer
+    // (restrukturisasi dari kolom fixed pic_decision/pic_ordering/pic_billing/
+    // pic_invoice lama). Authorization sama pola dengan customer_addresses.
+    Route::get('customers/{customer}/contacts', [CustomerContactController::class, 'index']);
+    Route::post('customers/{customer}/contacts', [CustomerContactController::class, 'store']);
+    Route::put('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'update']);
+    Route::delete('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'destroy']);
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
 

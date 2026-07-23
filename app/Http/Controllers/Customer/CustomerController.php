@@ -8,7 +8,6 @@ use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\CustomerAdminArnya;
-use App\Models\CustomerContact;
 use App\Models\CustomerLogistik;
 use App\Models\CustomerPayment;
 use App\Models\CustomerVerification;
@@ -213,16 +212,9 @@ class CustomerController extends Controller
     {
         $id = $customer->id_customer;
 
-        CustomerContact::firstOrCreate(['id_customer' => $id], [
-            'pic_decision_telp'   => '',
-            'pic_decision_mobile' => '',
-            'pic_ordering_telp'   => '',
-            'pic_ordering_mobile' => '',
-            'pic_billing_telp'    => '',
-            'pic_billing_mobile'  => '',
-            'pic_invoice_telp'    => '',
-            'pic_invoice_mobile'  => '',
-        ]);
+        // customer_contacts sekarang multi-row (0..N per customer, lihat
+        // Customer::contacts()) -- tidak ada lagi header row untuk di-seed
+        // seperti tabel 1:1 di bawah ini.
 
         CustomerLogistik::firstOrCreate(['id_customer' => $id], [
             'logistik_area'    => '',

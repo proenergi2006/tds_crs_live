@@ -65,6 +65,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Kelola master jenis dokumen customer (NIB, NPWP, Sertifikat, dst)',
             'roles'       => [1],
         ],
+        [
+            'name'        => 'master-data.customer-contact-type.manage',
+            'module'      => 'master-data',
+            'description' => 'Kelola master jenis kontak customer (Direktur, Procurement, Finance, PIC Site, dst)',
+            'roles'       => [1],
+        ],
 
         // Harga Produk
         [

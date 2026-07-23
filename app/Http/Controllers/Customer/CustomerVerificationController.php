@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\CustomerAddressType;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalTemplate;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
+use App\Models\CustomerContact;
+use App\Models\CustomerContactType;
 use App\Models\CustomerReview;
 use App\Models\CustomerReviewAttachment;
 use App\Models\CustomerVerification;
@@ -521,7 +525,6 @@ class CustomerVerificationController extends Controller
 
         $corp      = Arr::get($legal,   'corporate',  []);
         $reg       = Arr::get($legal,   'registered', []);
-        $delivery  = Arr::get($legal,   'delivery',   []);
         $inv       = Arr::get($finance, 'invoice',    []);
         $pay       = Arr::get($finance, 'payment',    []);
         $supply    = Arr::get($logistik, 'supply',     []);
@@ -598,7 +601,6 @@ class CustomerVerificationController extends Controller
             $cv,
             $corp,
             $reg,
-            $delivery,
             $inv,
             $pay,
             $supply,
@@ -668,24 +670,44 @@ class CustomerVerificationController extends Controller
                 ->where('id_customer', $cv->id_customer)
                 ->update($customersUpdate);
 
-            // ---------- customer_contacts ----------
-            DB::table('customer_contacts')->updateOrInsert(
-                ['id_customer' => $cv->id_customer],
-                [
-                    'pic_invoice_name'     => Arr::get($inv, 'pic.name'),
-                    'pic_invoice_position' => Arr::get($inv, 'pic.position'),
-                    'pic_invoice_telp'     => Arr::get($inv, 'pic.telephone'),
-                    'pic_invoice_mobile'   => Arr::get($inv, 'pic.mobile'),
-                    'pic_invoice_email'    => Arr::get($inv, 'pic.email'),
-                    'invoice_delivery_addr_primary'   => Arr::get($inv, 'delivery_address'),
-                    'invoice_delivery_addr_secondary' => null,
-                    'product_delivery_address'        => json_encode([
-                        'alamat1' => Arr::get($delivery, 'alamat1'),
-                        'alamat2' => Arr::get($delivery, 'alamat2'),
-                        'alamat3' => Arr::get($delivery, 'alamat3'),
-                    ], JSON_UNESCAPED_UNICODE),
-                ]
-            );
+            // ---------- customer_contacts (invoice PIC -> finance) ----------
+            // product_delivery_address tidak dimigrasikan/ditulis lagi (drop
+            // total, redundan dengan alamat site di customer_lcr).
+            $invoicePicName = $strOrNull(Arr::get($inv, 'pic.name'));
+
+            if ($invoicePicName !== null) {
+                $financeContactTypeId = CustomerContactType::where('code', 'finance')->value('id');
+
+                if ($financeContactTypeId) {
+                    CustomerContact::updateOrCreate(
+                        ['id_customer' => $cv->id_customer, 'id_contact_type' => $financeContactTypeId],
+                        [
+                            'full_name' => $invoicePicName,
+                            'position'  => Arr::get($inv, 'pic.position'),
+                            'phone'     => Arr::get($inv, 'pic.telephone'),
+                            'mobile'    => Arr::get($inv, 'pic.mobile'),
+                            'email'     => Arr::get($inv, 'pic.email'),
+                        ]
+                    );
+                }
+            }
+
+            // ---------- customer_addresses (invoice delivery address -> billing) ----------
+            $deliveryAddress = $strOrNull(Arr::get($inv, 'delivery_address'));
+
+            if ($deliveryAddress !== null) {
+                CustomerAddress::where('id_customer', $cv->id_customer)
+                    ->where('address_type', CustomerAddressType::Billing->value)
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+
+                CustomerAddress::create([
+                    'id_customer'  => $cv->id_customer,
+                    'address_type' => CustomerAddressType::Billing->value,
+                    'address_line' => $deliveryAddress,
+                    'is_primary'   => true,
+                ]);
+            }
 
             // ---------- customer_payment ----------
             $payUpdate = [
