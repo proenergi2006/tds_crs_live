@@ -45,14 +45,10 @@ class Customer extends Model
         'tipe_bisnis_lain',
         'ownership_type',
         'ownership_lain',
-        'nomor_sertifikat',
-        'nomor_sertifikat_file',
-        'nomor_npwp',
-        'nomor_npwp_file',
-        'nib',
-        'nib_file',
-        'dokumen_lainnya',
-        'dokumen_lainnya_file',
+        // 'nomor_sertifikat'/'nomor_sertifikat_file', 'nomor_npwp'/'nomor_npwp_file',
+        // 'nib'/'nib_file', 'dokumen_lainnya'/'dokumen_lainnya_file' -- DROPPED,
+        // digantikan tabel `customer_documents` (lihat CustomerDocument model
+        // + relasi Customer::documents() di bawah).
         'need_update',
         'is_generated_link',
         'count_update',
@@ -119,6 +115,16 @@ public function lcr(): \Illuminate\Database\Eloquent\Relations\HasOne
 public function penawarans(): HasMany
 {
     return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
+}
+
+/**
+ * File dokumen legal (NIB, NPWP, Sertifikat, Dokumen Lainnya, dst).
+ * Menggantikan kolom flat `nib`/`nomor_npwp`/`nomor_sertifikat`/
+ * `dokumen_lainnya` (+ pasangan `_file`).
+ */
+public function documents(): HasMany
+{
+    return $this->hasMany(\App\Models\CustomerDocument::class, 'id_customer', 'id_customer');
 }
 
 public function verifications()

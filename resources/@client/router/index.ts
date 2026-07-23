@@ -314,6 +314,13 @@ const routes = [
           breadcrumbTitle: "Edit Approval Template",
         },
       },
+      {
+        path: "customer-document-types",
+        name: "customer-document-types",
+        component: () =>
+          import("@/pages/MasterData/CustomerDocumentType/Index.vue"),
+        meta: { permission: "master-data.customer-document-type.manage" },
+      },
 
       {
         path: "vendor-pos",

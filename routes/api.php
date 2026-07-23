@@ -11,6 +11,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
 use App\Http\Controllers\MasterData\ApprovalTemplateController;
+use App\Http\Controllers\MasterData\CustomerDocumentTypeController;
 use App\Http\Controllers\MasterData\JenisProdukController;
 use App\Http\Controllers\MasterData\ProdukController;
 use App\Http\Controllers\MasterData\ProdukHargaController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\KabupatenController;
 use App\Http\Controllers\MasterData\AddressController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Customer\CustomerDocumentController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
 use App\Http\Controllers\Customer\LinkCustomerController;
 use App\Http\Controllers\VendorPoController;
@@ -132,10 +134,42 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('approval-templates', ApprovalTemplateController::class);
     });
 
+    // Customer Document Type master data. READ (index/show) dan WRITE
+    // (store/update/destroy) digerbangi TERPISAH -- read dikonsumsi juga
+    // oleh Customer/Detail.vue Tab 1 untuk role yang jauh lebih luas dari
+    // Administrator (Key Account dkk, lihat gate customer.viewOwn/
+    // customer.viewAny di CustomerController), bukan cuma admin.
+    //
+    // READ: cukup authenticated, TIDAK digerbangi permission tambahan --
+    // pola sama dengan lookup master data read-only lain di project (lihat
+    // apiResource('satuans'/'ukurans'/'produks'/'vendors'/'terminals', ...)
+    // di bawah, semuanya TANPA middleware `can:` sama sekali untuk index/show).
+    Route::apiResource('customer-document-types', CustomerDocumentTypeController::class)
+        ->only(['index', 'show']);
+
+    // WRITE: admin-only -- pola sama dengan approval-templates di atas
+    // (`can` middleware, alias existing di app/Http/Kernel.php ->
+    // Illuminate\Auth\Middleware\Authorize, sudah terhubung ke Spatie
+    // Gate::before + admin bypass id_role=1 di AuthServiceProvider).
+    Route::middleware('can:master-data.customer-document-type.manage')->group(function () {
+        Route::apiResource('customer-document-types', CustomerDocumentTypeController::class)
+            ->only(['store', 'update', 'destroy']);
+    });
+
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::apiResource('provinsis', ProvinsiController::class);
     Route::apiResource('kabupatens', KabupatenController::class);
     Route::apiResource('customers', CustomerController::class);
+
+    // customer_documents, scoped id_customer -- menggantikan kolom flat
+    // nib/nomor_npwp/nomor_sertifikat/dokumen_lainnya (+ pasangan _file)
+    // di customers. Authorization dilakukan di dalam controller (pola sama dengan
+    // CustomerController::show/update/destroy), bukan lewat middleware can:,
+    // karena butuh ownership check per-row (customer.id_user), bukan cek
+    // permission statis.
+    Route::get('customers/{customer}/documents', [CustomerDocumentController::class, 'index']);
+    Route::post('customers/{customer}/documents', [CustomerDocumentController::class, 'store']);
+    Route::delete('customers/{customer}/documents/{document}', [CustomerDocumentController::class, 'destroy']);
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
 
@@ -227,9 +261,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
     Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
-    // (Fase 0 / Task F0-C) route 'approve' DIHAPUS -- method-nya sudah
-    // dihapus total (dead code, nol pemakaian FE, menulis disposisi_result
-    // yang sudah di-drop F0-B). Lihat CustomerVerificationController.php.
 
     // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
     Route::get('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
@@ -244,10 +275,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('review/admin')->group(function () {
         Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
         Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-        // (Fase 0 / Task F0-C) route 'set-disposisi' DIHAPUS -- method-nya
-        // sudah dihapus total (dead code, nol pemakaian FE, menulis
-        // disposisi_result yang sudah di-drop F0-B). Lihat
-        // CustomerVerificationController.php.
 
         // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
         Route::prefix('review/customer-verifications')->group(function () {
@@ -264,8 +291,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-        // (Fase 0 / Task F0-C) route 'set-disposisi' DIHAPUS -- lihat catatan
-        // di grup review/admin di atas (method sudah dihapus total).
         // simpan verifikasi BM
         Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
     });

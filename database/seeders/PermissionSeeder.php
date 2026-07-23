@@ -7,18 +7,6 @@ use Illuminate\Support\Facades\DB;
 
 class PermissionSeeder extends Seeder
 {
-    /**
-     * Daftar permission + mapping ke id_role.
-     * Format name: module.action (kebab-case).
-     * Mapping dari audit meta.roles di router/index.ts + roleMenuMapping.ts.
-     *
-     * Permission Customer & Penawaran TDS (`customer.*` dan `penawaran.*`) menggantikan
-     * skema lama `penawaran.tds.manage` (Customer+Penawaran CRUD digabung satu
-     * permission) dan `penawaran.verify-bm`/`penawaran.verify-om` (approval
-     * per-tahap) -- lihat .claude/plans/rbac-phase-2-customer-verification-review.md
-     * ("Update 2026-07-14") untuk konteks keputusan. Permission lama dihapus
-     * eksplisit di run(), bukan cuma dibiarkan hilang dari array ini.
-     */
     private array $permissions = [
         // Tata Kelola
         [
@@ -69,6 +57,12 @@ class PermissionSeeder extends Seeder
             'name'        => 'approval-template.manage',
             'module'      => 'approval-template',
             'description' => 'Kelola master data approval template/step',
+            'roles'       => [1],
+        ],
+        [
+            'name'        => 'master-data.customer-document-type.manage',
+            'module'      => 'master-data',
+            'description' => 'Kelola master jenis dokumen customer (NIB, NPWP, Sertifikat, dst)',
             'roles'       => [1],
         ],
 
@@ -219,14 +213,6 @@ class PermissionSeeder extends Seeder
         ],
     ];
 
-    /**
-     * Idempotent: aman dijalankan berulang kali. `permissions.name` (+
-     * guard_name) sudah punya unique constraint di DB, jadi insertGetId()
-     * polos akan crash pada re-run -- di-upsert manual (cek dulu by name,
-     * update kalau ada / insert kalau belum) supaya re-run aman. Pivot
-     * role_has_permissions pakai updateOrInsert (PK compound [permission_id,
-     * id_role]) dengan alasan yang sama.
-     */
     public function run(): void
     {
         $now = now();
@@ -265,20 +251,6 @@ class PermissionSeeder extends Seeder
         $this->cleanupRetiredPermissions();
     }
 
-    /**
-     * Hapus permission lama yang digantikan skema `customer.*` / `penawaran.*` baru
-     * (lihat "Update 2026-07-14" di rbac-phase-2-customer-verification-review.md):
-     * - penawaran.tds.manage  -> digantikan customer.manage/viewOwn/viewAny + penawaran.manage/viewOwn/viewAny
-     * - penawaran.verify-bm   -> digabung ke penawaran.verify (role 8)
-     * - penawaran.verify-om   -> digabung ke penawaran.verify (role 2, 3, 10)
-     *
-     * Idempotent: aman dijalankan berulang kali walau row-nya sudah tidak ada
-     * (whereIn(...)->delete() tidak error kalau hasilnya 0 row). Hapus
-     * role_has_permissions dulu sebelum permissions supaya tidak ada orphan
-     * row eksplisit di kode -- meskipun FK role_has_permissions.permission_id
-     * sudah ON DELETE CASCADE, urutan ini tetap ditulis eksplisit agar tidak
-     * diam-diam mengandalkan cascade.
-     */
     private function cleanupRetiredPermissions(): void
     {
         $retiredNames = [

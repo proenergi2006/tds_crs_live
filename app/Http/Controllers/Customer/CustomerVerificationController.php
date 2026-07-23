@@ -636,14 +636,15 @@ class CustomerVerificationController extends Controller
                 'email'                 => Arr::get($corp, 'email'),
                 'website_customer'      => Arr::get($corp, 'website'),
 
-                'business_type'         => $tipeBisnisCode, // smallint (kolom lama: tipe_bisnis, Fase 0 F0-A)
+                'business_type'         => $tipeBisnisCode, // smallint (kolom lama: tipe_bisnis)
                 'tipe_bisnis_lain'      => Arr::get($corp, 'tipe_bisnis_lain'),
-                'ownership_type'        => $ownershipCode,  // smallint (kolom lama: ownership, Fase 0 F0-A)
+                'ownership_type'        => $ownershipCode,  // smallint (kolom lama: ownership)
                 'ownership_lain'        => Arr::get($corp, 'ownership_lain'),
                 'induk_perusahaan'      => Arr::get($corp, 'holding'),
 
-                'nib'                   => Arr::get($corp, 'nib_number'),
-                'nib_file'              => Arr::get($corp, 'nib_file'),
+                // NIB/NPWP/Sertifikat nomor+file dari form publik cuma tersimpan
+                // di customer_verifications.legal_data (JSON), tidak disalin ke
+                // customers atau customer_documents di sini.
 
                 'lastupdate_time'       => now(),
                 'lastupdate_by'         => Arr::get($agreement ?? [], 'updated_by'),
@@ -1035,8 +1036,9 @@ class CustomerVerificationController extends Controller
                 'docs'          => $approval['docs'] ?? [],
             ];
 
+            // approval.dokumen_lainnya cuma tersimpan di
+            // customer_verifications.finance_data_kyc (JSON), tidak disalin ke customers.
             DB::table('customers')->where('id_customer', $cv->id_customer)->update([
-                'dokumen_lainnya' => $approval['dokumen_lainnya'] ?? null,
                 'credit_limit'    => $approval['credit_limit'] ?? null,
                 'jenis_payment'   => $approval['payment_type'] ?? null,
                 'top_payment'     => $approval['top_days'] ?? null,
@@ -1379,12 +1381,6 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // (Fase 0 / Task F0-C) approve() DIHAPUS TOTAL -- ditemukan dead code:
-    // menulis disposisi_result (kolom sudah di-drop F0-B), routed di
-    // routes/api.php (PATCH review/customer-verifications/{id}/approve) tapi
-    // tidak dipanggil FE manapun (grep resources/@client sesi ini, nol hasil
-    // pemakaian endpoint ini). Route-nya juga dihapus (lihat routes/api.php).
-
     /**
      * (CA8, pivot 2026-07-10, dulu C6) Rewire: antrean Admin Finance sekarang
      * berdasarkan document_approval_steps step 1 (Admin Finance jadi step
@@ -1431,16 +1427,6 @@ class CustomerVerificationController extends Controller
         return response()->json(['queue' => $queue]);
     }
 
-    // (Fase 0 / Task F0-C) setDisposisi() DIHAPUS TOTAL -- sudah ditandai
-    // "OPSIONAL" di komentar lama (kandidat hapus), menulis disposisi_result
-    // (kolom sudah di-drop F0-B). Routed dua kali di routes/api.php
-    // (review/admin/customer-verifications/{id}/set-disposisi &
-    // review/bm/customer-verifications/{id}/set-disposisi) tapi tidak
-    // dipanggil FE manapun (grep resources/@client sesi ini, nol hasil
-    // pemakaian endpoint ini -- FE BM/Admin Finance memakai bmVerify()/
-    // saveEvaluation() untuk keputusan step). Kedua route-nya juga dihapus
-    // (lihat routes/api.php).
-
     public function getEvaluation(int $id)
     {
         if (auth()->user()->cant('verification.customer')) {
@@ -1450,10 +1436,6 @@ class CustomerVerificationController extends Controller
         $cv  = \App\Models\CustomerVerification::findOrFail($id);
         $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
 
-        // (Fase 0 / Task F0-C) disposisi_result sudah di-drop (F0-B) --
-        // field "kirim juga disposisi agar FE bisa lock" dihapus, tidak ada
-        // penggantinya di endpoint ini (call site tambahan yang ditemukan di
-        // luar inventori awal Task F0-C, sama pola dengan evaluationShow()).
         return response()->json([
             'evaluation' => $kyc['evaluation'] ?? [
                 'top'                    => 'CREDIT 30 days After Invoice Receive',
@@ -1591,11 +1573,10 @@ class CustomerVerificationController extends Controller
             // reject di bmVerify() -- sibling _result column di controller
             // yang sama).
             //
-            // (Fase 0 / Task F0-C) disposisi_result SUDAH DI-DROP (F0-B) --
-            // dual-write $disp yang dulu menyertainya dihapus total, TIDAK
-            // diganti apapun (badge/stage sekarang derive dari
-            // document_approvals via CustomerVerification::stageLabel(), lihat
-            // reviewShow()/CustomerController::formatLatestVerification()).
+            // Status/badge tampilan derive dari document_approvals lewat
+            // CustomerVerification::stageLabel() (lihat
+            // reviewShow()/CustomerController::formatLatestVerification()),
+            // bukan kolom tersimpan di sini.
             $financeResult = $decision === 'REJECT' ? 0 : 1;
 
             // Update verification -- data evaluasi (KYC, ringkasan finansial,
@@ -1653,8 +1634,9 @@ class CustomerVerificationController extends Controller
                 $topDays  = $approval['top_days']   ?? null;
                 $topBasis = $approval['top_basis']  ?? null;
 
+                // approval.other_document cuma tersimpan di
+                // customer_verifications.finance_data (JSON), tidak disalin ke customers.
                 $updateCustomer = [
-                    'dokumen_lainnya' => $approval['other_document'] ?? null,
                     'credit_limit'    => $creditLimit,
                     'jenis_payment'   => $payType,
                 ];
@@ -1750,16 +1732,13 @@ class CustomerVerificationController extends Controller
      *   step manapun menutup siklus, verifikasi kembali ke Marketing untuk
      *   diedit & di-forward ulang sebagai siklus baru, lihat CA4/CA7)
      *
-     * (Fase 0 / Task F0-C) `sm_result`/`disposisi_result` SUDAH DI-DROP
-     * (F0-B) -- dual-write ke keduanya dihapus total, TIDAK diganti apapun
-     * (badge/stage sekarang derive dari document_approvals, lihat
-     * CustomerVerification::stageLabel()/CustomerController::resolveVerificationBadge()).
-     * `bm_notes`/`bm_decision`/`bm_tgl_proses`/`bm_pic` DIBIARKAN apa adanya
-     * di bawah -- kolom ini TIDAK PERNAH ada di skema `customer_verifications`
-     * sama sekali (bukan bagian drop F0-A/F0-B) dan juga tidak ada di
-     * `$fillable` model, jadi `$cv->update()` di baris ini sudah silently
-     * no-op sejak sebelum Fase 0 (pre-existing, di luar scope task ini --
-     * lihat laporan Hephaestus).
+     * Status/badge tampilan derive dari document_approvals lewat
+     * CustomerVerification::stageLabel()/CustomerController::resolveVerificationBadge(),
+     * bukan kolom tersimpan.
+     *
+     * `bm_notes`/`bm_decision`/`bm_tgl_proses`/`bm_pic` TIDAK PERNAH ada di
+     * skema `customer_verifications` maupun `$fillable` model -- `$cv->update()`
+     * di baris ini silently no-op untuk keempat field itu (pre-existing bug).
      */
     public function bmVerify(Request $r, int $id)
     {
@@ -1821,15 +1800,9 @@ class CustomerVerificationController extends Controller
                     );
                 }
 
-                // (Fase 0 / Task F0-C) Efek samping lama "cycle ditutup
-                // approved -> is_approved/tanggal_approved/role_approve di
-                // customer_verifications + customers.is_verified=1" DIHAPUS
-                // TOTAL, TIDAK diganti apapun. Ketiga kolom customer_verifications
-                // itu sudah di-drop (F0-B) dan customers.is_verified sudah
-                // di-drop (F0-A) -- badge "verified" sekarang derive langsung
-                // dari status document_approvals milik latestVerification
-                // (lihat CustomerController::resolveVerificationBadge()), jadi
-                // tidak ada lagi flag tersimpan yang perlu di-set manual di sini.
+                // Badge "verified" derive langsung dari status document_approvals
+                // milik latestVerification (lihat CustomerController::resolveVerificationBadge()) --
+                // tidak ada flag tersimpan yang perlu di-set manual di sini.
             } else { // REJECT
                 if ($bmStepOrder !== null) {
                     $this->advanceApprovalStep(

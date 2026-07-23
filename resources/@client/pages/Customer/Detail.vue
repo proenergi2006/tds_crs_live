@@ -11,13 +11,44 @@ import { Tab } from '@/components/Base/Headless'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
+import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { createResourceApi } from '@/utils/resourceApi'
 
 /* Type: opsi remote-select untuk Cabang & Wilayah OA (dipakai Tab 3 — LCR) */
 type SimpleOption<T = any> = { value: number; label: string; raw?: T }
 interface CabangOption<T = any> extends SimpleOption<T> {
   id_wilayah: number | null
+}
+
+/* Type: dokumen customer (customer_document_types + customer_documents), Tab 1 */
+interface CustomerDocumentType {
+  id: number
+  code: string
+  name: string
+  is_active: boolean
+  requires_number: boolean
+}
+interface CustomerDocumentRecord {
+  id: number
+  id_customer: number
+  id_document_type: number
+  document_type: { id: number; code: string; name: string; requires_number: boolean } | null
+  document_number: string | null
+  file_name: string
+  file_path: string
+  url: string | null
+  uploaded_at: string | null
+  uploaded_by: { id: number; name: string } | null
+}
+interface DocumentRowState {
+  file: File | null
+  documentNumber: string
+  editing: boolean
+  uploading: boolean
+  error: string
 }
 
 const route = useRoute()
@@ -45,6 +76,20 @@ const verifCustomer = ref<any>({})
 const legal = ref<any>({})
 const finance = ref<any>({})
 const logistik = ref<any>({})
+
+/* State: Tab 1 — Dokumen Customer (customer_document_types + customer_documents) */
+const documentTypesApi = createResourceApi('/customer-document-types')
+const customerDocumentsApi = createResourceApi(`/customers/${idCustomer}/documents`)
+
+const documentTypesLoading = ref(true)
+const documentsLoading = ref(true)
+const documentTypes = ref<CustomerDocumentType[]>([])
+const customerDocuments = ref<CustomerDocumentRecord[]>([])
+const documentRowState = reactive<Record<number, DocumentRowState>>({})
+
+const deleteDocumentDialogOpen = ref(false)
+const deleteDocumentTarget = ref<CustomerDocumentRecord | null>(null)
+const deleteDocumentLoading = ref(false)
 
 /* State: Tab 2 — Sales Review (editable) */
 const reviewForm = reactive({
@@ -203,6 +248,15 @@ const summarySections = computed(() => {
   ]
 })
 
+/* Computed: Tab 1 — daftar baris dokumen aktif, digabung dengan dokumen yang sudah diupload */
+const activeDocumentTypes = computed(() => documentTypes.value.filter(t => t.is_active))
+const documentRows = computed(() =>
+  activeDocumentTypes.value.map(type => ({
+    type,
+    document: customerDocuments.value.find(d => d.id_document_type === type.id) ?? null,
+  })),
+)
+
 /* Computed: Tab 3 — mode create/edit & preview peta */
 const lcrMode = computed(() => (lcrId.value ? 'edit' : 'create'))
 const lcrMapUrl = computed(() => {
@@ -215,6 +269,8 @@ const lcrMapUrl = computed(() => {
 
 onMounted(loadCustomer)
 onMounted(loadLcr)
+onMounted(fetchDocumentTypes)
+onMounted(fetchCustomerDocuments)
 
 /* Watch: auto isi id_wilayah dari cabang yang dipilih (Tab 3) */
 watch(() => lcrForm.value.id_cabang, async (id) => {
@@ -275,6 +331,137 @@ async function loadVerificationData() {
     }
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data verifikasi customer.')
+  }
+}
+
+/* Fetch: Tab 1 — jenis dokumen aktif (master, CSR-first — data kecil) */
+async function fetchDocumentTypes() {
+  documentTypesLoading.value = true
+  try {
+    const { data } = await documentTypesApi.getAll({ as_list: true })
+    documentTypes.value = Array.isArray(data) ? data : []
+    documentTypes.value.forEach(type => rowState(type.id))
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat jenis dokumen customer.')
+  } finally {
+    documentTypesLoading.value = false
+  }
+}
+
+/* Fetch: Tab 1 — dokumen yang sudah diupload customer ini (tidak dipaginate) */
+async function fetchCustomerDocuments() {
+  documentsLoading.value = true
+  try {
+    const { data } = await customerDocumentsApi.getAll()
+    customerDocuments.value = Array.isArray(data) ? data : []
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat dokumen customer.')
+  } finally {
+    documentsLoading.value = false
+  }
+}
+
+/* Helper: Tab 1 — state upload per baris jenis dokumen (lazy-init, key = id_document_type) */
+function rowState(typeId: number): DocumentRowState {
+  if (!documentRowState[typeId]) {
+    documentRowState[typeId] = { file: null, documentNumber: '', editing: false, uploading: false, error: '' }
+  }
+  return documentRowState[typeId]
+}
+
+function startDocumentUpload(typeId: number) {
+  const state = rowState(typeId)
+  state.editing = true
+  state.file = null
+  state.documentNumber = ''
+  state.error = ''
+}
+
+function cancelDocumentUpload(typeId: number) {
+  const state = rowState(typeId)
+  state.editing = false
+  state.file = null
+  state.documentNumber = ''
+  state.error = ''
+}
+
+/* Action: Tab 1 — upload/replace dokumen. Backend cuma sediakan create+delete (tidak ada
+   endpoint replace/update), jadi "Ganti" diimplementasikan sebagai upload dokumen baru lalu
+   hapus dokumen lama milik jenis yang sama setelah upload sukses (best-effort, tidak
+   memblokir sukses utama kalau cleanup gagal). */
+async function submitDocumentUpload(row: { type: CustomerDocumentType; document: CustomerDocumentRecord | null }) {
+  const state = rowState(row.type.id)
+
+  if (!state.file) {
+    state.error = 'Pilih file terlebih dahulu.'
+    return
+  }
+  if (row.type.requires_number && !state.documentNumber.trim()) {
+    state.error = 'Nomor dokumen wajib diisi untuk jenis dokumen ini.'
+    return
+  }
+
+  state.uploading = true
+  state.error = ''
+  try {
+    const formData = new FormData()
+    formData.append('id_document_type', String(row.type.id))
+    formData.append('file', state.file)
+    if (state.documentNumber.trim()) {
+      formData.append('document_number', state.documentNumber.trim())
+    }
+
+    await customerDocumentsApi.store(formData)
+
+    const previousDocument = row.document
+    if (previousDocument) {
+      await customerDocumentsApi.destroy(previousDocument.id).catch(() => null)
+    }
+
+    await fetchCustomerDocuments()
+    cancelDocumentUpload(row.type.id)
+    success('Berhasil', `Dokumen ${row.type.name} berhasil ${previousDocument ? 'diganti' : 'diunggah'}.`)
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errors = e.response?.data?.errors || {}
+      state.error = Object.values(errors)[0]?.[0] as string || 'Periksa kembali input Anda.'
+    } else {
+      state.error = e.response?.data?.message ?? 'Gagal mengunggah dokumen.'
+    }
+  } finally {
+    state.uploading = false
+  }
+}
+
+function confirmDeleteDocument(document: CustomerDocumentRecord) {
+  deleteDocumentTarget.value = document
+  deleteDocumentDialogOpen.value = true
+}
+
+async function performDeleteDocument() {
+  const target = deleteDocumentTarget.value
+  if (!target) return
+
+  deleteDocumentLoading.value = true
+  try {
+    await customerDocumentsApi.destroy(target.id)
+    customerDocuments.value = customerDocuments.value.filter(d => d.id !== target.id)
+    success('Berhasil', 'Dokumen berhasil dihapus.')
+    deleteDocumentDialogOpen.value = false
+    deleteDocumentTarget.value = null
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus dokumen.')
+  } finally {
+    deleteDocumentLoading.value = false
+  }
+}
+
+function formatDocumentDate(value: string | null) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  } catch {
+    return value
   }
 }
 
@@ -722,6 +909,103 @@ const SearchableRemoteSelect = defineComponent({
                 </div>
               </div>
             </CardSection>
+
+            <CardSection title="Dokumen Customer"
+              description="Upload dan kelola dokumen legal customer (NIB, NPWP, Sertifikat, dst)." icon="FileCheck2"
+              icon-class="bg-indigo-100 text-indigo-600" class="mt-4">
+              <div v-if="documentTypesLoading || documentsLoading"
+                class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
+                <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
+                <span class="font-body">Memuat dokumen...</span>
+              </div>
+
+              <div v-else-if="documentRows.length === 0"
+                class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+                <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
+                <div class="font-body">Belum ada jenis dokumen yang aktif.</div>
+              </div>
+
+              <div v-else class="space-y-3">
+                <div v-for="row in documentRows" :key="row.type.id" class="rounded-lg border border-slate-200 p-4">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-strong">{{ row.type.name }}</span>
+                        <span v-if="row.document"
+                          class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          <Lucide icon="CheckCircle2" class="h-3 w-3" /> Sudah diunggah
+                        </span>
+                        <span v-else
+                          class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          Belum ada file
+                        </span>
+                      </div>
+
+                      <div v-if="row.document" class="mt-1.5 space-y-0.5">
+                        <a :href="row.document.url ?? undefined" target="_blank"
+                          class="font-body !text-primary break-all underline">
+                          {{ row.document.file_name }}
+                        </a>
+                        <p v-if="row.document.document_number" class="font-caption">
+                          No. Dokumen: {{ row.document.document_number }}
+                        </p>
+                        <p class="font-caption">
+                          Diunggah {{ formatDocumentDate(row.document.uploaded_at) }}
+                          <span v-if="row.document.uploaded_by"> oleh {{ row.document.uploaded_by.name }}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="flex shrink-0 gap-2">
+                      <Button v-if="!rowState(row.type.id).editing && row.document" size="sm"
+                        variant="outline-secondary" class="inline-flex items-center gap-2"
+                        @click="startDocumentUpload(row.type.id)">
+                        <Lucide icon="RefreshCw" class="h-4 w-4" /> Ganti
+                      </Button>
+                      <Button v-else-if="!rowState(row.type.id).editing" size="sm" variant="outline-primary"
+                        class="inline-flex items-center gap-2" @click="startDocumentUpload(row.type.id)">
+                        <Lucide icon="Upload" class="h-4 w-4" /> Upload
+                      </Button>
+
+                      <Button v-if="row.document" size="sm" variant="soft-danger" title="Hapus"
+                        class="!h-8 !w-8 !p-0 !shadow-none" @click="confirmDeleteDocument(row.document)">
+                        <Lucide icon="Trash2" class="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div v-if="rowState(row.type.id).editing" class="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                    <div v-if="row.type.requires_number">
+                      <FormLabel>Nomor Dokumen *</FormLabel>
+                      <FormInput v-model="rowState(row.type.id).documentNumber" placeholder="Masukkan nomor dokumen" />
+                    </div>
+
+                    <FileUploadField v-model="rowState(row.type.id).file" accept=".jpg,.jpeg,.png,.pdf,.zip,.rar"
+                      :max-size-mb="10" :error="rowState(row.type.id).error" choose-text="Pilih file"
+                      empty-text="Belum ada file dipilih"
+                      @error="(msg: string) => (rowState(row.type.id).error = msg)" />
+
+                    <div class="flex justify-end gap-2">
+                      <Button size="sm" variant="outline-secondary" :disabled="rowState(row.type.id).uploading"
+                        @click="cancelDocumentUpload(row.type.id)">
+                        Batal
+                      </Button>
+                      <Button size="sm" variant="primary" class="inline-flex items-center gap-2"
+                        :disabled="rowState(row.type.id).uploading" @click="submitDocumentUpload(row)">
+                        <Lucide v-if="rowState(row.type.id).uploading" icon="Loader2"
+                          class="h-4 w-4 animate-spin" />
+                        Simpan
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardSection>
+
+            <DeleteRecordDialog :open="deleteDocumentDialogOpen" title="Hapus Dokumen"
+              :description="`Dokumen ${deleteDocumentTarget?.document_type?.name ?? ''} milik customer ini akan dihapus permanen.`"
+              :loading="deleteDocumentLoading" @close="deleteDocumentDialogOpen = false"
+              @confirm="performDeleteDocument" />
           </Tab.Panel>
 
           <!-- TAB 2: Sales Review (editable) -->
