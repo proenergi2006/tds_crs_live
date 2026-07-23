@@ -2,376 +2,429 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
+use App\Http\Requests\Customer\StoreCustomerLcrRequest;
+use App\Http\Requests\Customer\UpdateCustomerLcrRequest;
+use App\Models\Customer;
 use App\Models\CustomerLcr;
+use App\Models\DocumentApproval;
+use App\Models\DocumentApprovalStep;
+use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
 class CustomerLcrController extends Controller
 {
-   // Controller
-private function rules(bool $forUpdate = false): array
-{
-    return [
-        // create: required, update: boleh tidak dikirim (partial)
-        'id_customer' => $forUpdate ? ['sometimes','integer'] : ['required','integer'],
+    private const APPROVAL_TEMPLATE_CODE = 'customer_lcr_survey';
+    private const ROLE_LOGISTIK = 6;
 
-        'id_cabang'   => ['nullable','integer'],
-        'id_wilayah'  => ['nullable','integer'],
-        'id_wil_oa'   => ['nullable','integer'],
-        'alamat_survey' => ['nullable','string'],
-        'prov_survey'   => ['nullable','integer'],
-        'kab_survey'    => ['nullable','integer'],
-        'telp_survey'   => ['nullable','string','max:50'],
-        'fax_survey'    => ['nullable','string','max:50'],
-        'tgl_survey'    => ['nullable','date'],
-
-        'nama_surveyor' => ['nullable','array'],
-        'review'        => ['nullable','string'],
-        'jenis_usaha'   => ['nullable','string','max:100'],
-        'website'       => ['nullable','string','max:191'],
-        'hasilsurv'     => ['nullable','array'],
-        'produkvol'     => ['nullable','array'],
-        'picustomer'    => ['nullable','array'],
-
-        'alat_ukur'     => ['nullable','string','max:100'],
-        'toleransi'     => ['nullable','string','max:50'],
-        'kompetitor'    => ['nullable','array'],
-        'jam_operasional' => ['nullable','array'],
-
-        'logistik_summary' => ['nullable','string'],
-        'logistik_result'  => ['nullable','integer','in:0'],
-        'logistik_tanggal' => ['nullable','date'],
-        'logistik_pic'     => ['nullable','string','max:100'],
-
-        'sm_summary' => ['nullable','string'],
-        'sm_result'  => ['nullable','integer','in:0'],
-        'sm_tanggal' => ['nullable','date'],
-        'sm_pic'     => ['nullable','string','max:100'],
-
-        'flag_disposisi' => ['nullable','integer','in:1'],
-        'flag_approval'  => ['nullable','integer'],
-        'tgl_approval'   => ['nullable','date'],
-
-        'tangki'          => ['nullable','array'],
-        'pendukung'       => ['nullable','array'],
-        'quantity_tangki' => ['nullable','array'],
-        'quality_tangki'  => ['nullable','array'],
-        'catatan_tangki'  => ['nullable','string'],
-
-        'kapal'           => ['nullable','array'],
-        'jetty'           => ['nullable','array'],
-        'quantity_kapal'  => ['nullable','array'],
-        'quality_kapal'   => ['nullable','array'],
-        'catatan_kapal'   => ['nullable','string'],
-
-        'penjelasan_bongkar' => ['nullable','string'],
-
-        'latitude_lokasi' => ['nullable','numeric'],
-        'longitude_lokasi'=> ['nullable','numeric'],
-        'link_google_maps'=> ['nullable','string'],
-
-        'jarak_depot'   => ['nullable','string','max:50'],
-        'max_truk'      => ['nullable','string','max:50'],
-        'lsm_portal'    => ['nullable','string','max:50'],
-        'min_vol_kirim' => ['nullable','string','max:50'],
-
-        'rute_lokasi' => ['nullable','string'],
-        'note_lokasi' => ['nullable','string'],
-        'jenis_usaha_lain' => ['nullable','string'],
-
-        // ====== MEDIA (array of objects) ======
-        'layout_lokasi'                 => ['nullable','array'],
-        'layout_lokasi.*.path'          => ['required','string'],
-        'layout_lokasi.*.url'           => ['required','string'],
-        'layout_lokasi.*.caption'       => ['nullable','string','max:255'],
-
-        'layout_bongkar'                => ['nullable','array'],
-        'layout_bongkar.*.path'         => ['required','string'],
-        'layout_bongkar.*.url'          => ['required','string'],
-        'layout_bongkar.*.caption'      => ['nullable','string','max:255'],
-
-        'kondisi_jalan'                 => ['nullable','array'],
-        'kondisi_jalan.*.path'          => ['required','string'],
-        'kondisi_jalan.*.url'           => ['required','string'],
-        'kondisi_jalan.*.caption'       => ['nullable','string','max:255'],
-
-        'kantor_perusahaan'             => ['nullable','array'],
-        'kantor_perusahaan.*.path'      => ['required','string'],
-        'kantor_perusahaan.*.url'       => ['required','string'],
-        'kantor_perusahaan.*.caption'   => ['nullable','string','max:255'],
-
-        'fasilitas_storage'             => ['nullable','array'],
-        'fasilitas_storage.*.path'      => ['required','string'],
-        'fasilitas_storage.*.url'       => ['required','string'],
-        'fasilitas_storage.*.caption'   => ['nullable','string','max:255'],
-
-        'inlet_pipa'                    => ['nullable','array'],
-        'inlet_pipa.*.path'             => ['required','string'],
-        'inlet_pipa.*.url'              => ['required','string'],
-        'inlet_pipa.*.caption'          => ['nullable','string','max:255'],
-
-        'alat_ukur_gambar'              => ['nullable','array'],
-        'alat_ukur_gambar.*.path'       => ['required','string'],
-        'alat_ukur_gambar.*.url'        => ['required','string'],
-        'alat_ukur_gambar.*.caption'    => ['nullable','string','max:255'],
-
-        'media_datar'                   => ['nullable','array'],
-        'media_datar.*.path'            => ['required','string'],
-        'media_datar.*.url'             => ['required','string'],
-        'media_datar.*.caption'         => ['nullable','string','max:255'],
-
-        'keterangan_lain'               => ['nullable','array'],
-        'keterangan_lain.*.path'        => ['required','string'],
-        'keterangan_lain.*.url'         => ['required','string'],
-        'keterangan_lain.*.caption'     => ['nullable','string','max:255'],
-    ];
-}
-
-
-    private function messages(): array
+    public function __construct(private readonly DocumentApprovalService $approvalService)
     {
-        return [
-            'id_customer.required' => 'Customer wajib dipilih.',
-        ];
     }
 
-    private function validateRequest(Request $request, bool $forUpdate = false)
-{
-    $v = Validator::make($request->all(), $this->rules($forUpdate), $this->messages());
-    if ($v->fails()) {
-        return response()->json([
-            'message' => 'The given data was invalid.',
-            'errors'  => $v->errors(),
-        ], 422);
-    }
-    return $v->validated();
-}
-
-    /** List + search */
-    public function index(Request $request)
+    /** List site LCR milik 1 customer. */
+    public function index(Request $request, Customer $customer)
     {
-        $perPage = (int) $request->query('per_page', 10);
-        $q = trim((string) $request->query('q', ''));
-    
-        // <-- eager load relasi customer, hanya ambil kolom yang diperlukan
-        $query = CustomerLcr::with(['customer:id_customer,nama_perusahaan']);
-
-        if ($request->filled('id_customer')) {
-            $query->where('id_customer', (int) $request->query('id_customer'));
+        if (!$this->canViewCustomer($request, $customer)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($q !== '') {
-            // filter ke kolom LCR
-            $query->where(function ($w) use ($q) {
-                // kalau pakai PostgreSQL bisa ganti 'like' => 'ilike' (case-insensitive)
-                $w->where('alamat_survey', 'like', "%{$q}%")
-                  ->orWhere('jenis_usaha', 'like', "%{$q}%")
-                  ->orWhere('review', 'like', "%{$q}%");
-            })
-            // filter juga ke relasi customer (opsional)
-            ->orWhereHas('customer', function ($w) use ($q) {
-                $w->where('nama_perusahaan', 'like', "%{$q}%")
-                  ->orWhere('kode', 'like', "%{$q}%"); // hapus baris ini kalau kolom 'kode' tidak ada
-            });
-        }
-    
-        return $query->orderByDesc('created_time')->paginate($perPage);
+        $sites = $customer->lcr()
+            ->with('latestDocumentApproval')
+            ->orderByDesc('id_lcr')
+            ->get();
+
+        return response()->json($sites->map(fn (CustomerLcr $site) => $this->formatSite($site))->values());
     }
-    
 
-    /** Create */
-    public function store(Request $request)
+    public function show(Request $request, Customer $customer, CustomerLcr $lcrSite)
     {
+        if (!$this->canViewCustomer($request, $customer)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
-        $request->merge([
-            'logistik_result' => 0,
-            'flag_disposisi'  => 1,
-        ]);
-        $validated = $this->validateRequest($request);
-        if ($validated instanceof \Illuminate\Http\JsonResponse) return $validated;
+        if ($lcrSite->id_customer !== $customer->id_customer) {
+            return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
+        }
 
-        $payload = $validated;
+        $lcrSite->load('latestDocumentApproval');
 
-        $payload['logistik_result'] = 0;
-    $payload['flag_disposisi']  = 1;
+        return response()->json($this->formatSite($lcrSite));
+    }
 
-// kolom id_cabang tidak ada di tabel customer_lcr ⇒ buang dari payload
-        unset($payload['id_cabang']);
-        $payload['created_time'] = now();
-        $payload['created_ip']   = $request->ip();
-        $payload['created_by']   = optional($request->user())->name ?? 'system';
+    public function store(StoreCustomerLcrRequest $request, Customer $customer)
+    {
+        if (!$this->canManageCustomer($request, $customer)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
-        $lcr = null;
-        DB::transaction(function () use ($payload, &$lcr) {
-            $lcr = CustomerLcr::create($payload);
+        $data = $request->validated();
+        $user = $request->user();
+        $ip   = $request->ip();
+
+        $site = DB::transaction(function () use ($data, $customer, $user, $ip) {
+            $site = CustomerLcr::create([
+                ...$data,
+                'id_customer'     => $customer->id_customer,
+                'created_time'    => now(),
+                'created_ip'      => $ip,
+                'created_by'      => $user->name ?? 'system',
+                'lastupdate_time' => now(),
+                'lastupdate_ip'   => $ip,
+                'lastupdate_by'   => $user->name ?? 'system',
+            ]);
+
+            $this->approvalService->startCycle($site, self::APPROVAL_TEMPLATE_CODE);
+
+            return $site;
         });
 
-        return response()->json($lcr, 201);
+        $site->load('latestDocumentApproval');
+
+        return response()->json($this->formatSite($site), 201);
     }
 
-    /** Detail */
-    public function show(CustomerLcr $customerLcr)
+    public function update(UpdateCustomerLcrRequest $request, Customer $customer, CustomerLcr $lcrSite)
     {
-        return $customerLcr;
-    }
-
-    /** Update */
-    public function update(Request $request, CustomerLcr $customerLcr)
-    {
-        // ← penting: TRUE supaya rules “sometimes” berlaku
-        $validated = $this->validateRequest($request, true);
-        if ($validated instanceof \Illuminate\Http\JsonResponse) return $validated;
-    
-        $payload = $validated;
-        unset($payload['id_cabang']);
-    
-        $payload['lastupdate_time'] = now();
-        $payload['lastupdate_ip']   = $request->ip();
-        $payload['lastupdate_by']   = optional($request->user())->name ?? 'system';
-    
-        DB::transaction(function () use ($customerLcr, $payload) {
-            $customerLcr->update($payload);
-        });
-    
-        return $customerLcr->fresh();
-    }
-
-    /** Delete */
-    public function destroy(CustomerLcr $customerLcr)
-    {
-        $customerLcr->delete();
-        return response()->noContent();
-    }
-
-
-    public function uploadImage(Request $request)
-{
-    $data = $request->validate([
-        'file' => ['required','image','mimes:jpg,jpeg,png,webp','max:2048'],
-    ]);
-
-    $path = $request->file('file')->store('lcr', 'public');
-
-    return response()->json([
-        'path' => $path,
-        'url'  => asset('storage/'.$path),
-        'name' => $request->file('file')->getClientOriginalName(),
-        'size' => $request->file('file')->getSize(),
-    ]);
-}
-
-
-    public function indexLogistik(Request $request)
-    {
-        $perPage = (int) $request->query('per_page', 10);
-        $q       = trim((string) $request->query('q', ''));
-        $status  = $request->query('status', 'all');
-
-        $query = CustomerLcr::query()
-            ->with(['customer:id_customer,nama_perusahaan']);
-
-        if ($request->filled('id_customer')) {
-            $query->where('id_customer', (int) $request->query('id_customer'));
+        if (!$this->canManageCustomer($request, $customer)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        // filter status berdasar flag_disposisi
-        $query->where(function ($w) use ($status) {
-            switch ($status) {
-                case 'menunggu':  $w->where('flag_disposisi', 1); break;
-                case 'disetujui': $w->where('flag_disposisi', 2); break;
-                case 'ditolak':   $w->where('flag_disposisi', 3); break;
-                case 'all':
-                default: /* no filter */ break;
-            }
-        });
-
-        // pencarian (dibungkus dalam where untuk tidak "men-cancel" filter status)
-        if ($q !== '') {
-            $query->where(function ($w) use ($q) {
-                $w->where('alamat_survey', 'like', "%{$q}%")
-                  ->orWhere('jenis_usaha', 'like', "%{$q}%")
-                  ->orWhere('review', 'like', "%{$q}%")
-                  ->orWhereHas('customer', function ($c) use ($q) {
-                      $c->where('nama_perusahaan', 'like', "%{$q}%");
-                  });
-            });
+        if ($lcrSite->id_customer !== $customer->id_customer) {
+            return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
         }
 
-        return $query->orderByDesc('created_time')->paginate($perPage);
-    }
+        $user = $request->user();
 
-    public function setFlag(Request $request, CustomerLcr $customerLcr)
-    {
-        $data = $request->validate([
-            'flag_disposisi'   => ['required','integer','in:1,2,3'], // 1=Menunggu, 2=Approved, 3=Rejected
-            'logistik_summary' => ['nullable','string'],
-        ]);
-    
-        // field umum yang selalu diupdate saat verifikasi logistik
-        $updates = [
-            'flag_disposisi'   => $data['flag_disposisi'],
-            'logistik_result'  => 1, // kalau memang mau selalu 1; kalau mau dinamis lihat catatan di bawah
-            'logistik_summary' => $data['logistik_summary'] ?? null,
-            'logistik_tanggal' => now(),
-            'logistik_pic'     => optional($request->user())->name ?? 'system',
-            'lastupdate_time'  => now(),
-            'lastupdate_ip'    => $request->ip(),
-            'lastupdate_by'    => optional($request->user())->name ?? 'system',
-        ];
-    
-        // hanya saat DISETUJUI logistik → set approval & tgl_approval
-        if ((int)$data['flag_disposisi'] === 2) {
-            $updates += [
-                'flag_approval' => 1,
-                'tgl_approval'  => now(),
-            ];
-        }
-       
-    
-        $customerLcr->update($updates);
-    
-        return $customerLcr->fresh()->loadMissing('customer:id_customer,nama_perusahaan');
-    }
-    
-
-    /**
-     * Reset ke Menunggu (flag=1)
-     */
-    public function resetFlag(CustomerLcr $customerLcr, Request $request)
-    {
-        $customerLcr->update([
-            'flag_disposisi'  => 1,
-            'logistik_summary'=> null,
+        $lcrSite->update([
+            ...$request->validated(),
             'lastupdate_time' => now(),
             'lastupdate_ip'   => $request->ip(),
-            'lastupdate_by'   => optional($request->user())->name ?? 'system',
+            'lastupdate_by'   => $user->name ?? 'system',
         ]);
 
-        return $customerLcr->fresh()->loadMissing('customer:id_customer,nama_perusahaan');
+        return response()->json($this->formatSite($lcrSite->fresh('latestDocumentApproval')));
     }
 
-    public function showLogistik($id)
+    public function destroy(Request $request, Customer $customer, CustomerLcr $lcrSite)
     {
-        $row = \App\Models\CustomerLcr::with([
-            'customer:id_customer,nama_perusahaan',
-            'wilayahAngkut:id,destinasi',
-        ])->findOrFail($id);
-    
-        return response()->json($row);
+        if (!$this->canManageCustomer($request, $customer)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($lcrSite->id_customer !== $customer->id_customer) {
+            return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
+        }
+
+        $lcrSite->delete();
+
+        return response()->json(null, 204);
     }
-    
-    // (opsional) kalau mau pakai show() yg lama juga bisa diubah sedikit:
-    // public function show(CustomerLcr $customerLcr)
-    // {
-    //     $customerLcr->load([
-    //         'customer:id_customer,nama_perusahaan,kode',
-    //         'wilayahAngkut:id,destinasi',
-    //     ]);
-    //     return $customerLcr;
-    // }
 
-    
+    public function uploadImage(Request $request)
+    {
+        $user = $request->user();
 
+        if (!$user->can('customer.manage') && !$user->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $request->validate([
+            'file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $path = $request->file('file')->store('lcr', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url'  => asset('storage/'.$path),
+            'name' => $request->file('file')->getClientOriginalName(),
+            'size' => $request->file('file')->getSize(),
+        ]);
+    }
+
+    /**
+     * Antrean review Logistik lintas-customer (semua site LCR yang punya
+     * siklus approval aktif/riwayat), menggantikan `indexLogistik` lama yang
+     * memfilter `flag_disposisi` mentah.
+     */
+    public function reviewIndex(Request $request)
+    {
+        if (!$request->user()->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $perPage = (int) $request->query('per_page', 10);
+        $q       = trim((string) $request->query('q', ''));
+        $status  = $request->query('status', 'pending');
+
+        $query = CustomerLcr::query()
+            ->with(['customer:id_customer,nama_perusahaan', 'latestDocumentApproval']);
+
+        if ($request->filled('id_customer')) {
+            $query->where('id_customer', (int) $request->query('id_customer'));
+        }
+
+        if ($status !== 'all') {
+            $mapped = match ($status) {
+                'pending'   => DocumentApprovalStatus::InProgress,
+                'disetujui' => DocumentApprovalStatus::Approved,
+                'ditolak'   => DocumentApprovalStatus::Rejected,
+                default     => null,
+            };
+
+            if ($mapped) {
+                $query->whereHas('latestDocumentApproval', function ($approvalQuery) use ($mapped) {
+                    $approvalQuery->where('status', $mapped);
+                });
+            }
+        }
+
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('site_name', 'like', "%{$q}%")
+                    ->orWhere('survey_address', 'like', "%{$q}%")
+                    ->orWhereHas('customer', function ($c) use ($q) {
+                        $c->where('nama_perusahaan', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        $paginated = $query->orderByDesc('id_lcr')->paginate($perPage);
+        $paginated->getCollection()->transform(fn (CustomerLcr $site) => $this->formatSite($site));
+
+        return response()->json($paginated);
+    }
+
+    public function reviewShow(Request $request, CustomerLcr $lcrSite)
+    {
+        if (!$request->user()->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $lcrSite->load(['customer:id_customer,nama_perusahaan', 'latestDocumentApproval.steps']);
+
+        return response()->json($this->formatSite($lcrSite));
+    }
+
+    public function approvalTimeline(Request $request, CustomerLcr $lcrSite)
+    {
+        $user = $request->user();
+
+        $allowed = $user->can(self::verifyPermission())
+            || $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $lcrSite->customer?->id_user === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cycles = $lcrSite->documentApprovals()
+            ->with([
+                'steps' => fn ($q) => $q->orderBy('step_order'),
+                'steps.templateStep:id_step,step_name,step_order,id_role',
+                'steps.actor:id,name',
+            ])
+            ->orderByDesc('id_approval')
+            ->get();
+
+        return response()->json([
+            'data' => $cycles->map(fn (DocumentApproval $cycle) => [
+                'id_approval'        => $cycle->id_approval,
+                'status'             => $cycle->status,
+                'current_step_order' => $cycle->current_step_order,
+                'started_at'         => $cycle->started_at,
+                'completed_at'       => $cycle->completed_at,
+                'steps'              => $cycle->steps->map(fn (DocumentApprovalStep $step) => [
+                    'step_order'    => $step->step_order,
+                    'step_name'     => $step->templateStep->step_name ?? null,
+                    'status'        => $step->status,
+                    'actor_id'      => $step->actor_id,
+                    'actor_name'    => $step->actor->name ?? null,
+                    'acted_at'      => $step->acted_at,
+                    'decision_note' => $step->decision_note,
+                ]),
+            ]),
+        ]);
+    }
+
+    /** Approve/reject siklus aktif (menggantikan `setFlag` lama). */
+    public function decide(Request $request, CustomerLcr $lcrSite)
+    {
+        if (!$request->user()->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $data = $request->validate([
+            'decision' => ['required', 'in:approve,reject'],
+            'note'     => ['nullable', 'string'],
+        ]);
+
+        $template  = $this->approvalService->activeTemplate(self::APPROVAL_TEMPLATE_CODE);
+        $stepOrder = $template ? $this->approvalService->resolveStepOrderForRole($template, self::ROLE_LOGISTIK) : null;
+
+        if ($stepOrder === null) {
+            return response()->json(['message' => 'Approval template customer_lcr_survey belum ter-setup dengan benar.'], 422);
+        }
+
+        $status = $data['decision'] === 'approve'
+            ? DocumentApprovalStepStatus::Approved
+            : DocumentApprovalStepStatus::Rejected;
+
+        $cycle = DB::transaction(fn () => $this->approvalService->decideStep(
+            $lcrSite,
+            $stepOrder,
+            $status,
+            $request->user()->id,
+            $data['note'] ?? null
+        ));
+
+        if (!$cycle) {
+            return response()->json(['message' => 'Tidak ada siklus approval aktif untuk site LCR ini.'], 409);
+        }
+
+        return response()->json($this->formatSite($lcrSite->fresh('latestDocumentApproval')));
+    }
+
+    /** Buka siklus approval baru (menggantikan `resetFlag` lama). */
+    public function resetDecision(Request $request, CustomerLcr $lcrSite)
+    {
+        if (!$request->user()->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        DB::transaction(fn () => $this->approvalService->startCycle($lcrSite, self::APPROVAL_TEMPLATE_CODE));
+
+        return response()->json($this->formatSite($lcrSite->fresh('latestDocumentApproval')));
+    }
+
+    private static function verifyPermission(): string
+    {
+        return 'logistik.lcr.verify';
+    }
+
+    private function canViewCustomer(Request $request, Customer $customer): bool
+    {
+        $user = $request->user();
+
+        return $user->can('customer.viewAny')
+            || $user->can(self::verifyPermission())
+            || ($user->can('customer.viewOwn') && $customer->id_user === $user->id);
+    }
+
+    private function canManageCustomer(Request $request, Customer $customer): bool
+    {
+        $user = $request->user();
+
+        return $user->can('customer.manage')
+            && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
+    }
+
+    private function formatSite(CustomerLcr $site): array
+    {
+        $cycle = $site->latestDocumentApproval;
+
+        return [
+            'id_lcr'      => $site->id_lcr,
+            'id_customer' => $site->id_customer,
+            'customer'    => $site->relationLoaded('customer') && $site->customer ? [
+                'id_customer'     => $site->customer->id_customer,
+                'nama_perusahaan' => $site->customer->nama_perusahaan,
+            ] : null,
+
+            /* Grup 1 */
+            'site_name'                => $site->site_name,
+            'survey_address'           => $site->survey_address,
+            'prov_survey'              => $site->prov_survey,
+            'kab_survey'               => $site->kab_survey,
+            'survey_date'              => optional($site->survey_date)->toDateString(),
+            'surveyor_names'           => $site->surveyor_names,
+            'site_business_type'       => $site->site_business_type,
+            'site_business_type_other' => $site->site_business_type_other,
+            'site_environment'         => $site->site_environment,
+            'site_environment_other'   => $site->site_environment_other,
+            'site_environment_notes'   => $site->site_environment_notes,
+            'competitors'              => $site->competitors,
+            'operating_hours'          => $site->operating_hours,
+            'product_volume'           => $site->product_volume,
+            'survey_notes'             => $site->survey_notes,
+            'picustomer'               => $site->picustomer,
+            'website'                  => $site->website,
+            'telp_survey'              => $site->telp_survey,
+            'fax_survey'               => $site->fax_survey,
+            'id_wilayah'               => $site->id_wilayah,
+            'id_wil_oa'                => $site->id_wil_oa,
+
+            /* Grup 2 */
+            'max_truck_capacity_min' => $site->max_truck_capacity_min,
+            'max_truck_capacity_max' => $site->max_truck_capacity_max,
+            'access_notes'           => $site->access_notes,
+            'route_costs'            => $site->route_costs,
+            'distance_from_depot'    => $site->distance_from_depot,
+            'road_condition_photos'  => $site->road_condition_photos,
+            'min_vol_kirim'          => $site->min_vol_kirim,
+            'rute_lokasi'            => $site->rute_lokasi,
+            'note_lokasi'            => $site->note_lokasi,
+
+            /* Grup 3 */
+            'site_layout_photos'      => $site->site_layout_photos,
+            'unloading_method'        => $site->unloading_method,
+            'max_trucks_per_day'      => $site->max_trucks_per_day,
+            'unloading_layout_photos' => $site->unloading_layout_photos,
+            'unloading_notes'         => $site->unloading_notes,
+
+            /* Grup 4 */
+            'storage_type'            => $site->storage_type,
+            'storage_type_other'      => $site->storage_type_other,
+            'storage_capacity'        => $site->storage_capacity,
+            'storage_notes'           => $site->storage_notes,
+            'storage_facility_photos' => $site->storage_facility_photos,
+
+            /* Grup 5 */
+            'quality_checking_method'     => $site->quality_checking_method,
+            'quality_checking_notes'      => $site->quality_checking_notes,
+            'quantity_checking_method'    => $site->quantity_checking_method,
+            'quantity_checking_notes'     => $site->quantity_checking_notes,
+            'measurement_evidence_photos' => $site->measurement_evidence_photos,
+
+            /* Grup 6 */
+            'supports_vessel_delivery'        => $site->supports_vessel_delivery,
+            'vessel_type'                     => $site->vessel_type?->value,
+            'vessel_type_label'               => $site->vessel_type?->label(),
+            'vessel_cargo_capacity'           => $site->vessel_cargo_capacity,
+            'vessel_unloading_method'         => $site->vessel_unloading_method?->value,
+            'vessel_unloading_method_label'   => $site->vessel_unloading_method?->label(),
+            'vessel_quantity_checking_method' => $site->vessel_quantity_checking_method?->value,
+            'vessel_quantity_checking_method_label' => $site->vessel_quantity_checking_method?->label(),
+            'vessel_quantity_checking_notes'  => $site->vessel_quantity_checking_notes,
+            'vessel_quality_checking_method'  => $site->vessel_quality_checking_method,
+            'vessel_quality_checking_notes'   => $site->vessel_quality_checking_notes,
+            'vessel_layout_photos'            => $site->vessel_layout_photos,
+            'jetty_type'                      => $site->jetty_type,
+            'max_loa'                         => $site->max_loa,
+            'min_pbl'                         => $site->min_pbl,
+            'draft_lws'                       => $site->draft_lws,
+            'jetty_capacity_dwt'              => $site->jetty_capacity_dwt,
+            'jetty_permit_info'               => $site->jetty_permit_info,
+            'document_requirements'           => $site->document_requirements,
+
+            /* Grup 7 */
+            'company_office_photos' => $site->company_office_photos,
+            'additional_photos'     => $site->additional_photos,
+            'latitude_lokasi'       => $site->latitude_lokasi,
+            'longitude_lokasi'      => $site->longitude_lokasi,
+            'link_google_maps'      => $site->link_google_maps,
+            'coordinates'           => $site->coordinates,
+
+            'approval' => $cycle ? [
+                'status'             => $cycle->status->value,
+                'status_label'       => $cycle->status->label(),
+                'current_step_order' => $cycle->current_step_order,
+            ] : null,
+
+            'created_time'    => optional($site->created_time)->toISOString(),
+            'lastupdate_time' => optional($site->lastupdate_time)->toISOString(),
+        ];
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerIncoterm;
+use App\Enums\CustomerStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,6 +15,11 @@ class Customer extends Model
 
     protected $primaryKey = 'id_customer';
     public $timestamps = false;
+
+    protected $casts = [
+        'inco_terms' => CustomerIncoterm::class,
+        'customer_status' => CustomerStatus::class,
+    ];
 
     protected $fillable = [
         // dasar
@@ -52,15 +59,15 @@ class Customer extends Model
         'need_update',
         'is_generated_link',
         'count_update',
-        'jenis_payment',
-        'top_payment',
-        'jenis_net',
         'credit_limit',
         'credit_limit_diajukan',
         'induk_perusahaan',
         'kecamatan_customer',
         'kelurahan_customer',
         'id_cabang',
+        'inco_terms',
+        'inco_terms_other',
+        'customer_status',
     ];
 
     public function user()
@@ -107,9 +114,9 @@ class Customer extends Model
     return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
 }
 
-public function lcr(): \Illuminate\Database\Eloquent\Relations\HasOne
+public function lcr(): HasMany
 {
-    return $this->hasOne(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
+    return $this->hasMany(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
 }
 
 public function penawarans(): HasMany
@@ -135,6 +142,22 @@ public function addresses(): HasMany
 public function contacts(): HasMany
 {
     return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
+}
+
+public function creditSubmissions(): HasMany
+{
+    return $this->hasMany(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer');
+}
+
+public function latestCreditSubmission(): HasOne
+{
+    return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
+        ->latestOfMany('id');
+}
+
+public function statusHistory(): HasMany
+{
+    return $this->hasMany(\App\Models\CustomerStatusHistory::class, 'id_customer', 'id_customer');
 }
 
 public function verifications()

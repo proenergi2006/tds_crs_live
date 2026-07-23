@@ -28,6 +28,8 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerAddressController;
 use App\Http\Controllers\Customer\CustomerContactController;
 use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Customer\CustomerCreditItemController;
+use App\Http\Controllers\Customer\CustomerCreditSubmissionController;
 use App\Http\Controllers\Customer\CustomerDocumentController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
 use App\Http\Controllers\Customer\LinkCustomerController;
@@ -205,6 +207,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customers/{customer}/contacts', [CustomerContactController::class, 'store']);
     Route::put('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'update']);
     Route::delete('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'destroy']);
+
+    // customer_credit_submissions + customer_credit_items, scoped id_customer
+    // -- pengajuan kredit (header + detail per produk), approval siklusnya
+    // sendiri lewat document_approvals (code=customer_credit), independen
+    // dari siklus customer_verifications. Authorization sama pola dengan
+    // customer_addresses/customer_contacts di atas (ownership check di dalam
+    // controller).
+    Route::get('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'index']);
+    Route::post('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'store']);
+    Route::get('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'show']);
+    Route::put('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'update']);
+    Route::delete('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'destroy']);
+
+    Route::post('customers/{customer}/credit-submissions/{submission}/items', [CustomerCreditItemController::class, 'store']);
+    Route::put('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'update']);
+    Route::delete('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'destroy']);
+
+    // customer_lcr (site LCR, 1 customer bisa multi-site), approval siklusnya
+    // sendiri lewat document_approvals (code=customer_lcr_survey). Authorization
+    // sama pola dengan blok Customer di atas (ownership check di dalam controller).
+    Route::get('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'index']);
+    Route::post('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'store']);
+    Route::get('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'show']);
+    Route::put('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'update']);
+    Route::delete('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'destroy']);
+    Route::get('lcr-sites/{lcrSite}/approval-timeline', [CustomerLcrController::class, 'approvalTimeline']);
+
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
 
@@ -269,12 +298,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan']);
     Route::apiResource('customer-pos', PoCustomerController::class);
 
-    Route::apiResource('customer-lcrs', CustomerLcrController::class);
     Route::post('uploads/lcr-image', [CustomerLcrController::class, 'uploadImage']);
-    Route::get('customer-lcrs', [CustomerLcrController::class, 'indexLogistik'])->name('lcr.index');
-    Route::patch('customer-lcrs/{customerLcr}/set-flag',  [CustomerLcrController::class, 'setFlag']);
-    Route::patch('customer-lcrs/{customerLcr}/reset-flag', [CustomerLcrController::class, 'resetFlag']);
-    Route::get('logistik/customer-lcrs/{id}', [CustomerLcrController::class, 'showLogistik']);
+
+    // Antrean review Logistik lintas-customer untuk site LCR (role 6, permission
+    // logistik.lcr.verify) -- menggantikan flag_disposisi/flag_approval mentah lama.
+    Route::get('review/lcr-sites', [CustomerLcrController::class, 'reviewIndex']);
+    Route::get('review/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'reviewShow']);
+    Route::patch('review/lcr-sites/{lcrSite}/decision', [CustomerLcrController::class, 'decide']);
+    Route::patch('review/lcr-sites/{lcrSite}/reset-decision', [CustomerLcrController::class, 'resetDecision']);
 
     // Public form (pakai token) - upload internal (auth)
     Route::post('customer-verifications/{customerVerification}/upload', [CustomerVerificationController::class, 'upload']);
@@ -319,7 +350,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Dan alias lain yang sudah ada sebelumnya (tetap dibiarkan)
         Route::get('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationShow'])->whereNumber('id');
-        Route::post('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationSave'])->whereNumber('id');
         Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
     });
 

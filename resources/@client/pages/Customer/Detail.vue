@@ -12,6 +12,7 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
+import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
@@ -72,6 +73,51 @@ interface CustomerContactRecord {
   email: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+/* Type: pengajuan kredit customer (customer_credit_submissions + customer_credit_items), Tab 4 */
+interface CustomerCreditItemRecord {
+  id: number
+  id_submission: number
+  id_produk: number
+  produk: { id_produk: number; nama_produk: string } | null
+  volume: string | number | null
+  unit: string | null
+  existing_limit: string | number | null
+  actual_payment: string | number | null
+  guarantee: string | null
+  credit_limit_request: string | number | null
+  credit_limit_approval: string | number | null
+  top_request: number | null
+  top_approval: number | null
+  notes: string | null
+}
+interface CustomerCreditSubmissionRecord {
+  id: number
+  id_customer: number
+  submission_type: string
+  submission_type_label: string
+  top_payment: number | null
+  items: CustomerCreditItemRecord[]
+  approval: unknown | null
+  created_by: { id: number; name: string } | null
+  created_at: string | null
+  updated_at: string | null
+}
+interface ProdukOption {
+  id_produk: number
+  nama_produk: string
+  ukuran?: { satuan?: { nama_satuan: string } | null } | null
+}
+interface CreditItemRow {
+  id_produk: number | ''
+  volume: number | null
+  unit: string
+  existing_limit: number | null
+  actual_payment: number | null
+  guarantee: string
+  credit_limit_request: number | null
+  top_request: number | null
 }
 
 const route = useRoute()
@@ -238,6 +284,82 @@ const yaTidakOptions = ['Ya', 'Tidak']
 const sinyalOptions = ['Telkomsel', 'Indosat', 'XL', '3', 'Smartfren', 'Lainnya']
 const specOptions = ['Migas', 'Non Migas']
 
+/* State: Tab 4 — Pengajuan Kredit & TOP (customer_credit_submissions + customer_credit_items, CRUD independen dari siklus verifikasi) */
+const creditSubmissionsApi = createResourceApi(`/customers/${idCustomer}/credit-submissions`)
+const produksApi = createResourceApi('/produks')
+
+const creditSubmissionsLoading = ref(true)
+const creditSubmissions = ref<CustomerCreditSubmissionRecord[]>([])
+const produkOptions = ref<ProdukOption[]>([])
+const produkOptionsLoading = ref(true)
+
+const creditSubmissionTypeOptions: { value: string; label: string }[] = [
+  { value: 'new_customer', label: 'Customer Baru' },
+  { value: 're_activated', label: 'Reaktivasi Customer' },
+  { value: 'add_top', label: 'Penambahan TOP' },
+  { value: 'add_credit_limit', label: 'Penambahan Limit Kredit' },
+]
+
+function emptyCreditItemRow(): CreditItemRow {
+  return {
+    id_produk: '',
+    volume: null,
+    unit: '',
+    existing_limit: null,
+    actual_payment: null,
+    guarantee: '',
+    credit_limit_request: null,
+    top_request: null,
+  }
+}
+
+const creditSubmissionFormOpen = ref(false)
+const creditSubmissionSaving = ref(false)
+const creditSubmissionError = ref<string | null>(null)
+const creditSubmissionForm = reactive({
+  submission_type: '' as string,
+  top_payment: null as number | null,
+})
+const creditItemRows = ref<CreditItemRow[]>([emptyCreditItemRow()])
+
+const editSubmissionFormOpen = ref(false)
+const editSubmissionSaving = ref(false)
+const editSubmissionError = ref<string | null>(null)
+const editSubmissionTarget = ref<CustomerCreditSubmissionRecord | null>(null)
+const editSubmissionForm = reactive({
+  submission_type: '' as string,
+  top_payment: null as number | null,
+})
+
+const deleteSubmissionDialogOpen = ref(false)
+const deleteSubmissionTarget = ref<CustomerCreditSubmissionRecord | null>(null)
+const deleteSubmissionLoading = ref(false)
+
+const itemFormOpen = ref(false)
+const itemFormMode = ref<'create' | 'edit'>('create')
+const itemFormSaving = ref(false)
+const itemFormError = ref<string | null>(null)
+const itemFormSubmissionId = ref<number | null>(null)
+const itemForm = reactive({
+  id: null as number | null,
+  id_produk: '' as number | '',
+  volume: null as number | null,
+  unit: '',
+  existing_limit: null as number | null,
+  actual_payment: null as number | null,
+  guarantee: '',
+  credit_limit_request: null as number | null,
+  credit_limit_approval: null as number | null,
+  top_request: null as number | null,
+  top_approval: null as number | null,
+  notes: '',
+})
+
+const deleteItemDialogOpen = ref(false)
+const deleteItemTarget = ref<CustomerCreditItemRecord | null>(null)
+const deleteItemSubmissionId = ref<number | null>(null)
+const deleteItemLoading = ref(false)
+
 /* Computed: Tab 1 — ringkasan Data Customer, dikelompokkan per section (pola summarySections dari CustomerUpdateForm.vue) */
 const summarySections = computed(() => {
   const c = legal.value?.corporate || {}
@@ -327,6 +449,8 @@ onMounted(fetchDocumentTypes)
 onMounted(fetchCustomerDocuments)
 onMounted(fetchContactTypes)
 onMounted(fetchCustomerContacts)
+onMounted(fetchCreditSubmissions)
+onMounted(fetchProdukOptions)
 
 /* Watch: auto isi id_wilayah dari cabang yang dipilih (Tab 3) */
 watch(() => lcrForm.value.id_cabang, async (id) => {
@@ -655,6 +779,328 @@ async function performDeleteContact() {
   } finally {
     deleteContactLoading.value = false
   }
+}
+
+/* Fetch: Tab 4 — pengajuan kredit customer ini (tidak dipaginate) */
+async function fetchCreditSubmissions() {
+  creditSubmissionsLoading.value = true
+  try {
+    const { data } = await creditSubmissionsApi.getAll()
+    creditSubmissions.value = Array.isArray(data) ? data : []
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat pengajuan kredit customer.')
+  } finally {
+    creditSubmissionsLoading.value = false
+  }
+}
+
+/* Fetch: Tab 4 — daftar produk untuk dropdown item pengajuan kredit */
+async function fetchProdukOptions() {
+  produkOptionsLoading.value = true
+  try {
+    const { data } = await produksApi.getAll({ as_list: true })
+    produkOptions.value = Array.isArray(data) ? data : []
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat daftar produk.')
+  } finally {
+    produkOptionsLoading.value = false
+  }
+}
+
+/* Helper: Tab 4 — API item scoped ke 1 submission (endpoint dinamis, bukan fixed seperti resource lain) */
+function creditItemsApi(submissionId: number) {
+  return createResourceApi(`/customers/${idCustomer}/credit-submissions/${submissionId}/items`)
+}
+
+function findCreditSubmission(submissionId: number) {
+  return creditSubmissions.value.find(s => s.id === submissionId)
+}
+
+/* Helper: Tab 4 — satuan default dari produk terpilih, dipakai isi awal field unit kalau masih kosong */
+function produkUnitLabel(idProduk: number | string) {
+  const produk = produkOptions.value.find(p => p.id_produk === Number(idProduk))
+  return produk?.ukuran?.satuan?.nama_satuan ?? ''
+}
+
+/* Action: Tab 4 — buat pengajuan kredit baru (header + item produk sekaligus, pola add-row sama seperti Tab 3 LCR) */
+function openCreateCreditSubmission() {
+  creditSubmissionError.value = null
+  Object.assign(creditSubmissionForm, { submission_type: '', top_payment: null })
+  creditItemRows.value = [emptyCreditItemRow()]
+  creditSubmissionFormOpen.value = true
+}
+
+function closeCreditSubmissionForm() {
+  creditSubmissionFormOpen.value = false
+}
+
+const addCreditItemRow = () => creditItemRows.value.push(emptyCreditItemRow())
+const removeCreditItemRow = (i: number) => creditItemRows.value.splice(i, 1)
+
+function onCreditItemRowProdukChange(row: CreditItemRow) {
+  if (!row.unit) row.unit = produkUnitLabel(row.id_produk)
+}
+
+async function submitCreditSubmissionForm() {
+  creditSubmissionError.value = null
+
+  if (!creditSubmissionForm.submission_type) {
+    creditSubmissionError.value = 'Jenis pengajuan wajib dipilih.'
+    return
+  }
+
+  const items = creditItemRows.value
+    .filter(row => row.id_produk)
+    .map(row => ({
+      id_produk: Number(row.id_produk),
+      volume: row.volume,
+      unit: row.unit || null,
+      existing_limit: row.existing_limit,
+      actual_payment: row.actual_payment,
+      guarantee: row.guarantee || null,
+      credit_limit_request: row.credit_limit_request,
+      top_request: row.top_request,
+    }))
+
+  creditSubmissionSaving.value = true
+  try {
+    const { data } = await creditSubmissionsApi.store({
+      submission_type: creditSubmissionForm.submission_type,
+      top_payment: creditSubmissionForm.top_payment,
+      items,
+    })
+    creditSubmissions.value.push(data)
+    success('Berhasil', 'Pengajuan kredit berhasil dibuat.')
+    creditSubmissionFormOpen.value = false
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errors = e.response?.data?.errors || {}
+      creditSubmissionError.value = Object.values(errors)[0]?.[0] as string || 'Periksa kembali input Anda.'
+    } else {
+      creditSubmissionError.value = e.response?.data?.message ?? 'Gagal membuat pengajuan kredit.'
+    }
+  } finally {
+    creditSubmissionSaving.value = false
+  }
+}
+
+/* Action: Tab 4 — edit header pengajuan kredit (submission_type + top_payment; item dikelola terpisah lewat endpoint item) */
+function openEditCreditSubmission(submission: CustomerCreditSubmissionRecord) {
+  editSubmissionError.value = null
+  editSubmissionTarget.value = submission
+  Object.assign(editSubmissionForm, {
+    submission_type: submission.submission_type,
+    top_payment: submission.top_payment,
+  })
+  editSubmissionFormOpen.value = true
+}
+
+function closeEditCreditSubmission() {
+  editSubmissionFormOpen.value = false
+}
+
+async function submitEditCreditSubmission() {
+  const target = editSubmissionTarget.value
+  if (!target) return
+
+  editSubmissionError.value = null
+  if (!editSubmissionForm.submission_type) {
+    editSubmissionError.value = 'Jenis pengajuan wajib dipilih.'
+    return
+  }
+
+  editSubmissionSaving.value = true
+  try {
+    const { data } = await creditSubmissionsApi.update(target.id, {
+      submission_type: editSubmissionForm.submission_type,
+      top_payment: editSubmissionForm.top_payment,
+    })
+    const index = creditSubmissions.value.findIndex(s => s.id === data.id)
+    if (index !== -1) creditSubmissions.value[index] = data
+    success('Berhasil', 'Pengajuan kredit berhasil diperbarui.')
+    editSubmissionFormOpen.value = false
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errors = e.response?.data?.errors || {}
+      editSubmissionError.value = Object.values(errors)[0]?.[0] as string || 'Periksa kembali input Anda.'
+    } else {
+      editSubmissionError.value = e.response?.data?.message ?? 'Gagal memperbarui pengajuan kredit.'
+    }
+  } finally {
+    editSubmissionSaving.value = false
+  }
+}
+
+/* Action: Tab 4 — hapus pengajuan kredit (beserta seluruh item, cascade di backend) */
+function confirmDeleteCreditSubmission(submission: CustomerCreditSubmissionRecord) {
+  deleteSubmissionTarget.value = submission
+  deleteSubmissionDialogOpen.value = true
+}
+
+async function performDeleteCreditSubmission() {
+  const target = deleteSubmissionTarget.value
+  if (!target) return
+
+  deleteSubmissionLoading.value = true
+  try {
+    await creditSubmissionsApi.destroy(target.id)
+    creditSubmissions.value = creditSubmissions.value.filter(s => s.id !== target.id)
+    success('Berhasil', 'Pengajuan kredit berhasil dihapus.')
+    deleteSubmissionDialogOpen.value = false
+    deleteSubmissionTarget.value = null
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus pengajuan kredit.')
+  } finally {
+    deleteSubmissionLoading.value = false
+  }
+}
+
+/* Action: Tab 4 — tambah/edit item produk pada pengajuan kredit yang sudah ada (endpoint item terpisah dari header) */
+function resetItemForm() {
+  itemFormError.value = null
+  Object.assign(itemForm, {
+    id: null,
+    id_produk: '',
+    volume: null,
+    unit: '',
+    existing_limit: null,
+    actual_payment: null,
+    guarantee: '',
+    credit_limit_request: null,
+    credit_limit_approval: null,
+    top_request: null,
+    top_approval: null,
+    notes: '',
+  })
+}
+
+function openCreateItem(submission: CustomerCreditSubmissionRecord) {
+  itemFormMode.value = 'create'
+  itemFormSubmissionId.value = submission.id
+  resetItemForm()
+  itemFormOpen.value = true
+}
+
+function openEditItem(submission: CustomerCreditSubmissionRecord, item: CustomerCreditItemRecord) {
+  itemFormMode.value = 'edit'
+  itemFormSubmissionId.value = submission.id
+  resetItemForm()
+  Object.assign(itemForm, {
+    id: item.id,
+    id_produk: item.id_produk,
+    volume: item.volume !== null ? Number(item.volume) : null,
+    unit: item.unit ?? '',
+    existing_limit: item.existing_limit !== null ? Number(item.existing_limit) : null,
+    actual_payment: item.actual_payment !== null ? Number(item.actual_payment) : null,
+    guarantee: item.guarantee ?? '',
+    credit_limit_request: item.credit_limit_request !== null ? Number(item.credit_limit_request) : null,
+    credit_limit_approval: item.credit_limit_approval !== null ? Number(item.credit_limit_approval) : null,
+    top_request: item.top_request,
+    top_approval: item.top_approval,
+    notes: item.notes ?? '',
+  })
+  itemFormOpen.value = true
+}
+
+function closeItemForm() {
+  itemFormOpen.value = false
+}
+
+function onItemFormProdukChange() {
+  if (!itemForm.unit) itemForm.unit = produkUnitLabel(itemForm.id_produk)
+}
+
+async function submitItemForm() {
+  const submissionId = itemFormSubmissionId.value
+  if (!submissionId) return
+
+  itemFormError.value = null
+  if (!itemForm.id_produk) {
+    itemFormError.value = 'Produk wajib dipilih.'
+    return
+  }
+
+  const payload = {
+    id_produk: Number(itemForm.id_produk),
+    volume: itemForm.volume,
+    unit: itemForm.unit || null,
+    existing_limit: itemForm.existing_limit,
+    actual_payment: itemForm.actual_payment,
+    guarantee: itemForm.guarantee || null,
+    credit_limit_request: itemForm.credit_limit_request,
+    top_request: itemForm.top_request,
+    notes: itemForm.notes || null,
+  }
+
+  const itemsApi = creditItemsApi(submissionId)
+  itemFormSaving.value = true
+  try {
+    if (itemFormMode.value === 'edit' && itemForm.id) {
+      const { data } = await itemsApi.update(itemForm.id, payload)
+      const submission = findCreditSubmission(submissionId)
+      if (submission) {
+        const index = submission.items.findIndex(i => i.id === data.id)
+        if (index !== -1) submission.items[index] = data
+      }
+      success('Berhasil', 'Item pengajuan kredit berhasil diperbarui.')
+    } else {
+      const { data } = await itemsApi.store(payload)
+      const submission = findCreditSubmission(submissionId)
+      if (submission) submission.items.push(data)
+      success('Berhasil', 'Item pengajuan kredit berhasil ditambahkan.')
+    }
+    itemFormOpen.value = false
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errors = e.response?.data?.errors || {}
+      itemFormError.value = Object.values(errors)[0]?.[0] as string || 'Periksa kembali input Anda.'
+    } else {
+      itemFormError.value = e.response?.data?.message ?? 'Gagal menyimpan item pengajuan kredit.'
+    }
+  } finally {
+    itemFormSaving.value = false
+  }
+}
+
+function confirmDeleteItem(submission: CustomerCreditSubmissionRecord, item: CustomerCreditItemRecord) {
+  deleteItemTarget.value = item
+  deleteItemSubmissionId.value = submission.id
+  deleteItemDialogOpen.value = true
+}
+
+async function performDeleteItem() {
+  const target = deleteItemTarget.value
+  const submissionId = deleteItemSubmissionId.value
+  if (!target || !submissionId) return
+
+  deleteItemLoading.value = true
+  try {
+    await creditItemsApi(submissionId).destroy(target.id)
+    const submission = findCreditSubmission(submissionId)
+    if (submission) submission.items = submission.items.filter(i => i.id !== target.id)
+    success('Berhasil', 'Item pengajuan kredit berhasil dihapus.')
+    deleteItemDialogOpen.value = false
+    deleteItemTarget.value = null
+    deleteItemSubmissionId.value = null
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus item pengajuan kredit.')
+  } finally {
+    deleteItemLoading.value = false
+  }
+}
+
+/* Helper: Tab 4 — format tampilan nominal & kuantitas item (API mengembalikan string desimal) */
+function formatCreditAmount(value: string | number | null) {
+  if (value === null || value === undefined || value === '') return '-'
+  const amount = Math.trunc(Number(value))
+  if (!Number.isFinite(amount)) return '-'
+  return `Rp ${amount.toLocaleString('id-ID')}`
+}
+
+function formatQuantity(value: string | number | null) {
+  if (value === null || value === undefined || value === '') return '-'
+  const n = Number(value)
+  return Number.isFinite(n) ? n.toLocaleString('id-ID') : String(value)
 }
 
 /* Fetch: Tab 3 — deteksi create-vs-edit dari GET /api/customer-lcrs?id_customer= */
@@ -1358,6 +1804,16 @@ const SearchableRemoteSelect = defineComponent({
                   <div>
                     <FormLabel>Opportunity Bisnis</FormLabel>
                     <FormTextarea v-model="reviewForm.opportunities" :rows="2" />
+                  </div>
+
+                  <div>
+                    <CurrencyField v-model="reviewForm.credit_limit_proposed" label="Credit Limit Diajukan" />
+                  </div>
+
+                  <div class="sm:col-span-2">
+                    <FormLabel>Usulan Term of Payment (TOP)</FormLabel>
+                    <FormTextarea v-model="reviewForm.invoice_schedule" :rows="3"
+                      placeholder="Contoh: TOP 14 hari setelah tanggal pengiriman, jatuh tempo setiap tanggal 10..." />
                   </div>
                 </div>
               </CardSection>
@@ -2090,39 +2546,309 @@ const SearchableRemoteSelect = defineComponent({
             </div>
           </Tab.Panel>
 
-          <!-- TAB 4: Credit Application / TOP (editable, berbagi save action dgn Tab 2) -->
+          <!-- TAB 4: Credit Application / TOP (customer_credit_submissions + customer_credit_items, CRUD independen dari siklus verifikasi Tab 2) -->
           <Tab.Panel>
-            <div v-if="!hasVerification"
-              class="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
-              <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
-              <div class="font-strong">Belum ada data verifikasi</div>
-              <div class="font-body max-w-md">
-                Pengajuan credit limit & TOP baru bisa diisi setelah customer memiliki siklus verifikasi yang aktif.
-              </div>
-            </div>
+            <div class="space-y-4">
+              <CardSection v-if="creditSubmissionFormOpen" title="Form Pengajuan Kredit Baru"
+                description="Jenis pengajuan, usulan TOP, dan item produk yang diajukan." icon="FilePlus"
+                icon-class="bg-teal-100 text-teal-600">
+                <div v-if="creditSubmissionError"
+                  class="font-body mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 !text-rose-700">
+                  {{ creditSubmissionError }}
+                </div>
 
-            <div v-else class="space-y-4">
-              <CardSection title="Pengajuan Credit Limit & Term of Payment (TOP)"
-                description="Usulan awal dari Marketing/Key Account — akan direview dan dikonfirmasi oleh Admin Finance."
-                icon="Wallet" icon-class="bg-teal-100 text-teal-600">
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <CurrencyField v-model="reviewForm.credit_limit_proposed" label="Credit Limit Diajukan" />
-
-                  <div class="sm:col-span-2">
-                    <FormLabel>Usulan Term of Payment (TOP)</FormLabel>
-                    <FormTextarea v-model="reviewForm.invoice_schedule" :rows="3"
-                      placeholder="Contoh: TOP 14 hari setelah tanggal pengiriman, jatuh tempo setiap tanggal 10..." />
+                  <div>
+                    <FormLabel>Jenis Pengajuan *</FormLabel>
+                    <FormSelect v-model="creditSubmissionForm.submission_type">
+                      <option value="">- Pilihan -</option>
+                      <option v-for="opt in creditSubmissionTypeOptions" :key="opt.value" :value="opt.value">
+                        {{ opt.label }}
+                      </option>
+                    </FormSelect>
                   </div>
+                  <NumberField v-model="creditSubmissionForm.top_payment" label="Usulan TOP" suffix="hari"
+                    :decimals="0" />
+                </div>
+
+                <div class="mt-6">
+                  <div class="font-section mb-2">Item Produk</div>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                      <thead class="bg-slate-50">
+                        <tr>
+                          <th class="px-3 py-2 text-xs uppercase">Produk</th>
+                          <th class="px-3 py-2 text-xs uppercase">Volume</th>
+                          <th class="px-3 py-2 text-xs uppercase">Unit</th>
+                          <th class="px-3 py-2 text-xs uppercase">Existing Limit</th>
+                          <th class="px-3 py-2 text-xs uppercase">Actual Payment</th>
+                          <th class="px-3 py-2 text-xs uppercase">Guarantee</th>
+                          <th class="px-3 py-2 text-xs uppercase">Credit Limit Request</th>
+                          <th class="px-3 py-2 text-xs uppercase">Credit Limit Approval</th>
+                          <th class="px-3 py-2 text-xs uppercase">TOP Request</th>
+                          <th class="px-3 py-2 text-xs uppercase">TOP Approval</th>
+                          <th class="px-3 py-2 text-xs uppercase text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(row, i) in creditItemRows" :key="i" class="border-b">
+                          <td class="px-3 py-2">
+                            <FormSelect v-model="row.id_produk" class="min-w-[160px]" :disabled="produkOptionsLoading"
+                              @change="onCreditItemRowProdukChange(row)">
+                              <option value="">{{ produkOptionsLoading ? 'Memuat produk...' : '- Pilih -' }}</option>
+                              <option v-for="p in produkOptions" :key="p.id_produk" :value="p.id_produk">
+                                {{ p.nama_produk }}
+                              </option>
+                            </FormSelect>
+                          </td>
+                          <td class="px-3 py-2">
+                            <NumberField v-model="row.volume" class="min-w-[100px]" :decimals="4" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <FormInput v-model="row.unit" class="min-w-[80px]" placeholder="M3" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <CurrencyField v-model="row.existing_limit" class="min-w-[140px]" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <CurrencyField v-model="row.actual_payment" class="min-w-[140px]" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <FormInput v-model="row.guarantee" class="min-w-[120px]" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <CurrencyField v-model="row.credit_limit_request" class="min-w-[160px]" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <CurrencyField :model-value="null" class="min-w-[160px]" disabled
+                              placeholder="Diisi saat approval" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <NumberField v-model="row.top_request" class="min-w-[90px]" suffix="hari" :decimals="0" />
+                          </td>
+                          <td class="px-3 py-2">
+                            <NumberField :model-value="null" class="min-w-[90px]" suffix="hari" :decimals="0" disabled
+                              placeholder="Diisi saat approval" />
+                          </td>
+                          <td class="px-3 py-2 text-center space-x-2">
+                            <Button size="sm" variant="soft-primary" title="Tambah baris"
+                              class="!h-8 !w-8 !p-0 !shadow-none" @click="addCreditItemRow">
+                              <Lucide icon="Plus" class="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="soft-danger" title="Hapus baris"
+                              class="!h-8 !w-8 !p-0 !shadow-none" :disabled="creditItemRows.length === 1"
+                              @click="removeCreditItemRow(i)">
+                              <Lucide icon="Trash2" class="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="font-caption mt-2">Baris tanpa produk dipilih tidak akan disimpan.</p>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                  <Button variant="outline-secondary" :disabled="creditSubmissionSaving"
+                    @click="closeCreditSubmissionForm">
+                    Batal
+                  </Button>
+                  <Button variant="primary" class="inline-flex items-center gap-2" :disabled="creditSubmissionSaving"
+                    @click="submitCreditSubmissionForm">
+                    <Lucide v-if="creditSubmissionSaving" icon="Loader2" class="h-4 w-4 animate-spin" />
+                    <Lucide v-else icon="Save" class="h-4 w-4" />
+                    Simpan Pengajuan
+                  </Button>
                 </div>
               </CardSection>
 
-              <div class="flex justify-end">
-                <Button variant="primary" class="inline-flex items-center gap-2" @click="forwardDialogOpen = true">
-                  <Lucide icon="Send" class="h-4 w-4" />
-                  Forward ke Admin Finance
-                </Button>
-              </div>
+              <CardSection title="Pengajuan Credit Limit & Term of Payment (TOP)"
+                description="Data entry pengajuan kredit per produk — siklus approval terpisah, dikelola independen dari Sales Review."
+                icon="Wallet" icon-class="bg-teal-100 text-teal-600">
+                <template #action>
+                  <Button size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
+                    :disabled="creditSubmissionFormOpen" @click="openCreateCreditSubmission">
+                    <Lucide icon="Plus" class="h-4 w-4" />
+                    Buat Pengajuan Baru
+                  </Button>
+                </template>
+
+                <div v-if="creditSubmissionsLoading"
+                  class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
+                  <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
+                  <span class="font-body">Memuat pengajuan kredit...</span>
+                </div>
+
+                <div v-else-if="creditSubmissions.length === 0"
+                  class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+                  <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
+                  <div class="font-body">Belum ada pengajuan kredit yang dibuat.</div>
+                </div>
+
+                <div v-else class="space-y-4">
+                  <div v-for="submission in creditSubmissions" :key="submission.id"
+                    class="rounded-lg border border-slate-200">
+                    <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+                      <span
+                        class="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
+                        {{ submission.submission_type_label }}
+                      </span>
+                      <div class="font-body">
+                        TOP: <span class="font-strong">{{ submission.top_payment ?? '-' }} hari</span>
+                      </div>
+                      <div class="font-body">{{ submission.items.length }} item produk</div>
+                      <span
+                        class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                        {{ submission.approval ? 'Approval berjalan' : 'Belum diajukan approval' }}
+                      </span>
+
+                      <div class="ml-auto flex items-center gap-2">
+                        <Button size="sm" variant="soft-pending" title="Edit" class="!h-8 !w-8 !p-0 !shadow-none"
+                          @click="openEditCreditSubmission(submission)">
+                          <Lucide icon="Edit" class="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="soft-danger" title="Hapus" class="!h-8 !w-8 !p-0 !shadow-none"
+                          @click="confirmDeleteCreditSubmission(submission)">
+                          <Lucide icon="Trash2" class="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div class="border-t border-slate-200 px-4 py-3">
+                      <div class="mb-3 flex items-center justify-between">
+                        <div class="font-section">Item Produk</div>
+                        <Button size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
+                          @click="openCreateItem(submission)">
+                          <Lucide icon="Plus" class="h-4 w-4" />
+                          Tambah Item
+                        </Button>
+                      </div>
+
+                      <div v-if="submission.items.length === 0" class="font-body text-slate-500">
+                        Belum ada item produk untuk pengajuan ini.
+                      </div>
+
+                      <div v-else class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200">
+                          <thead class="bg-slate-50">
+                            <tr>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Produk</th>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Volume</th>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Existing Limit</th>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Actual Payment</th>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Guarantee</th>
+                              <th class="px-3 py-2 text-xs uppercase text-right">Credit Limit Request</th>
+                              <th class="px-3 py-2 text-xs uppercase text-right">Credit Limit Approval</th>
+                              <th class="px-3 py-2 text-xs uppercase text-center">TOP Request</th>
+                              <th class="px-3 py-2 text-xs uppercase text-center">TOP Approval</th>
+                              <th class="px-3 py-2 text-xs uppercase text-left">Catatan</th>
+                              <th class="px-3 py-2 text-xs uppercase text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="item in submission.items" :key="item.id" class="border-b">
+                              <td class="px-3 py-2 font-strong">{{ item.produk?.nama_produk ?? '-' }}</td>
+                              <td class="px-3 py-2">{{ formatQuantity(item.volume) }} {{ item.unit }}</td>
+                              <td class="px-3 py-2">{{ formatCreditAmount(item.existing_limit) }}</td>
+                              <td class="px-3 py-2">{{ formatCreditAmount(item.actual_payment) }}</td>
+                              <td class="px-3 py-2">{{ dash(item.guarantee) }}</td>
+                              <td class="px-3 py-2 text-right">{{ formatCreditAmount(item.credit_limit_request) }}</td>
+                              <td class="px-3 py-2 text-right">{{ formatCreditAmount(item.credit_limit_approval) }}</td>
+                              <td class="px-3 py-2 text-center">
+                                {{ item.top_request != null ? item.top_request + ' hari' : '-' }}
+                              </td>
+                              <td class="px-3 py-2 text-center">
+                                {{ item.top_approval != null ? item.top_approval + ' hari' : '-' }}
+                              </td>
+                              <td class="px-3 py-2">{{ dash(item.notes) }}</td>
+                              <td class="px-3 py-2 text-center space-x-2">
+                                <Button size="sm" variant="soft-pending" title="Edit"
+                                  class="!h-8 !w-8 !p-0 !shadow-none" @click="openEditItem(submission, item)">
+                                  <Lucide icon="Edit" class="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="soft-danger" title="Hapus"
+                                  class="!h-8 !w-8 !p-0 !shadow-none" @click="confirmDeleteItem(submission, item)">
+                                  <Lucide icon="Trash2" class="h-4 w-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardSection>
             </div>
+
+            <FormModal :open="editSubmissionFormOpen" title="Edit Pengajuan Kredit"
+              description="Ubah jenis pengajuan & usulan TOP. Item produk dikelola lewat bagian Item Produk di bawah daftar."
+              :loading="editSubmissionSaving" :error="editSubmissionError" submit-text="Simpan" submit-icon="Save"
+              @close="closeEditCreditSubmission" @submit="submitEditCreditSubmission">
+              <div class="space-y-3">
+                <div>
+                  <FormLabel>Jenis Pengajuan *</FormLabel>
+                  <FormSelect v-model="editSubmissionForm.submission_type">
+                    <option value="">- Pilihan -</option>
+                    <option v-for="opt in creditSubmissionTypeOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </option>
+                  </FormSelect>
+                </div>
+                <NumberField v-model="editSubmissionForm.top_payment" label="Usulan TOP" suffix="hari"
+                  :decimals="0" />
+              </div>
+            </FormModal>
+
+            <DeleteRecordDialog :open="deleteSubmissionDialogOpen" title="Hapus Pengajuan Kredit"
+              :description="`Pengajuan ${deleteSubmissionTarget?.submission_type_label ?? ''} beserta seluruh item produknya akan dihapus permanen.`"
+              :loading="deleteSubmissionLoading" @close="deleteSubmissionDialogOpen = false"
+              @confirm="performDeleteCreditSubmission" />
+
+            <FormModal :open="itemFormOpen"
+              :title="itemFormMode === 'create' ? 'Tambah Item Produk' : 'Edit Item Produk'"
+              description="Detail per produk untuk pengajuan kredit ini." :loading="itemFormSaving"
+              :error="itemFormError" :submit-text="itemFormMode === 'create' ? 'Tambah' : 'Simpan'"
+              :submit-icon="itemFormMode === 'create' ? 'PlusCircle' : 'Save'" size="lg" @close="closeItemForm"
+              @submit="submitItemForm">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  <FormLabel>Produk *</FormLabel>
+                  <FormSelect v-model="itemForm.id_produk" :disabled="produkOptionsLoading"
+                    @change="onItemFormProdukChange">
+                    <option value="">{{ produkOptionsLoading ? 'Memuat produk...' : '- Pilih -' }}</option>
+                    <option v-for="p in produkOptions" :key="p.id_produk" :value="p.id_produk">
+                      {{ p.nama_produk }}
+                    </option>
+                  </FormSelect>
+                </div>
+                <NumberField v-model="itemForm.volume" label="Volume" :decimals="4" />
+                <div>
+                  <FormLabel>Unit</FormLabel>
+                  <FormInput v-model="itemForm.unit" placeholder="M3" />
+                </div>
+                <CurrencyField v-model="itemForm.existing_limit" label="Existing Limit" />
+                <CurrencyField v-model="itemForm.actual_payment" label="Actual Payment" />
+                <div>
+                  <FormLabel>Guarantee</FormLabel>
+                  <FormInput v-model="itemForm.guarantee" placeholder="Bank Guarantee" />
+                </div>
+                <CurrencyField v-model="itemForm.credit_limit_request" label="Credit Limit Request" />
+                <CurrencyField :model-value="itemForm.credit_limit_approval" label="Credit Limit Approval" disabled
+                  placeholder="Diisi saat approval" />
+                <NumberField v-model="itemForm.top_request" label="TOP Request" suffix="hari" :decimals="0" />
+                <NumberField :model-value="itemForm.top_approval" label="TOP Approval" suffix="hari" :decimals="0"
+                  disabled placeholder="Diisi saat approval" />
+                <div class="sm:col-span-2">
+                  <FormLabel>Catatan</FormLabel>
+                  <FormTextarea v-model="itemForm.notes" :rows="2" />
+                </div>
+              </div>
+            </FormModal>
+
+            <DeleteRecordDialog :open="deleteItemDialogOpen" title="Hapus Item Produk"
+              :description="`Item ${deleteItemTarget?.produk?.nama_produk ?? ''} akan dihapus permanen dari pengajuan ini.`"
+              :loading="deleteItemLoading" @close="deleteItemDialogOpen = false" @confirm="performDeleteItem" />
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>

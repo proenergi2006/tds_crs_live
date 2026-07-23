@@ -294,7 +294,7 @@ class CustomerVerificationController extends Controller
 
     public function getAdminEvaluation(Request $request, $id)
     {
-        $cv = CustomerVerification::with('customer')->findOrFail($id);
+        $cv = CustomerVerification::with('customer.latestCreditSubmission')->findOrFail($id);
 
         $user = $request->user();
 
@@ -306,11 +306,12 @@ class CustomerVerificationController extends Controller
         }
 
         $customer = $cv->customer;
+        $topPayment = $customer->latestCreditSubmission->top_payment ?? null;
 
         return response()->json([
-            'top_text'             => $customer->top_payment ? $customer->top_payment . ' Hari' : '-',
+            'top_text'             => $topPayment ? $topPayment . ' Hari' : '-',
             'credit_limit_request' => $customer->credit_limit_diajukan ?? '-',
-            'financial_review'     => trim(($customer->jenis_payment ?? '-') . ' — ' . ($customer->jenis_net ?? '-')),
+            'financial_review'     => $cv->finance_summary ?? '-',
             'potential_volume'     => '-',
         ]);
     }
@@ -567,37 +568,39 @@ class CustomerVerificationController extends Controller
             'Personal'         => 7,
             'Other'            => 99,
         ];
-        $mapEnv = ['Industri' => 1, 'Pemukiman' => 2, 'Other' => 9];
-        $mapStorage = ['Indoor' => 1, 'Outdoor' => 2, 'Other' => 9];
-        $mapHours = ['08.00 - 17.00' => 1, '24 Hours' => 2, 'Other' => 9];
-        $mapVolume = [
-            'Weighbridge (Truck Scale)'    => 1,
-            'Platform Scale'               => 2,
-            'Volume Measurement'           => 3,
-            'Truck Counting'               => 4,
-            'Delivery Order Verification'  => 5,
-            'Net Weight Verification'      => 6,
-            'Sampling'                     => 7,
+        $mapSiteEnvironment = [
+            'Industri'  => SiteEnvironment::Industrial->value,
+            'Pemukiman' => SiteEnvironment::Residential->value,
+            'Other'     => SiteEnvironment::Other->value,
         ];
-        $mapQuality = ['DENSITY' => 1, 'OTHER' => 2];
+        $mapStorageType = [
+            'Indoor'  => StorageType::Indoor->value,
+            'Outdoor' => StorageType::Outdoor->value,
+            'Other'   => StorageType::Other->value,
+        ];
+        $mapOperatingHours = [
+            '08.00 - 17.00' => CustomerLogistikOperatingHours::StandardOfficeHours->value,
+            '24 Hours'      => CustomerLogistikOperatingHours::TwentyFourHours->value,
+            'Other'         => CustomerLogistikOperatingHours::Other->value,
+        ];
+        $mapQuantityCheckingMethod = [
+            'Weighbridge (Truck Scale)'    => QuantityCheckingMethod::WeighbridgeTruckScale->value,
+            'Platform Scale'               => QuantityCheckingMethod::PlatformScale->value,
+            'Volume Measurement'           => QuantityCheckingMethod::VolumeMeasurement->value,
+            'Truck Counting'               => QuantityCheckingMethod::TruckCounting->value,
+            'Delivery Order Verification'  => QuantityCheckingMethod::DeliveryOrderVerification->value,
+            'Net Weight Verification'      => QuantityCheckingMethod::NetWeightVerification->value,
+            'Sampling'                     => QuantityCheckingMethod::Sampling->value,
+            'Other'                        => QuantityCheckingMethod::Other->value,
+        ];
         $mapSchedule = ['Every Day' => 1, 'Other' => 9];
         $mapPayMethod = ['Cash' => 1, 'Transfer' => 2, 'Cheque / Giro' => 3, 'Bank Guarantee' => 4, 'Other' => 9];
-        $mapSupplyScheme = ['Delivery' => 1, 'Self Pickup' => 2];
-        $mapIncoterms = [
-            'EXW' => 1,
-            'FOB' => 2,
-            'CIF' => 3,
-            'CFR' => 4,
-            'DDP' => 5,
-            'DAP' => 6,
-            'FCA' => 7,
-            'CPT' => 8,
-        ];
 
         $tipeBisnisCode = $mapTipeBisnis[Arr::get($corp, 'tipe_bisnis', '')] ?? null;
         $ownershipCode  = $mapOwnership[Arr::get($corp, 'ownership', '')] ?? null;
 
         DB::transaction(function () use (
+            $request,
             $cv,
             $corp,
             $reg,
@@ -611,15 +614,12 @@ class CustomerVerificationController extends Controller
             $boolToInt,
             $tipeBisnisCode,
             $ownershipCode,
-            $mapEnv,
-            $mapStorage,
-            $mapHours,
-            $mapVolume,
-            $mapQuality,
+            $mapSiteEnvironment,
+            $mapStorageType,
+            $mapOperatingHours,
+            $mapQuantityCheckingMethod,
             $mapSchedule,
             $mapPayMethod,
-            $mapSupplyScheme,
-            $mapIncoterms,
             $legal,
             $finance,
             $logistik
@@ -643,6 +643,8 @@ class CustomerVerificationController extends Controller
                 'ownership_type'        => $ownershipCode,  // smallint (kolom lama: ownership)
                 'ownership_lain'        => Arr::get($corp, 'ownership_lain'),
                 'induk_perusahaan'      => Arr::get($corp, 'holding'),
+                'inco_terms'            => $strOrNull(Arr::get($supply, 'inco_terms')),
+                'inco_terms_other'      => $strOrNull(Arr::get($supply, 'inco_terms_other')),
 
                 // NIB/NPWP/Sertifikat nomor+file dari form publik cuma tersimpan
                 // di customer_verifications.legal_data (JSON), tidak disalin ke
@@ -709,13 +711,27 @@ class CustomerVerificationController extends Controller
                 ]);
             }
 
+            // ---------- customer_addresses (NPWP-registered address -> registered_npwp) ----------
+            $registeredAddressLine = $strOrNull(Arr::get($reg, 'alamat'));
+
+            if ($registeredAddressLine !== null) {
+                CustomerAddress::updateOrCreate(
+                    [
+                        'id_customer'  => $cv->id_customer,
+                        'address_type' => CustomerAddressType::RegisteredNpwp->value,
+                    ],
+                    [
+                        'address_line' => $registeredAddressLine,
+                        'province_id'  => $strOrNull(Arr::get($reg, 'province_id')),
+                        'regency_id'   => $strOrNull(Arr::get($reg, 'regency_id')),
+                        'postal_code'  => $strOrNull(Arr::get($corp, 'postal_code')),
+                        'is_primary'   => true,
+                    ]
+                );
+            }
+
             // ---------- customer_payment ----------
             $payUpdate = [
-                'email_billing'          => Arr::get($reg, 'email'),
-                'alamat_billing'         => Arr::get($reg, 'alamat'),
-                'prov_billing'           => $intOrNull(Arr::get($reg, 'id_provinsi')),
-                'kab_billing'            => $intOrNull(Arr::get($reg, 'id_kabupaten')),
-                'postalcode_billing'     => Arr::get($corp, 'postal_code'),
                 'telp_billing'           => Arr::get($corp, 'telepon'),
                 'fax_billing'            => Arr::get($corp, 'fax'),
 
@@ -728,34 +744,12 @@ class CustomerVerificationController extends Controller
 
                 'calculate_method'       => Arr::get($pay, 'pricing_method'),
                 'bank_name'              => Arr::get($pay, 'bank_name'),
-                'curency'                => Arr::get($pay, 'currency'),
+                'currency'               => Arr::get($pay, 'currency'),
                 'bank_address'           => Arr::get($pay, 'bank_address'),
                 'account_number'         => Arr::get($pay, 'account_number'),
                 'credit_facility'        => $boolToInt(Arr::get($pay, 'has_credit')),
                 'creditor'               => Arr::get($pay, 'creditor_name'),
             ];
-            if (is_null($payUpdate['prov_billing'])) unset($payUpdate['prov_billing']);
-            if (is_null($payUpdate['kab_billing']))  unset($payUpdate['kab_billing']);
-
-            if (Arr::has($reg, 'province_id')) {
-                $payUpdate['province_id'] = $strOrNull(Arr::get($reg, 'province_id'));
-            }
-            if (Arr::has($reg, 'regency_id')) {
-                $payUpdate['regency_id'] = $strOrNull(Arr::get($reg, 'regency_id'));
-            }
-            if (Arr::has($corp, 'district_id')) {
-                $payUpdate['district_id'] = $strOrNull(Arr::get($corp, 'district_id'));
-            }
-            if (Arr::has($corp, 'village_id')) {
-                $payUpdate['village_id'] = $strOrNull(Arr::get($corp, 'village_id'));
-            }
-
-            if (Arr::has($corp, 'kecamatan')) {
-                $payUpdate['kecamatan_billing'] = Arr::get($corp, 'kecamatan');
-            }
-            if (Arr::has($corp, 'kelurahan')) {
-                $payUpdate['kelurahan_billing'] = Arr::get($corp, 'kelurahan');
-            }
 
             DB::table('customer_payment')->updateOrInsert(
                 ['id_customer' => $cv->id_customer],
@@ -763,35 +757,67 @@ class CustomerVerificationController extends Controller
             );
 
             // ---------- customer_logistik ----------
+            // site_environment_notes menggabungkan 3 field teks bebas lama
+            // (area, security_env, condition_desc) yang dulu tersebar di
+            // 3 kolom terpisah -- taksonomi baru cuma punya 1 kolom notes.
+            $siteEnvironmentNotes = collect([
+                'Area (Location Size)'                 => Arr::get($lg, 'area'),
+                'Security Environment / Business Area' => Arr::get($lg, 'security_env'),
+                'Description Of Condition'             => Arr::get($lg, 'condition_desc'),
+            ])->filter(fn ($value) => $strOrNull($value) !== null)
+                ->map(fn ($value, $label) => "{$label}: {$value}")
+                ->implode("\n\n");
+
+            $qualityCheckingMethod = Arr::get($lg, 'quality_density')
+                ? QualityCheckingMethod::LabTest->value
+                : (Arr::get($lg, 'quality_other_enabled') ? QualityCheckingMethod::Other->value : null);
+
             $logistikUpdate = [
-                'logistik_area'          => Arr::get($lg, 'area'),
-                'logistik_bisnis'        => Arr::get($lg, 'security_env'),
-                'logistik_env'           => $mapEnv[Arr::get($lg, 'env', '')] ?? null,
-                'logistik_env_other'     => Arr::get($lg, 'env_other'),
-                'logistik_storage'       => $mapStorage[Arr::get($lg, 'storage', '')] ?? null,
-                'logistik_storage_other' => Arr::get($lg, 'storage_other'),
-                'logistik_hour'          => $mapHours[Arr::get($lg, 'operating_hours', '')] ?? null,
-                'logistik_hour_other'    => Arr::get($lg, 'operating_hours_other'),
-                'logistik_volume'        => $mapVolume[Arr::get($lg, 'volume_measurement', '')] ?? null,
-                'logistik_volume_other'  => Arr::get($lg, 'volume_measurement_other'),
-                'logistik_quality'       => $mapQuality[Arr::get($lg, 'quality_density') ? 'DENSITY'
-                    : (Arr::get($lg, 'quality_other_enabled') ? 'OTHER' : '')] ?? null,
-                'logistik_quality_other' => Arr::get($lg, 'quality_other'),
-                'logistik_truck'         => $intOrNull(Arr::get($lg, 'max_truck_capacity')), // "8 KL" -> 8
-                'logistik_truck_other'   => Arr::get($lg, 'max_truck_capacity_other'),
+                'site_environment'       => $mapSiteEnvironment[Arr::get($lg, 'env', '')] ?? null,
+                'site_environment_other' => Arr::get($lg, 'env_other'),
+                'site_environment_notes' => $strOrNull($siteEnvironmentNotes),
 
-                'supply_shceme'          => $mapSupplyScheme[Arr::get($supply, 'scheme_details', '')] ?? null,
-                'specify_product'        => $intOrNull(Arr::get($supply, 'specify_product')), // pakai ini jika kolom INT
-                'volume_per_month'       => $intOrNull(Arr::get($supply, 'volume_per_month')),
-                'nico'                   => $mapIncoterms[Arr::get($supply, 'inco_terms', '')] ?? null,
+                'storage_type'           => $mapStorageType[Arr::get($lg, 'storage', '')] ?? null,
+                'storage_type_other'     => Arr::get($lg, 'storage_other'),
+                'storage_notes'          => $strOrNull(Arr::get($lg, 'storage_desc')),
 
-                'operational_hour_from'  => Arr::get($supply, 'operational_from'),
-                'operational_hour_to'    => Arr::get($supply, 'operational_to'),
+                'operating_hours'        => $mapOperatingHours[Arr::get($lg, 'operating_hours', '')] ?? null,
+                'operating_hours_other'  => Arr::get($lg, 'operating_hours_other'),
+
+                'quality_checking_method' => $qualityCheckingMethod,
+                'quality_checking_notes'  => $strOrNull(Arr::get($lg, 'quality_other')),
+
+                'quantity_checking_method' => $mapQuantityCheckingMethod[Arr::get($lg, 'volume_measurement', '')] ?? null,
+                'quantity_checking_notes'  => $strOrNull(Arr::get($lg, 'volume_measurement_other')),
+
+                // "8 KL" -> 8; field tunggal lama dipetakan ke max saja,
+                // min baru diisi lewat form min/max presisi (F4-F).
+                'max_truck_capacity_max' => $intOrNull(Arr::get($lg, 'max_truck_capacity')),
+
+                'product_notes'            => $strOrNull(Arr::get($supply, 'scheme_details')),
+                'estimated_monthly_volume' => $intOrNull(Arr::get($supply, 'volume_per_month')),
+
+                'operational_hour_from' => Arr::get($supply, 'operational_from'),
+                'operational_hour_to'   => Arr::get($supply, 'operational_to'),
             ];
-            DB::table('customer_logistik')->updateOrInsert(
-                ['id_customer' => $cv->id_customer],
-                $logistikUpdate
-            );
+
+            if (Arr::has($lg, 'supports_vessel_delivery')) {
+                $logistikUpdate['supports_vessel_delivery'] = $boolToInt(Arr::get($lg, 'supports_vessel_delivery'));
+            }
+
+            $logistikRecord = CustomerLogistik::firstOrNew(['id_customer' => $cv->id_customer]);
+            $logistikRecord->fill($logistikUpdate);
+
+            if (!$logistikRecord->exists) {
+                $logistikRecord->created_time = now();
+                $logistikRecord->created_ip   = $request->ip();
+                $logistikRecord->created_by   = Arr::get($agreement ?? [], 'updated_by');
+            }
+
+            $logistikRecord->lastupdate_time = now();
+            $logistikRecord->lastupdate_ip   = $request->ip();
+            $logistikRecord->lastupdate_by   = Arr::get($agreement ?? [], 'updated_by');
+            $logistikRecord->save();
 
             $cv->update([
                 'legal_data'    => json_encode($legal,    JSON_UNESCAPED_UNICODE),
@@ -986,101 +1012,6 @@ class CustomerVerificationController extends Controller
             'evaluation'    => $kyc['evaluation'] ?? [],
         ]);
     }
-
-    public function evaluationAdmin(int $id)
-    {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::with('customer')->findOrFail($id);
-        $cust = $cv->customer;
-
-        $form = [
-            'top_text'             => $cust->top_payment ? $cust->top_payment . ' Hari' : null,
-            'potential_volume'     => $cust->potential_volume ?? null,
-            'credit_limit_request' => $cust->credit_limit_diajukan ?? null,
-            'financial_review'     => $cust->financial_review ?? null,
-        ];
-
-        return response()->json(['form' => $form]);
-    }
-
-
-
-    public function evaluationSave(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $data = $r->validate([
-            'jenis_data'         => 'required|in:before,after',
-            'financial_review'   => 'nullable|string',
-            'logistic_summary'   => 'nullable|string',
-            'logistic_result'    => 'nullable|string',
-            'assessment_result'  => 'nullable|integer|in:1,2,3',
-
-            'approval'                 => 'nullable|array',
-            'approval.cl_approved'     => 'nullable|string',
-            'approval.payment_type'    => 'nullable|in:CREDIT,CASH',
-            'approval.top_days'        => 'nullable|integer',
-            'approval.top_term'        => 'nullable|string|max:50',
-            'approval.group_company'   => 'nullable|string|max:200',
-            'approval.docs'            => 'nullable|array',
-            'approval.jenis_net'       => 'nullable|string|max:100',
-            'approval.dokumen_lainnya' => 'nullable|string|max:255',
-            'approval.credit_limit'    => 'nullable|numeric',
-        ]);
-
-        $jenisInt = $data['jenis_data'] === 'after' ? 2 : 1;
-
-        $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-        $evaluation = $kyc['evaluation'] ?? [];
-
-        $evaluation['jenis_data']        = $data['jenis_data'];
-        $evaluation['financial_review']  = $data['financial_review'] ?? null;
-        $evaluation['logistic_summary']  = $data['logistic_summary'] ?? null;
-        $evaluation['logistic_result']   = $data['logistic_result'] ?? null;
-        $evaluation['assessment_result'] = $data['assessment_result'] ?? null;
-
-        if ($data['jenis_data'] === 'after') {
-            $approval = $data['approval'] ?? [];
-            $evaluation['approval'] = [
-                'cl_approved'   => $approval['cl_approved'] ?? null,
-                'payment_type'  => $approval['payment_type'] ?? null,
-                'top_days'      => $approval['top_days'] ?? null,
-                'top_term'      => $approval['top_term'] ?? null,
-                'group_company' => $approval['group_company'] ?? null,
-                'jenis_net'     => $approval['jenis_net'] ?? null,
-                'docs'          => $approval['docs'] ?? [],
-            ];
-
-            // approval.dokumen_lainnya cuma tersimpan di
-            // customer_verifications.finance_data_kyc (JSON), tidak disalin ke customers.
-            DB::table('customers')->where('id_customer', $cv->id_customer)->update([
-                'credit_limit'    => $approval['credit_limit'] ?? null,
-                'jenis_payment'   => $approval['payment_type'] ?? null,
-                'top_payment'     => $approval['top_days'] ?? null,
-                'lastupdate_time' => now(),
-            ]);
-        } else {
-            unset($evaluation['approval']);
-        }
-
-        $kyc['evaluation'] = $evaluation;
-
-        $cv->update([
-            'jenis_datanya'     => $jenisInt,
-            'finance_data_kyc'  => $kyc,
-        ]);
-
-        return response()->json(['ok' => true]);
-    }
-
-
 
     public function evaluationUploadFile(Request $r, int $id)
     {
@@ -1503,9 +1434,6 @@ class CustomerVerificationController extends Controller
 
             'form.approval'                      => ['nullable', 'array'],
             'form.approval.approval_credit_limit' => ['nullable', 'string'],
-            'form.approval.payment_type'         => ['nullable', 'in:CREDIT,CASH'],
-            'form.approval.top_days'             => ['nullable', 'string'],
-            'form.approval.top_basis'            => ['nullable', 'string'],
             'form.approval.group_company'        => ['nullable', 'string'],
 
             'form.approval.docs'                 => ['nullable', 'array'],
@@ -1652,28 +1580,16 @@ class CustomerVerificationController extends Controller
 
             // Jika SETELAH komite, sinkron ke customers (opsional, tetap dipertahankan)
             if ($jenisDataInt === 2) {
-                $payType  = $approval['payment_type'] ?? null; // CREDIT/CASH
-                $topDays  = $approval['top_days']   ?? null;
-                $topBasis = $approval['top_basis']  ?? null;
-
                 // approval.other_document cuma tersimpan di
                 // customer_verifications.finance_data (JSON), tidak disalin ke customers.
-                $updateCustomer = [
-                    'credit_limit'    => $creditLimit,
-                    'jenis_payment'   => $payType,
-                ];
-
-                if ($payType === 'CREDIT') {
-                    $updateCustomer['top_payment'] = $topDays;
-                    $updateCustomer['jenis_net']   = $topBasis;
-                } else {
-                    $updateCustomer['top_payment'] = null;
-                    $updateCustomer['jenis_net']   = null;
-                }
-
+                // TOP tersimpan lewat customer_credit_submissions (lihat
+                // CustomerCreditSubmissionController), bukan lewat form evaluasi ini.
+                // jenis_payment sudah drop (redundan dengan customer_payment.payment_method).
                 \DB::table('customers')
                     ->where('id_customer', $cv->id_customer)
-                    ->update($updateCustomer);
+                    ->update([
+                        'credit_limit' => $creditLimit,
+                    ]);
             }
         });
 

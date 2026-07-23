@@ -216,18 +216,9 @@ class CustomerController extends Controller
         // Customer::contacts()) -- tidak ada lagi header row untuk di-seed
         // seperti tabel 1:1 di bawah ini.
 
-        CustomerLogistik::firstOrCreate(['id_customer' => $id], [
-            'logistik_area'    => '',
-            'logistik_bisnis'  => '',
-            'logistik_env'     => 0,
-            'logistik_storage' => 0,
-            'logistik_hour'    => 0,
-            'logistik_volume'  => 0,
-            'logistik_quality' => 0,
-            'logistik_truck'   => 0,
-            'desc_stor_fac'    => '',
-            'desc_condition'   => '',
-        ]);
+        // Semua kolom customer_logistik nullable sejak rebuild rev. 3 --
+        // baris kosong cukup dibuat dengan id_customer saja.
+        CustomerLogistik::firstOrCreate(['id_customer' => $id]);
 
         CustomerPayment::firstOrCreate(['id_customer' => $id], [
             'telp_billing'     => '',
