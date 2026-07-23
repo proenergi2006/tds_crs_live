@@ -20,7 +20,7 @@ class CustomerPayment extends Model
         'payment_schedule','payment_schedule_other',
         'payment_method','payment_method_other',
         'payment_term','payment_term_days','payment_term_basis',
-        'invoice','ket_extra',
+        'invoice','extra_notes',
         'calculate_method','bank_name','currency','bank_address','account_number',
         'credit_facility','creditor',
     ];

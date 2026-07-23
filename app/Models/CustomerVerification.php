@@ -16,7 +16,7 @@ class CustomerVerification extends Model
 
     protected $fillable = [
         'id_customer',
-        'token_verification',
+        'verification_token',
         'is_submitted',
         'is_forwarded',
         'is_active',
@@ -25,22 +25,22 @@ class CustomerVerification extends Model
         'legal_data',
         'legal_summary',
         'legal_result',
-        'legal_tgl_proses',
+        'legal_processed_at',
         'legal_pic',
 
         'finance_data',
         'finance_summary',
         'finance_result',
-        'finance_tgl_proses',
+        'finance_processed_at',
         'finance_pic',
 
-        'logistik_data',
-        'logistik_summary',
-        'logistik_result',
-        'logistik_tgl_proses',
-        'logistik_pic',
+        'logistics_data',
+        'logistics_summary',
+        'logistics_result',
+        'logistics_processed_at',
+        'logistics_pic',
 
-        'jenis_datanya',
+        'data_type',
         'finance_data_kyc',
     ];
 
@@ -49,15 +49,15 @@ class CustomerVerification extends Model
         'is_forwarded' => 'boolean',
         'is_active'    => 'boolean',
 
-        'legal_result'    => 'integer',
-        'finance_result'  => 'integer',
-        'logistik_result' => 'integer',
-        'jenis_datanya'   => 'integer',
+        'legal_result'     => 'integer',
+        'finance_result'   => 'integer',
+        'logistics_result' => 'integer',
+        'data_type'        => 'integer',
 
-        'legal_tgl_proses'    => 'datetime',
-        'finance_tgl_proses'  => 'datetime',
-        'logistik_tgl_proses' => 'datetime',
-        'expired_at'          => 'datetime',
+        'legal_processed_at'     => 'datetime',
+        'finance_processed_at'   => 'datetime',
+        'logistics_processed_at' => 'datetime',
+        'expired_at'              => 'datetime',
     ];
 
     public function customer(): BelongsTo

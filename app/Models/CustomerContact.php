@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomerContact extends Model
 {
     protected $table = 'customer_contacts';
+    protected $primaryKey = 'id_contact';
 
     protected $fillable = [
         'id_customer',

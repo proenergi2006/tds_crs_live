@@ -12,7 +12,7 @@ class CustomerReview extends Model
 
     protected $fillable = [
         'id_verification',
-        'review_result', 'review_pic', 'review_tanggal', 'review_summary',
+        'review_result', 'review_pic', 'reviewed_at', 'review_summary',
         'review_answers', 'review_attachments',
     ];
 

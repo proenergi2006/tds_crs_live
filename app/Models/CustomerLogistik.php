@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerLogistik extends Model
 {
-    protected $table = 'customer_logistik';
+    protected $table = 'customer_logistic_claims';
     protected $primaryKey = 'id_customer';
     public $incrementing = false;
     public $timestamps = false;
@@ -30,8 +30,8 @@ class CustomerLogistik extends Model
         'product_notes', 'estimated_monthly_volume',
         'operational_hour_from', 'operational_hour_to',
 
-        'created_time', 'created_ip', 'created_by',
-        'lastupdate_time', 'lastupdate_ip', 'lastupdate_by',
+        'created_at', 'created_by',
+        'updated_at', 'updated_by',
     ];
 
     protected $casts = [
@@ -50,8 +50,8 @@ class CustomerLogistik extends Model
 
         'estimated_monthly_volume' => 'integer',
 
-        'created_time'    => 'datetime',
-        'lastupdate_time' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

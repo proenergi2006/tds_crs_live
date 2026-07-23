@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomerCreditItem extends Model
 {
     protected $table = 'customer_credit_items';
+    protected $primaryKey = 'id_item';
 
     protected $fillable = [
         'id_submission',
@@ -36,7 +37,7 @@ class CustomerCreditItem extends Model
 
     public function submission(): BelongsTo
     {
-        return $this->belongsTo(CustomerCreditSubmission::class, 'id_submission', 'id');
+        return $this->belongsTo(CustomerCreditSubmission::class, 'id_submission', 'id_submission');
     }
 
     public function produk(): BelongsTo

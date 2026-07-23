@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomerStatusHistory extends Model
 {
     protected $table = 'customer_status_history';
+    protected $primaryKey = 'id_history';
 
     protected $fillable = [
         'id_customer',

@@ -20,11 +20,11 @@ class CustomerLcr extends Model
         'id_customer',
 
         /* Grup 1: Identitas & info umum */
-        'site_name', 'survey_address', 'prov_survey', 'kab_survey', 'survey_date',
+        'site_name', 'survey_address', 'survey_province', 'survey_regency', 'survey_date',
         'surveyor_names', 'site_business_type', 'site_business_type_other',
         'site_environment', 'site_environment_other', 'site_environment_notes',
         'competitors', 'operating_hours', 'product_volume', 'survey_notes',
-        'picustomer', 'website', 'telp_survey', 'fax_survey', 'id_wilayah', 'id_wil_oa',
+        'picustomer', 'website', 'survey_phone', 'survey_fax', 'id_wilayah', 'id_wil_oa',
 
         /* Grup 2: Akses & rute */
         'max_truck_capacity_min', 'max_truck_capacity_max', 'access_notes',
@@ -54,11 +54,11 @@ class CustomerLcr extends Model
 
         /* Grup 7: Foto lain & lokasi */
         'company_office_photos', 'additional_photos',
-        'latitude_lokasi', 'longitude_lokasi', 'link_google_maps',
+        'latitude', 'longitude', 'google_maps_link',
 
         /* Audit */
-        'created_time', 'created_ip', 'created_by',
-        'lastupdate_time', 'lastupdate_ip', 'lastupdate_by',
+        'created_at', 'created_by',
+        'updated_at', 'updated_by',
     ];
 
     protected $casts = [
@@ -99,11 +99,13 @@ class CustomerLcr extends Model
 
         'company_office_photos' => 'array',
         'additional_photos'     => 'array',
-        'latitude_lokasi'       => 'float',
-        'longitude_lokasi'      => 'float',
+        'latitude'              => 'float',
+        'longitude'             => 'float',
 
-        'created_time'    => 'datetime',
-        'lastupdate_time' => 'datetime',
+        'storage_capacity' => 'float',
+
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -139,13 +141,13 @@ class CustomerLcr extends Model
 
     public function getCoordinatesAttribute(): ?array
     {
-        if ($this->latitude_lokasi === null || $this->longitude_lokasi === null) {
+        if ($this->latitude === null || $this->longitude === null) {
             return null;
         }
 
         return [
-            'lat' => (float) $this->latitude_lokasi,
-            'lng' => (float) $this->longitude_lokasi,
+            'lat' => (float) $this->latitude,
+            'lng' => (float) $this->longitude,
         ];
     }
 }

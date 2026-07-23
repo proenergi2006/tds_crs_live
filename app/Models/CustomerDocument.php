@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerDocumentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerDocument extends Model
 {
     protected $table = 'customer_documents';
+    protected $primaryKey = 'id_document';
 
     protected $fillable = [
         'id_customer',
@@ -17,10 +19,15 @@ class CustomerDocument extends Model
         'file_name',
         'uploaded_at',
         'uploaded_by',
+        'status',
+        'notes',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
         'uploaded_at' => 'datetime',
+        'status'      => CustomerDocumentStatus::class,
     ];
 
     public function customer(): BelongsTo

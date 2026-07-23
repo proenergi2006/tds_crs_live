@@ -35,35 +35,34 @@ class Customer extends Model
         'district_id',
         'village_id',
         'postal_code',
-        'telepon',
-        'jenis_customer',
-        'nama_perusahaan',
-        'alamat_perusahaan',
+        'phone',
+        'customer_type',
+        'company_name',
+        'company_address',
         'fax',
-        'created_time',
+        'created_at',
         'created_by',
-        'lastupdate_time',
-        'lastupdate_by',
+        'updated_at',
+        'updated_by',
 
         // tambahan yang diminta
-        'kode_pelanggan',
-        'website_customer',
+        'customer_code',
+        'website',
         'business_type',
-        'tipe_bisnis_lain',
+        'business_type_other',
         'ownership_type',
-        'ownership_lain',
+        'ownership_type_other',
         // 'nomor_sertifikat'/'nomor_sertifikat_file', 'nomor_npwp'/'nomor_npwp_file',
         // 'nib'/'nib_file', 'dokumen_lainnya'/'dokumen_lainnya_file' -- DROPPED,
         // digantikan tabel `customer_documents` (lihat CustomerDocument model
         // + relasi Customer::documents() di bawah).
-        'need_update',
-        'is_generated_link',
-        'count_update',
+        'is_link_generated',
+        'update_count',
         'credit_limit',
         'credit_limit_diajukan',
-        'induk_perusahaan',
-        'kecamatan_customer',
-        'kelurahan_customer',
+        'parent_company',
+        'customer_sub_district',
+        'customer_village',
         'id_cabang',
         'inco_terms',
         'inco_terms_other',
@@ -152,7 +151,7 @@ public function creditSubmissions(): HasMany
 public function latestCreditSubmission(): HasOne
 {
     return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
-        ->latestOfMany('id');
+        ->latestOfMany('id_submission');
 }
 
 public function statusHistory(): HasMany
