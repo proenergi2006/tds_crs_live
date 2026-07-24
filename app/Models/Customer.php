@@ -25,20 +25,22 @@ class Customer extends Model
         // dasar
         'id_user',
         'email',
+
+        // kolom alamat lama
         'id_provinsi',
         'id_kabupaten',
+
         // Kolom baru berbasis kode BPS (laravel-nusa-address-full-migration),
-        // ditambahkan DI SAMPING id_provinsi/id_kabupaten lama — lama TIDAK
-        // dihapus/di-rename di task ini.
         'province_id',
         'regency_id',
         'district_id',
         'village_id',
         'postal_code',
-        'phone',
+
         'customer_type',
         'company_name',
         'company_address',
+        'phone',
         'fax',
         'created_at',
         'created_by',
@@ -52,10 +54,6 @@ class Customer extends Model
         'business_type_other',
         'ownership_type',
         'ownership_type_other',
-        // 'nomor_sertifikat'/'nomor_sertifikat_file', 'nomor_npwp'/'nomor_npwp_file',
-        // 'nib'/'nib_file', 'dokumen_lainnya'/'dokumen_lainnya_file' -- DROPPED,
-        // digantikan tabel `customer_documents` (lihat CustomerDocument model
-        // + relasi Customer::documents() di bawah).
         'is_link_generated',
         'update_count',
         'credit_limit',
@@ -84,10 +82,6 @@ class Customer extends Model
         return $this->belongsTo(Kabupaten::class, 'id_kabupaten', 'id_kabupaten');
     }
 
-    /*
-     * Relasi baru berbasis data BPS (laravel-nusa-address-full-migration),
-     * DI SAMPING provinsi()/kabupaten() lama di atas — lama tidak dihapus.
-     */
     public function province()
     {
         return $this->belongsTo(Province::class, 'province_id', 'id');
@@ -109,71 +103,59 @@ class Customer extends Model
     }
 
     public function cabang()
-{
-    return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
-}
+    {
+        return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
+    }
 
-public function lcr(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
-}
+    public function lcr(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
+    }
 
-public function penawarans(): HasMany
-{
-    return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
-}
+    public function penawarans(): HasMany
+    {
+        return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
+    }
 
-/**
- * File dokumen legal (NIB, NPWP, Sertifikat, Dokumen Lainnya, dst).
- * Menggantikan kolom flat `nib`/`nomor_npwp`/`nomor_sertifikat`/
- * `dokumen_lainnya` (+ pasangan `_file`).
- */
-public function documents(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerDocument::class, 'id_customer', 'id_customer');
-}
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerDocument::class, 'id_customer', 'id_customer');
+    }
 
-public function addresses(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
-}
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
+    }
 
-public function contacts(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
-}
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
+    }
 
-public function creditSubmissions(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer');
-}
+    public function creditSubmissions(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer');
+    }
 
-public function latestCreditSubmission(): HasOne
-{
-    return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
-        ->latestOfMany('id_submission');
-}
+    public function latestCreditSubmission(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
+            ->latestOfMany('id_submission');
+    }
 
-public function statusHistory(): HasMany
-{
-    return $this->hasMany(\App\Models\CustomerStatusHistory::class, 'id_customer', 'id_customer');
-}
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerStatusHistory::class, 'id_customer', 'id_customer');
+    }
 
-public function verifications()
-{
-    return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
-}
+    public function verifications()
+    {
+        return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
+    }
 
-/**
- * Record customer_verifications TERBARU milik customer ini (order by
- * id_verification desc). Dipakai untuk badge status di CustomerController@index
- * — pakai latestOfMany() supaya bisa di-eager-load lewat with() tanpa N+1
- * walaupun list-nya paginated.
- */
-public function latestVerification(): HasOne
-{
-    return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
-        ->latestOfMany('id_verification');
-}
-
+    public function latestVerification(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
+            ->latestOfMany('id_verification');
+    }
 }

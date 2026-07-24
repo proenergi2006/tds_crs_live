@@ -46,14 +46,17 @@ const legacyAddressLabel = ref('')
 
 const form = reactive({
   email: '',
+  customer_type: '',
+  company_name: '',
+  company_address: '',
   province_id: '',
   regency_id: '',
-  telepon: '',
-  jenis_customer: '',
-  nama_perusahaan: '',
-  alamat_perusahaan: '',
-  fax: '',
+  district_id: '',
+  village_id: '',
   postal_code: '',
+  phone: '',
+  fax: '',
+  marketing: [],
 })
 
 const rules = {
@@ -90,6 +93,10 @@ const pageDescription = computed(() =>
 const submitText = computed(() =>
   mode.value === 'create' ? 'Simpan Customer' : 'Simpan Perubahan'
 )
+
+const userFieldText = computed(() =>
+  mode.value === 'create' ? auth.user?.name : form.marketing.name
+);
 
 watch(
   () => form.province_id,

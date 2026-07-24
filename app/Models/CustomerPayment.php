@@ -16,7 +16,6 @@ class CustomerPayment extends Model
 
     protected $fillable = [
         'id_customer',
-        'telp_billing','fax_billing',
         'payment_schedule','payment_schedule_other',
         'payment_method','payment_method_other',
         'payment_term','payment_term_days','payment_term_basis',

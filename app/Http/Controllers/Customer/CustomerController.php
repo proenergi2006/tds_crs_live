@@ -6,6 +6,7 @@ use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
+use App\Http\Resources\CustomerIndexResource;
 use App\Models\Customer;
 use App\Models\CustomerAdminArnya;
 use App\Models\CustomerLogistik;
@@ -25,49 +26,53 @@ class CustomerController extends Controller
         }
 
         $q = Customer::query()
-            ->with(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'cabang'])
+            ->with(['user', 'province', 'regency', 'district', 'village', 'cabang'])
             ->withExists(['lcr as has_lcr'])
-            ->withCount(['penawarans as jumlah_penawaran']);
+            ->withCount(['penawarans as quotation_count']);
 
         if ($user->cant('customer.viewAny')) {
             $q->where('id_user', $user->id);
         }
 
         if ($search = $request->query('search')) {
+            $search = strtolower($search);
+
             $q->where(function ($q) use ($search) {
-                $q->where('email', 'like', "%{$search}%")
-                    ->orWhere('nama_perusahaan', 'like', "%{$search}%");
+                $q->whereRaw('LOWER(email) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(company_name) LIKE ?', ["%{$search}%"]);
             });
         }
 
-        $baseQuery = clone $q;
+        return CustomerIndexResource::collection(
+            $q->paginate($request->integer('per_page', 10))
+        );
 
-        $tabCounts = [
-            'all'        => (clone $baseQuery)->count(),
-            'verified'   => 0,
-            'unverified' => 0,
-        ];
+        // $baseQuery = clone $q;
 
-        $tab = $request->query('tab', 'all');
+        // $tabCounts = [
+        //     'all'        => (clone $baseQuery)->count(),
+        //     'verified'   => 0,
+        //     'unverified' => 0,
+        // ];
 
-        if ($request->boolean('as_list')) {
-            return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
-        }
+        // $tab = $request->query('tab', 'all');
 
-        $q->with('latestVerification.latestDocumentApproval.steps');
+        // if ($request->boolean('as_list')) {
+        //     return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
+        // }
 
-        $perPage = min((int) $request->query('per_page', 10), 100);
+        // $q->with('latestVerification.latestDocumentApproval.steps');
 
-        $paginated = $q->paginate($perPage)->through(function (Customer $customer) {
-            $customer->verification_badge  = $this->resolveVerificationBadge($customer);
-            $customer->latest_verification  = $this->formatLatestVerification($customer->latestVerification);
-            return $customer;
-        });
+        // $perPage = min((int) $request->query('per_page', 10), 100);
 
-        $response = $paginated->toArray();
-        $response['tab_counts'] = $tabCounts;
+        // $paginated = $q->paginate($perPage)->through(function (Customer $customer) {
+        //     $customer->verification_badge  = $this->resolveVerificationBadge($customer);
+        //     $customer->latest_verification  = $this->formatLatestVerification($customer->latestVerification);
+        //     return $customer;
+        // });
 
-        return response()->json($response);
+        // $response = $paginated->toArray();
+        // $response['tab_counts'] = $tabCounts;
     }
 
     private function resolveVerificationBadge(Customer $customer): string

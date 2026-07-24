@@ -271,11 +271,15 @@ function getVerificationBadgeClass(badge?: string) {
              sudah di-drop dari API, ditampilkan sebagai placeholder sementara -->
         <div class="box p-4">
           <div class="font-label">Prospect</div>
-          <div class="font-num-display mt-1 text-slate-300" title="Belum tersedia — akan disambungkan ke customer_status">-</div>
+          <div class="font-num-display mt-1 text-slate-300"
+            title="Belum tersedia — akan disambungkan ke customer_status">-
+          </div>
         </div>
         <div class="box p-4">
           <div class="font-label">Customer Tetap</div>
-          <div class="font-num-display mt-1 text-slate-300" title="Belum tersedia — akan disambungkan ke customer_status">-</div>
+          <div class="font-num-display mt-1 text-slate-300"
+            title="Belum tersedia — akan disambungkan ke customer_status">-
+          </div>
         </div>
         <div class="box p-4">
           <div class="font-label">Total Penawaran</div>
@@ -298,86 +302,81 @@ function getVerificationBadgeClass(badge?: string) {
         @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
-          <Table.Th>Nama Customer</Table.Th>
-          <Table.Th>Alamat</Table.Th>
+          <Table.Th class="w-[20%]">Nama Customer</Table.Th>
+          <Table.Th class="w-[30%]">Alamat</Table.Th>
           <Table.Th>Kontak</Table.Th>
-          <Table.Th class="text-center">Status</Table.Th>
+          <!-- <Table.Th class="text-center">Status</Table.Th> -->
           <Table.Th class="text-center">LCR</Table.Th>
           <Table.Th class="text-center">Quotations</Table.Th>
-          <Table.Th class="text-center w-[160px]">Aksi</Table.Th>
+          <Table.Th class="text-center w-[240px]">Aksi</Table.Th>
         </template>
 
         <template #body>
-          <Table.Tr v-for="(item, idx) in customers" :key="item.id_customer" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(row, idx) in customers" :key="row.id_customer" class="transition hover:bg-slate-50">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-strong">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="font-caption mt-0.5">{{ isProenergi ? (item.user?.name || '-') : (item.email || '-') }}</div>
+              <div class="font-strong">{{ row.company_name || '-' }}</div>
+              <div class="font-caption mt-0.5">{{ row.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ item.alamat_perusahaan || '-' }}</div>
-              <div class="font-caption mt-0.5">
-                {{ item.cabang?.nama_cabang || '-' }}
-              </div>
+              <div class="font-body">{{ row.village + ', ' + row.district + ', ' + row.regency }}</div>
+              <div class="font-body">{{ row.province + ', ' + row.postal_code }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ item.telepon || '-' }}</div>
-              <div class="font-caption mt-0.5">Fax: {{ item.fax || '-' }}</div>
+              <div class="font-body">{{ row.phone || '-' }}</div>
             </Table.Td>
-            <Table.Td class="text-center">
-              <!-- TODO: wire ke customer_status setelah Fase 7 — status_customer
-                   sudah di-drop dari API, badge ini placeholder sementara -->
+            <!-- <Table.Td class="text-center">
               <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-slate-100 text-slate-500">
                 -
               </span>
-            </Table.Td>
+            </Table.Td> -->
             <Table.Td class="text-center">
-              <Lucide v-if="item.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
+              <Lucide v-if="row.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
             </Table.Td>
             <Table.Td class="font-num text-center">
-              {{ item.jumlah_penawaran ?? 0 }}
+              {{ row.quotation_count ?? 0 }}
             </Table.Td>
             <Table.Td class="text-center">
               <div v-if="activeTab === 'all'" class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Buat Quotation"
-                  @click="openCreatePenawaran(item.id_customer)">
+                <ExtendableButton variant="soft-primary" rounded label="RFQ"
+                  @click="openCreatePenawaran(row.id_customer)">
                   <Lucide icon="FilePlus" class="h-4 w-4" />
-                </Button>
-                <Button v-if="canManageRow(item)" variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Edit" @click="openEdit(item.id_customer)">
+                </ExtendableButton>
+                <ExtendableButton v-if="canManageRow(row)" variant="soft-pending" rounded label="Edit"
+                  @click="openEdit(row.id_customer)">
                   <Lucide icon="Edit" class="h-4 w-4" />
-                </Button>
-                <Button v-if="canManageRow(item)" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Hapus" @click="confirmDelete(item.id_customer)">
+                </ExtendableButton>
+                <ExtendableButton v-if="canManageRow(row)" variant="soft-danger" rounded label="Hapus"
+                  @click="confirmDelete(row.id_customer)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
               </div>
 
-              <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
-                <Button v-if="item.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Generate Link" :disabled="linkBusyId === item.id_customer"
-                  @click="generateLink(item)">
+              <!-- <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
+                <Button v-if="row.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Generate Link" :disabled="linkBusyId === row.id_customer"
+                  @click="generateLink(row)">
                   <Lucide icon="Link" class="h-4 w-4" />
                 </Button>
                 <Button
-                  v-else-if="item.verification_badge === 'link_kedaluwarsa' || item.verification_badge === 'ditolak'"
+                  v-else-if="row.verification_badge === 'link_kedaluwarsa' || row.verification_badge === 'ditolak'"
                   variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Regenerate Link"
-                  :disabled="linkBusyId === item.id_customer" @click="generateLink(item)">
+                  :disabled="linkBusyId === row.id_customer" @click="generateLink(row)">
                   <Lucide icon="RefreshCw" class="h-4 w-4" />
                 </Button>
-                <Button v-else-if="item.verification_badge === 'menunggu_customer'" variant="soft-warning" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Buka Link" :disabled="linkBusyId === item.id_customer"
-                  @click="openCustomerLink(item)">
+                <Button v-else-if="row.verification_badge === 'menunggu_customer'" variant="soft-warning" rounded
+                  class="!h-8 !w-8 !p-0 !shadow-none" title="Buka Link" :disabled="linkBusyId === row.id_customer"
+                  @click="openCustomerLink(row)">
                   <Lucide icon="ExternalLink" class="h-4 w-4" />
                 </Button>
-                <ExtendableButton v-else-if="item.verification_badge === 'perlu_direview'" variant="soft-info" rounded
-                  label="Verifikasi" @click="openReview(item.id_customer)">
+                <ExtendableButton v-else-if="row.verification_badge === 'perlu_direview'" variant="soft-info" rounded
+                  label="Verifikasi" @click="openReview(row.id_customer)">
                   <Lucide icon="ClipboardCheck" class="h-4 w-4" />
                 </ExtendableButton>
-              </div>
+              </div> -->
             </Table.Td>
           </Table.Tr>
         </template>
