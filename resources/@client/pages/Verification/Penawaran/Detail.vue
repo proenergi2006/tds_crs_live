@@ -166,6 +166,20 @@ function formatCurrency(v?: number | string | null) {
 function formatNumber(v?: number | string | null) {
   return (Number(v) || 0).toLocaleString('id-ID')
 }
+async function preview(lang?: 'id' | 'en') {
+  try {
+    const response = await axios.get(`/api${config.fetchEndpoint}/${id}/preview`, {
+      params: lang ? { lang } : {},
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch {
+    notifyError('Gagal', 'Gagal membuka preview PDF')
+  }
+}
+
 function goBack() {
   router.back()
 }
@@ -544,6 +558,12 @@ onMounted(fetchPenawaran)
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
                 <Stepper :steps="approvalSteps" direction="vertical" />
+
+                <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
+                  @click="preview()">
+                  <Lucide icon="Printer" class="h-4 w-4" />
+                  Preview PDF
+                </Button>
               </div>
             </CardSection>
 
