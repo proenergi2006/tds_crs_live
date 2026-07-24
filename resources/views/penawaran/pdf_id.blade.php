@@ -375,7 +375,7 @@
         Best Regards,<br>
         <strong>PT. Tri Daya Selaras</strong>
         <div class="qrwrap">
-          @if(!empty($qrBase64))
+          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
             <img src="{{ $qrBase64 }}" style="width:20mm;height:20mm" alt="QR">
           @endif
         </div>
