@@ -26,11 +26,11 @@ class CustomerCreditItem extends Model
     ];
 
     protected $casts = [
-        'volume'                 => 'decimal:4',
-        'existing_limit'         => 'decimal:4',
-        'actual_payment'         => 'decimal:4',
-        'credit_limit_request'   => 'decimal:4',
-        'credit_limit_approval'  => 'decimal:4',
+        'volume'                 => 'decimal:2',
+        'existing_limit'         => 'decimal:2',
+        'actual_payment'         => 'decimal:2',
+        'credit_limit_request'   => 'decimal:2',
+        'credit_limit_approval'  => 'decimal:2',
         'top_request'            => 'integer',
         'top_approval'           => 'integer',
     ];

@@ -228,8 +228,8 @@ class CustomerController extends Controller
         CustomerPayment::firstOrCreate(['id_customer' => $id], [
             'telp_billing'     => '',
             'fax_billing'      => '',
-            'payment_schedule' => 0,
-            'payment_method'   => 0,
+            'payment_schedule' => null,
+            'payment_method'   => null,
             'invoice'          => 0,
             'ket_extra'        => '',
         ]);

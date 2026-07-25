@@ -17,6 +17,8 @@ class CustomerCreditSubmission extends Model
     protected $fillable = [
         'id_customer',
         'submission_type',
+        'credit_limit_approval',
+        'credit_limit_request',
         'top_payment',
         'financial_review_notes',
         'submitted_by',
@@ -26,9 +28,11 @@ class CustomerCreditSubmission extends Model
     ];
 
     protected $casts = [
-        'submission_type' => CustomerCreditSubmissionType::class,
-        'top_payment'      => 'integer',
-        'submitted_at'     => 'datetime',
+        'submission_type'        => CustomerCreditSubmissionType::class,
+        'credit_limit_approval'  => 'integer',
+        'credit_limit_request'   => 'integer',
+        'top_payment'            => 'integer',
+        'submitted_at'           => 'datetime',
     ];
 
     public function customer(): BelongsTo

@@ -19,6 +19,7 @@ class Customer extends Model
     protected $casts = [
         'inco_terms' => CustomerIncoterm::class,
         'customer_status' => CustomerStatus::class,
+        'is_link_generated' => 'boolean',
     ];
 
     protected $fillable = [
@@ -56,8 +57,6 @@ class Customer extends Model
         'ownership_type_other',
         'is_link_generated',
         'update_count',
-        'credit_limit',
-        'credit_limit_diajukan',
         'parent_company',
         'customer_sub_district',
         'customer_village',

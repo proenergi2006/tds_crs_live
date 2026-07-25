@@ -48,7 +48,7 @@ class CustomerLogistik extends Model
 
         'supports_vessel_delivery' => 'boolean',
 
-        'estimated_monthly_volume' => 'integer',
+        'estimated_monthly_volume' => 'float',
 
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

@@ -26,13 +26,11 @@ class CustomerPayment extends Model
 
     protected $casts = [
         'id_customer'        => 'integer',
-        'payment_schedule'   => 'integer',
-        'payment_method'     => 'integer',
         'payment_term'       => CustomerPaymentTerm::class,
         'payment_term_days'  => 'integer',
         'payment_term_basis' => CustomerPaymentTermBasis::class,
-        'invoice'            => 'integer',
-        'credit_facility'    => 'integer',
+        'invoice'            => 'boolean',
+        'credit_facility'    => 'boolean',
     ];
 
     public function customer(): BelongsTo

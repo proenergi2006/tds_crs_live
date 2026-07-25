@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Enums\CustomerAddressType;
+use App\Enums\CustomerCreditSubmissionType;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\CustomerContact;
 use App\Models\CustomerContactType;
+use App\Models\CustomerCreditSubmission;
 use App\Models\CustomerReview;
 use App\Models\CustomerReviewAttachment;
 use App\Models\CustomerVerification;
@@ -310,7 +312,7 @@ class CustomerVerificationController extends Controller
 
         return response()->json([
             'top_text'             => $topPayment ? $topPayment . ' Hari' : '-',
-            'credit_limit_request' => $customer->credit_limit_diajukan ?? '-',
+            'credit_limit_request' => $customer->latestCreditSubmission->credit_limit_request ?? '-',
             'financial_review'     => $cv->finance_summary ?? '-',
             'potential_volume'     => '-',
         ]);
@@ -1222,15 +1224,21 @@ class CustomerVerificationController extends Controller
 
             $this->createDocumentApprovalCycle($cv);
 
-            $affected = DB::table('customers')
-                ->where('id_customer', $cv->id_customer)
-                ->update(['credit_limit_diajukan' => $creditLimit]);
+            // credit_limit_request sudah pindah ke customer_credit_submissions
+            // (aggregate customer-level, DBML-A/DBML-F) -- update submission
+            // terbaru kalau ada, atau buat submission baru kalau customer ini
+            // belum pernah punya satupun.
+            $submission = CustomerCreditSubmission::where('id_customer', $cv->id_customer)
+                ->latest('id_submission')
+                ->first();
 
-            // 3) update credit_limit_diajukan di customers bila ada nilainya
-            if ($affected === 0) {
-                \Log::warning('CL not updated', [
-                    'id_customer' => $cv->id_customer,
-                    'credit_limit' => $creditLimit
+            if ($submission) {
+                $submission->update(['credit_limit_request' => $creditLimit]);
+            } else {
+                CustomerCreditSubmission::create([
+                    'id_customer'           => $cv->id_customer,
+                    'submission_type'       => CustomerCreditSubmissionType::NewCustomer,
+                    'credit_limit_request'  => $creditLimit,
                 ]);
             }
 
@@ -1585,11 +1593,22 @@ class CustomerVerificationController extends Controller
                 // TOP tersimpan lewat customer_credit_submissions (lihat
                 // CustomerCreditSubmissionController), bukan lewat form evaluasi ini.
                 // jenis_payment sudah drop (redundan dengan customer_payment.payment_method).
-                \DB::table('customers')
-                    ->where('id_customer', $cv->id_customer)
-                    ->update([
-                        'credit_limit' => $creditLimit,
+                // credit_limit_approval sudah pindah ke customer_credit_submissions
+                // (aggregate customer-level, DBML-A/DBML-F) -- pola sama seperti
+                // saveReview() untuk credit_limit_request.
+                $submission = CustomerCreditSubmission::where('id_customer', $cv->id_customer)
+                    ->latest('id_submission')
+                    ->first();
+
+                if ($submission) {
+                    $submission->update(['credit_limit_approval' => $creditLimit]);
+                } else {
+                    CustomerCreditSubmission::create([
+                        'id_customer'            => $cv->id_customer,
+                        'submission_type'        => CustomerCreditSubmissionType::NewCustomer,
+                        'credit_limit_approval'  => $creditLimit,
                     ]);
+                }
             }
         });
 
