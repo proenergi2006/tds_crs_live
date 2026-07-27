@@ -24,7 +24,12 @@ class CustomerDocumentTypeController extends Controller
         $q->orderBy('name');
 
         if ($request->boolean('as_list')) {
-            return response()->json($q->get());
+            // Primary key kolomnya id_document_type (bukan id) -- FE (Customer/Detail.vue)
+            // match dokumen ke tipe lewat `id`, jadi di-alias di sini tanpa
+            // menghapus field aslinya (non-breaking untuk consumer lain).
+            return response()->json(
+                $q->get()->map(fn (CustomerDocumentType $type) => array_merge($type->toArray(), ['id' => $type->id_document_type]))
+            );
         }
 
         $perPage = min((int) $request->query('per_page', 10), 100);

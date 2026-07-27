@@ -305,7 +305,7 @@ async function fetchPenawaran() {
 
     // header
     form.value.customer_id = data.id_customer
-    form.value.customer_nama = data.customer?.nama_perusahaan || '-'
+    form.value.customer_nama = data.customer?.company_name || '-'
     form.value.id_penawaran = data.id_penawaran
     form.value.nomor_penawaran = data.nomor_penawaran || '-'
     form.value.cabang_nama = data.cabang?.nama_cabang || '-'

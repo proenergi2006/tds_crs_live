@@ -74,15 +74,22 @@ const computedOptions = computed(() => {
   return options;
 });
 
+// Referensi clone dipegang langsung lewat closure (bukan di-query ulang dari
+// DOM via data-id) supaya cleanup di unmounted() tidak bergantung pada elemen
+// masih bisa ditemukan lewat selector saat itu. Query-based lookup terbukti
+// tidak reliable untuk clonedEl.TomSelect.dropdown yang di-append ke <body>
+// (dropdownParent: 'body') -- dropdown itu hidup di luar subtree yang di-unmount
+// Vue, jadi satu-satunya jalan cleanup-nya adalah lewat destroy() di sini, dan
+// itu butuh referensi clone yang pasti benar, bukan hasil query yang bisa gagal
+// match / kena elemen basi kalau ada leftover.
+let clonedElRef: TomSelectElement | undefined;
+
 const vSelectDirective = {
   mounted(el: TomSelectElement) {
-    // Unique attribute
-    el.setAttribute("data-id", "_" + Math.random().toString(36).substr(2, 9));
-
     // Clone the select element to prevent tom select remove the original element
     const clonedEl = el.cloneNode(true) as TomSelectElement;
 
-    // Save initial classnames
+    // Save initial classnames (dibaca lagi oleh updateValue() di tom-select.ts)
     const classNames = el?.getAttribute("class");
     classNames && clonedEl.setAttribute("data-initial-class", classNames);
 
@@ -90,16 +97,30 @@ const vSelectDirective = {
     el?.parentNode && el?.parentNode.appendChild(clonedEl);
     el.setAttribute("hidden", "true");
 
+    clonedElRef = clonedEl;
+
     // Initialize tom select
     setValue(clonedEl, props);
     init(el, clonedEl, props, computedOptions.value, emit);
   },
   updated(el: TomSelectElement) {
-    const clonedEl = document.querySelectorAll(
-      `[data-id='${el.getAttribute("data-id")}'][data-initial-class]`
-    )[0] as TomSelectElement;
+    if (!clonedElRef) return;
     const value = props.modelValue;
-    updateValue(el, clonedEl, value, props, computedOptions.value, emit);
+    updateValue(el, clonedElRef, value, props, computedOptions.value, emit);
+  },
+  unmounted() {
+    // `mounted()` clones `el` and appends the clone as a raw DOM sibling
+    // (outside Vue's render tree) so tom-select.js can take over that clone
+    // without Vue fighting it for control of `el` itself. Vue only knows how
+    // to clean up `el` on unmount — the manually-appended clone (the thing
+    // actually visible/interactive to the user) is invisible to Vue's own
+    // unmount cleanup and was leaking as an orphaned node whenever this
+    // component unmounts (e.g. via :key-forced remount, or an ancestor v-if),
+    // leaving a dead TomSelect (and, with dropdownParent: 'body', an orphaned
+    // dropdown stuck on <body>) behind.
+    clonedElRef?.TomSelect?.destroy();
+    clonedElRef?.remove();
+    clonedElRef = undefined;
   },
 };
 

@@ -80,7 +80,7 @@ function canManageRow(item: any) {
    di template. Kalau nanti disambungkan lagi ke customer_status (Fase 7),
    tambahkan ulang computed serupa yang membaca field baru itu. */
 const totalPenawaran = computed(() =>
-  customers.value.reduce((sum, c) => sum + Number(c.jumlah_penawaran ?? 0), 0)
+  customers.value.reduce((sum, c) => sum + Number(c.quotation_count ?? 0), 0)
 )
 
 const linkResultTitle = computed(() => (linkResult.alreadyExists ? 'Token Sudah Ada' : 'Token Dibuat'))
@@ -103,12 +103,12 @@ async function fetchData(page = currentPage.value) {
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
-      tab: activeTab.value,
+      status: activeTab.value,
     })
     customers.value = data.data ?? []
-    currentPage.value = data.current_page ?? 1
-    totalPages.value = data.last_page ?? 1
-    totalRecords.value = data.total ?? 0
+    currentPage.value = data.meta?.current_page ?? 1
+    totalPages.value = data.meta?.last_page ?? 1
+    totalRecords.value = data.meta?.total ?? 0
     tabCounts.value = data.tab_counts ?? tabCounts.value
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data customer')
@@ -151,9 +151,9 @@ function openReview(idCustomer: number) {
 async function generateLink(item: any) {
   try {
     linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
 
-    linkResult.token = data.verification?.token_verification ?? '-'
+    linkResult.token = data.verification?.verification_token ?? '-'
     linkResult.link = data.link
     linkResult.alreadyExists = !!data.already_exists
     linkResultOpen.value = true
@@ -183,7 +183,7 @@ function closeLinkResult() {
 async function openCustomerLink(item: any) {
   try {
     linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
     window.open(data.link, '_blank')
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal membuka link verifikasi.')
@@ -305,7 +305,7 @@ function getVerificationBadgeClass(badge?: string) {
           <Table.Th class="w-[20%]">Nama Customer</Table.Th>
           <Table.Th class="w-[30%]">Alamat</Table.Th>
           <Table.Th>Kontak</Table.Th>
-          <!-- <Table.Th class="text-center">Status</Table.Th> -->
+          <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">LCR</Table.Th>
           <Table.Th class="text-center">Quotations</Table.Th>
           <Table.Th class="text-center w-[240px]">Aksi</Table.Th>
@@ -327,11 +327,12 @@ function getVerificationBadgeClass(badge?: string) {
             <Table.Td>
               <div class="font-body">{{ row.phone || '-' }}</div>
             </Table.Td>
-            <!-- <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-slate-100 text-slate-500">
-                -
+            <Table.Td class="text-center">
+              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
+                :class="getVerificationBadgeClass(row.verification_badge)">
+                {{ getVerificationBadgeLabel(row) }}
               </span>
-            </Table.Td> -->
+            </Table.Td>
             <Table.Td class="text-center">
               <Lucide v-if="row.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
@@ -355,28 +356,26 @@ function getVerificationBadgeClass(badge?: string) {
                 </ExtendableButton>
               </div>
 
-              <!-- <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
-                <Button v-if="row.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Generate Link" :disabled="linkBusyId === row.id_customer"
-                  @click="generateLink(row)">
+              <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
+                <ExtendableButton v-if="row.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
+                  label="Generate Link" :disabled="linkBusyId === row.id_customer" @click="generateLink(row)">
                   <Lucide icon="Link" class="h-4 w-4" />
-                </Button>
-                <Button
+                </ExtendableButton>
+                <ExtendableButton
                   v-else-if="row.verification_badge === 'link_kedaluwarsa' || row.verification_badge === 'ditolak'"
-                  variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Regenerate Link"
-                  :disabled="linkBusyId === row.id_customer" @click="generateLink(row)">
+                  variant="soft-danger" rounded label="Regenerate Link" :disabled="linkBusyId === row.id_customer"
+                  @click="generateLink(row)">
                   <Lucide icon="RefreshCw" class="h-4 w-4" />
-                </Button>
-                <Button v-else-if="row.verification_badge === 'menunggu_customer'" variant="soft-warning" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Buka Link" :disabled="linkBusyId === row.id_customer"
-                  @click="openCustomerLink(row)">
+                </ExtendableButton>
+                <ExtendableButton v-else-if="row.verification_badge === 'menunggu_customer'" variant="soft-warning"
+                  rounded label="Buka Link" :disabled="linkBusyId === row.id_customer" @click="openCustomerLink(row)">
                   <Lucide icon="ExternalLink" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
                 <ExtendableButton v-else-if="row.verification_badge === 'perlu_direview'" variant="soft-info" rounded
                   label="Verifikasi" @click="openReview(row.id_customer)">
                   <Lucide icon="ClipboardCheck" class="h-4 w-4" />
                 </ExtendableButton>
-              </div> -->
+              </div>
             </Table.Td>
           </Table.Tr>
         </template>

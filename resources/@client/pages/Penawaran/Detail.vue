@@ -270,7 +270,7 @@ function formatNumber(v: number | string = 0) {
                   <div>
                     <div class="font-label">Customer</div>
                     <div class="font-strong mt-1 whitespace-pre-line">
-                      {{ dash(penawaran.customer?.nama_perusahaan) }}
+                      {{ dash(penawaran.customer?.company_name) }}
                     </div>
                   </div>
 

@@ -101,7 +101,7 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td>
-              <RouterLink v-if="row.token_verification" :to="{ name: 'verify-customer', params: { token: row.token_verification } }"
+              <RouterLink v-if="row.token_verification" :to="{ name: 'customer-onboarding', params: { token: row.token_verification } }"
                 target="_blank" class="font-strong !text-primary underline">
                 LC{{ row.id_verification }}
               </RouterLink>

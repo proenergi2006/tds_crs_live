@@ -103,7 +103,7 @@ class PenawaranController extends Controller
        return [
            'id'     => $p->id_penawaran ?? $p->id,
            'nomor'  => (string) $p->nomor_penawaran,
-           'cust'   => optional($p->customer)->nama_perusahaan,
+           'cust'   => optional($p->customer)->company_name,
            'valid'  => $p->sampai_dengan,
            'verify' => $this->detailUrl($p->id_penawaran ?? $p->id),
        ];

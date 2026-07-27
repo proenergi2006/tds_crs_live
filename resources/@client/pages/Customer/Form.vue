@@ -44,6 +44,14 @@ const region = useRegionCascade()
 const hasLegacyAddressOnly = ref(false)
 const legacyAddressLabel = ref('')
 
+/* Nama pemilik (id_user) untuk ditampilkan di Ringkasan — create mode selalu
+   user yang login (owner otomatis di-assign saat submit), edit mode ambil
+   dari relasi `user` milik customer (bisa beda dari user yang sedang login). */
+const editOwnerName = ref('')
+const ownerName = computed(() =>
+  mode.value === 'create' ? (auth.user?.name || '-') : (editOwnerName.value || '-')
+)
+
 const form = reactive({
   email: '',
   customer_type: '',
@@ -60,7 +68,7 @@ const form = reactive({
 })
 
 const rules = {
-  nama_perusahaan: {
+  company_name: {
     required: helpers.withMessage('Nama perusahaan wajib diisi', required),
   },
   province_id: {
@@ -69,10 +77,10 @@ const rules = {
   regency_id: {
     required: helpers.withMessage('Kabupaten/Kota wajib dipilih', required),
   },
-  telepon: {
+  phone: {
     required: helpers.withMessage('Telepon wajib diisi', required),
   },
-  jenis_customer: {
+  customer_type: {
     required: helpers.withMessage('Jenis customer wajib dipilih', required),
   },
 }
@@ -94,15 +102,38 @@ const submitText = computed(() =>
   mode.value === 'create' ? 'Simpan Customer' : 'Simpan Perubahan'
 )
 
-const userFieldText = computed(() =>
-  mode.value === 'create' ? auth.user?.name : form.marketing.name
-);
+/* Guard: true selama fetchCustomer() mengisi province_id → village_id secara
+   berjenjang di edit mode. Tanpa ini, tiap assignment di bawah memicu watcher
+   yang sama dan balik me-reset field level berikutnya jadi '' — race dengan
+   nilai yang baru saja di-set manual oleh fetchCustomer() (regency_id/
+   district_id bisa kembali kosong meski data aslinya lengkap). Watcher tetap
+   aktif normal untuk interaksi user (ganti pilihan manual di form). */
+const isHydratingRegion = ref(false)
 
 watch(
   () => form.province_id,
   async (newProv) => {
+    if (isHydratingRegion.value) return
     form.regency_id = ''
     await region.fetchRegencies(newProv || null)
+  }
+)
+
+watch(
+  () => form.regency_id,
+  async (newRegency) => {
+    if (isHydratingRegion.value) return
+    form.district_id = ''
+    await region.fetchDistricts(newRegency || null)
+  }
+)
+
+watch(
+  () => form.district_id,
+  async (newDistrict) => {
+    if (isHydratingRegion.value) return
+    form.village_id = ''
+    await region.fetchVillages(newDistrict || null)
   }
 )
 
@@ -119,18 +150,32 @@ async function fetchCustomer() {
     const { data } = await customerApi.getById(customerId.value)
     Object.assign(form, {
       email: data.email || '',
-      telepon: data.telepon || '',
-      jenis_customer: data.jenis_customer || '',
-      nama_perusahaan: data.nama_perusahaan || '',
-      alamat_perusahaan: data.alamat_perusahaan || '',
+      phone: data.phone || '',
+      customer_type: data.customer_type || '',
+      company_name: data.company_name || '',
+      company_address: data.company_address || '',
       fax: data.fax || '',
       postal_code: data.postal_code || '',
     })
+    editOwnerName.value = data.user?.name || ''
 
     if (data.province_id) {
-      form.province_id = String(data.province_id)
-      await region.fetchRegencies(form.province_id)
-      form.regency_id = data.regency_id ? String(data.regency_id) : ''
+      isHydratingRegion.value = true
+      try {
+        form.province_id = String(data.province_id)
+        await region.fetchRegencies(form.province_id)
+        form.regency_id = data.regency_id ? String(data.regency_id) : ''
+        if (form.regency_id) {
+          await region.fetchDistricts(form.regency_id)
+          form.district_id = data.district_id ? String(data.district_id) : ''
+          if (form.district_id) {
+            await region.fetchVillages(form.district_id)
+            form.village_id = data.village_id ? String(data.village_id) : ''
+          }
+        }
+      } finally {
+        isHydratingRegion.value = false
+      }
     } else if (data.id_provinsi) {
       // Record lama (sebelum migrasi BPS) cuma punya id_provinsi/id_kabupaten,
       // belum punya province_id/regency_id — tampilkan info dari relasi lama
@@ -168,10 +213,7 @@ async function submit() {
 
   loading.value = true
   try {
-    const payload = {
-      ...form,
-      nama_perusahaan: form.nama_perusahaan.trim().toUpperCase(),
-    }
+    const payload = { ...form }
 
     if (mode.value === 'create') {
       await customerApi.store(payload)
@@ -218,49 +260,48 @@ function cancel() {
     <CardSection title="Informasi Dasar" description="Data utama customer dalam sistem">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
-          <FormLabel>User</FormLabel>
-          <FormInput :value="auth.user?.name || '-'" disabled class="bg-slate-50" />
-          <small class="font-caption">Otomatis sesuai user yang login</small>
-        </div>
-
-        <div class="md:col-span-2">
-          <FormLabel for="nama_perusahaan">
+          <FormLabel for="company_name">
             Nama Perusahaan
             <RequiredAsterisk />
           </FormLabel>
-          <FormInput id="nama_perusahaan" v-model="form.nama_perusahaan" placeholder="Nama Perusahaan" class="uppercase"
-            :class="getFieldError('nama_perusahaan') ? 'border-rose-500' : ''" @blur="v$.nama_perusahaan.$touch()" />
-          <small v-if="getFieldError('nama_perusahaan')" class="font-caption !text-rose-600">
-            {{ getFieldError('nama_perusahaan') }}
+          <FormInput id="company_name" v-model="form.company_name" placeholder="Nama Perusahaan" class="uppercase"
+            :class="getFieldError('company_name') ? 'border-rose-500' : ''" @blur="v$.company_name.$touch()" />
+          <small v-if="getFieldError('company_name')" class="font-caption !text-rose-600">
+            {{ getFieldError('company_name') }}
           </small>
         </div>
 
         <div>
-          <FormLabel for="jenis_customer">
+          <FormLabel for="customer_type">
             Jenis Customer
             <RequiredAsterisk />
           </FormLabel>
-          <FormSelect id="jenis_customer" v-model="form.jenis_customer"
-            :class="getFieldError('jenis_customer') ? 'border-rose-500' : ''" @blur="v$.jenis_customer.$touch()">
+          <FormSelect id="customer_type" v-model="form.customer_type"
+            :class="getFieldError('customer_type') ? 'border-rose-500' : ''" @blur="v$.customer_type.$touch()">
             <option value="">-- Pilih Jenis --</option>
             <option value="Retail">Retail</option>
             <option value="Project">Project</option>
           </FormSelect>
-          <small v-if="getFieldError('jenis_customer')" class="font-caption !text-rose-600">
-            {{ getFieldError('jenis_customer') }}
+          <small v-if="getFieldError('customer_type')" class="font-caption !text-rose-600">
+            {{ getFieldError('customer_type') }}
           </small>
         </div>
 
         <div>
-          <FormLabel for="telepon">
+          <FormLabel for="phone">
             Telepon
             <RequiredAsterisk />
           </FormLabel>
-          <FormInput id="telepon" v-model="form.telepon" placeholder="Telepon"
-            :class="getFieldError('telepon') ? 'border-rose-500' : ''" @blur="v$.telepon.$touch()" />
-          <small v-if="getFieldError('telepon')" class="font-caption !text-rose-600">
-            {{ getFieldError('telepon') }}
+          <FormInput id="phone" v-model="form.phone" placeholder="Telepon"
+            :class="getFieldError('phone') ? 'border-rose-500' : ''" @blur="v$.phone.$touch()" />
+          <small v-if="getFieldError('phone')" class="font-caption !text-rose-600">
+            {{ getFieldError('phone') }}
           </small>
+        </div>
+
+        <div>
+          <FormLabel for="fax">Fax</FormLabel>
+          <FormInput id="fax" v-model="form.fax" placeholder="Fax (opsional)" />
         </div>
 
         <div>
@@ -270,14 +311,20 @@ function cancel() {
       </div>
     </CardSection>
 
-    <!-- Section: Lokasi & Wilayah -->
-    <CardSection title="Lokasi & Wilayah" description="Area customer berdasarkan provinsi dan kabupaten/kota">
+    <!-- Section: Detail Alamat -->
+    <CardSection title="Detail Alamat" description="Alamat lengkap customer berdasarkan wilayah BPS">
       <Alert v-if="hasLegacyAddressOnly" variant="soft-warning" class="mb-4">
         Data lokasi customer ini masih pakai skema lama: <strong>{{ legacyAddressLabel }}</strong>.
         Silakan pilih ulang Provinsi &amp; Kabupaten/Kota di bawah berdasarkan daftar wilayah terbaru
         agar tersimpan dengan skema baru.
       </Alert>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="md:col-span-2">
+          <FormLabel for="company_address">Alamat Perusahaan</FormLabel>
+          <FormTextarea id="company_address" v-model="form.company_address" placeholder="Alamat perusahaan (opsional)"
+            :rows="3" />
+        </div>
+
         <div>
           <FormLabel for="province_id">
             Provinsi
@@ -300,7 +347,7 @@ function cancel() {
             Kabupaten/Kota
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect id="regency_id" v-model="form.regency_id" class="w-full"
+          <TomSelect :key="String(!!form.province_id)" id="regency_id" v-model="form.regency_id" class="w-full"
             :class="getFieldError('regency_id') ? 'border-rose-500' : ''" @change="v$.regency_id.$touch()">
             <option value="">
               {{ form.province_id ? 'Cari Kabupaten/Kota' : '-- Pilih Provinsi dulu --' }}
@@ -313,21 +360,29 @@ function cancel() {
             {{ getFieldError('regency_id') }}
           </small>
         </div>
-      </div>
-    </CardSection>
 
-    <!-- Section: Alamat & Detail -->
-    <CardSection title="Alamat & Detail" description="Informasi pelengkap untuk keperluan administrasi">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div class="md:col-span-2">
-          <FormLabel for="alamat_perusahaan">Alamat Perusahaan</FormLabel>
-          <FormTextarea id="alamat_perusahaan" v-model="form.alamat_perusahaan"
-            placeholder="Alamat perusahaan (opsional)" :rows="3" />
+        <div>
+          <FormLabel for="district_id">Kecamatan</FormLabel>
+          <TomSelect :key="String(!!form.regency_id)" id="district_id" v-model="form.district_id" class="w-full">
+            <option value="">
+              {{ form.regency_id ? 'Cari Kecamatan' : '-- Pilih Kabupaten/Kota dulu --' }}
+            </option>
+            <option v-for="d in region.districts.value" :key="d.id" :value="d.id">
+              {{ d.name }}
+            </option>
+          </TomSelect>
         </div>
 
         <div>
-          <FormLabel for="fax">Fax</FormLabel>
-          <FormInput id="fax" v-model="form.fax" placeholder="Fax (opsional)" />
+          <FormLabel for="village_id">Kelurahan/Desa</FormLabel>
+          <TomSelect :key="String(!!form.district_id)" id="village_id" v-model="form.village_id" class="w-full">
+            <option value="">
+              {{ form.district_id ? 'Cari Kelurahan/Desa' : '-- Pilih Kecamatan dulu --' }}
+            </option>
+            <option v-for="v in region.villages.value" :key="v.id" :value="v.id">
+              {{ v.name }}
+            </option>
+          </TomSelect>
         </div>
 
         <div>
@@ -342,18 +397,25 @@ function cancel() {
       <CardSection title="Ringkasan" description="Informasi singkat customer">
         <div class="space-y-3">
           <div>
+            <p class="font-label">User</p>
+            <p class="font-body mt-0.5">{{ ownerName }}</p>
+            <small class="font-caption">
+              {{ mode === 'create' ? 'Otomatis sesuai user yang login' : 'Pemilik data customer ini' }}
+            </small>
+          </div>
+          <div>
             <p class="font-label">Nama</p>
-            <p class="font-strong mt-0.5">
-              {{ form.nama_perusahaan || '-' }}
+            <p class="font-body mt-0.5">
+              {{ form.company_name || '-' }}
             </p>
           </div>
           <div>
             <p class="font-label">Jenis</p>
-            <p class="font-body mt-0.5">{{ form.jenis_customer || '-' }}</p>
+            <p class="font-body mt-0.5">{{ form.customer_type || '-' }}</p>
           </div>
           <div>
             <p class="font-label">Telepon</p>
-            <p class="font-body mt-0.5">{{ form.telepon || '-' }}</p>
+            <p class="font-body mt-0.5">{{ form.phone || '-' }}</p>
           </div>
           <div v-if="form.email">
             <p class="font-label">Email</p>

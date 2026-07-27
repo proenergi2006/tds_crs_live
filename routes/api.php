@@ -31,8 +31,8 @@ use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Customer\CustomerCreditItemController;
 use App\Http\Controllers\Customer\CustomerCreditSubmissionController;
 use App\Http\Controllers\Customer\CustomerDocumentController;
+use App\Http\Controllers\Customer\CustomerOnboardingController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
-use App\Http\Controllers\Customer\LinkCustomerController;
 use App\Http\Controllers\VendorPoController;
 use App\Http\Controllers\VendorPoProdukController;
 use App\Http\Controllers\PoVerificationController;
@@ -180,6 +180,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('provinsis', ProvinsiController::class);
     Route::apiResource('kabupatens', KabupatenController::class);
     Route::apiResource('customers', CustomerController::class);
+    Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
 
     // customer_documents, scoped id_customer -- menggantikan kolom flat
     // nib/nomor_npwp/nomor_sertifikat/dokumen_lainnya (+ pasangan _file)
@@ -420,10 +421,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Monitoring — hanya Administrator (id_role=1)
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
-    // Link Customer (butuh login — dipindah dari luar grup auth:sanctum)
-    Route::get('/link-customers', [LinkCustomerController::class, 'index']);
-    Route::post('/link-customers/{customer}/generate', [LinkCustomerController::class, 'generate']);
-
 
 
 
@@ -435,8 +432,8 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // ====== Public (tanpa auth) ======
-Route::get('/verify/{token}', [CustomerVerificationController::class, 'showByToken']);
-Route::put('/verify/{token}', [CustomerVerificationController::class, 'updateByToken']);
+Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'show']);
+Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
 Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'uploadByToken'])
     ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);

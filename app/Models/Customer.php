@@ -157,4 +157,14 @@ class Customer extends Model
         return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
             ->latestOfMany('id_verification');
     }
+
+    public function logistik(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerLogistik::class, 'id_customer', 'id_customer');
+    }
+
+    public function payment(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerPayment::class, 'id_customer', 'id_customer');
+    }
 }

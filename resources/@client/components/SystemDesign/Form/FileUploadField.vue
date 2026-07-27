@@ -170,7 +170,7 @@ function formatSize(bytes?: number) {
 
     <div class="rounded-lg border border-slate-200 bg-white p-3 transition"
       :class="[
-        displayError ? 'border-rose-300 bg-rose-50/40' : 'hover:border-slate-300',
+        displayError ? 'input-error' : 'hover:border-slate-300',
         disabled ? 'opacity-70' : '',
       ]">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -246,7 +246,7 @@ function formatSize(bytes?: number) {
       </p>
     </div>
 
-    <p v-if="displayError" class="font-caption !text-rose-600">
+    <p v-if="displayError" class="input-error-text">
       {{ displayError }}
     </p>
   </div>

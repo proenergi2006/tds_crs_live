@@ -15,11 +15,11 @@
             border: 0;
             display: flex;
             outline: none;
-            min-height: 36px;
+            min-height: 44px;
             align-items: center;
             background-color: transparent;
             font-size: inherit;
-            padding: theme("spacing.2") theme("spacing.3");
+            padding: theme("spacing.3") theme("spacing.3");
             input {
                 font-size: inherit;
             }
@@ -66,50 +66,57 @@
     &.plugin-dropdown_input .dropdown-input-wrap .dropdown-input {
         outline: none;
     }
-    .ts-dropdown {
-        left: -1px;
-        right: -1px;
-        width: auto;
-        z-index: 50;
-        margin-top: 1px;
-        font-size: inherit;
-        box-shadow: theme("boxShadow.sm");
-        border-radius: theme("borderRadius.DEFAULT");
-        border: 1px solid theme("colors.slate.200");
-        .dropdown-input-wrap {
-            padding: theme("spacing.2");
-            .dropdown-input {
-                border-radius: theme("borderRadius.DEFAULT");
-                border: 1px solid theme("colors.slate.200");
+}
+
+/* .ts-dropdown sengaja TIDAK dinest di dalam .tom-select -- saat dropdownParent:
+   'body' dipakai, tom-select.js memindahkan .ts-dropdown jadi direct child
+   <body>, keluar dari .tom-select/.ts-wrapper sepenuhnya. Selector bersyarat
+   ".tom-select .ts-dropdown" tidak match lagi di kondisi itu dan stylingnya
+   diam-diam hilang (fallback ke tampilan default tom-select.js). Unscope
+   supaya styling tetap konsisten di kedua mode (nested maupun di-body). */
+.ts-dropdown {
+    left: -1px;
+    right: -1px;
+    width: auto;
+    z-index: 50;
+    margin-top: 1px;
+    font-size: inherit;
+    box-shadow: theme("boxShadow.sm");
+    border-radius: theme("borderRadius.DEFAULT");
+    border: 1px solid theme("colors.slate.200");
+    .dropdown-input-wrap {
+        padding: theme("spacing.2");
+        .dropdown-input {
+            border-radius: theme("borderRadius.DEFAULT");
+            border: 1px solid theme("colors.slate.200");
+        }
+    }
+    .optgroup-header {
+        padding: theme("spacing.[2.5]") theme("spacing.3");
+        font-weight: theme("fontWeight.medium");
+        background-color: theme("colors.slate.100");
+    }
+    .option {
+        padding: theme("spacing.[2.5]") theme("spacing.3");
+        &[data-selectable] {
+            &.active:not(.selected) {
+                color: inherit;
+                background-color: transparent;
+                background-color: theme("colors.slate.100");
+            }
+            &:hover:not(.selected) {
+                color: inherit;
+                background-color: theme("colors.slate.100");
             }
         }
-        .optgroup-header {
-            padding: theme("spacing.[2.5]") theme("spacing.3");
-            font-weight: theme("fontWeight.medium");
-            background-color: theme("colors.slate.100");
-        }
-        .option {
-            padding: theme("spacing.[2.5]") theme("spacing.3");
-            &[data-selectable] {
-                &.active:not(.selected) {
-                    color: inherit;
-                    background-color: transparent;
-                    background-color: theme("colors.slate.100");
-                }
-                &:hover:not(.selected) {
-                    color: inherit;
-                    background-color: theme("colors.slate.100");
-                }
-            }
-        }
-        .selected {
-            color: white;
-            background-color: theme("colors.primary");
-        }
-        [data-selectable] .highlight {
-            color: white;
-            background-color: theme("colors.danger");
-        }
+    }
+    .selected {
+        color: white;
+        background-color: theme("colors.primary");
+    }
+    [data-selectable] .highlight {
+        color: white;
+        background-color: theme("colors.danger");
     }
 }
 
@@ -147,34 +154,36 @@ body > .ts-dropdown {
         &.plugin-dropdown_input.focus.dropdown-active {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' transform='rotate(180)' fill='none' stroke='rgb(255 255 255)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-chevron-down'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
         }
-        .ts-dropdown {
-            color: theme("colors.slate.300");
-            border-color: theme("colors.darkmode.800");
-            background-color: theme("colors.darkmode.700");
-            .dropdown-input-wrap {
-                .dropdown-input {
-                    border-color: theme("colors.darkmode.800");
-                    background-color: theme("colors.darkmode.600");
-                }
-            }
-            .optgroup-header {
-                color: theme("colors.slate.300");
-                background-color: theme("colors.darkmode.800");
-            }
-            .option {
-                &[data-selectable] {
-                    &.active:not(.selected) {
-                        background-color: theme("colors.darkmode.600");
-                    }
-                    &:hover:not(.selected) {
-                        background-color: theme("colors.darkmode.600");
-                    }
-                }
-            }
-        }
     }
     .ts-wrapper {
         border-color: theme("colors.darkmode.800");
         background-color: theme("colors.darkmode.800");
+    }
+    /* Sama seperti versi light-mode di atas -- tidak dinest di dalam .tom-select
+       supaya tetap match saat dropdown dipindah ke <body> lewat dropdownParent. */
+    .ts-dropdown {
+        color: theme("colors.slate.300");
+        border-color: theme("colors.darkmode.800");
+        background-color: theme("colors.darkmode.700");
+        .dropdown-input-wrap {
+            .dropdown-input {
+                border-color: theme("colors.darkmode.800");
+                background-color: theme("colors.darkmode.600");
+            }
+        }
+        .optgroup-header {
+            color: theme("colors.slate.300");
+            background-color: theme("colors.darkmode.800");
+        }
+        .option {
+            &[data-selectable] {
+                &.active:not(.selected) {
+                    background-color: theme("colors.darkmode.600");
+                }
+                &:hover:not(.selected) {
+                    background-color: theme("colors.darkmode.600");
+                }
+            }
+        }
     }
 }

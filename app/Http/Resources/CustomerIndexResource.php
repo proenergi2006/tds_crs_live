@@ -35,6 +35,7 @@ class CustomerIndexResource extends JsonResource
 
             'quotation_count' => $this->quotation_count,
             'has_lcr' => $this->has_lcr,
+            'verification_badge' => $this->verification_badge,
 
             'created_at' => $this->created_at,
         ];

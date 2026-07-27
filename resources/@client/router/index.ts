@@ -36,9 +36,9 @@ const routes = [
   },
 
   {
-    path: "/verify/:token",
-    name: "verify-customer",
-    component: () => import("@/pages/CustomerUpdateForm.vue"),
+    path: "/customer-onboarding/:token",
+    name: "customer-onboarding",
+    component: () => import("@/pages/CustomerOnboarding/Index.vue"),
   },
 
   {
@@ -884,7 +884,7 @@ router.beforeEach(async (to, from, next) => {
     !token &&
     to.name !== "login" &&
     to.name !== "two-factor" &&
-    to.name !== "verify-customer" &&
+    to.name !== "customer-onboarding" &&
     to.name !== "forgot-password"
   ) {
     // stop lebih cepat saat redirect agar tidak menggantung
@@ -899,7 +899,7 @@ router.beforeEach(async (to, from, next) => {
     !auth.user &&
     to.name !== "login" &&
     to.name !== "two-factor" &&
-    to.name !== "verify-customer" &&
+    to.name !== "customer-onboarding" &&
     to.name !== "forgot-password" &&
     !auth.isForceLoggingOut
   ) {
