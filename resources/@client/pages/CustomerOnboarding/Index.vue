@@ -469,12 +469,6 @@ async function submit() {
       </template>
     </OnboardingLayout>
 
-    <button v-if="pageState === 'active' && isDev" type="button" :disabled="seeding" @click="seedDummyData"
-      class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 font-label text-white shadow-lg transition hover:bg-amber-600 disabled:opacity-60">
-      <Lucide :icon="seeding ? 'Loader2' : 'FlaskConical'" class="h-4 w-4" :class="seeding ? 'animate-spin' : ''" />
-      {{ seeding ? 'Mengisi...' : 'Isi Data Dummy (Dev)' }}
-    </button>
-
     <div v-else class="flex min-h-screen items-center justify-center px-5 py-16">
       <div class="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full" :class="statusDisplay.iconBg">
@@ -484,5 +478,11 @@ async function submit() {
         <p class="font-caption mt-2">{{ statusDisplay.description }}</p>
       </div>
     </div>
+
+    <button v-if="pageState === 'active' && isDev" type="button" :disabled="seeding" @click="seedDummyData"
+      class="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 font-label text-white shadow-lg transition hover:bg-amber-600 disabled:opacity-60">
+      <Lucide :icon="seeding ? 'Loader2' : 'FlaskConical'" class="h-4 w-4" :class="seeding ? 'animate-spin' : ''" />
+      {{ seeding ? 'Mengisi...' : 'Isi Data Dummy (Dev)' }}
+    </button>
   </div>
 </template>
