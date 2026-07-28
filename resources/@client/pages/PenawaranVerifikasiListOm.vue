@@ -111,7 +111,7 @@
 
                 <Table.Td>
                   <div class="font-medium text-slate-700">
-                    {{ pen.customer?.nama_perusahaan || '-' }}
+                    {{ pen.customer?.company_name || '-' }}
                   </div>
                 </Table.Td>
 

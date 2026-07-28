@@ -235,7 +235,7 @@ function getDisposisiTanggal(pen: any): string {
               {{ pen.nomor_penawaran }}
             </Table.Td>
             <Table.Td class="whitespace-nowrap">
-              {{ pen.customer?.nama_perusahaan || '-' }}
+              {{ pen.customer?.company_name || '-' }}
             </Table.Td>
             <Table.Td class="whitespace-nowrap">
               {{ pen.cabang?.nama_cabang || '-' }}

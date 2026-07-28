@@ -103,7 +103,7 @@ class PenawaranController extends Controller
        return [
            'id'     => $p->id_penawaran ?? $p->id,
            'nomor'  => (string) $p->nomor_penawaran,
-           'cust'   => optional($p->customer)->nama_perusahaan,
+           'cust'   => optional($p->customer)->company_name,
            'valid'  => $p->sampai_dengan,
            'verify' => $this->detailUrl($p->id_penawaran ?? $p->id),
        ];
@@ -422,10 +422,9 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
             DB::table('customers')
                 ->where('id_customer', $data['id_customer'])
                 ->update([
-                    'need_update'     => 1,
-                    'id_cabang'       => $data['id_cabang'],
-                    'lastupdate_time' => now(),
-                    'lastupdate_by'   => optional($request->user())->name,
+                    'id_cabang'  => $data['id_cabang'],
+                    'updated_at' => now(),
+                    'updated_by' => optional($request->user())->name,
                 ]);
 
             DB::commit();

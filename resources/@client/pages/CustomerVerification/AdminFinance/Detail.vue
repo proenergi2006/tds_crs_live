@@ -64,8 +64,6 @@ const uploadingKyc = ref(false)
 const approval = reactive({
   approval_credit_limit: 0,
   payment_type: 'CREDIT' as 'CREDIT' | 'CASH',
-  top_days: '30',
-  top_basis: 'After Invoice Receive',
   group_company: '',
   docs: {
     customer_db: false,
@@ -157,8 +155,6 @@ function buildPayload(decision: 'APPROVE' | 'REJECT') {
       approval: form.jenis_data === 'SETELAH' ? {
         approval_credit_limit: String(approval.approval_credit_limit || 0),
         payment_type: approval.payment_type,
-        top_days: approval.top_days,
-        top_basis: approval.top_basis,
         group_company: approval.group_company || undefined,
         docs: approval.docs,
         docs_others_text: approval.docs_others_text || undefined,
@@ -308,19 +304,6 @@ onMounted(loadAll)
             <FormSelect v-model="approval.payment_type" class="!box">
               <option value="CREDIT">CREDIT</option>
               <option value="CASH">CASH</option>
-            </FormSelect>
-          </div>
-
-          <div>
-            <FormLabel>TOP (Days)</FormLabel>
-            <FormInput v-model="approval.top_days" />
-          </div>
-
-          <div>
-            <FormLabel>TOP Basis</FormLabel>
-            <FormSelect v-model="approval.top_basis" class="!box">
-              <option value="After Invoice Receive">After Invoice Receive</option>
-              <option value="After Delivery">After Delivery</option>
             </FormSelect>
           </div>
 

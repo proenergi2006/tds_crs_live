@@ -6,6 +6,8 @@ import axios from 'axios'
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import TomSelect from '@/components/Base/TomSelect'
+import { Dialog } from '@/components/Base/Headless'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -20,6 +22,12 @@ interface LogEntry {
   raw: string
 }
 
+interface LogFile {
+  filename: string
+  size: number
+  modified_at: string
+}
+
 const { error } = useNotification()
 
 /* State: data & pagination */
@@ -30,8 +38,13 @@ const perPage = ref(25)
 const currentPage = ref(1)
 const loading = ref(false)
 
-/* State: expanded trace rows */
-const expandedIds = ref(new Set<string>())
+/* State: log file selection */
+const logFiles = ref<LogFile[]>([])
+const selectedFile = ref('')
+
+/* State: trace modal */
+const traceModalOpen = ref(false)
+const activeTraceLog = ref<LogEntry | null>(null)
 
 const levelOptions = computed(() => {
   const seen = new Set<string>()
@@ -61,16 +74,38 @@ const paginatedLogs = computed(() => {
   return filteredLogs.value.slice(start, start + perPage.value)
 })
 
-onMounted(fetchData)
+let isInitialLoad = true
+
+onMounted(async () => {
+  await fetchFileList()
+  await fetchData()
+  isInitialLoad = false
+})
 watch([searchQuery, filterLevel], debounce(resetToFirstPage, 300))
 watch(perPage, resetToFirstPage)
+watch(selectedFile, () => {
+  if (isInitialLoad) return
+  resetToFirstPage()
+  fetchData()
+})
+
+async function fetchFileList() {
+  try {
+    const { data } = await axios.get('/api/logs/files')
+    logFiles.value = Array.isArray(data.data) ? data.data : []
+    if (!selectedFile.value) {
+      selectedFile.value = logFiles.value[0]?.filename ?? ''
+    }
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message ?? 'Gagal memuat daftar file log')
+  }
+}
 
 async function fetchData() {
   loading.value = true
-  expandedIds.value = new Set()
 
   try {
-    const { data } = await axios.get('/api/logs', { params: { limit: 200 } })
+    const { data } = await axios.get('/api/logs', { params: { file: selectedFile.value } })
     allLogs.value = Array.isArray(data.data) ? [...data.data].reverse() : []
     currentPage.value = 1
   } catch (e: any) {
@@ -89,10 +124,17 @@ function resetToFirstPage() {
   currentPage.value = 1
 }
 
-function toggleTrace(id: string) {
-  const next = new Set(expandedIds.value)
-  next.has(id) ? next.delete(id) : next.add(id)
-  expandedIds.value = next
+function openTraceModal(log: LogEntry) {
+  activeTraceLog.value = log
+  traceModalOpen.value = true
+}
+
+function closeTraceModal() {
+  traceModalOpen.value = false
+}
+
+function fileLabel(file: LogFile): string {
+  return `${file.filename} — ${file.modified_at}`
 }
 
 function levelClass(level: string | null): string {
@@ -121,10 +163,18 @@ function levelClass(level: string | null): string {
 
       <PageHeader title="Application Logs" description="Log terbaru dari aplikasi">
         <template #action>
-          <Button variant="white" class="inline-flex items-center gap-2" :disabled="loading" @click="fetchData">
-            <Lucide icon="RefreshCw" class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
-            Refresh
-          </Button>
+          <div class="flex items-center gap-2">
+            <TomSelect :model-value="selectedFile" @update:model-value="(val) => selectedFile = val as string"
+              :options="{ placeholder: 'Cari file log...', dropdownParent: 'body' }" class="!box w-full min-w-[16rem]">
+              <option v-for="file in logFiles" :key="file.filename" :value="file.filename">
+                {{ fileLabel(file) }}
+              </option>
+            </TomSelect>
+            <Button variant="white" class="inline-flex items-center gap-2" :disabled="loading" @click="fetchData">
+              <Lucide icon="RefreshCw" class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
+              Refresh
+            </Button>
+          </div>
         </template>
       </PageHeader>
 
@@ -169,7 +219,7 @@ function levelClass(level: string | null): string {
             <template v-for="(log, idx) in paginatedLogs" :key="log.id">
 
               <Table.Tr class="transition hover:bg-slate-50" :class="log.trace ? 'cursor-pointer' : ''"
-                @click="log.trace ? toggleTrace(log.id) : undefined">
+                @click="log.trace ? openTraceModal(log) : undefined">
                 <Table.Td class="font-num text-center text-slate-400">
                   {{ (currentPage - 1) * perPage + idx + 1 }}
                 </Table.Td>
@@ -188,16 +238,8 @@ function levelClass(level: string | null): string {
                 <Table.Td>
                   <div class="flex items-start justify-between gap-2">
                     <span class="font-body break-words">{{ log.message || '-' }}</span>
-                    <Lucide v-if="log.trace" :icon="expandedIds.has(log.id) ? 'ChevronUp' : 'ChevronDown'"
-                      class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    <Lucide v-if="log.trace" icon="FileSearch" class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                   </div>
-                </Table.Td>
-              </Table.Tr>
-
-              <Table.Tr v-if="log.trace && expandedIds.has(log.id)" :key="`${log.id}-trace`">
-                <Table.Td :colspan="5" class="bg-slate-50 p-0">
-                  <pre
-                    class="overflow-x-auto whitespace-pre-wrap break-all px-4 py-3 font-caption text-xs leading-relaxed text-slate-600">{{ log.trace }}</pre>
                 </Table.Td>
               </Table.Tr>
 
@@ -207,5 +249,30 @@ function levelClass(level: string | null): string {
       </div>
 
     </div>
+
+    <Dialog :open="traceModalOpen" size="xl" @close="closeTraceModal">
+      <Dialog.Panel>
+        <div class="p-6">
+          <div class="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+            <div>
+              <h3 class="font-header">Stacktrace</h3>
+              <p class="font-caption mt-1 text-slate-500">
+                {{ activeTraceLog?.timestamp ?? '-' }}
+                <span class="mx-1">&middot;</span>
+                {{ activeTraceLog?.level ?? '-' }}
+              </p>
+              <p class="font-body mt-2 break-words">{{ activeTraceLog?.message }}</p>
+            </div>
+          </div>
+
+          <pre
+            class="mt-4 max-h-[60vh] overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-50 px-4 py-3 font-caption text-xs leading-relaxed text-slate-600">{{ activeTraceLog?.trace }}</pre>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+          <Button variant="outline-secondary" @click="closeTraceModal">Tutup</Button>
+        </div>
+      </Dialog.Panel>
+    </Dialog>
   </div>
 </template>

@@ -20,11 +20,36 @@ class LogViewerController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $limit = min($request->integer('limit', 100), 500);
+        $requestedFile = $request->string('file')->toString();
+        $file = $requestedFile;
 
-        $entries = $this->fileReader->tail($limit);
-        $parsed  = $this->parser->parseMany($entries);
+        if ($file === '') {
+            $files = $this->fileReader->listFiles();
+
+            if (empty($files)) {
+                return response()->json(['data' => []]);
+            }
+
+            $file = $files[0]['filename'];
+        }
+
+        $entries = $this->fileReader->read($file);
+
+        if (empty($entries) && $requestedFile !== '') {
+            return response()->json(['message' => 'Log file tidak ditemukan.'], 404);
+        }
+
+        $parsed = $this->parser->parseMany($entries);
 
         return response()->json(['data' => $parsed]);
+    }
+
+    public function files(Request $request)
+    {
+        if ($request->user()->id_role !== 1) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        return response()->json(['data' => $this->fileReader->listFiles()]);
     }
 }

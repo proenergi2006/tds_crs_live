@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
+use App\Http\Resources\CustomerIndexResource;
 use App\Models\Customer;
 use App\Models\CustomerAdminArnya;
-use App\Models\CustomerContact;
 use App\Models\CustomerLogistik;
 use App\Models\CustomerPayment;
 use App\Models\CustomerVerification;
@@ -24,93 +25,111 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $q = Customer::query()
-            // 'province'/'regency'/'district'/'village' ditambahkan di
-            // samping 'provinsi'/'kabupaten' lama (laravel-nusa-address-
-            // full-migration Task 7) — lama tetap dieager-load, tidak
-            // dihapus.
-            ->with(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'cabang'])
-            ->withExists(['lcr as has_lcr'])
-            ->withCount(['penawarans as jumlah_penawaran']);
+        $base = Customer::query();
 
         if ($user->cant('customer.viewAny')) {
-            $q->where('id_user', $user->id);
+            $base->where('id_user', $user->id);
         }
 
         if ($search = $request->query('search')) {
-            $q->where(function ($q) use ($search) {
-                $q->where('email', 'like', "%{$search}%")
-                    ->orWhere('nama_perusahaan', 'like', "%{$search}%");
+            $search = strtolower($search);
+
+            $base->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(email) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(company_name) LIKE ?', ["%{$search}%"]);
             });
         }
 
-        $baseQuery = clone $q;
-
-        $tabCounts = [
-            'all'        => (clone $baseQuery)->count(),
-            'verified'   => (clone $baseQuery)->where('is_verified', 1)->count(),
-            'unverified' => (clone $baseQuery)->where('is_verified', 0)->count(),
-        ];
-
-        $tab = $request->query('tab', 'all');
-        if ($tab === 'verified') {
-            $q->where('is_verified', 1);
-        } elseif ($tab === 'unverified') {
-            $q->where('is_verified', 0);
-        }
-
         if ($request->boolean('as_list')) {
-            return response()->json($q->select(['id_customer', 'nama_perusahaan'])->orderBy('nama_perusahaan')->get());
+            $list = (clone $base)
+                ->with(['user', 'province', 'regency', 'district', 'village', 'cabang'])
+                ->withExists(['lcr as has_lcr'])
+                ->withCount(['penawarans as quotation_count'])
+                ->get();
+
+            return CustomerIndexResource::collection($list);
         }
 
-        $q->with('latestVerification');
+        $tabCounts = [];
 
-        $perPage = min((int) $request->query('per_page', 10), 100);
+        foreach (['all', 'verified', 'unverified'] as $tab) {
+            $tabQuery = clone $base;
+            $this->applyStatusFilter($tabQuery, $tab);
+            $tabCounts[$tab] = $tabQuery->count();
+        }
 
-        $paginated = $q->paginate($perPage)->through(function (Customer $customer) {
-            $customer->verification_badge  = $this->resolveVerificationBadge($customer);
-            $customer->latest_verification  = $this->formatLatestVerification($customer->latestVerification);
-            return $customer;
-        });
+        $q = (clone $base)
+            ->with(['user', 'province', 'regency', 'district', 'village', 'cabang', 'latestVerification.latestDocumentApproval'])
+            ->withExists(['lcr as has_lcr'])
+            ->withCount(['penawarans as quotation_count'])
+            ->orderBy('company_name');
 
-        $response = $paginated->toArray();
-        $response['tab_counts'] = $tabCounts;
+        $this->applyStatusFilter($q, $request->query('status', 'all'));
 
-        return response()->json($response);
+        $paginator = $q->paginate($request->integer('per_page', 10));
+
+        $paginator->getCollection()->each(
+            fn(Customer $customer) => $customer->verification_badge = $this->resolveVerificationBadge($customer)
+        );
+
+        return response()->json([
+            'data' => CustomerIndexResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ],
+            'tab_counts' => $tabCounts,
+        ]);
+    }
+
+    private function applyStatusFilter($query, string $status): void
+    {
+        if ($status === 'verified') {
+            $query->whereHas('latestVerification', fn($vq) => $vq->whereHas('latestDocumentApproval', fn($aq) => $aq->where('status', DocumentApprovalStatus::Approved)));
+        } elseif ($status === 'unverified') {
+            $query->where(function ($outer) {
+                $outer->whereDoesntHave('latestVerification')
+                    ->orWhereHas('latestVerification', fn($vq) => $vq->whereDoesntHave('latestDocumentApproval')
+                        ->orWhereHas('latestDocumentApproval', fn($aq) => $aq->where('status', '!=', DocumentApprovalStatus::Approved)));
+            });
+        }
     }
 
     private function resolveVerificationBadge(Customer $customer): string
     {
-        if ((int) $customer->is_verified === 1) {
-            return 'verified';
-        }
-
         $latest = $customer->latestVerification;
 
-        if (!$latest || (int) ($customer->is_generated_link ?? 0) === 0) {
+        if (!$latest || !$customer->is_link_generated) {
             return 'belum_ada_link';
+        }
+
+        $latestCycle = $latest->latestDocumentApproval;
+
+        if ($latestCycle?->status === DocumentApprovalStatus::Approved) {
+            return 'verified';
         }
 
         $isExpired = $latest->expired_at !== null && $latest->expired_at->lte(now());
 
-        if (!$latest->is_evaluated && !$isExpired) {
+        if (!$latest->is_submitted && !$isExpired) {
             return 'menunggu_customer';
         }
 
-        if (!$latest->is_evaluated && $isExpired) {
+        if (!$latest->is_submitted && $isExpired) {
             return 'link_kedaluwarsa';
         }
 
-        if ($latest->is_evaluated && !$latest->is_reviewed) {
+        if ($latest->is_submitted && !$latest->is_forwarded) {
             return 'perlu_direview';
         }
 
-        if ($latest->is_reviewed && in_array((int) $latest->disposisi_result, [1, 2, 3, 4], true)) {
-            return 'proses_internal';
+        if ($latestCycle?->status === DocumentApprovalStatus::Rejected) {
+            return 'ditolak';
         }
 
-        if ((int) $latest->disposisi_result === 5 && !$latest->is_approved) {
-            return 'ditolak';
+        if ($latest->is_forwarded && $latestCycle?->status === DocumentApprovalStatus::InProgress) {
+            return 'proses_internal';
         }
 
         return 'belum_ada_link';
@@ -123,26 +142,13 @@ class CustomerController extends Controller
         }
 
         return [
-            'id_verification'  => $verification->id_verification,
-            'disposisi_result' => (int) $verification->disposisi_result,
-            'is_evaluated'     => (bool) $verification->is_evaluated,
-            'is_reviewed'      => (bool) $verification->is_reviewed,
-            'is_active'        => (bool) $verification->is_active,
-            'expired_at'       => optional($verification->expired_at)->toISOString(),
-            'stage_label'      => $this->stageLabel((int) $verification->disposisi_result),
+            'id_verification' => $verification->id_verification,
+            'is_submitted'    => (bool) $verification->is_submitted,
+            'is_forwarded'    => (bool) $verification->is_forwarded,
+            'is_active'       => (bool) $verification->is_active,
+            'expired_at'      => optional($verification->expired_at)->toISOString(),
+            'stage_label'     => $verification->stageLabel(),
         ];
-    }
-
-    private function stageLabel(int $disposisiResult): string
-    {
-        return match ($disposisiResult) {
-            0 => 'Marketing/Draft',
-            1 => 'Admin',
-            2 => 'Logistik',
-            3 => 'BM',
-            4 => 'OM',
-            default => '-',
-        };
     }
 
     public function store(StoreCustomerRequest $request)
@@ -154,9 +160,9 @@ class CustomerController extends Controller
         $data = $request->validated();
 
         $data['id_user']      = $request->user()->id;
-        $data['created_time'] = now();
+        $data['created_at']   = now();
         $data['created_by']   = $request->user()->name;
-        $data['nama_perusahaan'] = $this->normalizeName($data['nama_perusahaan'] ?? null);
+        $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
 
         $customer = DB::transaction(function () use ($data) {
             $customer = Customer::create($data);
@@ -178,7 +184,25 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $customer->load(['user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village', 'latestVerification']);
+        $customer->load([
+            'user',
+            'provinsi',
+            'kabupaten',
+            'province',
+            'regency',
+            'district',
+            'village',
+            'latestVerification.latestDocumentApproval.steps',
+            'addresses.province',
+            'addresses.regency',
+            'addresses.district',
+            'addresses.village',
+            'contacts',
+            'payment',
+            'logistik',
+            'lcr',
+            'creditSubmissions',
+        ]);
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
 
         return response()->json($customer);
@@ -197,9 +221,9 @@ class CustomerController extends Controller
 
         $data = $request->validated();
 
-        $data['lastupdate_time'] = now();
-        $data['lastupdate_by']   = $request->user()->name;
-        $data['nama_perusahaan'] = $this->normalizeName($data['nama_perusahaan'] ?? null);
+        $data['updated_at']   = now();
+        $data['updated_by']   = $request->user()->name;
+        $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
 
         $customer->update($data);
 
@@ -228,41 +252,128 @@ class CustomerController extends Controller
         return response()->json(null, 204);
     }
 
+    public function checkCompanyName(Request $request)
+    {
+        $data = $request->validate([
+            'company_name' => 'required|string',
+            'exclude_id'   => 'nullable|integer|exists:customers,id_customer',
+        ]);
+
+        $normalized = $this->normalizeForComparison($data['company_name']);
+
+        $query = Customer::whereNull('deleted_at')
+            ->whereRaw("UPPER(REGEXP_REPLACE(TRIM(company_name), '\s+', ' ', 'g')) = ?", [$normalized])
+            ->with('user');
+
+        if (!empty($data['exclude_id'])) {
+            $query->where('id_customer', '!=', $data['exclude_id']);
+        }
+
+        $matches = $query->get();
+
+        return response()->json([
+            'available' => $matches->isEmpty(),
+            'matches'   => $matches->map(fn(Customer $c) => [
+                'id_customer'  => $c->id_customer,
+                'company_name' => $c->company_name,
+                'marketing'    => [
+                    'id'   => $c->user?->id,
+                    'name' => $c->user?->name,
+                ],
+            ]),
+        ]);
+    }
+
+    public function generateOnboardingLink(Request $request, Customer $customer)
+    {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $existing = CustomerVerification::where('id_customer', $customer->id_customer)
+            ->where('is_active', true)
+            ->latest('id_verification')
+            ->first();
+
+        if ($existing) {
+            $isExpired = $existing->expired_at !== null && $existing->expired_at->lte(now());
+            $isRejected = $existing->latestDocumentApproval?->status === DocumentApprovalStatus::Rejected;
+
+            if (!$isExpired && !$isRejected) {
+                $link = rtrim(config('app.frontend_url', config('app.url')), '/')
+                    . '/customer-onboarding/' . $existing->verification_token;
+
+                $customer->update(['is_link_generated' => true]);
+
+                return response()->json([
+                    'already_exists' => true,
+                    'verification'   => $existing,
+                    'link'           => $link,
+                ]);
+            }
+
+            $existing->update(['is_active' => false]);
+        }
+
+        do {
+            $token = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(17));
+        } while (CustomerVerification::where('verification_token', $token)->exists());
+
+        $cv = CustomerVerification::create([
+            'id_customer'        => $customer->id_customer,
+            'verification_token' => $token,
+            'is_submitted'       => false,
+            'is_forwarded'       => false,
+            'is_active'          => true,
+            'expired_at'         => now()->addDays(7),
+
+            'legal_data'    => '',
+            'legal_summary' => '',
+            'legal_pic'     => '',
+
+            'finance_data'    => '',
+            'finance_summary' => '',
+            'finance_pic'     => '',
+
+            'logistics_data'    => '',
+            'logistics_summary' => '',
+            'logistics_pic'     => '',
+        ]);
+
+        $link = rtrim(config('app.frontend_url', config('app.url')), '/')
+            . '/customer-onboarding/' . $token;
+
+        $customer->update(['is_link_generated' => true]);
+
+        return response()->json([
+            'already_exists' => false,
+            'verification'   => $cv,
+            'link'           => $link,
+        ], 201);
+    }
+
     private function seedRelatedRecords(Customer $customer): void
     {
         $id = $customer->id_customer;
 
-        CustomerContact::firstOrCreate(['id_customer' => $id], [
-            'pic_decision_telp'   => '',
-            'pic_decision_mobile' => '',
-            'pic_ordering_telp'   => '',
-            'pic_ordering_mobile' => '',
-            'pic_billing_telp'    => '',
-            'pic_billing_mobile'  => '',
-            'pic_invoice_telp'    => '',
-            'pic_invoice_mobile'  => '',
-        ]);
+        // customer_contacts sekarang multi-row (0..N per customer, lihat
+        // Customer::contacts()) -- tidak ada lagi header row untuk di-seed
+        // seperti tabel 1:1 di bawah ini.
 
-        CustomerLogistik::firstOrCreate(['id_customer' => $id], [
-            'logistik_area'    => '',
-            'logistik_bisnis'  => '',
-            'logistik_env'     => 0,
-            'logistik_storage' => 0,
-            'logistik_hour'    => 0,
-            'logistik_volume'  => 0,
-            'logistik_quality' => 0,
-            'logistik_truck'   => 0,
-            'desc_stor_fac'    => '',
-            'desc_condition'   => '',
-        ]);
+        // Semua kolom customer_logistik nullable sejak rebuild rev. 3 --
+        // baris kosong cukup dibuat dengan id_customer saja.
+        CustomerLogistik::firstOrCreate(['id_customer' => $id]);
 
         CustomerPayment::firstOrCreate(['id_customer' => $id], [
-            'telp_billing'     => '',
-            'fax_billing'      => '',
-            'payment_schedule' => 0,
-            'payment_method'   => 0,
-            'invoice'          => 0,
-            'ket_extra'        => '',
+            'payment_schedule' => null,
+            'payment_method'   => null,
+            'invoice'          => false,
+            'extra_notes'      => '',
         ]);
 
         CustomerAdminArnya::firstOrCreate(['id_customer' => $id], [
@@ -282,5 +393,13 @@ class CustomerController extends Controller
         }
 
         return mb_strtoupper(trim($name), 'UTF-8');
+    }
+
+    private function normalizeForComparison(string $name): string
+    {
+        $name = trim($name);
+        $name = preg_replace('/\s+/', ' ', $name);
+
+        return mb_strtoupper($name, 'UTF-8');
     }
 }

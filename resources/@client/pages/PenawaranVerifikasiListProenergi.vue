@@ -140,7 +140,7 @@
   
                 <Table.Td class="px-5 py-4 align-top whitespace-nowrap">
                   <div class="font-medium text-slate-800">
-                    {{ pen.customer?.nama_perusahaan || '-' }}
+                    {{ pen.customer?.company_name || '-' }}
                   </div>
                 </Table.Td>
   
@@ -232,7 +232,7 @@
     status?: string
     disposisi_penawaran?: string | number
     customer?: {
-      nama_perusahaan?: string
+      company_name?: string
     }
     cabang?: {
       nama_cabang?: string

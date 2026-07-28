@@ -15,7 +15,7 @@ const props = withDefaults(
 
 const buttonClass = computed(() =>
   props.expandOnHover
-    ? 'group overflow-hidden transition-all duration-300 hover:px-4'
+    ? 'group overflow-hidden transition-all duration-150 hover:px-4'
     : '!h-8 !w-8 !p-0 !shadow-none',
 )
 </script>

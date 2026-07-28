@@ -4,6 +4,7 @@ namespace App\Http\Requests\Customer;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class UpdateCustomerRequest extends FormRequest
 {
@@ -34,11 +35,24 @@ class UpdateCustomerRequest extends FormRequest
             'district_id'       => 'nullable|string|exists:districts,id',
             'village_id'        => 'nullable|string|exists:villages,id',
             'postal_code'       => 'nullable|string|max:20',
-            'telepon'           => 'nullable|string|max:30',
-            'jenis_customer'    => 'nullable|string|max:50',
-            'nama_perusahaan'   => 'nullable|string|max:255',
-            'alamat_perusahaan' => 'nullable|string',
-            'fax'               => 'nullable|string|max:30',
+            'phone'             => 'nullable|string|max:50',
+            'customer_type'     => 'nullable|string|max:100',
+            'company_name'      => 'nullable|string|max:255',
+            'company_address'   => 'nullable|string',
+            'fax'               => 'nullable|string|max:50',
+
+            'customer_code'         => 'nullable|string|max:50',
+            'website'               => 'nullable|string|max:255',
+            'business_type'         => 'nullable|string|max:100',
+            'business_type_other'   => 'nullable|string|max:255',
+            'ownership_type'        => 'nullable|string|max:100',
+            'ownership_type_other'  => 'nullable|string|max:255',
+            'parent_company'        => 'nullable|string|max:255',
+            'customer_sub_district' => 'nullable|string|max:255',
+            'customer_village'      => 'nullable|string|max:255',
+            'id_cabang'             => 'nullable|exists:cabangs,id_cabang',
+            'inco_terms'            => ['nullable', new Enum(\App\Enums\CustomerIncoterm::class)],
+            'inco_terms_other'      => 'nullable|string|max:255',
         ];
     }
 }

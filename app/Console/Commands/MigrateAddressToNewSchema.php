@@ -18,7 +18,7 @@ class MigrateAddressToNewSchema extends Command
     /**
      * @var string
      */
-    protected $description = 'Cocokkan alamat lama (provinsis/kabupatens + kecamatan/kelurahan bebas-teks) di customers/wilayah_angkuts/customer_payment ke skema BPS baru (provinces/regencies/districts/villages) dan laporkan/tulis hasilnya.';
+    protected $description = 'Cocokkan alamat lama (provinsis/kabupatens + kecamatan/kelurahan bebas-teks) di customers/wilayah_angkuts ke skema BPS baru (provinces/regencies/districts/villages) dan laporkan/tulis hasilnya.';
 
     /** Threshold similarity minimum (persen dari similar_text) supaya sebuah fuzzy match di level district/village dianggap "cukup yakin" untuk ditulis. */
     private const FUZZY_MATCH_THRESHOLD = 85.0;
@@ -72,12 +72,10 @@ class MigrateAddressToNewSchema extends Command
 
         $customerRows = $this->processCustomers();
         $wilayahRows = $this->processWilayahAngkuts();
-        $paymentRows = $this->processCustomerPayment();
 
         $tables = [
             ['label' => 'customers', 'table_name' => 'customers', 'pk' => 'id_customer', 'rows' => $customerRows],
             ['label' => 'wilayah_angkuts', 'table_name' => 'wilayah_angkuts', 'pk' => 'id', 'rows' => $wilayahRows],
-            ['label' => 'customer_payment', 'table_name' => 'customer_payment', 'pk' => 'id_customer', 'rows' => $paymentRows],
         ];
 
         foreach ($tables as $t) {
@@ -198,30 +196,6 @@ class MigrateAddressToNewSchema extends Command
         ))->all();
     }
 
-    private function processCustomerPayment(): array
-    {
-        $rows = DB::table('customer_payment')
-            ->leftJoin('provinsis', 'customer_payment.prov_billing', '=', 'provinsis.id_provinsi')
-            ->leftJoin('kabupatens', 'customer_payment.kab_billing', '=', 'kabupatens.id_kabupaten')
-            ->select([
-                'customer_payment.id_customer as id',
-                'provinsis.nama_provinsi as prov_name',
-                'kabupatens.nama_kabupaten as kab_name',
-                'customer_payment.kecamatan_billing as kec_name',
-                'customer_payment.kelurahan_billing as kel_name',
-            ])
-            ->orderBy('customer_payment.id_customer')
-            ->get();
-
-        return $rows->map(fn($r) => $this->buildRowResult(
-            (string) $r->id,
-            $r->prov_name,
-            $r->kab_name,
-            $r->kec_name,
-            $r->kel_name
-        ))->all();
-    }
-
     // ==================================================================
     // Core matching per baris
     // ==================================================================
@@ -277,7 +251,7 @@ class MigrateAddressToNewSchema extends Command
     private function matchProvince(?string $rawName): array
     {
         if ($rawName === null || trim($rawName) === '') {
-            return ['status' => 'no_source', 'id' => null, 'name' => null, 'confidence' => null, 'reason' => 'Tidak ada data provinsi di sumber (id_provinsi/prov_billing null, atau baris provinsis terkait tidak ditemukan).'];
+            return ['status' => 'no_source', 'id' => null, 'name' => null, 'confidence' => null, 'reason' => 'Tidak ada data provinsi di sumber (id_provinsi null, atau baris provinsis terkait tidak ditemukan).'];
         }
 
         $norm = $this->normalize($rawName);
@@ -301,7 +275,7 @@ class MigrateAddressToNewSchema extends Command
     private function matchRegency(?string $rawName, ?string $provinceId): array
     {
         if ($rawName === null || trim($rawName) === '') {
-            return ['status' => 'no_source', 'id' => null, 'name' => null, 'confidence' => null, 'reason' => 'Tidak ada data kabupaten/kota di sumber (id_kabupaten/kab_billing null, atau baris kabupatens terkait tidak ditemukan).'];
+            return ['status' => 'no_source', 'id' => null, 'name' => null, 'confidence' => null, 'reason' => 'Tidak ada data kabupaten/kota di sumber (id_kabupaten null, atau baris kabupatens terkait tidak ditemukan).'];
         }
 
         if ($provinceId === null) {

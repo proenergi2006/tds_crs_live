@@ -72,11 +72,15 @@ function canManageRow(item: any) {
   )
 }
 
-/* Computed: summary cards (Proenergi only) */
-const totalProspect = computed(() => customers.value.filter(c => c.status_customer === 1).length)
-const totalTetap = computed(() => customers.value.filter(c => c.status_customer === 2).length)
+/* Computed: summary cards (Proenergi only)
+   TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
+   di-drop dari `customers` (F0-A) dan tidak lagi ada di response API.
+   totalProspect/totalTetap DIHAPUS (bukan sekadar dikosongkan) karena tidak
+   dipakai di manapun lagi di file ini — card-nya sudah placeholder "-" statis
+   di template. Kalau nanti disambungkan lagi ke customer_status (Fase 7),
+   tambahkan ulang computed serupa yang membaca field baru itu. */
 const totalPenawaran = computed(() =>
-  customers.value.reduce((sum, c) => sum + Number(c.jumlah_penawaran ?? 0), 0)
+  customers.value.reduce((sum, c) => sum + Number(c.quotation_count ?? 0), 0)
 )
 
 const linkResultTitle = computed(() => (linkResult.alreadyExists ? 'Token Sudah Ada' : 'Token Dibuat'))
@@ -99,12 +103,12 @@ async function fetchData(page = currentPage.value) {
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
-      tab: activeTab.value,
+      status: activeTab.value,
     })
     customers.value = data.data ?? []
-    currentPage.value = data.current_page ?? 1
-    totalPages.value = data.last_page ?? 1
-    totalRecords.value = data.total ?? 0
+    currentPage.value = data.meta?.current_page ?? 1
+    totalPages.value = data.meta?.last_page ?? 1
+    totalRecords.value = data.meta?.total ?? 0
     tabCounts.value = data.tab_counts ?? tabCounts.value
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data customer')
@@ -147,9 +151,9 @@ function openReview(idCustomer: number) {
 async function generateLink(item: any) {
   try {
     linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
 
-    linkResult.token = data.verification?.token_verification ?? '-'
+    linkResult.token = data.verification?.verification_token ?? '-'
     linkResult.link = data.link
     linkResult.alreadyExists = !!data.already_exists
     linkResultOpen.value = true
@@ -179,7 +183,7 @@ function closeLinkResult() {
 async function openCustomerLink(item: any) {
   try {
     linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/link-customers/${item.id_customer}/generate`)
+    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
     window.open(data.link, '_blank')
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal membuka link verifikasi.')
@@ -209,17 +213,13 @@ async function submitDelete() {
   }
 }
 
-function getStatusLabel(status?: number) {
-  if (status === 1) return 'Prospect'
-  if (status === 2) return 'Tetap'
-  return '-'
-}
-
-function getStatusClass(status?: number) {
-  if (status === 1) return 'bg-amber-100 text-amber-700'
-  if (status === 2) return 'bg-emerald-100 text-emerald-700'
-  return 'bg-slate-100 text-slate-500'
-}
+/* TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
+   di-drop dari `customers` (F0-A) dan tidak ada lagi di response API.
+   getStatusLabel/getStatusClass DIHAPUS (bukan sekadar dikosongkan) karena
+   tidak dipakai di manapun lagi di file ini — badge kolom "Status" di tabel
+   sudah placeholder "-" statis di template. Kalau nanti disambungkan lagi ke
+   customer_status (Fase 7), tambahkan ulang function serupa yang membaca
+   field baru itu. */
 
 function getVerificationBadgeLabel(item: any) {
   switch (item.verification_badge) {
@@ -267,13 +267,19 @@ function getVerificationBadgeClass(badge?: string) {
           <div class="font-label">Total Customer</div>
           <div class="font-num-display mt-1">{{ totalRecords }}</div>
         </div>
+        <!-- TODO: wire ke customer_status setelah Fase 7 — status_customer
+             sudah di-drop dari API, ditampilkan sebagai placeholder sementara -->
         <div class="box p-4">
           <div class="font-label">Prospect</div>
-          <div class="font-num-display mt-1 !text-amber-600">{{ totalProspect }}</div>
+          <div class="font-num-display mt-1 text-slate-300"
+            title="Belum tersedia — akan disambungkan ke customer_status">-
+          </div>
         </div>
         <div class="box p-4">
           <div class="font-label">Customer Tetap</div>
-          <div class="font-num-display mt-1 !text-emerald-600">{{ totalTetap }}</div>
+          <div class="font-num-display mt-1 text-slate-300"
+            title="Belum tersedia — akan disambungkan ke customer_status">-
+          </div>
         </div>
         <div class="box p-4">
           <div class="font-label">Total Penawaran</div>
@@ -296,82 +302,78 @@ function getVerificationBadgeClass(badge?: string) {
         @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
-          <Table.Th>Nama Customer</Table.Th>
-          <Table.Th>Alamat</Table.Th>
+          <Table.Th class="w-[20%]">Nama Customer</Table.Th>
+          <Table.Th class="w-[30%]">Alamat</Table.Th>
           <Table.Th>Kontak</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">LCR</Table.Th>
           <Table.Th class="text-center">Quotations</Table.Th>
-          <Table.Th class="text-center w-[160px]">Aksi</Table.Th>
+          <Table.Th class="text-center w-[240px]">Aksi</Table.Th>
         </template>
 
         <template #body>
-          <Table.Tr v-for="(item, idx) in customers" :key="item.id_customer" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(row, idx) in customers" :key="row.id_customer" class="transition hover:bg-slate-50">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-strong">{{ item.nama_perusahaan || '-' }}</div>
-              <div class="font-caption mt-0.5">{{ isProenergi ? (item.user?.name || '-') : (item.email || '-') }}</div>
+              <div class="font-strong">{{ row.company_name || '-' }}</div>
+              <div class="font-caption mt-0.5">{{ row.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ item.alamat_perusahaan || '-' }}</div>
-              <div class="font-caption mt-0.5">
-                {{ item.cabang?.nama_cabang || '-' }}
-              </div>
+              <div class="font-body">{{ row.village ? row.village + ', ' : '' }}{{ row.district ? row.district + ', '
+                : '' }}{{ row.regency }}</div>
+              <div class="font-body">{{ row.province + ', ' + row.postal_code }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ item.telepon || '-' }}</div>
-              <div class="font-caption mt-0.5">Fax: {{ item.fax || '-' }}</div>
+              <div class="font-body">{{ row.phone || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
               <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-                :class="getStatusClass(item.status_customer)">
-                {{ getStatusLabel(item.status_customer) }}
+                :class="getVerificationBadgeClass(row.verification_badge)">
+                {{ getVerificationBadgeLabel(row) }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
-              <Lucide v-if="item.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
+              <Lucide v-if="row.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
             </Table.Td>
             <Table.Td class="font-num text-center">
-              {{ item.jumlah_penawaran ?? 0 }}
+              {{ row.quotation_count ?? 0 }}
             </Table.Td>
             <Table.Td class="text-center">
               <div v-if="activeTab === 'all'" class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-primary" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Buat Quotation"
-                  @click="openCreatePenawaran(item.id_customer)">
+                <ExtendableButton variant="soft-primary" rounded label="RFQ"
+                  @click="openCreatePenawaran(row.id_customer)">
                   <Lucide icon="FilePlus" class="h-4 w-4" />
-                </Button>
-                <Button v-if="canManageRow(item)" variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Edit" @click="openEdit(item.id_customer)">
+                </ExtendableButton>
+                <ExtendableButton v-if="canManageRow(row)" variant="soft-pending" rounded label="Edit"
+                  @click="openEdit(row.id_customer)">
                   <Lucide icon="Edit" class="h-4 w-4" />
-                </Button>
-                <Button v-if="canManageRow(item)" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  title="Hapus" @click="confirmDelete(item.id_customer)">
+                </ExtendableButton>
+                <ExtendableButton v-if="canManageRow(row)" variant="soft-danger" rounded label="Hapus"
+                  @click="confirmDelete(row.id_customer)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
-                </Button>
+                </ExtendableButton>
               </div>
 
               <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
-                <Button v-if="item.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Generate Link" :disabled="linkBusyId === item.id_customer"
-                  @click="generateLink(item)">
+                <ExtendableButton v-if="row.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
+                  label="Generate Link" :disabled="linkBusyId === row.id_customer" @click="generateLink(row)">
                   <Lucide icon="Link" class="h-4 w-4" />
-                </Button>
-                <Button
-                  v-else-if="item.verification_badge === 'link_kedaluwarsa' || item.verification_badge === 'ditolak'"
-                  variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Regenerate Link"
-                  :disabled="linkBusyId === item.id_customer" @click="generateLink(item)">
+                </ExtendableButton>
+                <ExtendableButton
+                  v-else-if="row.verification_badge === 'link_kedaluwarsa' || row.verification_badge === 'ditolak'"
+                  variant="soft-danger" rounded label="Regenerate Link" :disabled="linkBusyId === row.id_customer"
+                  @click="generateLink(row)">
                   <Lucide icon="RefreshCw" class="h-4 w-4" />
-                </Button>
-                <Button v-else-if="item.verification_badge === 'menunggu_customer'" variant="soft-warning" rounded
-                  class="!h-8 !w-8 !p-0 !shadow-none" title="Buka Link" :disabled="linkBusyId === item.id_customer"
-                  @click="openCustomerLink(item)">
+                </ExtendableButton>
+                <ExtendableButton v-else-if="row.verification_badge === 'menunggu_customer'" variant="soft-warning"
+                  rounded label="Buka Link" :disabled="linkBusyId === row.id_customer" @click="openCustomerLink(row)">
                   <Lucide icon="ExternalLink" class="h-4 w-4" />
-                </Button>
-                <ExtendableButton v-else-if="item.verification_badge === 'perlu_direview'" variant="soft-info" rounded
-                  label="Verifikasi" @click="openReview(item.id_customer)">
+                </ExtendableButton>
+                <ExtendableButton v-else-if="row.verification_badge === 'perlu_direview'" variant="soft-info" rounded
+                  label="Verifikasi" @click="openReview(row.id_customer)">
                   <Lucide icon="ClipboardCheck" class="h-4 w-4" />
                 </ExtendableButton>
               </div>

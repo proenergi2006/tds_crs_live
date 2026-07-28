@@ -811,7 +811,7 @@ function formatCurrency(v: number | string = 0) {
                   dropdownParent: 'body' as const,
                 }" class="w-full" :class="inputClass('id_customer')">
                   <option v-for="c in customers" :key="c.id_customer" :value="String(c.id_customer)">
-                    {{ c.nama_perusahaan }}
+                    {{ c.company_name }}
                   </option>
                 </TomSelect>
               </div>

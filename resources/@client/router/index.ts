@@ -36,9 +36,9 @@ const routes = [
   },
 
   {
-    path: "/verify/:token",
-    name: "verify-customer",
-    component: () => import("@/pages/CustomerUpdateForm.vue"),
+    path: "/customer-onboarding/:token",
+    name: "customer-onboarding",
+    component: () => import("@/pages/CustomerOnboarding/Index.vue"),
   },
 
   {
@@ -313,6 +313,19 @@ const routes = [
           permission: "approval-template.manage",
           breadcrumbTitle: "Edit Approval Template",
         },
+      },
+      {
+        path: "customer-document-types",
+        name: "customer-document-types",
+        component: () =>
+          import("@/pages/MasterData/CustomerDocumentType/Index.vue"),
+        meta: { permission: "master-data.customer-document-type.manage" },
+      },
+      {
+        path: "customer-migration",
+        name: "customer-migration",
+        component: () => import("@/pages/Admin/CustomerMigration/Index.vue"),
+        meta: { permission: "admin.customer-migration.manage" },
       },
 
       {
@@ -877,7 +890,7 @@ router.beforeEach(async (to, from, next) => {
     !token &&
     to.name !== "login" &&
     to.name !== "two-factor" &&
-    to.name !== "verify-customer" &&
+    to.name !== "customer-onboarding" &&
     to.name !== "forgot-password"
   ) {
     // stop lebih cepat saat redirect agar tidak menggantung
@@ -892,7 +905,7 @@ router.beforeEach(async (to, from, next) => {
     !auth.user &&
     to.name !== "login" &&
     to.name !== "two-factor" &&
-    to.name !== "verify-customer" &&
+    to.name !== "customer-onboarding" &&
     to.name !== "forgot-password" &&
     !auth.isForceLoggingOut
   ) {

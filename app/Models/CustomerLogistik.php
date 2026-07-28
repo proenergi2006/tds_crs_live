@@ -2,43 +2,56 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerLogistikOperatingHours;
+use App\Enums\QualityCheckingMethod;
+use App\Enums\QuantityCheckingMethod;
+use App\Enums\SiteEnvironment;
+use App\Enums\StorageType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerLogistik extends Model
 {
-    protected $table = 'customer_logistik';
+    protected $table = 'customer_logistic_claims';
     protected $primaryKey = 'id_customer';
     public $incrementing = false;
     public $timestamps = false;
 
     protected $fillable = [
         'id_customer',
-        'logistik_area','logistik_bisnis',
-        'logistik_env','logistik_env_other',
-        'logistik_storage','logistik_storage_other',
-        'logistik_hour','logistik_hour_other',
-        'logistik_volume','logistik_volume_other',
-        'logistik_quality','logistik_quality_other',
-        'logistik_truck','logistik_truck_other',
-        'desc_stor_fac','desc_condition',
-        'supply_shceme','specify_product','volume_per_month',
-        'operational_hour_from','operational_hour_to',
-        'nico',
+
+        'site_environment', 'site_environment_other', 'site_environment_notes',
+        'storage_type', 'storage_type_other', 'storage_notes',
+        'operating_hours', 'operating_hours_other',
+        'quality_checking_method', 'quality_checking_notes',
+        'quantity_checking_method', 'quantity_checking_notes',
+        'max_truck_capacity_min', 'max_truck_capacity_max',
+        'supports_vessel_delivery',
+        'product_notes', 'estimated_monthly_volume',
+        'operational_hour_from', 'operational_hour_to',
+
+        'created_at', 'created_by',
+        'updated_at', 'updated_by',
     ];
 
     protected $casts = [
-        'id_customer'     => 'integer',
-        'logistik_env'    => 'integer',
-        'logistik_storage'=> 'integer',
-        'logistik_hour'   => 'integer',
-        'logistik_volume' => 'integer',
-        'logistik_quality'=> 'integer',
-        'logistik_truck'  => 'integer',
-        'supply_shceme'   => 'integer',
-        'specify_product' => 'integer',
-        'volume_per_month'=> 'integer',
-        'nico'            => 'integer',
+        'id_customer' => 'integer',
+
+        'site_environment'         => SiteEnvironment::class,
+        'storage_type'             => StorageType::class,
+        'operating_hours'          => CustomerLogistikOperatingHours::class,
+        'quality_checking_method'  => QualityCheckingMethod::class,
+        'quantity_checking_method' => QuantityCheckingMethod::class,
+
+        'max_truck_capacity_min' => 'float',
+        'max_truck_capacity_max' => 'float',
+
+        'supports_vessel_delivery' => 'boolean',
+
+        'estimated_monthly_volume' => 'float',
+
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

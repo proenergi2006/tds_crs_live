@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerIncoterm;
+use App\Enums\CustomerStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,66 +16,54 @@ class Customer extends Model
     protected $primaryKey = 'id_customer';
     public $timestamps = false;
 
+    protected $casts = [
+        'inco_terms' => CustomerIncoterm::class,
+        'customer_status' => CustomerStatus::class,
+        'is_link_generated' => 'boolean',
+    ];
+
     protected $fillable = [
         // dasar
         'id_user',
         'email',
+
+        // kolom alamat lama
         'id_provinsi',
         'id_kabupaten',
+
         // Kolom baru berbasis kode BPS (laravel-nusa-address-full-migration),
-        // ditambahkan DI SAMPING id_provinsi/id_kabupaten lama — lama TIDAK
-        // dihapus/di-rename di task ini.
         'province_id',
         'regency_id',
         'district_id',
         'village_id',
         'postal_code',
-        'telepon',
-        'jenis_customer',
-        'nama_perusahaan',
-        'alamat_perusahaan',
+
+        'customer_type',
+        'company_name',
+        'company_address',
+        'phone',
         'fax',
-        'created_time',
+        'created_at',
         'created_by',
-        'lastupdate_time',
-        'lastupdate_by',
+        'updated_at',
+        'updated_by',
 
         // tambahan yang diminta
-        'kode_pelanggan',
-        'website_customer',
-        'tipe_bisnis',
-        'tipe_bisnis_lain',
-        'ownership',
-        'ownership_lain',
-        'nomor_sertifikat',
-        'nomor_sertifikat_file',
-        'nomor_npwp',
-        'nomor_npwp_file',
-        'nib',
-        'nib_file',
-        'dokumen_lainnya',
-        'dokumen_lainnya_file',
-        'need_update',
-        'is_generated_link',
-        'count_update',
-        'is_verified',
-        'status_customer',
-        'prospect_customer_date',
-        'prospect_evaluated',
-        'fix_customer_since',
-        'fix_customer_redate',
-        'jenis_payment',
-        'top_payment',
-        'jenis_net',
-        'credit_limit',
-        'credit_limit_diajukan',
-        'id_verification',
-        'ajukan',
-        'induk_perusahaan',
-        'kecamatan_customer',
-        'kelurahan_customer',
-        'print_product',
+        'customer_code',
+        'website',
+        'business_type',
+        'business_type_other',
+        'ownership_type',
+        'ownership_type_other',
+        'is_link_generated',
+        'update_count',
+        'parent_company',
+        'customer_sub_district',
+        'customer_village',
         'id_cabang',
+        'inco_terms',
+        'inco_terms_other',
+        'customer_status',
     ];
 
     public function user()
@@ -91,10 +81,6 @@ class Customer extends Model
         return $this->belongsTo(Kabupaten::class, 'id_kabupaten', 'id_kabupaten');
     }
 
-    /*
-     * Relasi baru berbasis data BPS (laravel-nusa-address-full-migration),
-     * DI SAMPING provinsi()/kabupaten() lama di atas — lama tidak dihapus.
-     */
     public function province()
     {
         return $this->belongsTo(Province::class, 'province_id', 'id');
@@ -116,35 +102,69 @@ class Customer extends Model
     }
 
     public function cabang()
-{
-    return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
-}
+    {
+        return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
+    }
 
-public function lcr(): \Illuminate\Database\Eloquent\Relations\HasOne
-{
-    return $this->hasOne(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
-}
+    public function lcr(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
+    }
 
-public function penawarans(): HasMany
-{
-    return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
-}
+    public function penawarans(): HasMany
+    {
+        return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
+    }
 
-public function verifications()
-{
-    return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
-}
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerDocument::class, 'id_customer', 'id_customer');
+    }
 
-/**
- * Record customer_verifications TERBARU milik customer ini (order by
- * id_verification desc). Dipakai untuk badge status di CustomerController@index
- * — pakai latestOfMany() supaya bisa di-eager-load lewat with() tanpa N+1
- * walaupun list-nya paginated.
- */
-public function latestVerification(): HasOne
-{
-    return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
-        ->latestOfMany('id_verification');
-}
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
+    }
 
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
+    }
+
+    public function creditSubmissions(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer');
+    }
+
+    public function latestCreditSubmission(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
+            ->latestOfMany('id_submission');
+    }
+
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(\App\Models\CustomerStatusHistory::class, 'id_customer', 'id_customer');
+    }
+
+    public function verifications()
+    {
+        return $this->hasMany(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer');
+    }
+
+    public function latestVerification(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
+            ->latestOfMany('id_verification');
+    }
+
+    public function logistik(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerLogistik::class, 'id_customer', 'id_customer');
+    }
+
+    public function payment(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerPayment::class, 'id_customer', 'id_customer');
+    }
 }

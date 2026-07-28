@@ -95,6 +95,18 @@ export const masterDataNavigation: NavItem[] = [
           },
         ],
       },
+      {
+        icon: "Users",
+        title: "Customer",
+        subMenu: [
+          {
+            icon: "FileText",
+            pageName: "customer-document-types",
+            title: "Jenis Dokumen",
+            permission: "master-data.customer-document-type.manage",
+          },
+        ],
+      },
     ],
   },
 ];

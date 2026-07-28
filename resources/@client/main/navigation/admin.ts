@@ -2,7 +2,7 @@ import type { NavItem } from "./types";
 
 export const adminNavigation: NavItem[] = [
   {
-    icon: "Shield",
+    icon: "ShieldEllipsis",
     title: "Access Control",
     subMenu: [
       {
@@ -26,13 +26,13 @@ export const adminNavigation: NavItem[] = [
     ],
   },
   {
-    icon: "Shield",
-    title: "Tata Kelola",
+    icon: "Settings",
+    title: "Config",
     subMenu: [
       {
-        icon: "Monitor",
+        icon: "ServerCog",
         pageName: "monitoring-app-logs",
-        title: "Monitoring",
+        title: "App Logs",
         permission: "admin.monitoring.view",
       },
       {
@@ -44,6 +44,18 @@ export const adminNavigation: NavItem[] = [
           "approval-templates-edit",
         ],
         permission: "approval-template.manage",
+      },
+    ],
+  },
+  {
+    icon: "Database",
+    title: "Data Management",
+    subMenu: [
+      {
+        icon: "ArrowRightLeft",
+        pageName: "customer-migration",
+        title: "Migrasi Customer",
+        permission: "admin.customer-migration.manage",
       },
     ],
   },
