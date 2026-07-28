@@ -4,31 +4,63 @@ namespace App\Services\Monitoring;
 
 class LogFileReader
 {
-    private const MAX_LIMIT = 500;
     private const CHUNK_SIZE = 65536; // 64 KB
+    private const FILENAME_PATTERN = '/^laravel(-\d{4}-\d{2}-\d{2})?\.log$/';
 
-    protected string $path;
+    protected string $logsPath;
 
     public function __construct()
     {
-        $this->path = storage_path('logs/laravel.log');
+        $this->logsPath = storage_path('logs');
     }
 
     /**
-     * Return the $limit most recent log entries as raw strings.
+     * List every laravel*.log file inside storage/logs, newest first.
+     */
+    public function listFiles(): array
+    {
+        $files = glob($this->logsPath . DIRECTORY_SEPARATOR . 'laravel*.log') ?: [];
+
+        $result = [];
+
+        foreach ($files as $file) {
+            $filename = basename($file);
+
+            if (! preg_match(self::FILENAME_PATTERN, $filename)) {
+                continue;
+            }
+
+            $result[] = [
+                'filename' => $filename,
+                'size' => filesize($file),
+                'modified_at' => date('Y-m-d H:i:s', filemtime($file)),
+            ];
+        }
+
+        usort($result, fn(array $a, array $b) => strcmp($b['modified_at'], $a['modified_at']));
+
+        return $result;
+    }
+
+    /**
+     * Return every log entry in $filename as raw strings, oldest first.
      *
      * Reads backward in chunks via byte-seek (O(bytes read) not O(total lines))
-     * to avoid scanning the full file when the log grows large.
+     * to avoid loading the whole file into memory at once.
      */
-    public function tail(int $limit = 100): array
+    public function read(string $filename): array
     {
-        $limit = min($limit, self::MAX_LIMIT);
-
-        if (! file_exists($this->path) || ! is_readable($this->path)) {
+        if (! preg_match(self::FILENAME_PATTERN, $filename)) {
             return [];
         }
 
-        $fp = fopen($this->path, 'rb');
+        $path = $this->logsPath . DIRECTORY_SEPARATOR . $filename;
+
+        if (! file_exists($path) || ! is_readable($path)) {
+            return [];
+        }
+
+        $fp = fopen($path, 'rb');
         if (! $fp) {
             return [];
         }
@@ -46,7 +78,7 @@ class LogFileReader
         $tail         = ''; // partial line fragment from the right edge of the previous chunk
         $pos          = $fileSize;
 
-        while ($pos > 0 && count($entries) < $limit) {
+        while ($pos > 0) {
             $readSize = min(self::CHUNK_SIZE, $pos);
             $pos -= $readSize;
 
@@ -66,22 +98,16 @@ class LogFileReader
                 if (preg_match('/^\[\d{4}-\d{2}-\d{2}/', $line)) {
                     $entries[] = trim(implode("\n", $currentEntry));
                     $currentEntry = [];
-
-                    if (count($entries) >= $limit) {
-                        break 2;
-                    }
                 }
             }
         }
 
         // Flush the entry that begins at the very start of the file
-        if (count($entries) < $limit) {
-            if ($tail !== '') {
-                array_unshift($currentEntry, rtrim($tail));
-            }
-            if (! empty($currentEntry)) {
-                $entries[] = trim(implode("\n", $currentEntry));
-            }
+        if ($tail !== '') {
+            array_unshift($currentEntry, rtrim($tail));
+        }
+        if (! empty($currentEntry)) {
+            $entries[] = trim(implode("\n", $currentEntry));
         }
 
         fclose($fp);

@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Admin\CustomerMigrationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
@@ -90,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // a) Get current user
     Route::get('user', fn(Request $req) => $req->user());
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
+    Route::get('/dashboard/marketing-summary', [DashboardController::class, 'marketingSummary']);
 
     // b) Roles CRUD + permission matrix, c) Users CRUD — admin-only. Pakai middleware `can`
     // (alias existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize, sudah
@@ -139,6 +141,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('approval-templates', ApprovalTemplateController::class);
     });
 
+    // Customer ownership migration (Administrator-only) -- reassign customers.id_user
+    // from one owner to another, bulk, with audit trail (customer_ownership_migrations).
+    // penawarans.user_id is intentionally untouched by this feature.
+    Route::middleware('can:admin.customer-migration.manage')->group(function () {
+        Route::get('admin/customers/by-owner', [CustomerMigrationController::class, 'byOwner']);
+        Route::post('admin/customers/migrate-ownership', [CustomerMigrationController::class, 'migrateOwnership']);
+    });
+
     // Customer Document Type master data. READ (index/show) dan WRITE
     // (store/update/destroy) digerbangi TERPISAH -- read dikonsumsi juga
     // oleh Customer/Detail.vue Tab 1 untuk role yang jauh lebih luas dari
@@ -179,6 +189,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::apiResource('provinsis', ProvinsiController::class);
     Route::apiResource('kabupatens', KabupatenController::class);
+    Route::get('customers/check-company-name', [CustomerController::class, 'checkCompanyName']);
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
 
@@ -419,6 +430,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
 
     // Monitoring — hanya Administrator (id_role=1)
+    Route::get('/logs/files', [LogViewerController::class, 'files'])->middleware('throttle:30,1');
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
 

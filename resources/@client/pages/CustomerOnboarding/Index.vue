@@ -276,7 +276,7 @@ async function seedDummyData() {
   seeding.value = true
   try {
     Object.assign(form.identity, {
-      company_name: 'PT Contoh Sejahtera Abadi',
+      // company_name: 'PT Contoh Sejahtera Abadi',
       parent_company: 'PT Induk Sejahtera Group',
       company_address: 'Jl. Industri Raya No. 45, Kawasan Industri Pulogadung',
       phone: '021-4600123',

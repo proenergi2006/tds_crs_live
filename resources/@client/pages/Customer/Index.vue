@@ -321,7 +321,8 @@ function getVerificationBadgeClass(badge?: string) {
               <div class="font-caption mt-0.5">{{ row.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ row.village + ', ' + row.district + ', ' + row.regency }}</div>
+              <div class="font-body">{{ row.village ? row.village + ', ' : '' }}{{ row.district ? row.district + ', '
+                : '' }}{{ row.regency }}</div>
               <div class="font-body">{{ row.province + ', ' + row.postal_code }}</div>
             </Table.Td>
             <Table.Td>

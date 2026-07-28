@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required } from '@vuelidate/validators'
+import { debounce } from 'lodash'
+import axios from 'axios'
 
 import Alert from '@/components/Base/Alert'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import TomSelect from '@/components/Base/TomSelect'
-import { FormInput, FormLabel, FormSelect, FormTextarea } from '@/components/Base/Form'
+import { Dialog } from '@/components/Base/Headless'
+import { FormCheck, FormInput, FormLabel, FormTextarea } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
@@ -66,6 +69,15 @@ const form = reactive({
   fax: '',
   marketing: [],
 })
+
+/* State: cek ketersediaan nama perusahaan (informational, tidak menahan submit) */
+const nameCheckStatus = ref<'idle' | 'checking' | 'available' | 'taken'>('idle')
+const nameMatches = ref<{
+  id_customer: number
+  company_name: string
+  marketing: { id: number | null; name: string | null }
+}[]>([])
+const showDuplicatePopup = ref(false)
 
 const rules = {
   company_name: {
@@ -137,6 +149,22 @@ watch(
   }
 )
 
+watch(
+  () => form.village_id,
+  (newVillage) => {
+    if (isHydratingRegion.value) return
+    if (!newVillage) return
+    const matched = region.villages.value.find((v) => v.id === newVillage)
+    if (matched && matched.postal_code) {
+      form.postal_code = matched.postal_code
+    }
+  }
+)
+
+/* Watch: cek ketersediaan nama perusahaan — terpisah dari watcher cascade
+   wilayah di atas, debounced supaya tidak request tiap keystroke. */
+watch(() => form.company_name, debounce(checkCompanyName, 400))
+
 onMounted(async () => {
   await region.fetchProvinces()
   if (mode.value === 'edit') {
@@ -197,6 +225,43 @@ async function fetchCustomer() {
   } finally {
     pageLoading.value = false
   }
+}
+
+async function checkCompanyName() {
+  const companyName = form.company_name.trim()
+  if (!companyName) {
+    nameCheckStatus.value = 'idle'
+    nameMatches.value = []
+    return
+  }
+
+  nameCheckStatus.value = 'checking'
+  try {
+    const { data } = await axios.get('/api/customers/check-company-name', {
+      params: {
+        company_name: companyName,
+        exclude_id: mode.value === 'edit' ? customerId.value : undefined,
+      },
+    })
+    nameMatches.value = data.matches || []
+    nameCheckStatus.value = data.available ? 'available' : 'taken'
+  } catch {
+    // Informational feature — kegagalan cek tidak boleh mengganggu pengisian form.
+    nameCheckStatus.value = 'idle'
+    nameMatches.value = []
+  }
+}
+
+/* Binding manual (bukan v-model) supaya uppercase transform tidak memaksa
+   cursor melompat ke akhir — set .value native pada <input> selalu
+   memindahkan cursor kecuali posisi selection direstore manual setelahnya. */
+function onCompanyNameInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  const cursorPos = target.selectionStart
+  form.company_name = target.value.toUpperCase()
+  nextTick(() => {
+    target.setSelectionRange(cursorPos, cursorPos)
+  })
 }
 
 function getFieldError(field: keyof typeof form) {
@@ -264,11 +329,22 @@ function cancel() {
             Nama Perusahaan
             <RequiredAsterisk />
           </FormLabel>
-          <FormInput id="company_name" v-model="form.company_name" placeholder="Nama Perusahaan" class="uppercase"
-            :class="getFieldError('company_name') ? 'border-rose-500' : ''" @blur="v$.company_name.$touch()" />
-          <small v-if="getFieldError('company_name')" class="font-caption !text-rose-600">
+          <FormInput id="company_name" :value="form.company_name" placeholder="Nama Perusahaan"
+            :class="getFieldError('company_name') ? 'border-rose-500' : ''" @input="onCompanyNameInput"
+            @blur="v$.company_name.$touch()" />
+          <small v-if="getFieldError('company_name')" class="font-caption !text-rose-600 mt-1">
             {{ getFieldError('company_name') }}
           </small>
+          <div v-else-if="nameCheckStatus === 'available'" class="font-caption !text-emerald-600 mt-1">
+            Nama tersedia
+          </div>
+          <div v-else-if="nameCheckStatus === 'taken'"
+            class="font-caption flex items-center gap-2 !text-amber-600 mt-1">
+            <span>Sudah terdaftar, {{ nameMatches.length }} kecocokan ditemukan</span>
+            <button type="button" class="font-semibold underline underline-offset-2" @click="showDuplicatePopup = true">
+              Lihat daftar
+            </button>
+          </div>
         </div>
 
         <div>
@@ -276,12 +352,18 @@ function cancel() {
             Jenis Customer
             <RequiredAsterisk />
           </FormLabel>
-          <FormSelect id="customer_type" v-model="form.customer_type"
-            :class="getFieldError('customer_type') ? 'border-rose-500' : ''" @blur="v$.customer_type.$touch()">
-            <option value="">-- Pilih Jenis --</option>
-            <option value="Retail">Retail</option>
-            <option value="Project">Project</option>
-          </FormSelect>
+          <div class="flex gap-6">
+            <FormCheck>
+              <FormCheck.Input id="customer_type-retail" type="radio" value="Retail"
+                v-model="form.customer_type" @change="v$.customer_type.$touch()" />
+              <FormCheck.Label htmlFor="customer_type-retail">Retail</FormCheck.Label>
+            </FormCheck>
+            <FormCheck>
+              <FormCheck.Input id="customer_type-project" type="radio" value="Project"
+                v-model="form.customer_type" @change="v$.customer_type.$touch()" />
+              <FormCheck.Label htmlFor="customer_type-project">Project</FormCheck.Label>
+            </FormCheck>
+          </div>
           <small v-if="getFieldError('customer_type')" class="font-caption !text-rose-600">
             {{ getFieldError('customer_type') }}
           </small>
@@ -425,4 +507,35 @@ function cancel() {
       </CardSection>
     </template>
   </FormPage>
+
+  <Dialog :open="showDuplicatePopup" size="lg" @close="showDuplicatePopup = false">
+    <Dialog.Panel>
+      <div class="p-6">
+        <div class="border-b border-slate-200 pb-4">
+          <h3 class="font-header">Nama Perusahaan Sudah Terdaftar</h3>
+          <p class="font-caption mt-1 text-slate-500">
+            {{ nameMatches.length }} customer lain memakai nama yang sama/mirip
+          </p>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <div v-for="match in nameMatches" :key="match.id_customer"
+            class="rounded-md border border-slate-200 px-4 py-3">
+            <p class="font-body font-semibold">{{ match.company_name }}</p>
+            <p class="font-caption mt-0.5 text-slate-500">
+              Marketing: {{ match.marketing?.name || '-' }}
+            </p>
+          </div>
+        </div>
+
+        <Alert variant="soft-warning" class="mt-4">
+          Hubungi tim Key Account untuk verifikasi sebelum melanjutkan.
+        </Alert>
+      </div>
+
+      <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+        <Button variant="outline-secondary" @click="showDuplicatePopup = false">Tutup</Button>
+      </div>
+    </Dialog.Panel>
+  </Dialog>
 </template>

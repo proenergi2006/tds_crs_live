@@ -54,6 +54,12 @@ function onHeadOfficeDistrictChange(value: string | string[]) {
 }
 function onHeadOfficeVillageChange(value: string | string[]) {
   props.form.identity.village_id = (Array.isArray(value) ? value[0] : value) || null
+  const matched = props.headOfficeRegion.villages.value.find(
+    (v) => v.id === props.form.identity.village_id
+  )
+  if (matched && matched.postal_code) {
+    props.form.identity.postal_code = matched.postal_code
+  }
 }
 
 /* Cascade: NPWP */
@@ -80,6 +86,12 @@ function onNpwpDistrictChange(value: string | string[]) {
 }
 function onNpwpVillageChange(value: string | string[]) {
   props.form.registered_address.village_id = (Array.isArray(value) ? value[0] : value) || null
+  const matched = props.npwpRegion.villages.value.find(
+    (v) => v.id === props.form.registered_address.village_id
+  )
+  if (matched && matched.postal_code) {
+    props.form.registered_address.postal_code = matched.postal_code
+  }
 }
 
 /* Checkbox: NPWP address sama dengan Head Office */
@@ -134,9 +146,12 @@ watch(npwpSameAsHeadOffice, (checked) => {
           <RequiredAsterisk />
         </FormLabel>
         <FormInput v-model="form.identity.company_name" type="text" placeholder="e.g. PT Contoh Sejahtera Abadi"
-          :class="errors['identity.company_name'] ? 'input-error' : ''" />
+          readonly :class="errors['identity.company_name'] ? 'input-error' : ''" />
         <small v-if="errors['identity.company_name']" class="block input-error-text">{{ errors['identity.company_name']
         }}</small>
+        <p class="font-caption mt-1">
+          Nama perusahaan mengikuti data yang sudah terdaftar, tidak dapat diubah di sini.
+        </p>
       </div>
 
       <div>
@@ -222,7 +237,10 @@ watch(npwpSameAsHeadOffice, (checked) => {
           </div>
           <div>
             <FormLabel class="font-label !mb-1 block">Email</FormLabel>
-            <FormInput v-model="form.identity.email" type="email" placeholder="e.g. finance@company.com" />
+            <FormInput v-model="form.identity.email" type="email" placeholder="e.g. finance@company.com"
+              :class="errors['identity.email'] ? 'input-error' : ''" />
+            <small v-if="errors['identity.email']" class="block input-error-text">{{ errors['identity.email']
+            }}</small>
           </div>
         </div>
 

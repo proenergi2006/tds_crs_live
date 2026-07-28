@@ -527,30 +527,43 @@ onMounted(fetchCustomerContacts)
     </div>
   </div>
 
-  <div v-else class="space-y-4">
-    <CardSection title="Corporate Details" description="Identitas perusahaan & alamat NPWP terdaftar." icon="Building2"
-      icon-class="bg-violet-100 text-violet-600">
-      <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
-        <div v-for="row in corporateRows" :key="row.label"
-          class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-          <span class="font-label">{{ row.label }}</span>
-          <span class="font-strong text-right">{{ row.value }}</span>
-        </div>
-      </div>
-
-      <div class="mt-5 border-t border-slate-100 pt-4">
-        <div class="font-section mb-3">Alamat NPWP (Registered Address)</div>
+  <div v-else class="grid grid-cols-2 gap-6">
+    <div class="grid gap-6 lg:grid-cols-1">
+      <CardSection title="Corporate Details" description="Identitas perusahaan & alamat NPWP terdaftar."
+        icon="Building2" icon-class="bg-violet-100 text-violet-600">
         <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
-          <div v-for="row in npwpAddressRows" :key="row.label"
+          <div v-for="row in corporateRows" :key="row.label"
             class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
             <span class="font-label">{{ row.label }}</span>
             <span class="font-strong text-right">{{ row.value }}</span>
           </div>
         </div>
-      </div>
-    </CardSection>
 
-    <div class="grid gap-4 lg:grid-cols-2">
+        <div class="mt-5 border-t border-slate-100 pt-4">
+          <div class="font-section mb-3">Alamat NPWP (Registered Address)</div>
+          <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
+            <div v-for="row in npwpAddressRows" :key="row.label"
+              class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
+              <span class="font-label">{{ row.label }}</span>
+              <span class="font-strong text-right">{{ row.value }}</span>
+            </div>
+          </div>
+        </div>
+      </CardSection>
+
+      <CardSection title="Logistic Info" description="Kondisi site, storage, dan kapasitas pengiriman." icon="Truck"
+        icon-class="bg-amber-100 text-amber-600">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div v-for="row in logisticsRows" :key="row.label"
+            class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
+            <span class="font-label">{{ row.label }}</span>
+            <span class="font-strong text-right">{{ row.value }}</span>
+          </div>
+        </div>
+      </CardSection>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-1">
       <CardSection title="Payment & Banking" description="Metode, term, dan rekening bank customer." icon="CreditCard"
         icon-class="bg-emerald-100 text-emerald-600">
         <div class="space-y-1.5">
@@ -620,107 +633,96 @@ onMounted(fetchCustomerContacts)
           </div>
         </div>
       </CardSection>
+
+      <CardSection title="Dokumen Lampiran"
+        description="Upload dan kelola dokumen legal customer (NIB, NPWP, Akta Pendirian, dst)." icon="FileCheck2"
+        icon-class="bg-indigo-100 text-indigo-600">
+        <div v-if="documentTypesLoading || documentsLoading"
+          class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
+          <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
+          <span class="font-body">Memuat dokumen...</span>
+        </div>
+
+        <div v-else-if="documentRows.length === 0"
+          class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+          <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
+          <div class="font-body">Belum ada jenis dokumen yang aktif.</div>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="row in documentRows" :key="row.type.id" class="rounded-lg border border-slate-200 p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-strong">{{ row.type.name }}</span>
+                  <span v-if="row.document"
+                    class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    <Lucide icon="CheckCircle2" class="h-3 w-3" /> Sudah diunggah
+                  </span>
+                  <span v-else
+                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                    Belum ada file
+                  </span>
+                </div>
+
+                <div v-if="row.document" class="mt-1.5 space-y-0.5">
+                  <a :href="row.document.url ?? undefined" target="_blank"
+                    class="font-body !text-primary break-all underline">
+                    {{ row.document.file_name }}
+                  </a>
+                  <p v-if="row.document.document_number" class="font-caption">
+                    No. Dokumen: {{ row.document.document_number }}
+                  </p>
+                  <p class="font-caption">
+                    Diunggah {{ formatDocumentDate(row.document.uploaded_at) }}
+                    <span v-if="row.document.uploaded_by"> oleh {{ row.document.uploaded_by.name }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex shrink-0 gap-2">
+                <Button v-if="!rowState(row.type.id).editing && row.document" size="sm" variant="outline-secondary"
+                  class="inline-flex items-center gap-2" @click="startDocumentUpload(row.type.id)">
+                  <Lucide icon="RefreshCw" class="h-4 w-4" /> Ganti
+                </Button>
+                <Button v-else-if="!rowState(row.type.id).editing" size="sm" variant="outline-primary"
+                  class="inline-flex items-center gap-2" @click="startDocumentUpload(row.type.id)">
+                  <Lucide icon="Upload" class="h-4 w-4" /> Upload
+                </Button>
+
+                <Button v-if="row.document" size="sm" variant="soft-danger" title="Hapus"
+                  class="!h-8 !w-8 !p-0 !shadow-none" @click="confirmDeleteDocument(row.document)">
+                  <Lucide icon="Trash2" class="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div v-if="rowState(row.type.id).editing" class="mt-4 space-y-3 border-t border-slate-100 pt-4">
+              <div v-if="row.type.requires_number">
+                <FormLabel>Nomor Dokumen *</FormLabel>
+                <FormInput v-model="rowState(row.type.id).documentNumber" placeholder="Masukkan nomor dokumen" />
+              </div>
+
+              <FileUploadField v-model="rowState(row.type.id).file" accept=".jpg,.jpeg,.png,.pdf,.zip,.rar"
+                :max-size-mb="10" :error="rowState(row.type.id).error" choose-text="Pilih file"
+                empty-text="Belum ada file dipilih" @error="(msg: string) => (rowState(row.type.id).error = msg)" />
+
+              <div class="flex justify-end gap-2">
+                <Button size="sm" variant="outline-secondary" :disabled="rowState(row.type.id).uploading"
+                  @click="cancelDocumentUpload(row.type.id)">
+                  Batal
+                </Button>
+                <Button size="sm" variant="primary" class="inline-flex items-center gap-2"
+                  :disabled="rowState(row.type.id).uploading" @click="submitDocumentUpload(row)">
+                  <Lucide v-if="rowState(row.type.id).uploading" icon="Loader2" class="h-4 w-4 animate-spin" />
+                  Simpan
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardSection>
     </div>
-
-    <CardSection title="Logistic Info" description="Kondisi site, storage, dan kapasitas pengiriman." icon="Truck"
-      icon-class="bg-amber-100 text-amber-600">
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div v-for="row in logisticsRows" :key="row.label"
-          class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-          <span class="font-label">{{ row.label }}</span>
-          <span class="font-strong text-right">{{ row.value }}</span>
-        </div>
-      </div>
-    </CardSection>
-
-    <CardSection title="Dokumen Lampiran"
-      description="Upload dan kelola dokumen legal customer (NIB, NPWP, Akta Pendirian, dst)." icon="FileCheck2"
-      icon-class="bg-indigo-100 text-indigo-600">
-      <div v-if="documentTypesLoading || documentsLoading"
-        class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
-        <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-        <span class="font-body">Memuat dokumen...</span>
-      </div>
-
-      <div v-else-if="documentRows.length === 0"
-        class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-        <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
-        <div class="font-body">Belum ada jenis dokumen yang aktif.</div>
-      </div>
-
-      <div v-else class="space-y-3">
-        <div v-for="row in documentRows" :key="row.type.id" class="rounded-lg border border-slate-200 p-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-strong">{{ row.type.name }}</span>
-                <span v-if="row.document"
-                  class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                  <Lucide icon="CheckCircle2" class="h-3 w-3" /> Sudah diunggah
-                </span>
-                <span v-else
-                  class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                  Belum ada file
-                </span>
-              </div>
-
-              <div v-if="row.document" class="mt-1.5 space-y-0.5">
-                <a :href="row.document.url ?? undefined" target="_blank"
-                  class="font-body !text-primary break-all underline">
-                  {{ row.document.file_name }}
-                </a>
-                <p v-if="row.document.document_number" class="font-caption">
-                  No. Dokumen: {{ row.document.document_number }}
-                </p>
-                <p class="font-caption">
-                  Diunggah {{ formatDocumentDate(row.document.uploaded_at) }}
-                  <span v-if="row.document.uploaded_by"> oleh {{ row.document.uploaded_by.name }}</span>
-                </p>
-              </div>
-            </div>
-
-            <div class="flex shrink-0 gap-2">
-              <Button v-if="!rowState(row.type.id).editing && row.document" size="sm" variant="outline-secondary"
-                class="inline-flex items-center gap-2" @click="startDocumentUpload(row.type.id)">
-                <Lucide icon="RefreshCw" class="h-4 w-4" /> Ganti
-              </Button>
-              <Button v-else-if="!rowState(row.type.id).editing" size="sm" variant="outline-primary"
-                class="inline-flex items-center gap-2" @click="startDocumentUpload(row.type.id)">
-                <Lucide icon="Upload" class="h-4 w-4" /> Upload
-              </Button>
-
-              <Button v-if="row.document" size="sm" variant="soft-danger" title="Hapus"
-                class="!h-8 !w-8 !p-0 !shadow-none" @click="confirmDeleteDocument(row.document)">
-                <Lucide icon="Trash2" class="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div v-if="rowState(row.type.id).editing" class="mt-4 space-y-3 border-t border-slate-100 pt-4">
-            <div v-if="row.type.requires_number">
-              <FormLabel>Nomor Dokumen *</FormLabel>
-              <FormInput v-model="rowState(row.type.id).documentNumber" placeholder="Masukkan nomor dokumen" />
-            </div>
-
-            <FileUploadField v-model="rowState(row.type.id).file" accept=".jpg,.jpeg,.png,.pdf,.zip,.rar"
-              :max-size-mb="10" :error="rowState(row.type.id).error" choose-text="Pilih file"
-              empty-text="Belum ada file dipilih" @error="(msg: string) => (rowState(row.type.id).error = msg)" />
-
-            <div class="flex justify-end gap-2">
-              <Button size="sm" variant="outline-secondary" :disabled="rowState(row.type.id).uploading"
-                @click="cancelDocumentUpload(row.type.id)">
-                Batal
-              </Button>
-              <Button size="sm" variant="primary" class="inline-flex items-center gap-2"
-                :disabled="rowState(row.type.id).uploading" @click="submitDocumentUpload(row)">
-                <Lucide v-if="rowState(row.type.id).uploading" icon="Loader2" class="h-4 w-4 animate-spin" />
-                Simpan
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </CardSection>
 
     <DeleteRecordDialog :open="deleteDocumentDialogOpen" title="Hapus Dokumen"
       :description="`Dokumen ${deleteDocumentTarget?.document_type?.name ?? ''} milik customer ini akan dihapus permanen.`"

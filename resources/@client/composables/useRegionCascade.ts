@@ -4,6 +4,7 @@ import axios from "axios";
 export interface RegionOption {
   id: string;
   name: string;
+  postal_code?: string | null;
 }
 
 export function useRegionCascade() {

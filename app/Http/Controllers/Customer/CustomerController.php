@@ -61,14 +61,15 @@ class CustomerController extends Controller
         $q = (clone $base)
             ->with(['user', 'province', 'regency', 'district', 'village', 'cabang', 'latestVerification.latestDocumentApproval'])
             ->withExists(['lcr as has_lcr'])
-            ->withCount(['penawarans as quotation_count']);
+            ->withCount(['penawarans as quotation_count'])
+            ->orderBy('company_name');
 
         $this->applyStatusFilter($q, $request->query('status', 'all'));
 
         $paginator = $q->paginate($request->integer('per_page', 10));
 
         $paginator->getCollection()->each(
-            fn (Customer $customer) => $customer->verification_badge = $this->resolveVerificationBadge($customer)
+            fn(Customer $customer) => $customer->verification_badge = $this->resolveVerificationBadge($customer)
         );
 
         return response()->json([
@@ -85,12 +86,12 @@ class CustomerController extends Controller
     private function applyStatusFilter($query, string $status): void
     {
         if ($status === 'verified') {
-            $query->whereHas('latestVerification', fn ($vq) => $vq->whereHas('latestDocumentApproval', fn ($aq) => $aq->where('status', DocumentApprovalStatus::Approved)));
+            $query->whereHas('latestVerification', fn($vq) => $vq->whereHas('latestDocumentApproval', fn($aq) => $aq->where('status', DocumentApprovalStatus::Approved)));
         } elseif ($status === 'unverified') {
             $query->where(function ($outer) {
                 $outer->whereDoesntHave('latestVerification')
-                    ->orWhereHas('latestVerification', fn ($vq) => $vq->whereDoesntHave('latestDocumentApproval')
-                        ->orWhereHas('latestDocumentApproval', fn ($aq) => $aq->where('status', '!=', DocumentApprovalStatus::Approved)));
+                    ->orWhereHas('latestVerification', fn($vq) => $vq->whereDoesntHave('latestDocumentApproval')
+                        ->orWhereHas('latestDocumentApproval', fn($aq) => $aq->where('status', '!=', DocumentApprovalStatus::Approved)));
             });
         }
     }
@@ -184,10 +185,23 @@ class CustomerController extends Controller
         }
 
         $customer->load([
-            'user', 'provinsi', 'kabupaten', 'province', 'regency', 'district', 'village',
+            'user',
+            'provinsi',
+            'kabupaten',
+            'province',
+            'regency',
+            'district',
+            'village',
             'latestVerification.latestDocumentApproval.steps',
-            'addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village',
-            'contacts', 'payment', 'logistik', 'lcr', 'creditSubmissions',
+            'addresses.province',
+            'addresses.regency',
+            'addresses.district',
+            'addresses.village',
+            'contacts',
+            'payment',
+            'logistik',
+            'lcr',
+            'creditSubmissions',
         ]);
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
 
@@ -238,6 +252,38 @@ class CustomerController extends Controller
         return response()->json(null, 204);
     }
 
+    public function checkCompanyName(Request $request)
+    {
+        $data = $request->validate([
+            'company_name' => 'required|string',
+            'exclude_id'   => 'nullable|integer|exists:customers,id_customer',
+        ]);
+
+        $normalized = $this->normalizeForComparison($data['company_name']);
+
+        $query = Customer::whereNull('deleted_at')
+            ->whereRaw("UPPER(REGEXP_REPLACE(TRIM(company_name), '\s+', ' ', 'g')) = ?", [$normalized])
+            ->with('user');
+
+        if (!empty($data['exclude_id'])) {
+            $query->where('id_customer', '!=', $data['exclude_id']);
+        }
+
+        $matches = $query->get();
+
+        return response()->json([
+            'available' => $matches->isEmpty(),
+            'matches'   => $matches->map(fn(Customer $c) => [
+                'id_customer'  => $c->id_customer,
+                'company_name' => $c->company_name,
+                'marketing'    => [
+                    'id'   => $c->user?->id,
+                    'name' => $c->user?->name,
+                ],
+            ]),
+        ]);
+    }
+
     public function generateOnboardingLink(Request $request, Customer $customer)
     {
         $user = $request->user();
@@ -261,6 +307,8 @@ class CustomerController extends Controller
             if (!$isExpired && !$isRejected) {
                 $link = rtrim(config('app.frontend_url', config('app.url')), '/')
                     . '/customer-onboarding/' . $existing->verification_token;
+
+                $customer->update(['is_link_generated' => true]);
 
                 return response()->json([
                     'already_exists' => true,
@@ -300,6 +348,8 @@ class CustomerController extends Controller
         $link = rtrim(config('app.frontend_url', config('app.url')), '/')
             . '/customer-onboarding/' . $token;
 
+        $customer->update(['is_link_generated' => true]);
+
         return response()->json([
             'already_exists' => false,
             'verification'   => $cv,
@@ -323,6 +373,7 @@ class CustomerController extends Controller
             'payment_schedule' => null,
             'payment_method'   => null,
             'invoice'          => false,
+            'extra_notes'      => '',
         ]);
 
         CustomerAdminArnya::firstOrCreate(['id_customer' => $id], [
@@ -342,5 +393,13 @@ class CustomerController extends Controller
         }
 
         return mb_strtoupper(trim($name), 'UTF-8');
+    }
+
+    private function normalizeForComparison(string $name): string
+    {
+        $name = trim($name);
+        $name = preg_replace('/\s+/', ' ', $name);
+
+        return mb_strtoupper($name, 'UTF-8');
     }
 }

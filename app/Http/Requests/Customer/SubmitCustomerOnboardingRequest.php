@@ -10,7 +10,9 @@ use App\Enums\QualityCheckingMethod;
 use App\Enums\QuantityCheckingMethod;
 use App\Enums\SiteEnvironment;
 use App\Enums\StorageType;
+use App\Models\CustomerVerification;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class SubmitCustomerOnboardingRequest extends FormRequest
@@ -22,6 +24,8 @@ class SubmitCustomerOnboardingRequest extends FormRequest
 
     public function rules(): array
     {
+        $customerId = CustomerVerification::where('verification_token', $this->route('token'))->value('id_customer');
+
         return [
             'agreement'            => ['required', 'array'],
             'agreement.agree'      => ['required', 'accepted'],
@@ -32,7 +36,11 @@ class SubmitCustomerOnboardingRequest extends FormRequest
             'identity.company_address'        => ['required', 'string'],
             'identity.phone'                  => ['nullable', 'string', 'max:50'],
             'identity.fax'                    => ['nullable', 'string', 'max:50'],
-            'identity.email'                  => ['nullable', 'email'],
+            'identity.email'                  => [
+                'nullable',
+                'email',
+                Rule::unique('customers', 'email')->ignore($customerId, 'id_customer'),
+            ],
             'identity.website'                => ['nullable', 'string', 'max:255'],
             'identity.business_type'          => ['nullable', 'string', 'max:100'],
             'identity.business_type_other'    => ['nullable', 'string', 'max:255'],
@@ -50,7 +58,7 @@ class SubmitCustomerOnboardingRequest extends FormRequest
             'identity.inco_terms_other'       => ['nullable', 'string', 'max:255'],
 
             'registered_address'               => ['nullable', 'array'],
-            'registered_address.address_line'  => ['nullable', 'string'],
+            'registered_address.address_line'  => ['required', 'string'],
             'registered_address.province_id'   => ['nullable', 'string', 'exists:provinces,id'],
             'registered_address.regency_id'    => ['nullable', 'string', 'exists:regencies,id'],
             'registered_address.district_id'   => ['nullable', 'string', 'exists:districts,id'],
@@ -112,6 +120,13 @@ class SubmitCustomerOnboardingRequest extends FormRequest
             'documents.sertifikat.number'     => ['required_with:documents.sertifikat.file', 'nullable', 'string', 'max:255'],
             'documents.dokumen_lainnya'       => ['nullable', 'array'],
             'documents.dokumen_lainnya.*.file' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,pdf,zip,rar'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'identity.email.unique' => 'Email ini sudah terdaftar untuk customer lain. Gunakan email yang berbeda.',
         ];
     }
 }

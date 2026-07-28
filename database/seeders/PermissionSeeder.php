@@ -143,6 +143,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Akses modul verifikasi customer (BM & Admin Finance)',
             'roles'       => [8, 9],
         ],
+        [
+            'name'        => 'admin.customer-migration.manage',
+            'module'      => 'admin',
+            'description' => 'Migrasi kepemilikan customer antar-marketing',
+            'roles'       => [1],
+        ],
 
         // Penawaran TDS
         [

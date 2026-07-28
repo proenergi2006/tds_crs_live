@@ -321,6 +321,12 @@ const routes = [
           import("@/pages/MasterData/CustomerDocumentType/Index.vue"),
         meta: { permission: "master-data.customer-document-type.manage" },
       },
+      {
+        path: "customer-migration",
+        name: "customer-migration",
+        component: () => import("@/pages/Admin/CustomerMigration/Index.vue"),
+        meta: { permission: "admin.customer-migration.manage" },
+      },
 
       {
         path: "vendor-pos",

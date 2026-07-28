@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 class SubmitCustomerOnboardingAction
 {
     private const CUSTOMERS_IDENTITY_COLUMNS = [
-        'company_name', 'company_address', 'phone', 'fax', 'email', 'website',
+        'company_address', 'phone', 'fax', 'email', 'website',
         'business_type', 'business_type_other', 'ownership_type', 'ownership_type_other',
         'parent_company', 'province_id', 'regency_id', 'district_id', 'village_id',
         'postal_code', 'customer_sub_district', 'customer_village',
@@ -107,7 +107,7 @@ class SubmitCustomerOnboardingAction
                 'payment_method'         => $payment['method'] ?? null,
                 'payment_method_other'   => $payment['method_other'] ?? null,
                 'invoice'                => $payment['invoice_tax'] ?? false,
-                'extra_notes'            => $payment['note'] ?? null,
+                'extra_notes'            => $payment['note'] ?? '',
                 'calculate_method'       => $payment['pricing_method'] ?? null,
                 'bank_name'              => $payment['bank_name'] ?? null,
                 'currency'               => $payment['currency'] ?? null,
