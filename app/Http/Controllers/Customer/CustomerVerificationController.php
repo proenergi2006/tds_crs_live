@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\Customer;
 
-use App\Enums\CustomerCreditSubmissionType;
+use App\Actions\Customer\CloseCustomerKycAction;
+use App\Actions\Customer\GenerateCustomerKycDocumentAction;
+use App\Enums\CustomerKycStatus;
+use App\Enums\CustomerReviewQuestionCode;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalTemplate;
 use App\Models\Customer;
-use App\Models\CustomerCreditSubmission;
 use App\Models\CustomerReview;
-use App\Models\CustomerReviewAttachment;
 use App\Models\CustomerVerification;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -289,31 +291,6 @@ class CustomerVerificationController extends Controller
         return $customerVerification->loadMissing('customer:id_customer,nama_perusahaan');
     }
 
-    public function getAdminEvaluation(Request $request, $id)
-    {
-        $cv = CustomerVerification::with('customer.latestCreditSubmission')->findOrFail($id);
-
-        $user = $request->user();
-
-        $allowed = $user->can('customer.viewAny')
-            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $customer = $cv->customer;
-        $topPayment = $customer->latestCreditSubmission->top_payment ?? null;
-
-        return response()->json([
-            'top_text'             => $topPayment ? $topPayment . ' Hari' : '-',
-            'credit_limit_request' => $customer->latestCreditSubmission->credit_limit_request ?? '-',
-            'financial_review'     => $cv->finance_summary ?? '-',
-            'potential_volume'     => '-',
-        ]);
-    }
-
-
     public function store(Request $request)
     {
         if ($request->user()->cant('customer.manage')) {
@@ -483,56 +460,62 @@ class CustomerVerificationController extends Controller
         return response()->noContent();
     }
 
-    public function reviewStats()
+    // Filter berbasis kyc_status. 1 endpoint, 2 mode: Marketing (customer.manage)
+    // lihat draft miliknya sendiri, Admin Finance (verification.customer) lihat
+    // forwarded+closed lintas-marketing.
+    public function reviewStats(Request $r)
     {
-        if (auth()->user()->cant('verification.customer')) {
+        $user = $r->user();
+
+        if ($user->cant('verification.customer') && $user->cant('customer.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $unreviewed = $this->marketingQueueQuery()->count();
+        $isAdminFinance = $user->can('verification.customer');
 
-        $reviewed = CustomerVerification::query()
-            ->where('is_submitted', 1)
-            ->whereHas('latestDocumentApproval', function ($approvalQuery) {
-                $approvalQuery->whereIn('status', [
-                    DocumentApprovalStatus::InProgress,
-                    DocumentApprovalStatus::Approved,
-                ]);
-            })
-            ->count();
+        $scopedQuery = fn () => CustomerVerification::query()
+            ->when(!$isAdminFinance, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('id_user', $user->id)));
 
         return response()->json([
-            'unreviewed' => $unreviewed,
-            'reviewed'   => $reviewed,
+            'draft'     => $scopedQuery()->where('kyc_status', CustomerKycStatus::Draft)->count(),
+            'forwarded' => $scopedQuery()->where('kyc_status', CustomerKycStatus::Forwarded)->count(),
+            'closed'    => $scopedQuery()->where('kyc_status', CustomerKycStatus::Closed)->count(),
         ]);
     }
 
     public function reviewIndex(Request $r)
     {
-        if ($r->user()->cant('verification.customer')) {
+        $user = $r->user();
+
+        if ($user->cant('verification.customer') && $user->cant('customer.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $per    = (int) $r->query('per_page', 25);
-        $q      = trim((string) $r->query('q', ''));
-        $status = $r->query('tab', $r->query('status', 'unreviewed'));
+        $isAdminFinance = $user->can('verification.customer');
 
-        $baseQuery = $status === 'reviewed'
-            ? CustomerVerification::query()->where('is_submitted', 1)->whereHas('latestDocumentApproval', function ($approvalQuery) {
-                $approvalQuery->whereIn('status', [
-                    DocumentApprovalStatus::InProgress,
-                    DocumentApprovalStatus::Approved,
-                ]);
-            })
-            : $this->marketingQueueQuery();
+        $per = (int) $r->query('per_page', 25);
+        $q   = trim((string) $r->query('q', ''));
+        $tab = $r->query('tab', $r->query('status', $isAdminFinance ? 'forwarded' : 'draft'));
+
+        $baseQuery = CustomerVerification::query()
+            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax,email']);
+
+        if ($tab === 'draft') {
+            $baseQuery->where('kyc_status', CustomerKycStatus::Draft);
+        } else {
+            $baseQuery->whereIn('kyc_status', [CustomerKycStatus::Forwarded, CustomerKycStatus::Closed]);
+        }
+
+        if (!$isAdminFinance) {
+            $baseQuery->whereHas('customer', fn ($c) => $c->where('id_user', $user->id));
+        }
 
         $rows = $baseQuery
-            ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
-                    $c->where('nama_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('alamat_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('kode_pelanggan', 'like', "%{$q}%");
+                    $c->where('company_name', 'like', "%{$q}%")
+                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
             ->orderByDesc('id_verification')
@@ -558,15 +541,18 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    // Satu-satunya cara resolve id_customer dari id_verification -- route param
+    // satu-satunya yang tersedia di halaman verifikasi Admin Finance.
     public function reviewShow(int $id)
     {
         $user = auth()->user();
 
         $cv = CustomerVerification::with([
-            'customer:id_customer,nama_perusahaan,alamat_perusahaan,telepon,fax,email'
+            'customer:id_customer,customer_code,company_name,company_address,phone,fax,email'
         ])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
+            || $user->can('customer.viewAny')
             || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
 
         if (!$allowed) {
@@ -574,16 +560,11 @@ class CustomerVerificationController extends Controller
         }
 
         return response()->json([
-            'customer'     => $cv->customer,
-            'is_forwarded' => (int) $cv->is_forwarded,
-            'stage_text'   => $cv->stageLabel(),
-            'legal'        => json_decode($cv->legal_data    ?? '[]', true) ?: [],
-            'finance'      => json_decode($cv->finance_data  ?? '[]', true) ?: [],
-            'logistik'     => json_decode($cv->logistik_data ?? '[]', true) ?: [],
-            'review_form'  => (function () use ($cv) {
-                $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-                return $kyc['form'] ?? [];
-            })(),
+            'id_verification' => $cv->id_verification,
+            'id_customer'     => $cv->id_customer,
+            'kyc_status'      => $cv->kyc_status?->value,
+            'is_forwarded'    => (bool) $cv->is_forwarded,
+            'customer'        => $cv->customer,
         ]);
     }
 
@@ -635,120 +616,15 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    public function evaluationShow(int $id)
+    // TIDAK menulis is_forwarded -- itu tanggung jawab forward().
+    public function getReview(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv  = CustomerVerification::findOrFail($id);
-        $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-
-        return response()->json([
-            'jenis_datanya' => (int) ($cv->jenis_datanya ?? 0),
-            'evaluation'    => $kyc['evaluation'] ?? [],
-        ]);
-    }
-
-    public function evaluationUploadFile(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $user = $request->user();
 
         $cv = CustomerVerification::findOrFail($id);
 
-        $r->validate([
-            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'name' => 'required|string|max:200',
-            'kind' => 'required|in:other_doc,approval_file',
-        ]);
-
-        $file = $r->file('file');
-        $path = $file->store("customer_verifications/{$cv->id_verification}/evaluation", 'public');
-
-        $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-        $kyc['evaluation'] = $kyc['evaluation'] ?? [];
-
-        $payload = [
-            'name' => $r->input('name'),
-            'path' => $path,
-            'url'  => \Storage::disk('public')->url($path),
-        ];
-
-        if ($r->input('kind') === 'other_doc') {
-            $kyc['evaluation']['other_doc'] = $payload;
-        } else {
-            $list = $kyc['evaluation']['approval_files'] ?? [];
-            $list[] = $payload;
-            $kyc['evaluation']['approval_files'] = $list;
-        }
-
-        $cv->update(['finance_data_kyc' => $kyc]);
-
-        return response()->json($payload);
-    }
-
-
-
-
-    public function saveReviewData(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::findOrFail($id);
-        $payload = $r->validate([
-            'review_form' => 'required|array',
-        ]);
-
-        $kyc = $cv->finance_data_kyc ?? [];
-        $kyc['form'] = $payload['review_form'];
-
-        $cv->update([
-            'finance_data_kyc' => $kyc,
-        ]);
-
-        return response()->json(['ok' => true]);
-    }
-
-    public function uploadReviewFile(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $r->validate([
-            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar'
-        ]);
-
-        $path = $r->file('file')->store("customer_verifications/{$cv->id_verification}/review", 'public');
-
-        $kyc = $cv->finance_data_kyc ?? [];
-        $kyc['files'] = $kyc['files'] ?? [];
-        $kyc['files'][] = [
-            'name' => $r->file('file')->getClientOriginalName(),
-            'path' => $path,
-            'url'  => Storage::disk('public')->url($path),
-        ];
-
-        $cv->update(['finance_data_kyc' => $kyc]);
-
-        return response()->json(end($kyc['files']));
-    }
-
-
-    public function getReview(int $id)
-    {
-        $user = auth()->user();
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $allowed = $user->can('verification.customer')
-            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
+            || $user->can('customer.viewAny');
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -756,225 +632,308 @@ class CustomerVerificationController extends Controller
 
         $review = CustomerReview::where('id_verification', $id)->first();
 
-        $attachments = [];
-        if ($review) {
-            $attachments = DB::table('customer_review_attchment')   // <-- perbaiki nama tabel
-                ->where('id_review', $review->id_review)
-                ->where('id_verification', $id)
-                ->orderBy('no_urut')
-                ->get()
-                ->map(function ($r) {
-                    $r->url = Storage::disk('public')->url($r->review_attach);
-                    return $r;
-                });
-        }
-
-        return response()->json([
-            'review'      => $review,
-            'attachments' => $attachments,
-        ]);
-    }
-
-    public function saveReview(Request $r, int $id)
-    {
-        $user = $r->user();
-
-        $cv = CustomerVerification::select('id_verification', 'id_customer')->findOrFail($id);
-
-        $allowed = $user->can('verification.customer')
-            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        // data inti review
-        $data = $r->validate([
-            'review_result'            => 'nullable|integer',
-            'review_pic'               => 'nullable|string|max:50',
-            'review_summary'           => 'nullable|string',
-            'jenis_asset'              => 'nullable|string|max:500',
-            'kelengkapan_dok_tagihan'  => 'nullable|string|max:500',
-            'alur_proses_periksaan'    => 'nullable|string|max:500',
-            'jadwal_penerimaan'        => 'nullable|string|max:500',
-            'background_bisnis'        => 'nullable|string|max:500',
-            'lokasi_depo'              => 'nullable|string|max:500',
-            'opportunity_bisnis'       => 'nullable|string|max:500',
-
-            'review1'  => 'nullable|string|max:500',
-            'review2'  => 'nullable|string|max:500',
-            'review3'  => 'nullable|string|max:500',
-            'review4'  => 'nullable|string|max:500',
-            'review5'  => 'nullable|string|max:500',
-            'review6'  => 'nullable|string|max:500',
-            'review7'  => 'nullable|string|max:500',
-            'review8'  => 'nullable|string|max:500',
-            'review9'  => 'nullable|string|max:500',
-            'review10' => 'nullable|string|max:500',
-            'review11' => 'nullable|string|max:500',
-            'review12' => 'nullable|string|max:500',
-            'review13' => 'nullable|string|max:500',
-            'review14' => 'nullable|string|max:500',
-            'review15' => 'nullable|string|max:500',
-            'review16' => 'nullable|string|max:500',
-
-            'credit_limit_diajukan'    => 'nullable|string',
-            'review_form'              => 'nullable|array',
-            'reset_attachments'        => 'sometimes|boolean',
-        ]);
-
-        $rawCL = $data['credit_limit_diajukan']
-            ?? data_get($data, 'review_form.detail.credit_limit_proposed')
-            ?? ($data['review1'] ?? null);
-
-        $creditLimit = null;
-        if (!is_null($rawCL)) {
-            $creditLimit = (int) preg_replace('/\D+/', '', (string) $rawCL);
-        }
-
-        $hasInProgressCycle = $cv->documentApprovals()
-            ->where('status', DocumentApprovalStatus::InProgress)
-            ->exists();
-
-        if ($hasInProgressCycle) {
-            return response()->json([
-                'message' => 'Verifikasi ini masih memiliki siklus persetujuan yang sedang berjalan (Admin Finance/BM belum memutuskan) — tidak bisa forward ulang.',
-            ], 422);
-        }
-
-        DB::transaction(function () use ($cv, $data, $creditLimit, $r) {
-
-            $row = CustomerReview::updateOrCreate(
-                ['id_verification' => $cv->id_verification],
-                array_merge($data, [
-                    'review_tanggal' => now(),
-                    'review_pic'     => $data['review_pic'] ?? (auth()->user()->name ?? null),
+        if (!$review) {
+            $reviewAnswers = collect(CustomerReviewQuestionCode::cases())
+                ->map(fn (CustomerReviewQuestionCode $code) => [
+                    'question_code' => $code->value,
+                    'question'      => $code->question(),
+                    'answer'        => null,
+                    'order'         => $code->order(),
+                    'field_type'    => $code->fieldType(),
                 ])
-            );
+                ->sortBy('order')
+                ->values()
+                ->all();
 
-            CustomerVerification::where('id_verification', $cv->id_verification)
-                ->update([
-                    'is_forwarded' => 1,
-                ]);
+            return response()->json([
+                'reviewed_at'        => null,
+                'review_answers'     => $reviewAnswers,
+                'review_attachments' => [],
+            ]);
+        }
 
-            $this->createDocumentApprovalCycle($cv);
+        $reviewAnswers = collect($review->review_answers)
+            ->map(function (array $item) {
+                $code = CustomerReviewQuestionCode::tryFrom($item['question_code'] ?? '');
 
-            // credit_limit_request sudah pindah ke customer_credit_submissions
-            // (aggregate customer-level, DBML-A/DBML-F) -- update submission
-            // terbaru kalau ada, atau buat submission baru kalau customer ini
-            // belum pernah punya satupun.
-            $submission = CustomerCreditSubmission::where('id_customer', $cv->id_customer)
-                ->latest('id_submission')
-                ->first();
+                if (!$code) {
+                    return null;
+                }
 
-            if ($submission) {
-                $submission->update(['credit_limit_request' => $creditLimit]);
-            } else {
-                CustomerCreditSubmission::create([
-                    'id_customer'           => $cv->id_customer,
-                    'submission_type'       => CustomerCreditSubmissionType::NewCustomer,
-                    'credit_limit_request'  => $creditLimit,
-                ]);
-            }
-
-            // 4) OPSIONAL: hapus semua attachment lama (meniru "DELETE FROM ... WHERE id_review = ?")
-            if ($r->boolean('reset_attachments')) {
-                CustomerReviewAttachment::where('id_review', $row->id_review)
-                    ->where('id_verification', $cv->id_verification)
-                    ->delete();
-            }
-        });
+                return [
+                    'question_code' => $code->value,
+                    'question'      => $code->question(),
+                    'answer'        => $item['answer'] ?? null,
+                    'order'         => $code->order(),
+                    'field_type'    => $code->fieldType(),
+                ];
+            })
+            ->filter()
+            ->sortBy('order')
+            ->values()
+            ->all();
 
         return response()->json([
-            'ok' => true,
-            'message' => 'Review tersimpan & diforward ke Admin Finance.',
+            'reviewed_at'        => $review->reviewed_at,
+            'review_answers'     => $reviewAnswers,
+            'review_attachments' => $review->review_attachments,
         ]);
     }
 
-    public function uploadReviewAttachment(Request $r, int $id)
+    public function saveReview(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
-        $user = $r->user();
+        $user = $request->user();
 
         $cv = CustomerVerification::findOrFail($id);
 
-        $allowed = $user->can('verification.customer')
-            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
+            || $user->can('customer.viewAny');
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $review = CustomerReview::firstOrCreate(
+        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
+            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
+        }
+
+        $data = $request->validate([
+            'review_answers'                  => 'required|array',
+            'review_answers.*.question_code'  => ['required', new Enum(CustomerReviewQuestionCode::class)],
+            'review_answers.*.answer'         => 'nullable|string',
+        ]);
+
+        $reviewAnswers = collect($data['review_answers'])
+            ->map(function (array $item) {
+                $code = CustomerReviewQuestionCode::from($item['question_code']);
+
+                return [
+                    'question_code' => $code->value,
+                    'question'      => $code->question(),
+                    'answer'        => $item['answer'] ?? null,
+                    'order'         => $code->order(),
+                    'field_type'    => $code->fieldType(),
+                ];
+            })
+            ->sortBy('order')
+            ->values()
+            ->all();
+
+        $review = CustomerReview::updateOrCreate(
             ['id_verification' => $id],
-            ['review_tanggal' => now()]
+            [
+                'review_answers' => $reviewAnswers,
+                'reviewed_at'    => now(),
+            ]
         );
 
-        $r->validate([
-            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar'
-        ]);
-
-        $file = $r->file('file');
-        $path = $file->store("customer_verifications/{$id}/review", 'public');
-        $ori  = $file->getClientOriginalName();
-
-        // pakai tabel yang benar
-        $next = ((int) DB::table('customer_review_attchment')
-            ->where('id_review', $review->id_review)
-            ->where('id_verification', $id)
-            ->max('no_urut')) + 1;
-
-        \Log::info('UPL-ATTCH', [
-            'id_ver' => $id,
-            'path'   => $path,
-            'ori'    => $ori,
-            'next'   => $next,
-        ]);
-
-
-        DB::table('customer_review_attchment')->insert([
-            'id_review'         => $review->id_review,
-            'id_verification'   => $id,
-            'no_urut'           => $next,
-            'review_attach'     => $path,
-            'review_attach_ori' => $ori,
-        ]);
-
         return response()->json([
-            'no_urut' => $next,
-            'name'    => $ori,
-            'path'    => $path,
-            'url'     => Storage::disk('public')->url($path),
+            'review_answers' => $review->review_answers,
+            'reviewed_at'    => $review->reviewed_at,
         ]);
     }
 
+    public function uploadReviewAttachment(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
 
+        $cv = CustomerVerification::findOrFail($id);
 
-    public function deleteReviewAttachment(int $id, int $no)
+        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
+            || $user->can('customer.viewAny');
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
+            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
+        }
+
+        $request->validate([
+            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
+        ]);
+
+        $review = CustomerReview::firstOrCreate(['id_verification' => $id]);
+
+        $file = $request->file('file');
+        $path = $file->store("customer_verifications/{$id}/review", 'public');
+        $originalName = $file->getClientOriginalName();
+
+        $attachments = $review->review_attachments ?? [];
+        $attachments[] = [
+            'path'          => $path,
+            'url'           => Storage::disk('public')->url($path),
+            'original_name' => $originalName,
+        ];
+
+        $review->update(['review_attachments' => $attachments]);
+
+        return response()->json([
+            'index'         => array_key_last($attachments),
+            'path'          => $path,
+            'url'           => Storage::disk('public')->url($path),
+            'original_name' => $originalName,
+        ]);
+    }
+
+    public function deleteReviewAttachment(int $id, int $no): \Illuminate\Http\JsonResponse
     {
         $user = auth()->user();
 
         $cv = CustomerVerification::findOrFail($id);
 
-        $allowed = $user->can('verification.customer')
-            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($cv) === $user->id);
+        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
+            || $user->can('customer.viewAny');
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $review = CustomerReview::where('id_verification', $id)->firstOrFail();
-        $att = CustomerReviewAttachment::where('id_review', $review->id_review)
-            ->where('id_verification', $id)
-            ->where('no_urut', $no)
-            ->firstOrFail();
-
-        // hapus file fisik (opsional)
-        if ($att->review_attach) {
-            Storage::disk('public')->delete($att->review_attach);
+        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
+            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
         }
-        $att->delete();
+
+        $review = CustomerReview::where('id_verification', $id)->firstOrFail();
+
+        $attachments = $review->review_attachments ?? [];
+
+        if (!isset($attachments[$no])) {
+            return response()->json(['message' => 'Attachment tidak ditemukan.'], 404);
+        }
+
+        Storage::disk('public')->delete($attachments[$no]['path']);
+
+        array_splice($attachments, $no, 1);
+
+        $review->update(['review_attachments' => array_values($attachments)]);
 
         return response()->json(['ok' => true]);
+    }
+
+    // Forward Marketing -> Admin Finance, 1 aksi tanpa payload. WAJIB validasi
+    // kelengkapan Tab 2 (semua question_code di review_answers terisi) + Tab 4
+    // (latestCreditSubmission ada & credit_limit_request terisi) sebelum
+    // kyc_status boleh pindah dari draft. Tab 1 tidak perlu cek tambahan --
+    // field wajib customers sudah ditegakkan sejak record dibuat via onboarding.
+    public function forward(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        $allowed = $user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id;
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
+            return response()->json(['message' => 'KYC sudah pernah di-forward.'], 409);
+        }
+
+        $incompleteTabs = [];
+
+        $review         = CustomerReview::where('id_verification', $id)->first();
+        $answeredCodes  = collect($review ? ($review->review_answers ?? []) : [])
+            ->filter(fn (array $item) => isset($item['answer']) && $item['answer'] !== '')
+            ->pluck('question_code');
+
+        $reviewComplete = $review
+            && collect(CustomerReviewQuestionCode::cases())
+                ->every(fn (CustomerReviewQuestionCode $code) => $answeredCodes->contains($code->value));
+
+        if (!$reviewComplete) {
+            $incompleteTabs[] = 'review';
+        }
+
+        $submission = $cv->customer->latestCreditSubmission;
+
+        if (!$submission || $submission->credit_limit_request === null) {
+            $incompleteTabs[] = 'credit';
+        }
+
+        if (!empty($incompleteTabs)) {
+            return response()->json([
+                'message'         => 'Tidak bisa forward, ada tab yang belum lengkap.',
+                'incomplete_tabs' => $incompleteTabs,
+            ], 422);
+        }
+
+        $cv->update([
+            'is_forwarded' => true,
+            'kyc_status'   => CustomerKycStatus::Forwarded,
+        ]);
+
+        return response()->json([
+            'kyc_status'   => CustomerKycStatus::Forwarded->value,
+            'is_forwarded' => true,
+        ]);
+    }
+
+    // Admin Finance menutup KYC: input credit_limit_approval + top_approval final,
+    // TIDAK BISA di-undo -- risiko kesalahan input diterima sadar sebagai trade-off.
+    // Role 9 (Admin Finance) dicek eksplisit DI ATAS permission verification.customer
+    // -- BM (role 8) punya permission yang sama tapi tidak boleh menutup KYC.
+    public function close(Request $request, int $id, CloseCustomerKycAction $action): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'credit_limit_approval' => 'required|numeric|min:0',
+            'top_approval'          => 'required|numeric|min:0',
+        ]);
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ((int) $request->user()->id_role !== self::ROLE_ADMIN_FINANCE) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($cv->kyc_status !== CustomerKycStatus::Forwarded) {
+            return response()->json(['message' => 'KYC belum di-forward atau sudah ditutup.'], 409);
+        }
+
+        $submission = $cv->customer->latestCreditSubmission;
+
+        if (!$submission) {
+            return response()->json(['message' => 'Belum ada pengajuan credit untuk customer ini.'], 422);
+        }
+
+        $submission = $action->execute($cv, $submission, (int) $data['credit_limit_approval'], (int) $data['top_approval']);
+
+        return response()->json([
+            'kyc_status'            => CustomerKycStatus::Closed->value,
+            'credit_limit_approval' => $submission->credit_limit_approval,
+            'top_approval'          => $submission->top_approval,
+        ]);
+    }
+
+    // Agregasi Data Customer + Sales Review + LCR + Credit Application +
+    // Penawaran Lookup jadi 1 PDF untuk rapat management (offline). Hanya bisa
+    // diakses setelah kyc_status forwarded/closed -- dokumen cetak wewenang
+    // Admin Finance, baru relevan setelah Marketing selesai forward.
+    public function document(Request $request, int $id, GenerateCustomerKycDocumentAction $action)
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->kyc_status, [CustomerKycStatus::Forwarded, CustomerKycStatus::Closed], true)) {
+            return response()->json(['message' => 'Dokumen KYC hanya bisa dicetak setelah di-forward.'], 409);
+        }
+
+        $data = $action->execute($cv);
+
+        $pdf = \PDF::loadView('customer.kyc-document', $data)->setPaper('A4', 'portrait');
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
+
+        return $pdf->stream("KYC-{$safeName}-{$cv->id_verification}.pdf");
     }
 
     /**
@@ -1021,233 +980,6 @@ class CustomerVerificationController extends Controller
         $queue = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)->count();
 
         return response()->json(['queue' => $queue]);
-    }
-
-    public function getEvaluation(int $id)
-    {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv  = \App\Models\CustomerVerification::findOrFail($id);
-        $kyc = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-
-        return response()->json([
-            'evaluation' => $kyc['evaluation'] ?? [
-                'top'                    => 'CREDIT 30 days After Invoice Receive',
-                'potential_volume'       => null,
-                'potential_unit'         => 'Liter',
-                'credit_limit_proposed'  => null,
-                'jenis_data'             => 'Sebelum Persetujuan Komite',
-                'financial_review'       => '',
-            ],
-        ]);
-    }
-
-    public function saveEvaluation(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        // Validasi sesuai payload FE (approval di dalam form)
-        $payload = $r->validate([
-            // (Prioritas C-Amend gap-fix, 2026-07-10) reject path Admin
-            // Finance -- pola sama persis dengan bmVerify(): 'decision'
-            // nullable APPROVE/REJECT (default APPROVE bila tidak dikirim),
-            // 'notes' dipakai untuk decision_note reject supaya nama field
-            // konsisten antara kedua endpoint step approval ini.
-            'decision'                           => ['nullable', 'in:APPROVE,REJECT'],
-            'notes'                              => ['nullable', 'string'],
-
-            'form'                               => ['required', 'array'],
-            'form.top_text'                      => ['nullable', 'string'],
-            'form.potential_volume'              => ['nullable', 'string'],
-            'form.jenis_data'                    => ['required', 'in:SEBELUM,SETELAH'],
-            'form.financial_review'              => ['nullable', 'string'],
-
-            'form.evaluation_numbers'            => ['nullable', 'array'],
-            'form.evaluation_numbers.*'          => ['nullable', 'string'],
-
-            'form.kyc_rows'                      => ['nullable', 'array'],
-            'form.kyc_rows.*.label'              => ['nullable', 'string'],
-            'form.kyc_rows.*.name'               => ['nullable', 'string'],
-            'form.kyc_rows.*.path'               => ['nullable', 'string'],
-            'form.kyc_rows.*.url'                => ['nullable', 'string'],
-
-            'form.approval'                      => ['nullable', 'array'],
-            'form.approval.approval_credit_limit' => ['nullable', 'string'],
-            'form.approval.group_company'        => ['nullable', 'string'],
-
-            'form.approval.docs'                 => ['nullable', 'array'],
-            'form.approval.docs.customer_db'     => ['boolean'],
-            'form.approval.docs.siup'            => ['boolean'],
-            'form.approval.docs.notarial'        => ['boolean'],
-            'form.approval.docs.lcr'             => ['boolean'],
-            'form.approval.docs.npwp'            => ['boolean'],
-            'form.approval.docs.finstat'         => ['boolean'],
-            'form.approval.docs.top'             => ['boolean'],
-            'form.approval.docs.customer_review' => ['boolean'],
-            'form.approval.docs.others'          => ['boolean'],
-            'form.approval.docs_others_text'     => ['nullable', 'string'],
-
-            'form.approval.other_document'       => ['nullable', 'string'],
-            'form.approval.logistik_summary'     => ['nullable', 'string'],
-            'form.approval.logistik_result'      => ['nullable', 'string'],
-            'form.approval.assessment_result'    => ['nullable', 'string'],
-        ]);
-
-        // default APPROVE, sama persis pola $data['decision'] ?? 'APPROVE' di bmVerify()
-        $decision = $payload['decision'] ?? 'APPROVE';
-        $notes    = $payload['notes'] ?? null;
-
-        $form     = $payload['form'];
-        $approval = $form['approval'] ?? [];
-
-        // --- Sanitasi seperti script lama ---
-        $creditLimitRaw = $approval['approval_credit_limit'] ?? null;
-        $creditLimit    = is_null($creditLimitRaw) ? null : (int) preg_replace('/\D+/', '', (string) $creditLimitRaw);
-
-        $summaryRaw = (string) ($form['financial_review'] ?? '');
-        $summary    = nl2br(e($summaryRaw), false);
-
-        $dokumenLainnya = e((string) ($approval['other_document'] ?? ''));
-
-        // --- finance_data (nomor & checklist dokumen) ---
-        $arrData = [];
-        foreach ((array) ($form['evaluation_numbers'] ?? []) as $no) {
-            if ($no !== null && $no !== '') {
-                $arrData[] = ['nomor' => e((string) $no)];
-            }
-        }
-        $docs = (array) ($approval['docs'] ?? []);
-        if (!empty($docs)) {
-            $checked = [];
-            foreach ($docs as $k => $v) if ($v) $checked[] = $k;
-            if ($checked) $arrData[] = ['nomor' => implode(',', $checked)];
-            if ($dokumenLainnya !== '') $arrData[] = $dokumenLainnya;
-        }
-
-        $incomingKyc = (array) ($form['kyc_rows'] ?? []);
-
-        DB::transaction(function () use ($id, $form, $approval, $arrData, $incomingKyc, $summary, $creditLimit, $decision, $notes) {
-
-            // Kunci baris
-            $cv = \App\Models\CustomerVerification::lockForUpdate()->findOrFail($id);
-
-            // Hapus file KYC lama yang tidak dipertahankan
-            $oldKyc    = json_decode($cv->finance_data_kyc ?? '[]', true) ?: [];
-            $keepPaths = collect($incomingKyc)->pluck('path')->filter()->values()->all();
-            foreach ($oldKyc as $row) {
-                $oldPath = $row['filenya'] ?? ($row['path'] ?? null);
-                if ($oldPath && !in_array($oldPath, $keepPaths, true)) {
-                    \Storage::disk('public')->delete($oldPath);
-                }
-            }
-
-            // Normalisasi KYC simpan
-            $kycSaved = [];
-            foreach ($incomingKyc as $idx => $row) {
-                $kycSaved[$idx] = [
-                    'id_detail'       => $idx,
-                    'nama_file'       => e((string) ($row['label'] ?? $row['name'] ?? '')),
-                    'filenya'         => (string) ($row['path'] ?? ''),
-                    'file_upload_ori' => (string) ($row['name'] ?? basename($row['path'] ?? '')),
-                ];
-            }
-
-            // Map jenis data (tetap disimpan kalau perlu)
-            $jenisDataInt = ($form['jenis_data'] ?? 'SEBELUM') === 'SETELAH' ? 2 : 1;
-
-            // (Prioritas C-Amend gap-fix, 2026-07-10) finance_result bergantung
-            // ke $decision, bukan selalu dipaksa "lolos": APPROVE (default,
-            // perilaku existing tidak berubah) -> finance_result=1, REJECT ->
-            // finance_result=0 (konsisten dengan konvensi sm_result=0 untuk
-            // reject di bmVerify() -- sibling _result column di controller
-            // yang sama).
-            //
-            // Status/badge tampilan derive dari document_approvals lewat
-            // CustomerVerification::stageLabel() (lihat
-            // reviewShow()/CustomerController::formatLatestVerification()),
-            // bukan kolom tersimpan di sini.
-            $financeResult = $decision === 'REJECT' ? 0 : 1;
-
-            // Update verification -- data evaluasi (KYC, ringkasan finansial,
-            // dokumen, dst.) tetap ditulis apa adanya baik APPROVE maupun
-            // REJECT: ini kerja/catatan Admin Finance yang sudah diinput,
-            // tidak ada alasan bisnis untuk dibuang hanya karena hasil
-            // keputusannya reject.
-            $cv->update([
-                'finance_data'        => json_encode($arrData, JSON_UNESCAPED_UNICODE),
-                'jenis_datanya'       => $jenisDataInt,
-                'finance_summary'     => $summary,
-                'finance_result'      => $financeResult,
-                'finance_tgl_proses'  => now(),
-                'finance_pic'         => auth()->user()->name ?? null,
-                'finance_data_kyc'    => json_encode($kycSaved, JSON_UNESCAPED_UNICODE),
-            ]);
-
-            // (CA5, pivot 2026-07-10, dulu C3; gap-fix 2026-07-10 menambah
-            // reject) Approve -> step Admin Finance approved, current_step_order
-            // maju ke step berikutnya (BM) di dalam advanceApprovalStep().
-            // Reject -> step Admin Finance rejected, cycle document_approvals
-            // ditutup rejected sepenuhnya di dalam advanceApprovalStep() (tidak
-            // perlu kode eksplisit "kirim balik ke Marketing" -- queue
-            // Marketing di CA7 sudah otomatis menangkap ini via
-            // marketingQueueQuery()).
-            //
-            // (Prioritas H2, 2026-07-13) step_order literal (dulu
-            // self::STEP_ADMIN_FINANCE) sekarang di-resolve dinamis: cari
-            // step di template aktif yang id_role-nya cocok ROLE_ADMIN_FINANCE.
-            // Kalau tidak ketemu (mis. admin ganti role step ini lewat CRUD
-            // tanpa update kode), silent no-op + Log::warning -- perilaku
-            // defensif yang sama seperti saat advanceApprovalStep() tidak
-            // menemukan approval/step in_progress, TIDAK ada guard/error baru.
-            $adminFinanceTemplate  = $this->activeApprovalTemplate();
-            $adminFinanceStepOrder = $adminFinanceTemplate
-                ? $this->resolveStepOrderForRole($adminFinanceTemplate, self::ROLE_ADMIN_FINANCE)
-                : null;
-
-            if ($adminFinanceStepOrder !== null) {
-                $this->advanceApprovalStep(
-                    $cv,
-                    $adminFinanceStepOrder,
-                    $decision === 'REJECT' ? DocumentApprovalStepStatus::Rejected : DocumentApprovalStepStatus::Approved,
-                    $decision === 'REJECT' ? $notes : ($summary !== '' ? $summary : null)
-                );
-            } else {
-                Log::warning('Tidak menemukan step_order untuk role Admin Finance di template customer_verification aktif saat saveEvaluation.', [
-                    'id_verification' => $cv->id_verification,
-                ]);
-            }
-
-            // Jika SETELAH komite, sinkron ke customers (opsional, tetap dipertahankan)
-            if ($jenisDataInt === 2) {
-                // approval.other_document cuma tersimpan di
-                // customer_verifications.finance_data (JSON), tidak disalin ke customers.
-                // TOP tersimpan lewat customer_credit_submissions (lihat
-                // CustomerCreditSubmissionController), bukan lewat form evaluasi ini.
-                // jenis_payment sudah drop (redundan dengan customer_payment.payment_method).
-                // credit_limit_approval sudah pindah ke customer_credit_submissions
-                // (aggregate customer-level, DBML-A/DBML-F) -- pola sama seperti
-                // saveReview() untuk credit_limit_request.
-                $submission = CustomerCreditSubmission::where('id_customer', $cv->id_customer)
-                    ->latest('id_submission')
-                    ->first();
-
-                if ($submission) {
-                    $submission->update(['credit_limit_approval' => $creditLimit]);
-                } else {
-                    CustomerCreditSubmission::create([
-                        'id_customer'            => $cv->id_customer,
-                        'submission_type'        => CustomerCreditSubmissionType::NewCustomer,
-                        'credit_limit_approval'  => $creditLimit,
-                    ]);
-                }
-            }
-        });
-
-        return response()->json(['ok' => true]);
     }
 
     public function logistikShow(int $id)
@@ -1315,98 +1047,4 @@ class CustomerVerificationController extends Controller
         return response()->json(['queue' => $queue]);
     }
 
-    /**
-     * Simpan verifikasi BM (step 2, FINAL, di model 2-step baru — pivot
-     * 2026-07-10):
-     * - bm_notes: catatan BM
-     * - bm_decision: APPROVE / REJECT (REVISE dihapus total, tidak ada lagi
-     *   konsep "kirim balik untuk revisi" di sistem approval baru — reject di
-     *   step manapun menutup siklus, verifikasi kembali ke Marketing untuk
-     *   diedit & di-forward ulang sebagai siklus baru, lihat CA4/CA7)
-     *
-     * Status/badge tampilan derive dari document_approvals lewat
-     * CustomerVerification::stageLabel()/CustomerController::resolveVerificationBadge(),
-     * bukan kolom tersimpan.
-     *
-     * `bm_notes`/`bm_decision`/`bm_tgl_proses`/`bm_pic` TIDAK PERNAH ada di
-     * skema `customer_verifications` maupun `$fillable` model -- `$cv->update()`
-     * di baris ini silently no-op untuk keempat field itu (pre-existing bug).
-     */
-    public function bmVerify(Request $r, int $id)
-    {
-        if ($r->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $data = $r->validate([
-            'notes'    => ['nullable', 'string'],
-            'decision' => ['nullable', 'in:APPROVE,REJECT'],
-        ]);
-
-        return DB::transaction(function () use ($id, $data) {
-            /** @var \App\Models\CustomerVerification $cv */
-            $cv = CustomerVerification::lockForUpdate()->findOrFail($id);
-
-            // default approval
-            $decision = $data['decision'] ?? 'APPROVE';
-
-            $cv->update([
-                'bm_notes'      => $data['notes'] ?? null,
-                'bm_decision'   => $decision,
-                'bm_tgl_proses' => now(),
-                'bm_pic'        => auth()->user()->name ?? null,
-            ]);
-
-            // ===== (CA6, pivot 2026-07-10, dulu C4/C5) sistem approval baru: document_approvals / document_approval_steps =====
-            // BM adalah step FINAL di model 2-step baru (Marketing bukan
-            // step formal lagi, Logistik & OM sudah dihapus dari alur, lihat
-            // Prioritas D).
-            //
-            // (Prioritas H2, 2026-07-13) step_order literal `2` (dulu
-            // hardcoded langsung, bukan bahkan lewat konstanta) sekarang
-            // di-resolve dinamis: cari step di template aktif yang
-            // id_role-nya cocok ROLE_BM. Kalau tidak ketemu, silent no-op +
-            // Log::warning di kedua branch (APPROVE/REJECT) -- perilaku
-            // defensif yang sama seperti saat advanceApprovalStep() tidak
-            // menemukan approval/step in_progress, TIDAK ada guard/error
-            // baru.
-            $bmTemplate  = $this->activeApprovalTemplate();
-            $bmStepOrder = $bmTemplate
-                ? $this->resolveStepOrderForRole($bmTemplate, self::ROLE_BM)
-                : null;
-
-            if ($bmStepOrder === null) {
-                Log::warning('Tidak menemukan step_order untuk role BM di template customer_verification aktif saat bmVerify.', [
-                    'id_verification' => $cv->id_verification,
-                    'decision'        => $decision,
-                ]);
-            }
-
-            if ($decision === 'APPROVE') {
-                if ($bmStepOrder !== null) {
-                    $this->advanceApprovalStep(
-                        $cv,
-                        $bmStepOrder,
-                        DocumentApprovalStepStatus::Approved,
-                        $data['notes'] ?? null
-                    );
-                }
-
-                // Badge "verified" derive langsung dari status document_approvals
-                // milik latestVerification (lihat CustomerController::resolveVerificationBadge()) --
-                // tidak ada flag tersimpan yang perlu di-set manual di sini.
-            } else { // REJECT
-                if ($bmStepOrder !== null) {
-                    $this->advanceApprovalStep(
-                        $cv,
-                        $bmStepOrder,
-                        DocumentApprovalStepStatus::Rejected,
-                        $data['notes'] ?? null
-                    );
-                }
-            }
-
-            return response()->json(['ok' => true]);
-        });
-    }
 }

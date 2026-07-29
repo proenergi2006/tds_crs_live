@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Penawaran;
 use App\Models\PenawaranItem;
 use App\Models\PenawaranOngkos;
@@ -85,6 +86,44 @@ class PenawaranController extends Controller
 
         $data = $query->orderBy('created_at', 'desc')->paginate($perPage);
         return response()->json($data);
+    }
+
+    // Bukti pendukung Admin Finance, bukan customer_credit_items (tidak dipakai
+    // sama sekali). TIDAK difilter status -- status Penawaran bisa balik draft
+    // diam-diam pasca-approved_om (lihat update(), baris ~495-508), jadi
+    // auto-filter berisiko menyembunyikan data relevan.
+    public function lookupForCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $penawarans = $customer->penawarans()
+            ->with('items.produk')
+            ->orderByDesc('id_penawaran')
+            ->get();
+
+        $data = $penawarans->map(function (Penawaran $penawaran) {
+            return [
+                'id_penawaran'    => $penawaran->id_penawaran,
+                'nomor_penawaran' => $penawaran->nomor_penawaran,
+                'status'          => $penawaran->status,
+                'total'           => $penawaran->total,
+                'items'           => $penawaran->items->map(function (PenawaranItem $item) {
+                    return [
+                        'id_produk'    => $item->id_produk,
+                        'produk'       => [
+                            'id_produk'   => $item->produk?->id_produk,
+                            'nama_produk' => $item->produk?->nama_produk,
+                        ],
+                        'volume_order' => $item->volume_order,
+                        'harga_tebus'  => $item->harga_tebus,
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json(['data' => $data]);
     }
 
    /** ============================ QR HELPERS ============================ */

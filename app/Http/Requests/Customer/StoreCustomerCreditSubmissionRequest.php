@@ -22,8 +22,10 @@ class StoreCustomerCreditSubmissionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_type' => ['required', new Enum(CustomerCreditSubmissionType::class)],
-            'top_payment'      => 'nullable|integer|min:0',
+            'submission_type'        => ['required', new Enum(CustomerCreditSubmissionType::class)],
+            'credit_limit_request'   => 'nullable|numeric|min:0',
+            'top_request'            => 'nullable|integer|min:0',
+            'notes'                  => 'nullable|string',
 
             'items'                          => 'nullable|array',
             'items.*.id_produk'              => 'required|integer|exists:produks,id_produk',

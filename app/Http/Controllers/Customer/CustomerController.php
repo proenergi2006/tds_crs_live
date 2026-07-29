@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\CustomerKycStatus;
 use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
@@ -83,15 +84,16 @@ class CustomerController extends Controller
         ]);
     }
 
+    // Badge/filter berbasis kyc_status, bukan approval cycle lama. Tidak ada
+    // badge "ditolak" -- tidak ada penolakan customer di level KYC.
     private function applyStatusFilter($query, string $status): void
     {
         if ($status === 'verified') {
-            $query->whereHas('latestVerification', fn($vq) => $vq->whereHas('latestDocumentApproval', fn($aq) => $aq->where('status', DocumentApprovalStatus::Approved)));
+            $query->whereHas('latestVerification', fn($vq) => $vq->where('kyc_status', CustomerKycStatus::Closed));
         } elseif ($status === 'unverified') {
             $query->where(function ($outer) {
                 $outer->whereDoesntHave('latestVerification')
-                    ->orWhereHas('latestVerification', fn($vq) => $vq->whereDoesntHave('latestDocumentApproval')
-                        ->orWhereHas('latestDocumentApproval', fn($aq) => $aq->where('status', '!=', DocumentApprovalStatus::Approved)));
+                    ->orWhereHas('latestVerification', fn($vq) => $vq->where('kyc_status', '!=', CustomerKycStatus::Closed));
             });
         }
     }
@@ -104,9 +106,7 @@ class CustomerController extends Controller
             return 'belum_ada_link';
         }
 
-        $latestCycle = $latest->latestDocumentApproval;
-
-        if ($latestCycle?->status === DocumentApprovalStatus::Approved) {
+        if ($latest->kyc_status === CustomerKycStatus::Closed) {
             return 'verified';
         }
 
@@ -120,21 +120,18 @@ class CustomerController extends Controller
             return 'link_kedaluwarsa';
         }
 
-        if ($latest->is_submitted && !$latest->is_forwarded) {
+        if ($latest->kyc_status === CustomerKycStatus::Draft) {
             return 'perlu_direview';
         }
 
-        if ($latestCycle?->status === DocumentApprovalStatus::Rejected) {
-            return 'ditolak';
-        }
-
-        if ($latest->is_forwarded && $latestCycle?->status === DocumentApprovalStatus::InProgress) {
-            return 'proses_internal';
+        if ($latest->kyc_status === CustomerKycStatus::Forwarded) {
+            return 'menunggu_admin_finance';
         }
 
         return 'belum_ada_link';
     }
 
+    // kyc_status di-expose untuk reactive lock Tab 1/2/4 & tombol Forward di FE.
     private function formatLatestVerification(?CustomerVerification $verification): ?array
     {
         if (!$verification) {
@@ -148,6 +145,7 @@ class CustomerController extends Controller
             'is_active'       => (bool) $verification->is_active,
             'expired_at'      => optional($verification->expired_at)->toISOString(),
             'stage_label'     => $verification->stageLabel(),
+            'kyc_status'      => $verification->kyc_status?->value,
         ];
     }
 
@@ -217,6 +215,16 @@ class CustomerController extends Controller
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        // Data customer terkunci begitu KYC sudah di-forward (kyc_status != draft).
+        // Tidak berlaku untuk customer tanpa verification cycle sama sekali (pra-KYC
+        // atau belum submit onboarding) -- guard cuma aktif kalau ada cycle yang
+        // sedang berjalan.
+        $latestVerification = $customer->latestVerification;
+
+        if ($latestVerification && $latestVerification->kyc_status !== CustomerKycStatus::Draft) {
+            return response()->json(['message' => 'Data customer terkunci, KYC sudah di-forward.'], 409);
         }
 
         $data = $request->validated();

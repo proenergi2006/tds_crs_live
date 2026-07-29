@@ -159,8 +159,10 @@ class CustomerLcrController extends Controller
         $q       = trim((string) $request->query('q', ''));
         $status  = $request->query('status', 'pending');
 
+        // Eager-load pakai company_name (nama kolom customers saat ini, sudah
+        // di-rename dari nama_perusahaan).
         $query = CustomerLcr::query()
-            ->with(['customer:id_customer,nama_perusahaan', 'latestDocumentApproval']);
+            ->with(['customer:id_customer,company_name', 'latestDocumentApproval']);
 
         if ($request->filled('id_customer')) {
             $query->where('id_customer', (int) $request->query('id_customer'));
@@ -186,7 +188,7 @@ class CustomerLcrController extends Controller
                 $w->where('site_name', 'like', "%{$q}%")
                     ->orWhere('survey_address', 'like', "%{$q}%")
                     ->orWhereHas('customer', function ($c) use ($q) {
-                        $c->where('nama_perusahaan', 'like', "%{$q}%");
+                        $c->where('company_name', 'like', "%{$q}%");
                     });
             });
         }
@@ -203,7 +205,7 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $lcrSite->load(['customer:id_customer,nama_perusahaan', 'latestDocumentApproval.steps']);
+        $lcrSite->load(['customer:id_customer,company_name', 'latestDocumentApproval.steps']);
 
         return response()->json($this->formatSite($lcrSite));
     }
@@ -321,6 +323,8 @@ class CustomerLcrController extends Controller
             && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
     }
 
+    // Key response JSON sengaja tidak sama dengan nama kolom asli (mis.
+    // prov_survey <- survey_province) -- kontrak existing dipertahankan.
     private function formatSite(CustomerLcr $site): array
     {
         $cycle = $site->latestDocumentApproval;
@@ -330,14 +334,14 @@ class CustomerLcrController extends Controller
             'id_customer' => $site->id_customer,
             'customer'    => $site->relationLoaded('customer') && $site->customer ? [
                 'id_customer'     => $site->customer->id_customer,
-                'nama_perusahaan' => $site->customer->nama_perusahaan,
+                'nama_perusahaan' => $site->customer->company_name,
             ] : null,
 
             /* Grup 1 */
             'site_name'                => $site->site_name,
             'survey_address'           => $site->survey_address,
-            'prov_survey'              => $site->prov_survey,
-            'kab_survey'               => $site->kab_survey,
+            'prov_survey'              => $site->survey_province,
+            'kab_survey'               => $site->survey_regency,
             'survey_date'              => optional($site->survey_date)->toDateString(),
             'surveyor_names'           => $site->surveyor_names,
             'site_business_type'       => $site->site_business_type,
@@ -351,8 +355,8 @@ class CustomerLcrController extends Controller
             'survey_notes'             => $site->survey_notes,
             'picustomer'               => $site->picustomer,
             'website'                  => $site->website,
-            'telp_survey'              => $site->telp_survey,
-            'fax_survey'               => $site->fax_survey,
+            'telp_survey'              => $site->survey_phone,
+            'fax_survey'               => $site->survey_fax,
             'id_wilayah'               => $site->id_wilayah,
             'id_wil_oa'                => $site->id_wil_oa,
 
@@ -412,9 +416,9 @@ class CustomerLcrController extends Controller
             /* Grup 7 */
             'company_office_photos' => $site->company_office_photos,
             'additional_photos'     => $site->additional_photos,
-            'latitude_lokasi'       => $site->latitude_lokasi,
-            'longitude_lokasi'      => $site->longitude_lokasi,
-            'link_google_maps'      => $site->link_google_maps,
+            'latitude_lokasi'       => $site->latitude,
+            'longitude_lokasi'      => $site->longitude,
+            'link_google_maps'      => $site->google_maps_link,
             'coordinates'           => $site->coordinates,
 
             'approval' => $cycle ? [

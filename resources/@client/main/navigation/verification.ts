@@ -13,10 +13,11 @@ export const verificationNavigation: NavItem[] = [
         permission: "verification.po-supplier",
       },
       {
-        icon: "Users",
-        pageName: "customers-verification-list",
-        title: "Customer",
+        icon: "Landmark",
+        pageName: "review-data-customer-admin",
+        title: "Verifikasi Customer (Admin Finance)",
         permission: "verification.customer",
+        activePageNames: ["review-data-customer-admin-detail"],
       },
       {
         icon: "File",

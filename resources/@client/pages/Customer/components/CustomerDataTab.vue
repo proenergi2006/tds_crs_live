@@ -93,12 +93,6 @@ const corporateRows = computed(() => {
   return [
     { label: 'Nama Perusahaan', value: dash(cust.company_name) },
     { label: 'Holding', value: dash(cust.parent_company) },
-    { label: 'Alamat Head Office', value: dash(cust.company_address) },
-    { label: 'Provinsi', value: dash(regionName(cust.province)) },
-    { label: 'Kota/Kabupaten', value: dash(regionName(cust.regency)) },
-    { label: 'Kecamatan', value: dash(regionName(cust.district)) },
-    { label: 'Kelurahan', value: dash(regionName(cust.village)) },
-    { label: 'Kode Pos', value: dash(cust.postal_code) },
     { label: 'Telepon', value: dash(cust.phone) },
     { label: 'Fax', value: dash(cust.fax) },
     { label: 'Email', value: dash(cust.email) },
@@ -128,6 +122,18 @@ const npwpAddressRows = computed(() => {
     { label: 'Kecamatan', value: dash(regionName(npwpAddress.district)) },
     { label: 'Kelurahan', value: dash(regionName(npwpAddress.village)) },
     { label: 'Kode Pos', value: dash(npwpAddress.postal_code) },
+  ]
+})
+
+const headOfficeAddressRows = computed(() => {
+  const cust = props.customer || {}
+  return [
+    { label: 'Alamat', value: dash(cust.company_address) },
+    { label: 'Provinsi', value: dash(regionName(cust.province)) },
+    { label: 'Kota/Kabupaten', value: dash(regionName(cust.regency)) },
+    { label: 'Kecamatan', value: dash(regionName(cust.district)) },
+    { label: 'Kelurahan', value: dash(regionName(cust.village)) },
+    { label: 'Kode Pos', value: dash(cust.postal_code) },
   ]
 })
 
@@ -176,6 +182,12 @@ const logisticsRows = computed(() => {
       value: dash(s.operating_hours === 'other' ? s.operating_hours_other : humanize(s.operating_hours)),
     },
     {
+      label: 'Min-Max Truck Capacity (m³)',
+      value: (s.max_truck_capacity_min ?? null) !== null || (s.max_truck_capacity_max ?? null) !== null
+        ? `${dash(s.max_truck_capacity_min)} - ${dash(s.max_truck_capacity_max)}`
+        : '-',
+    },
+    {
       label: 'Quality Checking',
       value: dash(s.quality_checking_method === 'other' ? s.quality_checking_notes : humanize(s.quality_checking_method)),
     },
@@ -183,15 +195,9 @@ const logisticsRows = computed(() => {
       label: 'Quantity Checking',
       value: dash(s.quantity_checking_method === 'other' ? s.quantity_checking_notes : humanize(s.quantity_checking_method)),
     },
-    {
-      label: 'Max Truck Capacity (m³)',
-      value: (s.max_truck_capacity_min ?? null) !== null || (s.max_truck_capacity_max ?? null) !== null
-        ? `${dash(s.max_truck_capacity_min)} - ${dash(s.max_truck_capacity_max)}`
-        : '-',
-    },
     { label: 'Supports Vessel Delivery', value: s.supports_vessel_delivery ? 'Ya' : 'Tidak' },
-    { label: 'Product Notes', value: dash(s.product_notes) },
     { label: 'Est. Monthly Volume', value: dash(s.estimated_monthly_volume) },
+    { label: 'Product Notes', value: dash(s.product_notes) },
   ]
 })
 
@@ -529,23 +535,49 @@ onMounted(fetchCustomerContacts)
 
   <div v-else class="grid grid-cols-2 gap-6">
     <div class="grid gap-6 lg:grid-cols-1">
-      <CardSection title="Corporate Details" description="Identitas perusahaan & alamat NPWP terdaftar."
-        icon="Building2" icon-class="bg-violet-100 text-violet-600">
-        <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
+      <CardSection title="Corporate Details" description="Identitas perusahaan customer." icon="Building2"
+        icon-class="bg-violet-100 text-violet-600">
+        <div class="grid gap-y-3 gap-x-8 sm:grid-cols-1">
           <div v-for="row in corporateRows" :key="row.label"
             class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
             <span class="font-label">{{ row.label }}</span>
             <span class="font-strong text-right">{{ row.value }}</span>
           </div>
         </div>
+      </CardSection>
 
-        <div class="mt-5 border-t border-slate-100 pt-4">
-          <div class="font-section mb-3">Alamat NPWP (Registered Address)</div>
-          <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
-            <div v-for="row in npwpAddressRows" :key="row.label"
-              class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">{{ row.label }}</span>
-              <span class="font-strong text-right">{{ row.value }}</span>
+      <CardSection title="Alamat" description="Alamat Head Office & alamat NPWP terdaftar." icon="MapPin"
+        icon-class="bg-sky-100 text-sky-600">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+                <Lucide icon="Building2" class="h-5 w-5" />
+              </div>
+              <div class="font-strong">Alamat Head Office</div>
+            </div>
+            <div class="mt-4 grid grid-cols-1 gap-y-3">
+              <div v-for="row in headOfficeAddressRows" :key="row.label"
+                class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
+                <span class="font-label">{{ row.label }}</span>
+                <span class="font-strong text-right">{{ row.value }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+                <Lucide icon="FileCheck2" class="h-5 w-5" />
+              </div>
+              <div class="font-strong">Alamat NPWP (Registered Address)</div>
+            </div>
+            <div class="mt-4 grid grid-cols-1 gap-y-3">
+              <div v-for="row in npwpAddressRows" :key="row.label"
+                class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
+                <span class="font-label">{{ row.label }}</span>
+                <span class="font-strong text-right">{{ row.value }}</span>
+              </div>
             </div>
           </div>
         </div>

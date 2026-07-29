@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerKycStatus;
 use App\Enums\DocumentApprovalStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ class CustomerVerification extends Model
         'verification_token',
         'is_submitted',
         'is_forwarded',
+        'kyc_status',
         'is_active',
         'expired_at',
 
@@ -47,6 +49,7 @@ class CustomerVerification extends Model
     protected $casts = [
         'is_submitted' => 'boolean',
         'is_forwarded' => 'boolean',
+        'kyc_status'   => CustomerKycStatus::class,
         'is_active'    => 'boolean',
 
         'legal_result'     => 'integer',

@@ -246,6 +246,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'destroy']);
     Route::get('lcr-sites/{lcrSite}/approval-timeline', [CustomerLcrController::class, 'approvalTimeline']);
 
+    // Daftar Penawaran milik customer, bukti pendukung Admin Finance saat
+    // menilai pengajuan credit.
+    Route::get('customers/{customer}/penawarans', [PenawaranController::class, 'lookupForCustomer']);
+
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
 
@@ -330,8 +334,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/approval-timeline', [CustomerVerificationController::class, 'approvalTimeline'])->whereNumber('id');
-    Route::patch('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
 
     Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
 
@@ -339,37 +341,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
     Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
-
-    // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
-    Route::get('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-    Route::get('/review/customer-verifications/{id}/admin-evaluation', [CustomerVerificationController::class, 'getAdminEvaluation']);
-
-
-    Route::post('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/evaluation-attachment', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
-    // ====== ⬆⬆⬆ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬆⬆⬆ ======
+    Route::post('review/customer-verifications/{id}/forward', [CustomerVerificationController::class, 'forward'])->whereNumber('id');
+    Route::post('review/customer-verifications/{id}/close',   [CustomerVerificationController::class, 'close'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document', [CustomerVerificationController::class, 'document'])->whereNumber('id');
 
     // ===== Admin (biarkan seperti semula) =====
     Route::prefix('review/admin')->group(function () {
         Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
         Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-
-        // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
-        Route::prefix('review/customer-verifications')->group(function () {
-            Route::get('{id}/evaluation',  [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-            Route::post('{id}/evaluation', [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-        });
-
-        // Dan alias lain yang sudah ada sebelumnya (tetap dibiarkan)
-        Route::get('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationShow'])->whereNumber('id');
-        Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
     });
 
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-        // simpan verifikasi BM
-        Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
     });
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);

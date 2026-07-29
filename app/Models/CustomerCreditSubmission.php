@@ -19,8 +19,9 @@ class CustomerCreditSubmission extends Model
         'submission_type',
         'credit_limit_approval',
         'credit_limit_request',
-        'top_payment',
-        'financial_review_notes',
+        'top_request',
+        'top_approval',
+        'notes',
         'submitted_by',
         'submitted_at',
         'created_by',
@@ -31,7 +32,8 @@ class CustomerCreditSubmission extends Model
         'submission_type'        => CustomerCreditSubmissionType::class,
         'credit_limit_approval'  => 'integer',
         'credit_limit_request'   => 'integer',
-        'top_payment'            => 'integer',
+        'top_request'            => 'integer',
+        'top_approval'           => 'integer',
         'submitted_at'           => 'datetime',
     ];
 

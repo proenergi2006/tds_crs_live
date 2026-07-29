@@ -667,23 +667,6 @@ const routes = [
       },
 
       {
-        path: "customer-lcrs",
-        name: "lcr-list",
-
-        component: () => import("@/pages/CustomerLcrList.vue"),
-      },
-      {
-        path: "customer-lcrs/create",
-        name: "lcr-create",
-        component: () => import("@/pages/CustomerLcrForm.vue"),
-      },
-      {
-        path: "customer-lcrs/:id/edit",
-        name: "lcr-edit",
-        component: () => import("@/pages/CustomerLcrForm.vue"),
-      },
-
-      {
         path: "/logistik/lcrs",
         name: "logistik-lcrs",
         component: () => import("@/pages/LogistikLcrList.vue"),
@@ -708,21 +691,6 @@ const routes = [
         meta: { permission: "customer.manage" },
       },
       {
-        path: "/review-data-customer",
-        name: "review-data-customer",
-        component: () =>
-          import("@/pages/CustomerVerification/Marketing/Index.vue"),
-        meta: { permission: "verification.customer" },
-      },
-      {
-        path: "/review-data-customer/:id",
-        name: "review-customer-detail",
-        component: () =>
-          import("@/pages/CustomerVerification/Marketing/Detail.vue"),
-        props: true,
-        meta: { permission: "verification.customer" },
-      },
-      {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
         component: () =>
@@ -733,24 +701,10 @@ const routes = [
         path: "/admin/review-data-customer/:id",
         name: "review-data-customer-admin-detail",
         component: () =>
-          import("@/pages/CustomerVerification/AdminFinance/Detail.vue"),
+          import("@/pages/CustomerVerification/AdminFinance/Verify.vue"),
         props: true,
         meta: { permission: "verification.customer" },
       },
-      {
-        path: "/review/bm",
-        name: "verify-data-customer-bm",
-        component: () => import("@/pages/CustomerVerification/Bm/Index.vue"),
-        meta: { permission: "verification.customer" },
-      },
-      {
-        path: "/review/bm/:id",
-        name: "bm-customer-detail",
-        props: true,
-        component: () => import("@/pages/CustomerVerification/Bm/Detail.vue"),
-        meta: { permission: "verification.customer" },
-      },
-
       {
         path: "/sales-confirmations",
         name: "sales-confirmations",

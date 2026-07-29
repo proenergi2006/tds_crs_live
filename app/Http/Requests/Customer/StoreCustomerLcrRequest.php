@@ -24,11 +24,14 @@ class StoreCustomerLcrRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Key request di sini pakai nama kolom asli (survey_province, dst) --
+            // beda dengan key response formatSite() (prov_survey, dst), lihat
+            // CustomerLcrController::formatSite().
             /* Grup 1: Identitas & info umum */
             'site_name'                 => 'nullable|string|max:255',
             'survey_address'            => 'nullable|string',
-            'prov_survey'               => 'nullable|integer',
-            'kab_survey'                => 'nullable|integer',
+            'survey_province'           => 'nullable|integer',
+            'survey_regency'            => 'nullable|integer',
             'survey_date'               => 'nullable|date',
             'surveyor_names'            => 'nullable|array',
             'site_business_type'        => 'nullable|string|max:100',
@@ -42,8 +45,8 @@ class StoreCustomerLcrRequest extends FormRequest
             'survey_notes'              => 'nullable|string',
             'picustomer'                => 'nullable|array',
             'website'                   => 'nullable|string|max:191',
-            'telp_survey'               => 'nullable|string|max:50',
-            'fax_survey'                => 'nullable|string|max:50',
+            'survey_phone'              => 'nullable|string|max:50',
+            'survey_fax'                => 'nullable|string|max:50',
             'id_wilayah'                => 'nullable|integer',
             'id_wil_oa'                 => 'nullable|integer',
 
@@ -111,9 +114,9 @@ class StoreCustomerLcrRequest extends FormRequest
             ...$this->mediaRules('company_office_photos'),
             'additional_photos'     => 'nullable|array',
             ...$this->mediaRules('additional_photos'),
-            'latitude_lokasi'       => 'nullable|numeric',
-            'longitude_lokasi'      => 'nullable|numeric',
-            'link_google_maps'      => 'nullable|string',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'google_maps_link'      => 'nullable|string',
         ];
     }
 
