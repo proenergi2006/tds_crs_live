@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { debounce } from 'lodash'
 import axios from 'axios'
 
@@ -21,14 +21,10 @@ type VerificationTab = 'all' | 'verified' | 'unverified'
 
 const customerApi = createResourceApi('/customers')
 const { success, error } = useNotification()
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-/* Brand switching — TDS vs Proenergi (pola sama seperti Penawaran/Form.vue) */
-type Brand = 'tds' | 'proenergi'
-const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
-const isProenergi = brand === 'proenergi'
+const isProenergi = [13, 14].includes(Number(auth.user?.id_role))
 
 /* State: data & pagination */
 const customers = ref<any[]>([])
@@ -58,14 +54,10 @@ const linkBusyId = ref<number | null>(null)
 const linkResultOpen = ref(false)
 const linkResult = reactive({ token: '', link: '', alreadyExists: false })
 
-/* Computed: permission (customer.manage + ownership, lihat Task 1(a)).
-   Proenergi di luar scope restrukturisasi permission ini (lihat CLAUDE.md) — tombol
-   tetap tampil apa adanya untuk brand tersebut, tidak digate ulang di sini. */
-const canManageCustomer = computed(() => isProenergi ? true : auth.can('customer.manage'))
-const canViewAnyCustomer = computed(() => isProenergi ? true : auth.can('customer.viewAny'))
+const canManageCustomer = computed(() => auth.can('customer.manage'))
+const canViewAnyCustomer = computed(() => auth.can('customer.viewAny'))
 
 function canManageRow(item: any) {
-  if (isProenergi) return true
   return (
     canManageCustomer.value &&
     (canViewAnyCustomer.value || Number(item.id_user) === Number(auth.user?.id))
@@ -132,11 +124,11 @@ function goToPage(page: number) {
 }
 
 function openCreate() {
-  router.push({ name: isProenergi ? 'customers-create-proenergi' : 'customers-create' })
+  router.push({ name: 'customers-create' })
 }
 
 function openEdit(id: number) {
-  router.push({ name: isProenergi ? 'customers-edit-proenergi' : 'customers-edit', params: { id } })
+  router.push({ name: 'customers-edit', params: { id } })
 }
 
 function openCreatePenawaran(id: number) {

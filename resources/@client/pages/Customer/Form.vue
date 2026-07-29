@@ -29,11 +29,8 @@ const customerApi = createResourceApi('/customers')
 const customerId = computed(() => Number(route.params.id || 0))
 const mode = computed<'create' | 'edit'>(() => (customerId.value ? 'edit' : 'create'))
 
-/* Tentukan varian (TDS vs Proenergi) dari nama route */
-const isProenergi = computed(() => String(route.name ?? '').includes('proenergi'))
-const indexRoute = computed(() =>
-  isProenergi.value ? 'customers-list-proenergi' : 'customers-list'
-)
+const isProenergi = computed(() => [13, 14].includes(Number(auth.user?.id_role)))
+const indexRoute = 'customers-list'
 
 const loading = ref(false)
 const pageLoading = ref(false)
@@ -227,7 +224,7 @@ async function fetchCustomer() {
         ? 'Kamu tidak punya akses untuk mengedit customer ini.'
         : e.response?.data?.message ?? 'Gagal memuat data customer',
     )
-    router.push({ name: indexRoute.value })
+    router.push({ name: indexRoute })
   } finally {
     pageLoading.value = false
   }
@@ -294,7 +291,7 @@ async function submit() {
       success('Berhasil', 'Customer berhasil diperbarui')
     }
 
-    router.push({ name: indexRoute.value })
+    router.push({ name: indexRoute })
   } catch (e: any) {
     const errors = e.response?.data?.errors
     if (e.response?.status === 422 && errors) {
@@ -312,7 +309,7 @@ async function submit() {
 
 function cancel() {
   if (loading.value) return
-  router.push({ name: indexRoute.value })
+  router.push({ name: indexRoute })
 }
 </script>
 

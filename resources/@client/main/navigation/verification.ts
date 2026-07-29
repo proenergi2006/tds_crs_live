@@ -28,18 +28,16 @@ export const verificationNavigation: NavItem[] = [
           "penawarans-verifikasi-detail"
         ]
       },
-      // {
-      //   icon: 'File',
-      //   pageName: 'penawarans-verifikasi-proenergi',
-      //   title: 'Quotation (Proenergi BM)',
-      //   permission: 'penawaran.proenergi.verify-bm',
-      // },
-      // {
-      //   icon: 'File',
-      //   pageName: 'penawarans-verifikasi-om-proenergi',
-      //   title: 'Quotation (Proenergi OM)',
-      //   permission: 'penawaran.proenergi.verify-om',
-      // },
+      {
+        icon: "File",
+        pageName: "penawarans-verifikasi-proenergi",
+        title: "Quotation Proenergi",
+        permission: "penawaran.proenergi.verify",
+        activePageNames: [
+          "penawarans-verifikasi-detail-proenergi",
+          "penawarans-verifikasi-om-detail-proenergi"
+        ]
+      },
       {
         icon: "ClipboardCheck",
         pageName: "sales-confirmations-bm",

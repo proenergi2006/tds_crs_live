@@ -236,8 +236,8 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
       <td style="width:100%">
         <div class="attn">
           Attention to :<br>
-          <strong>{{ $cust->nama_perusahaan ?? '-' }}</strong><br>
-          {{ $cust->alamat_perusahaan ?? 'Alamat belum diisi' }}<br><br>
+          <strong>{{ $cust->company_name ?? '-' }}</strong><br>
+          {{ $cust->company_address ?? 'Alamat belum diisi' }}<br><br>
 
           <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
           {{ $penawaran->jabatan ?? '-' }}
@@ -257,7 +257,7 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
   </p>
   <p class="p">
     With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
-    Crushed Stone for <strong>{{ $cust->nama_perusahaan ?? '—' }}.</strong> Therefore, we would like to offer to your company:
+    Crushed Stone for <strong>{{ $cust->company_name ?? '—' }}.</strong> Therefore, we would like to offer to your company:
   </p>
 
 
@@ -297,10 +297,21 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
         <td class="no">2.</td><td class="label"><b>Parameter</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0%' }} </b></td>
       </tr>
+      @if($priceDetail ?? false)
+      <tr>
+        <td class="no">3.</td><td class="label"><b>Base Price per m&sup3;</b></td><td class="colon">:</td>
+        <td class="value">{{ $rupiah($penawaran->harga_dasar ?? 0) }}<span style="color:#666">(Price exclude 11% VAT)</span></td>
+      </tr>
+      <tr>
+        <td class="no"></td><td class="label"><b>OAT per m&sup3;</b></td><td class="colon">:</td>
+        <td class="value">{{ $rupiah($penawaran->oat ?? 0) }}</td>
+      </tr>
+      @else
       <tr>
         <td class="no">3.</td><td class="label"><b>Price per m&sup3;</b></td><td class="colon">:</td>
         <td class="value">{{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }}<span style="color:#666">(Price exclude 11% VAT)</span></td>
       </tr>
+      @endif
       <tr>
         <td class="no">4.</td><td class="label"><b>Payment Method</b></td><td class="colon">:</td>
         <td class="value">

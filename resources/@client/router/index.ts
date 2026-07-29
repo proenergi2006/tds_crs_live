@@ -228,24 +228,13 @@ const routes = [
         path: "customers",
         name: "customers-list",
         component: () => import("@/pages/Customer/Index.vue"),
-        meta: { permission: "customer.viewOwn", brand: "tds" },
-      },
-      {
-        path: "customers-proenergi",
-        name: "customers-list-proenergi",
-        component: () => import("@/pages/Customer/Index.vue"),
-        meta: { permission: "penawaran.proenergi.manage", brand: "proenergi" },
+        meta: { permission: "customer.viewOwn" },
       },
       {
         path: "customers/create",
         name: "customers-create",
         component: () => import("@/pages/Customer/Form.vue"),
         meta: { permission: "customer.manage" },
-      },
-      {
-        path: "customers-proenergi/create",
-        name: "customers-create-proenergi",
-        component: () => import("@/pages/Customer/Form.vue"),
       },
       {
         path: "customers/:id/edit",
@@ -259,11 +248,6 @@ const routes = [
         component: () => import("@/pages/Customer/Detail.vue"),
         props: true,
         meta: { permission: "customer.viewOwn" },
-      },
-      {
-        path: "customers-proenergi/:id/edit",
-        name: "customers-edit-proenergi",
-        component: () => import("@/pages/Customer/Form.vue"),
       },
       {
         path: "vendors",
@@ -589,7 +573,6 @@ const routes = [
         name: "penawarans-verifikasi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
         meta: {
-          role: "bm",
           brand: "reguler",
           permission: "verification.quotation",
         },
@@ -599,29 +582,8 @@ const routes = [
         name: "penawarans-verifikasi-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
         meta: {
-          role: "bm",
           brand: "proenergi",
-          permission: "penawaran.proenergi.verify-bm",
-        },
-      },
-      {
-        path: "/penawarans/verifikasi/om",
-        name: "penawarans-verifikasi-om",
-        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: {
-          role: "om",
-          brand: "reguler",
-          permission: "verification.quotation",
-        },
-      },
-      {
-        path: "/penawarans-proenergi/verifikasi/om",
-        name: "penawarans-verifikasi-om-proenergi",
-        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: {
-          role: "om",
-          brand: "proenergi",
-          permission: "penawaran.proenergi.verify-om",
+          permission: "penawaran.proenergi.verify",
         },
       },
       {
@@ -634,7 +596,7 @@ const routes = [
         path: "/penawarans-proenergi/:id/verifikasi",
         name: "penawarans-verifikasi-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "bm", brand: "proenergi" },
+        meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
       },
       {
         path: "/penawarans/verifikasi/om/:id",
@@ -650,7 +612,7 @@ const routes = [
         path: "/penawarans-proenergi/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "om", brand: "proenergi" },
+        meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
       },
 
       {

@@ -1,6 +1,6 @@
 ﻿<!-- pages/Penawaran/Verifikasi/Index.vue -->
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { debounce } from 'lodash'
 
@@ -11,6 +11,7 @@ import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
 
 import {
   getVerifikasiConfig,
@@ -34,18 +35,40 @@ type PenawaranItem = any
 //   disposisi_penawaran?: string | number
 //   bm_tanggal?: string | null
 //   om_tanggal?: string | null
-//   customer?: { nama_perusahaan?: string }
+//   customer?: { company_name?: string }
 //   cabang?: { nama_cabang?: string }
 // }
 
 const route = useRoute()
 const { error } = useNotification()
+const auth = useAuthStore()
 
-const role = route.meta.role as VerifikasiRole
-const brand = route.meta.brand as VerifikasiBrand
-const config = getVerifikasiConfig(role, brand)
+// computed, bukan const: route ini di-share TDS/Proenergi tanpa remount antar navigasi
+const brand = computed(() => route.meta.brand as VerifikasiBrand)
 
-const api = createResourceApi(config.endpoint)
+// Proenergi: role dari permission verify-bm/verify-om (role 15/16).
+// TDS: permission verification.quotation dipakai bersama, jadi dibedakan dari id_role
+// (BM=8, OM/CFO/CEO=2/3/10 — lihat PenawaranController::verifikasiOm/tolakom).
+const TDS_OM_ID_ROLES = [2, 3, 10]
+
+const idRole = computed(() => Number(auth.user?.id_role))
+const canSeeBm = computed(() => brand.value === 'proenergi'
+  ? auth.can('penawaran.proenergi.verify-bm')
+  : idRole.value === 8)
+const canSeeOm = computed(() => brand.value === 'proenergi'
+  ? auth.can('penawaran.proenergi.verify-om')
+  : TDS_OM_ID_ROLES.includes(idRole.value))
+
+// true kalau user tidak match spesifik salah satu (mis. Administrator) — butuh toggle manual
+const isAmbiguousRole = computed(() => canSeeBm.value === canSeeOm.value)
+const manualRole = ref<VerifikasiRole | null>(null)
+
+const role = computed<VerifikasiRole>(() => {
+  if (isAmbiguousRole.value) return manualRole.value ?? 'bm'
+  return canSeeBm.value ? 'bm' : 'om'
+})
+
+const config = computed(() => getVerifikasiConfig(role.value, brand.value))
 
 const penawarans = ref<PenawaranItem[]>([])
 const searchQuery = ref('')
@@ -59,6 +82,7 @@ async function fetchData(page = 1) {
   loading.value = true
 
   try {
+    const api = createResourceApi(config.value.endpoint)
     const { data } = await api.getAll({
       page,
       per_page: perPage.value,
@@ -81,7 +105,7 @@ function goToPage(page: number) {
   fetchData(page)
 }
 
-onMounted(() => fetchData())
+watch(() => config.value.endpoint, () => fetchData(1), { immediate: true })
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
@@ -91,6 +115,19 @@ watch(perPage, () => fetchData(1))
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
       <PageHeader :title="config.title" :description="config.description" />
+
+      <div v-if="isAmbiguousRole" class="inline-flex w-fit gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+          :class="role === 'bm' ? 'bg-theme-1 text-white' : 'text-slate-600 hover:bg-slate-100'"
+          @click="manualRole = 'bm'">
+          Menunggu BM
+        </button>
+        <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+          :class="role === 'om' ? 'bg-theme-1 text-white' : 'text-slate-600 hover:bg-slate-100'"
+          @click="manualRole = 'om'">
+          Menunggu OM
+        </button>
+      </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="penawarans.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"
@@ -119,7 +156,7 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ pen.customer?.nama_perusahaan || '-' }}</div>
+              <div class="font-strong">{{ pen.customer?.company_name || '-' }}</div>
               <div class="text-slate-500">{{ pen.nama || '-' }} - {{ pen.jabatan || '' }}</div>
             </Table.Td>
 

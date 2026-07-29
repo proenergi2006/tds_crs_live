@@ -73,8 +73,9 @@ class PenawaranController extends Controller
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
+        // Antrian BM: menunggu BM, menunggu OM (sudah di-approve BM), approved, dan ditolak (BM/OM).
         $query = Penawaran::with(['customer', 'cabang', 'items.produk'])
-            ->whereIn('disposisi_penawaran', [1, 2, 3, 4, 5, 6]);
+            ->whereIn('disposisi_penawaran', [2, 3, 4, 5, 6]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1015,8 +1016,10 @@ public function ajukan($id)
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
+        // Antrian OM: menunggu OM (sudah di-approve BM), approved, dan ditolak OM saja
+        // (ditolak BM tidak pernah sampai ke tahap OM — hanya tampil di menu BM).
         $query = Penawaran::with(['customer', 'cabang', 'items.produk'])
-            ->whereIn('disposisi_penawaran', [1, 2, 3, 4, 5, 6]);
+            ->whereIn('disposisi_penawaran', [3, 4, 6]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1132,7 +1135,8 @@ public function ajukan($id)
     public function previewPdfMultiLang(Request $request, $id)
     {
         $lang = strtolower($request->query('lang', 'id')); // default: Indonesia
-    
+        $priceDetail = $request->query('price_format') === 'detail';
+
         $penawaran = Penawaran::with(['customer', 'cabang', 'items.produk.ukuran', 'user.role'])
             ->findOrFail($id);
     
@@ -1212,7 +1216,7 @@ public function ajukan($id)
         : null;
     
         // Generate PDF
-        $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft','logoRight'))
+        $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft', 'logoRight', 'priceDetail'))
             ->setPaper('A4', 'portrait')
             ->setOptions([
                 'isRemoteEnabled' => true,
