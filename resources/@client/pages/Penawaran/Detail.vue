@@ -10,6 +10,7 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
+import PenawaranPdfDialog from '@/components/SystemDesign/Dialog/PenawaranPdfDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatDate, formatDateTime } from '@/utils/format'
@@ -189,17 +190,24 @@ async function ajukanPenawaran() {
   }
 }
 
-async function preview(lang?: 'id' | 'en') {
+const previewLangDialogOpen = ref(false)
+const previewLoading = ref(false)
+
+async function preview(payload: { lang: 'id' | 'en'; priceFormat: 'dpp' | 'detail' }) {
+  previewLoading.value = true
   try {
     const response = await axios.get(`${cfg.apiBase}/${id}/preview`, {
-      params: lang ? { lang } : {},
+      params: { lang: payload.lang, price_format: payload.priceFormat },
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     window.open(url, '_blank')
     setTimeout(() => URL.revokeObjectURL(url), 60000)
+    previewLangDialogOpen.value = false
   } catch {
     error('Gagal', 'Gagal membuka preview PDF')
+  } finally {
+    previewLoading.value = false
   }
 }
 
@@ -570,19 +578,9 @@ function formatNumber(v: number | string = 0) {
 
                 <div class="flex flex-col gap-2">
                   <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
-                    @click="preview()">
+                    @click="previewLangDialogOpen = true">
                     <Lucide icon="Printer" class="h-4 w-4" />
                     Preview PDF
-                  </Button>
-                  <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
-                    class="inline-flex w-full items-center justify-center gap-2" @click="preview('id')">
-                    <Lucide icon="FileText" class="h-4 w-4" />
-                    Cetak Indonesia
-                  </Button>
-                  <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
-                    class="inline-flex w-full items-center justify-center gap-2" @click="preview('en')">
-                    <Lucide icon="FileText" class="h-4 w-4" />
-                    Cetak English
                   </Button>
                   <Button v-if="penawaran.status === 'draft'" variant="primary"
                     class="inline-flex w-full items-center justify-center gap-2" @click="ajukanDialogOpen = true">
@@ -622,4 +620,7 @@ function formatNumber(v: number | string = 0) {
     description="Setelah diajukan, penawaran akan dikirim ke Branch Manager untuk verifikasi. Pastikan seluruh data sudah benar."
     confirm-text="Ya, Ajukan" icon="Send" icon-class="bg-primary/10 text-primary" variant="primary"
     :loading="ajukanLoading" @close="ajukanDialogOpen = false" @confirm="ajukanPenawaran" />
+
+  <PenawaranPdfDialog :open="previewLangDialogOpen" :loading="previewLoading" @close="previewLangDialogOpen = false"
+    @submit="preview" />
 </template>

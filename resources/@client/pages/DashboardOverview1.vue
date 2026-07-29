@@ -119,7 +119,7 @@ onMounted(async () => {
 
                 <Button variant="outline-secondary"
                   class="border border-white/40 bg-white/10 text-white hover:bg-white/20"
-                  @click="router.push({ name: 'customers-list-proenergi' })">
+                  @click="router.push({ name: 'customers-list' })">
                   <Lucide icon="Users" class="mr-2 h-4 w-4" />
                   Customer Proenergi
                 </Button>

@@ -255,8 +255,8 @@
       <td style="width:100%">
         <div class="attn">
           Attention to :<br>
-          <strong>{{ $cust->nama_perusahaan ?? '-' }}</strong><br>
-          {{ $cust->alamat_perusahaan ?? 'Address not available' }}<br><br>
+          <strong>{{ $cust->company_name ?? '-' }}</strong><br>
+          {{ $cust->company_address ?? 'Address not available' }}<br><br>
 
           <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
           {{ $penawaran->jabatan ?? '-' }}
@@ -274,7 +274,7 @@
   </p>
   <p class="p">
     With our experience, product quality assurance, resources, and facilities, we believe that we are able to fulfill
-    the needs of Crushed Stone for <strong>{{ $cust->nama_perusahaan ?? '—' }}.</strong>
+    the needs of Crushed Stone for <strong>{{ $cust->company_name ?? '—' }}.</strong>
     Therefore, we are pleased to submit our offer as follows:
   </p>
 
@@ -311,6 +311,23 @@
         <td class="value"><b>{{ $penawaran->abrasi ?? '0%' }}</b></td>
       </tr>
 
+      @if($priceDetail ?? false)
+      <tr>
+        <td class="no">3.</td>
+        <td class="label"><b>Base Price per m&sup3;</b></td>
+        <td class="colon">:</td>
+        <td class="value">
+          {{ $rupiah($penawaran->harga_dasar ?? 0) }}
+          <span style="color:#666">(Price excludes 11% VAT)</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="no"></td>
+        <td class="label"><b>OAT per m&sup3;</b></td>
+        <td class="colon">:</td>
+        <td class="value">{{ $rupiah($penawaran->oat ?? 0) }}</td>
+      </tr>
+      @else
       <tr>
         <td class="no">3.</td>
         <td class="label"><b>Price per m&sup3;</b></td>
@@ -320,6 +337,7 @@
           <span style="color:#666">(Price excludes 11% VAT)</span>
         </td>
       </tr>
+      @endif
 
       <tr>
         <td class="no">4.</td>
@@ -485,7 +503,7 @@
     <table class="sig-table">
       <tr>
         <td class="sig-label">Best Regards,<br>PT. Pro Energi</td>
-        <td class="sig-label t-right">{{ strtoupper($cust->nama_perusahaan ?? '-') }}</td>
+        <td class="sig-label t-right">{{ strtoupper($cust->company_name ?? '-') }}</td>
       </tr>
 
       <tr>

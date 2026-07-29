@@ -123,7 +123,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'customer.viewOwn',
             'module'      => 'customer',
             'description' => 'Lihat customer milik sendiri (Marketing/Key Account)',
-            'roles'       => [4, 12],
+            'roles'       => [4, 12, 13, 14],
         ],
         [
             'name'        => 'customer.viewAny',
@@ -135,7 +135,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'customer.manage',
             'module'      => 'customer',
             'description' => 'Tambah, edit, hapus customer',
-            'roles'       => [4, 12],
+            'roles'       => [4, 12, 13, 14],
         ],
         [
             'name'        => 'verification.customer',
@@ -176,11 +176,11 @@ class PermissionSeeder extends Seeder
             'roles'       => [8, 2, 3, 10],
         ],
 
-        // Customer & Penawaran Proenergi
+        // Penawaran Proenergi (Customer Proenergi kini pakai customer.viewOwn/customer.manage TDS)
         [
             'name'        => 'penawaran.proenergi.manage',
             'module'      => 'penawaran',
-            'description' => 'Kelola Customer Proenergi dan Penawaran Proenergi',
+            'description' => 'Kelola Penawaran Proenergi',
             'roles'       => [13, 14],
         ],
         [
@@ -194,6 +194,12 @@ class PermissionSeeder extends Seeder
             'module'      => 'penawaran',
             'description' => 'Verifikasi Penawaran Proenergi sebagai OM Proenergi',
             'roles'       => [16],
+        ],
+        [
+            'name'        => 'penawaran.proenergi.verify',
+            'module'      => 'penawaran',
+            'description' => 'Akses menu Verifikasi Quotation Proenergi (gabungan BM & OM, data dibedakan per tahap)',
+            'roles'       => [15, 16],
         ],
 
         // Sales Confirmation
