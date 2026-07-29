@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -10,6 +10,7 @@ import Table from '@/components/Base/Table'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
+import PenawaranPdfDialog from '@/components/SystemDesign/Dialog/PenawaranPdfDialog.vue'
 
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import {
@@ -23,11 +24,12 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-const role = route.meta.role as VerifikasiRole
-const brand = route.meta.brand as VerifikasiBrand
-const config = getVerifikasiDetailConfig(role, brand)
+// computed, bukan const: route bm/om/reguler/proenergi berbagi komponen ini tanpa remount
+const role = computed(() => route.meta.role as VerifikasiRole)
+const brand = computed(() => route.meta.brand as VerifikasiBrand)
+const config = computed(() => getVerifikasiDetailConfig(role.value, brand.value))
 
-const id = Number(route.params.id)
+const id = computed(() => Number(route.params.id))
 const penawaran = ref<any>({})
 const loading = ref(false)
 const notFound = ref(false)
@@ -37,7 +39,7 @@ async function fetchPenawaran() {
   notFound.value = false
 
   try {
-    const { data } = await axios.get(`/api${config.fetchEndpoint}/${id}`)
+    const { data } = await axios.get(`/api${config.value.fetchEndpoint}/${id.value}`)
     penawaran.value = data
   } catch (e: any) {
     notFound.value = true
@@ -49,7 +51,7 @@ async function fetchPenawaran() {
 
 const items = computed(() => penawaran.value.items ?? [])
 
-const isProenergi = brand === 'proenergi'
+const isProenergi = computed(() => brand.value === 'proenergi')
 
 const totalVolume = computed(() => items.value.reduce((s, it) => s + (Number(it.volume_order) || 0), 0))
 const dppHargaDasar = computed(() =>
@@ -131,7 +133,7 @@ const tolakLoading = ref(false)
 async function verifikasi() {
   verifikasiLoading.value = true
   try {
-    await axios.patch(`/api${config.verifyEndpoint(id)}`, {
+    await axios.patch(`/api${config.value.verifyEndpoint(id.value)}`, {
       catatan: verifikasiCatatan.value || 'Tanpa catatan',
     })
     verifikasiDialogOpen.value = false
@@ -148,7 +150,7 @@ async function verifikasi() {
 async function tolak() {
   tolakLoading.value = true
   try {
-    await axios.patch(`/api${config.rejectEndpoint(id)}`, { catatan: tolakCatatan.value })
+    await axios.patch(`/api${config.value.rejectEndpoint(id.value)}`, { catatan: tolakCatatan.value })
     tolakDialogOpen.value = false
     tolakCatatan.value = ''
     success('Ditolak', 'Penawaran ditolak.')
@@ -166,17 +168,24 @@ function formatCurrency(v?: number | string | null) {
 function formatNumber(v?: number | string | null) {
   return (Number(v) || 0).toLocaleString('id-ID')
 }
-async function preview(lang?: 'id' | 'en') {
+const previewLangDialogOpen = ref(false)
+const previewLoading = ref(false)
+
+async function preview(payload: { lang: 'id' | 'en'; priceFormat: 'dpp' | 'detail' }) {
+  previewLoading.value = true
   try {
-    const response = await axios.get(`/api${config.fetchEndpoint}/${id}/preview`, {
-      params: lang ? { lang } : {},
+    const response = await axios.get(`/api${config.value.fetchEndpoint}/${id.value}/preview`, {
+      params: { lang: payload.lang, price_format: payload.priceFormat },
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     window.open(url, '_blank')
     setTimeout(() => URL.revokeObjectURL(url), 60000)
+    previewLangDialogOpen.value = false
   } catch {
     notifyError('Gagal', 'Gagal membuka preview PDF')
+  } finally {
+    previewLoading.value = false
   }
 }
 
@@ -184,7 +193,7 @@ function goBack() {
   router.back()
 }
 
-onMounted(fetchPenawaran)
+watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 </script>
 
 <template>
@@ -243,7 +252,7 @@ onMounted(fetchPenawaran)
                   </div>
                   <div>
                     <div class="font-label">Customer</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.customer?.nama_perusahaan) }}
+                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.customer?.company_name) }}
                     </div>
                   </div>
                   <div>
@@ -560,7 +569,7 @@ onMounted(fetchPenawaran)
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
                 <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
-                  @click="preview()">
+                  @click="previewLangDialogOpen = true">
                   <Lucide icon="Printer" class="h-4 w-4" />
                   Preview PDF
                 </Button>
@@ -621,4 +630,7 @@ onMounted(fetchPenawaran)
     <FormLabel>Catatan Penolakan</FormLabel>
     <FormTextarea v-model="tolakCatatan" placeholder="Masukkan alasan penolakan..." :rows="3" />
   </ConfirmDialog>
+
+  <PenawaranPdfDialog :open="previewLangDialogOpen" :loading="previewLoading" @close="previewLangDialogOpen = false"
+    @submit="preview" />
 </template>

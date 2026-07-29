@@ -28,6 +28,17 @@ export const customerNavigation: NavItem[] = [
         permission: "penawaran.viewOwn",
       },
       {
+        icon: "File",
+        pageName: "penawarans-list-proenergi",
+        title: "Quotation",
+        activePageNames: [
+          "penawarans-create-proenergi",
+          "penawarans-edit-proenergi",
+          "penawarans-detail-proenergi",
+        ],
+        permission: "penawaran.proenergi.manage",
+      },
+      {
         icon: "ShoppingCart",
         pageName: "po-customers-index",
         title: "Sales Order",
