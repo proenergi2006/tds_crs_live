@@ -32,12 +32,16 @@ class PenawaranProenergiController extends Controller
     /** GET /api/penawarans */
     public function index(Request $request)
     {
+        $user = $request->user();
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
         $query = PenawaranProenergi::with(['customer', 'cabang', 'items.produk'])
-            ->withSum('items as total_volume', 'volume_order')
-            ->where('user_id', optional($request->user())->id);
+            ->withSum('items as total_volume', 'volume_order');
+
+        if ($user->cant('penawaran.viewAny')) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {

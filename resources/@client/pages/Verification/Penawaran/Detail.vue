@@ -19,6 +19,7 @@ import {
   type VerifikasiBrand,
 } from './config'
 import { formatDate, formatDateTime } from '@/utils/format'
+import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 
 const route = useRoute()
 const router = useRouter()
@@ -173,16 +174,22 @@ const previewLoading = ref(false)
 
 async function preview(payload: { lang: 'id' | 'en'; priceFormat: 'dpp' | 'detail' }) {
   previewLoading.value = true
+  const previewTab = openPdfLoadingTab()
   try {
     const response = await axios.get(`/api${config.value.fetchEndpoint}/${id.value}/preview`, {
       params: { lang: payload.lang, price_format: payload.priceFormat },
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    window.open(url, '_blank')
+    if (previewTab) {
+      previewTab.location.href = url
+    } else {
+      window.open(url, '_blank')
+    }
     setTimeout(() => URL.revokeObjectURL(url), 60000)
     previewLangDialogOpen.value = false
   } catch {
+    previewTab?.close()
     notifyError('Gagal', 'Gagal membuka preview PDF')
   } finally {
     previewLoading.value = false
