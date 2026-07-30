@@ -303,7 +303,7 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
         <td class="value">{{ $rupiah($penawaran->harga_dasar ?? 0) }}<span style="color:#666">(Price exclude 11% VAT)</span></td>
       </tr>
       <tr>
-        <td class="no"></td><td class="label"><b>OAT per m&sup3;</b></td><td class="colon">:</td>
+        <td class="no"></td><td class="label"><b>Freight Cost</b></td><td class="colon">:</td>
         <td class="value">{{ $rupiah($penawaran->oat ?? 0) }}</td>
       </tr>
       @else
