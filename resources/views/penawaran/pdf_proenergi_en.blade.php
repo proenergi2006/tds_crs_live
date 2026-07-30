@@ -323,7 +323,7 @@
       </tr>
       <tr>
         <td class="no"></td>
-        <td class="label"><b>OAT per m&sup3;</b></td>
+        <td class="label"><b>Freight Cost</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $rupiah($penawaran->oat ?? 0) }}</td>
       </tr>

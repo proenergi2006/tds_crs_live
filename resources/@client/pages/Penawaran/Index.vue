@@ -21,9 +21,7 @@ const route = useRoute()
 const { success, error } = useNotification()
 const auth = useAuthStore()
 
-/* Brand: index ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta. */
 type Brand = 'tds' | 'proenergi'
-const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
 
 const BRAND_CONFIG = {
   tds: {
@@ -43,7 +41,10 @@ const BRAND_CONFIG = {
     description: 'Kelola data penawaran ke customer (Proenergi)',
   },
 }
-const cfg = BRAND_CONFIG[brand]
+
+// computed, bukan const: route TDS/Proenergi berbagi komponen ini tanpa remount
+const brand = computed<Brand>(() => (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds')
+const cfg = computed(() => BRAND_CONFIG[brand.value])
 
 /* State: data & pagination */
 const penawarans = ref<any[]>([])
@@ -61,25 +62,20 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
 
-/* Computed: permission (penawaran.manage + ownership, lihat Task 1(a)).
-   Proenergi di luar scope restrukturisasi permission ini (lihat CLAUDE.md) — tombol
-   tetap tampil apa adanya untuk brand tersebut, tidak digate ulang di sini. */
-const canManagePenawaran = computed(() => brand === 'proenergi' ? true : auth.can('penawaran.manage'))
-const canViewAnyPenawaran = computed(() => brand === 'proenergi' ? true : auth.can('penawaran.viewAny'))
+const canManagePenawaran = computed(() => brand.value === 'proenergi' ? true : auth.can('penawaran.manage'))
+const canViewAnyPenawaran = computed(() => brand.value === 'proenergi' ? true : auth.can('penawaran.viewAny'))
 
 function canManageRow(pen: any) {
-  if (brand === 'proenergi') return true
+  if (brand.value === 'proenergi') return true
   return (
     canManagePenawaran.value &&
     (canViewAnyPenawaran.value || Number(pen.user_id) === Number(auth.user?.id))
   )
 }
 
-onMounted(() => {
-  fetchCabangs()
-  fetchData()
-})
+onMounted(() => fetchCabangs())
 
+watch(() => cfg.value.apiBase, () => fetchData(1), { immediate: true })
 watch([searchQuery, filterCabang], debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
 
@@ -93,7 +89,7 @@ async function fetchCabangs() {
 async function fetchData(page = 1) {
   loading.value = true
   try {
-    const res = await axios.get(cfg.apiBase, {
+    const res = await axios.get(cfg.value.apiBase, {
       params: {
         page,
         per_page: perPage.value,
@@ -118,15 +114,15 @@ function goToPage(page: number) {
 
 /* Actions */
 function openCreate() {
-  router.push({ name: cfg.createRoute })
+  router.push({ name: cfg.value.createRoute })
 }
 
 function openDetail(id: number) {
-  router.push({ name: cfg.detailRoute, params: { id } })
+  router.push({ name: cfg.value.detailRoute, params: { id } })
 }
 
 function openEdit(id: number) {
-  router.push({ name: cfg.editRoute, params: { id } })
+  router.push({ name: cfg.value.editRoute, params: { id } })
 }
 
 function openCreateSalesOrder(id: number) {
@@ -142,7 +138,7 @@ async function submitDelete() {
   if (!deleteTarget.value) return
   deleteLoading.value = true
   try {
-    await axios.delete(`${cfg.apiBase}/${deleteTarget.value.id}`)
+    await axios.delete(`${cfg.value.apiBase}/${deleteTarget.value.id}`)
     deleteModal.value = false
     success('Berhasil', 'Penawaran berhasil dihapus.')
     fetchData(currentPage.value)

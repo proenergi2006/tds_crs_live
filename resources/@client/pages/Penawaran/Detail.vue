@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
@@ -14,15 +14,13 @@ import PenawaranPdfDialog from '@/components/SystemDesign/Dialog/PenawaranPdfDia
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatDate, formatDateTime } from '@/utils/format'
+import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 
 const router = useRouter()
 const route = useRoute()
 const { success, error } = useNotification()
 
-/* Brand: detail ini dipakai untuk TDS dan Proenergi. Brand dibaca dari route.meta. */
 type Brand = 'tds' | 'proenergi'
-const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
-const isProenergi = brand === 'proenergi'
 
 const BRAND_CONFIG = {
   tds: {
@@ -42,11 +40,12 @@ const BRAND_CONFIG = {
     description: 'Informasi lengkap dan status persetujuan penawaran Proenergi',
   },
 }
-const cfg = BRAND_CONFIG[brand]
-
-const penawaranApi = createResourceApi(cfg.resourceEndpoint)
-
-const id = Number(route.params.id)
+// computed, bukan const: route TDS/Proenergi berbagi komponen ini tanpa remount
+const brand = computed<Brand>(() => (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds')
+const isProenergi = computed(() => brand.value === 'proenergi')
+const cfg = computed(() => BRAND_CONFIG[brand.value])
+const penawaranApi = computed(() => createResourceApi(cfg.value.resourceEndpoint))
+const id = computed(() => Number(route.params.id))
 const penawaran = ref<any>({})
 const loading = ref(true)
 const ajukanLoading = ref(false)
@@ -64,7 +63,7 @@ const paymentFields = computed(() => {
   const p = penawaran.value
   return [
     { label: 'Tipe Pembayaran', value: p.tipe_pembayaran },
-    ...(isProenergi ? [{ label: 'Acuan Pembayaran', value: p.acuan_pembayaran }] : []),
+    ...(isProenergi.value ? [{ label: 'Acuan Pembayaran', value: p.acuan_pembayaran }] : []),
     { label: 'Metode Pemesanan', value: p.order_method },
     {
       label: 'Down Payment',
@@ -162,12 +161,12 @@ const approvalSteps = computed<StepItem[]>(() => {
   ]
 })
 
-onMounted(fetchPenawaran)
+watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
 async function fetchPenawaran() {
   loading.value = true
   try {
-    const { data } = await penawaranApi.getById(id)
+    const { data } = await penawaranApi.value.getById(id.value)
     penawaran.value = data
   } catch (e: any) {
     error('Gagal', e.response?.data?.message || 'Gagal memuat detail penawaran')
@@ -179,7 +178,7 @@ async function fetchPenawaran() {
 async function ajukanPenawaran() {
   ajukanLoading.value = true
   try {
-    const { data } = await axios.patch(`${cfg.apiBase}/${id}/ajukan`)
+    const { data } = await axios.patch(`${cfg.value.apiBase}/${id.value}/ajukan`)
     ajukanDialogOpen.value = false
     success('Berhasil Diajukan', data.message || 'Penawaran berhasil diajukan ke Branch Manager.')
     await fetchPenawaran()
@@ -195,16 +194,22 @@ const previewLoading = ref(false)
 
 async function preview(payload: { lang: 'id' | 'en'; priceFormat: 'dpp' | 'detail' }) {
   previewLoading.value = true
+  const previewTab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`${cfg.apiBase}/${id}/preview`, {
+    const response = await axios.get(`${cfg.value.apiBase}/${id.value}/preview`, {
       params: { lang: payload.lang, price_format: payload.priceFormat },
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    window.open(url, '_blank')
+    if (previewTab) {
+      previewTab.location.href = url
+    } else {
+      window.open(url, '_blank')
+    }
     setTimeout(() => URL.revokeObjectURL(url), 60000)
     previewLangDialogOpen.value = false
   } catch {
+    previewTab?.close()
     error('Gagal', 'Gagal membuka preview PDF')
   } finally {
     previewLoading.value = false
@@ -212,11 +217,11 @@ async function preview(payload: { lang: 'id' | 'en'; priceFormat: 'dpp' | 'detai
 }
 
 function goBack() {
-  router.push({ name: cfg.listRoute })
+  router.push({ name: cfg.value.listRoute })
 }
 
 function openEdit() {
-  router.push({ name: cfg.editRoute, params: { id } })
+  router.push({ name: cfg.value.editRoute, params: { id: id.value } })
 }
 
 function formatCurrency(v: number | string = 0) {

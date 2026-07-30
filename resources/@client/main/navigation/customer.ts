@@ -30,7 +30,7 @@ export const customerNavigation: NavItem[] = [
       {
         icon: "File",
         pageName: "penawarans-list-proenergi",
-        title: "Quotation",
+        title: "Quotation Proenergi",
         activePageNames: [
           "penawarans-create-proenergi",
           "penawarans-edit-proenergi",
