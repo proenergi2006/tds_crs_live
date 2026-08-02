@@ -17,9 +17,7 @@ interface StepperProps {
   steps: StepItem[];
   direction?: 'vertical' | 'horizontal';
   size?: 'sm' | 'md' | 'lg';
-  /** Tampilkan badge status (Selesai/Berlangsung/Menunggu) di tiap step. */
   showStatusBadge?: boolean;
-  /** Tampilkan label "STEP 1" dst. di atas judul. Default off. */
   showLabel?: boolean;
 }
 
@@ -131,18 +129,14 @@ function isConnectorFilled(step: StepItem): boolean {
 </script>
 
 <template>
-  <!-- Vertical Stepper -->
   <div v-if="direction === 'vertical'" class="flex flex-col">
     <div v-for="(step, index) in steps" :key="index" class="flex" :class="sz.gap">
-      <!-- Icon + connector -->
       <div class="flex flex-col items-center">
         <div :class="circleClass(step.status, sz.iconWrapV)">
-          <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
+          <span v-if="step.status === 'active'" class="step-pulse-ring text-success" aria-hidden="true" />
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'completed'" icon="CheckCheck" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'active'" icon="Loader2" :class="sz.iconInner" />
-          <!-- <span v-else-if="step.status === 'active'"
-            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" /> -->
           <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
@@ -150,7 +144,6 @@ function isConnectorFilled(step: StepItem): boolean {
           :class="[sz.connectorGap, isConnectorFilled(step) ? 'bg-success' : 'bg-slate-200']" />
       </div>
 
-      <!-- Content -->
       <div :class="['flex flex-1 items-start justify-between gap-3', sz.contentPt]">
         <div class="min-w-0">
           <p v-if="showLabel"
@@ -180,7 +173,6 @@ function isConnectorFilled(step: StepItem): boolean {
     </div>
   </div>
 
-  <!-- Horizontal Stepper -->
   <div v-else class="flex w-full items-start">
     <div v-for="(step, index) in steps" :key="index" class="flex flex-1 min-w-0 flex-col items-center">
       <div class="flex w-full items-center">
@@ -190,11 +182,10 @@ function isConnectorFilled(step: StepItem): boolean {
         <div v-else class="flex-1" />
 
         <div :class="circleClass(step.status, sz.iconWrapH)">
-          <span v-if="step.status === 'active'" class="step-arc text-success" aria-hidden="true" />
+          <span v-if="step.status === 'active'" class="step-pulse-ring text-success" aria-hidden="true" />
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
-          <span v-else-if="step.status === 'active'"
-            :class="twMerge('rounded-full bg-success animate-pulse', sz.dot)" />
+          <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success', sz.dot)" />
           <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
@@ -227,27 +218,32 @@ function isConnectorFilled(step: StepItem): boolean {
 </template>
 
 <style scoped>
-/* Ring parsial (busur ~70%) untuk step aktif — kesan "sedang berlangsung".
-   conic-gradient mewarnai busur, mask radial menyisakannya jadi cincin tipis. */
-.step-arc {
+/* Cincin putus-putus buat step aktif -- kesan "lagi berlangsung" tanpa
+   animasi berputar terus (spinner versi sebelumnya kerasa ganggu). Efek
+   "napas": ring membesar dikit sambil memudar, terus balik lagi. */
+.step-pulse-ring {
   position: absolute;
   inset: -4px;
   border-radius: 9999px;
-  background: conic-gradient(currentColor 0deg 250deg, transparent 250deg 360deg);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
-  animation: step-arc-spin 1.4s linear infinite;
+  border: 2px dashed currentColor;
+  animation: step-pulse 1.8s ease-in-out infinite;
 }
 
-@keyframes step-arc-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes step-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.35;
   }
 }
 
-/* Pop sekali saat circle baru berpindah status (pending → active / active → completed).
-   Class-nya baru muncul di DOM tepat saat status berubah, jadi animasi otomatis
-   terpicu ulang tiap kali circleClass() menghasilkan string berbeda. */
+/* Pop sekali pas circle-nya baru pindah status (pending → active / active →
+   completed). Class ini baru muncul di DOM tepat saat status berubah, jadi
+   animasinya otomatis ke-trigger ulang tiap kali circleClass() ngehasilin
+   string yang beda. */
 .step-pop {
   animation: step-pop 0.35s ease-out;
 }
@@ -265,7 +261,7 @@ function isConnectorFilled(step: StepItem): boolean {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .step-arc,
+  .step-pulse-ring,
   .step-pop {
     animation: none;
   }

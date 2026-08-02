@@ -18,6 +18,7 @@ interface CustomerDocumentType {
   name: string
   is_active: boolean
   requires_number: boolean
+  category: string | null
 }
 interface CustomerDocumentRecord {
   id: number
@@ -84,9 +85,9 @@ function regionName(item: { name?: string } | null | undefined): string | null {
   return item?.name ?? null
 }
 
-/* Computed: ringkasan Data Customer, sumber dari data hasil submit form
+/* Computed: ringkasan Data Customer, sumbernya data hasil submit form
    onboarding publik (customers, customer_addresses [registered_npwp],
-   customer_payment, customer_logistic_claims) -- dipisah per kartu supaya
+   customer_payment, customer_logistic_claims). Dipisah per kartu biar
    tiap kartu bisa punya layout sendiri di template. */
 const corporateRows = computed(() => {
   const cust = props.customer || {}
@@ -215,7 +216,13 @@ const deleteDocumentDialogOpen = ref(false)
 const deleteDocumentTarget = ref<CustomerDocumentRecord | null>(null)
 const deleteDocumentLoading = ref(false)
 
-const activeDocumentTypes = computed(() => documentTypes.value.filter(t => t.is_active))
+// "Dokumen Lampiran" cuma nampilin dokumen legal customer dari Customer
+// Onboarding (NIB/NPWP/Akta Pendirian/Dokumen Lainnya, category='onboarding').
+// Sengaja pakai allow-list, bukan exclude category='lcr', biar kategori baru
+// di masa depan gak otomatis ikut nongol di sini.
+const activeDocumentTypes = computed(() =>
+  documentTypes.value.filter(t => t.is_active && t.category === 'onboarding'),
+)
 const documentRows = computed(() =>
   activeDocumentTypes.value.map(type => ({
     type,
@@ -271,10 +278,10 @@ function cancelDocumentUpload(typeId: number) {
   state.error = ''
 }
 
-/* Action: upload/replace dokumen. Backend cuma sediakan create+delete (tidak
-   ada endpoint replace/update), jadi "Ganti" diimplementasikan sebagai upload
-   dokumen baru lalu hapus dokumen lama milik jenis yang sama setelah upload
-   sukses (best-effort, tidak memblokir sukses utama kalau cleanup gagal). */
+/* Action: upload/replace dokumen. Backend cuma nyediain create+delete, gak
+   ada endpoint replace/update -- jadi "Ganti" itu upload dokumen baru dulu,
+   baru hapus yang lama setelah upload sukses (best-effort, cleanup gagal
+   gak sampai menggagalkan upload utamanya). */
 async function submitDocumentUpload(row: { type: CustomerDocumentType; document: CustomerDocumentRecord | null }) {
   const state = rowState(row.type.id)
 
@@ -351,9 +358,9 @@ function formatDocumentDate(value: string | null) {
   }
 }
 
-/* State: Kontak Customer (customer_contact_types + customer_contacts) --
-   dipakai juga untuk kartu PIC (satu sumber data, satu tampilan, tidak lagi
-   dipisah jadi "PIC Details" read-only + "Kontak Customer" tabel CRUD). */
+/* State: Kontak Customer (customer_contact_types + customer_contacts).
+   Dipakai juga buat kartu PIC -- satu sumber data, satu tampilan, gak lagi
+   dipisah jadi "PIC Details" read-only + tabel CRUD "Kontak Customer". */
 const contactTypesApi = createResourceApi('/customer-contact-types')
 const customerContactsApi = createResourceApi(`/customers/${props.idCustomer}/contacts`)
 

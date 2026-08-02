@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Actions\Customer\CloseCustomerKycAction;
+use App\Actions\Customer\GenerateCustomerDataDocumentAction;
 use App\Actions\Customer\GenerateCustomerKycDocumentAction;
 use App\Enums\CustomerKycStatus;
 use App\Enums\CustomerReviewQuestionCode;
@@ -460,9 +461,9 @@ class CustomerVerificationController extends Controller
         return response()->noContent();
     }
 
-    // Filter berbasis kyc_status. 1 endpoint, 2 mode: Marketing (customer.manage)
-    // lihat draft miliknya sendiri, Admin Finance (verification.customer) lihat
-    // forwarded+closed lintas-marketing.
+    // 1 endpoint, 2 mode, difilter dari kyc_status: Marketing (customer.manage)
+    // cuma lihat draft miliknya sendiri, Admin Finance (verification.customer)
+    // lihat forwarded+closed lintas-marketing.
     public function reviewStats(Request $r)
     {
         $user = $r->user();
@@ -541,8 +542,8 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // Satu-satunya cara resolve id_customer dari id_verification -- route param
-    // satu-satunya yang tersedia di halaman verifikasi Admin Finance.
+    // Cara satu-satunya buat resolve id_customer dari id_verification, karena
+    // itu satu-satunya route param yang ada di halaman verifikasi Admin Finance.
     public function reviewShow(int $id)
     {
         $user = auth()->user();
@@ -616,7 +617,7 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    // TIDAK menulis is_forwarded -- itu tanggung jawab forward().
+    // Gak nulis is_forwarded di sini, itu tanggung jawabnya forward().
     public function getReview(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
@@ -811,11 +812,11 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // Forward Marketing -> Admin Finance, 1 aksi tanpa payload. WAJIB validasi
-    // kelengkapan Tab 2 (semua question_code di review_answers terisi) + Tab 4
-    // (latestCreditSubmission ada & credit_limit_request terisi) sebelum
-    // kyc_status boleh pindah dari draft. Tab 1 tidak perlu cek tambahan --
-    // field wajib customers sudah ditegakkan sejak record dibuat via onboarding.
+    // Forward Marketing -> Admin Finance, 1 aksi tanpa payload. Sebelum kyc_status
+    // boleh pindah dari draft, wajib cek Tab 2 udah lengkap (semua question_code
+    // di review_answers terisi) dan Tab 4 juga (latestCreditSubmission ada &
+    // credit_limit_request terisi). Tab 1 gak perlu cek tambahan, field wajib
+    // customers udah ditegakkan sejak record dibuat lewat onboarding.
     public function forward(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
@@ -871,15 +872,16 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    // Admin Finance menutup KYC: input credit_limit_approval + top_approval final,
-    // TIDAK BISA di-undo -- risiko kesalahan input diterima sadar sebagai trade-off.
-    // Role 9 (Admin Finance) dicek eksplisit DI ATAS permission verification.customer
-    // -- BM (role 8) punya permission yang sama tapi tidak boleh menutup KYC.
+    // Admin Finance nutup KYC di sini: input credit_limit_approval + top_approval
+    // final, dan gak bisa di-undo -- risiko salah input kita terima sebagai trade-off.
+    // Role 9 (Admin Finance) dicek eksplisit, di atas permission verification.customer,
+    // soalnya BM (role 8) punya permission yang sama tapi gak boleh nutup KYC.
     public function close(Request $request, int $id, CloseCustomerKycAction $action): \Illuminate\Http\JsonResponse
     {
         $data = $request->validate([
             'credit_limit_approval' => 'required|numeric|min:0',
             'top_approval'          => 'required|numeric|min:0',
+            'financial_review'      => 'nullable|string',
         ]);
 
         $cv = CustomerVerification::findOrFail($id);
@@ -902,19 +904,20 @@ class CustomerVerificationController extends Controller
             return response()->json(['message' => 'Belum ada pengajuan credit untuk customer ini.'], 422);
         }
 
-        $submission = $action->execute($cv, $submission, (int) $data['credit_limit_approval'], (int) $data['top_approval']);
+        $submission = $action->execute($cv, $submission, (int) $data['credit_limit_approval'], (int) $data['top_approval'], $data['financial_review'] ?? null);
 
         return response()->json([
             'kyc_status'            => CustomerKycStatus::Closed->value,
             'credit_limit_approval' => $submission->credit_limit_approval,
             'top_approval'          => $submission->top_approval,
+            'financial_review'      => $submission->financial_review,
         ]);
     }
 
-    // Agregasi Data Customer + Sales Review + LCR + Credit Application +
-    // Penawaran Lookup jadi 1 PDF untuk rapat management (offline). Hanya bisa
-    // diakses setelah kyc_status forwarded/closed -- dokumen cetak wewenang
-    // Admin Finance, baru relevan setelah Marketing selesai forward.
+    // Gabungin Data Customer + Sales Review + LCR + Credit Application +
+    // Penawaran Lookup jadi 1 PDF, buat rapat management (offline). Cuma bisa
+    // diakses kalau kyc_status udah forwarded/closed -- dokumen cetak ini
+    // wewenangnya Admin Finance, baru relevan setelah Marketing selesai forward.
     public function document(Request $request, int $id, GenerateCustomerKycDocumentAction $action)
     {
         if ($request->user()->cant('verification.customer')) {
@@ -936,11 +939,38 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("KYC-{$safeName}-{$cv->id_verification}.pdf");
     }
 
+    // Terpisah dari document() -- Penawaran Lookup sengaja gak diikutkan. Gating sama kayak document().
+    public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->kyc_status, [CustomerKycStatus::Forwarded, CustomerKycStatus::Closed], true)) {
+            return response()->json(['message' => 'Dokumen KYC hanya bisa dicetak setelah di-forward.'], 409);
+        }
+
+        $data = $action->execute($cv->customer);
+
+        // Base64 data URI, bukan URL -- dompdf tidak resolve URL eksternal/relative dengan reliable.
+        $leftPath = public_path('images/logo-new.png');
+        $rightPath = public_path('images/logo-crs.png');
+        $data['logoLeft'] = file_exists($leftPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($leftPath)) : null;
+        $data['logoRight'] = file_exists($rightPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($rightPath)) : null;
+
+        $pdf = \PDF::loadView('customer.data-customer-document', $data)->setPaper('A4', 'portrait');
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
+
+        return $pdf->stream("Data-Customer-{$safeName}-{$cv->id_verification}.pdf");
+    }
+
     /**
-     * (CA8, pivot 2026-07-10, dulu C6) Rewire: antrean Admin Finance sekarang
-     * berdasarkan document_approval_steps step 1 (Admin Finance jadi step
-     * pertama di model 2-step baru, dulu step 2) berstatus pending (role
-     * id_role=9), bukan is_active/is_reviewed/disposisi_result.
+     * Antrean Admin Finance ini diambil dari document_approval_steps step 1 yang
+     * masih pending (Admin Finance = step pertama di model 2-step, role id_role=9),
+     * bukan dari is_active/is_reviewed/disposisi_result.
      */
     public function reviewAdminIndex(Request $r)
     {
@@ -990,7 +1020,6 @@ class CustomerVerificationController extends Controller
 
         $cv = CustomerVerification::with('customer')->findOrFail($id);
 
-        // business_type ambil dari legal/corporate kalau ada
         $legal = json_decode($cv->legal_data ?? '{}', true);
         $businessType = $legal['corporate']['ownership'] ?? ($legal['corporate']['tipe_bisnis_text'] ?? '-');
 
@@ -1002,16 +1031,16 @@ class CustomerVerificationController extends Controller
             'business_type' => $businessType,
             'form' => [
                 'logistik_summary'  => $cv->logistik_summary ?? '',
-                'logistik_result'   => $cv->logistik_result_text ?? ($cv->logistik_result ?? ''), // sesuaikan nama kolom Anda
+                'logistik_result'   => $cv->logistik_result_text ?? ($cv->logistik_result ?? ''),
                 'assessment_result' => $cv->assessment_result ?? '',
             ],
         ]);
     }
 
     /**
-     * (CA8, pivot 2026-07-10, dulu C6) Rewire: antrean BM sekarang berdasarkan
-     * document_approval_steps step 2 (FINAL di model 2-step baru, dulu step 3)
-     * berstatus pending (role id_role=8), bukan is_reviewed/disposisi_result.
+     * Antrean BM ini diambil dari document_approval_steps step 2 (step FINAL di
+     * model 2-step) yang masih pending (role id_role=8), bukan dari
+     * is_reviewed/disposisi_result.
      */
     public function reviewBmIndex(Request $r)
     {
@@ -1023,7 +1052,7 @@ class CustomerVerificationController extends Controller
         $perPage = (int) ($r->query('per_page', 25));
 
         $rows = $this->pendingStepQuery(self::ROLE_BM)
-            ->with(['customer']) // pastikan relasi ada
+            ->with(['customer'])
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('nama_perusahaan', 'ilike', "%{$q}%")

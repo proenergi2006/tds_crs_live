@@ -75,7 +75,6 @@ class CustomerCreditSubmissionController extends Controller
                 'submission_type'        => $data['submission_type'],
                 'credit_limit_request'   => $data['credit_limit_request'] ?? null,
                 'top_request'            => $data['top_request'] ?? null,
-                'notes'                  => $data['notes'] ?? null,
                 'created_by'             => $user->id,
                 'updated_by'             => $user->id,
             ]);
@@ -113,7 +112,6 @@ class CustomerCreditSubmissionController extends Controller
             'submission_type'        => $data['submission_type'],
             'credit_limit_request'   => $data['credit_limit_request'] ?? null,
             'top_request'            => $data['top_request'] ?? null,
-            'notes'                  => $data['notes'] ?? null,
             'updated_by'             => $user->id,
         ]);
 
@@ -170,7 +168,7 @@ class CustomerCreditSubmissionController extends Controller
             'credit_limit_approval' => $submission->credit_limit_approval,
             'top_request'      => $submission->top_request,
             'top_approval'     => $submission->top_approval,
-            'notes'            => $submission->notes,
+            'financial_review' => $submission->financial_review,
             'items'            => $submission->items->map(fn (CustomerCreditItem $item) => $this->formatItem($item))->values(),
             'approval'         => $cycle ? [
                 'status'              => $cycle->status->value,

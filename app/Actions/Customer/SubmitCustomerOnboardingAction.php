@@ -10,6 +10,8 @@ use App\Models\CustomerDocument;
 use App\Models\CustomerDocumentType;
 use App\Models\CustomerLogistik;
 use App\Models\CustomerVerification;
+use App\Services\CustomerCodeGenerator;
+use App\Services\CustomerFileNamingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +29,7 @@ class SubmitCustomerOnboardingAction
     public function execute(CustomerVerification $cv, array $data, string $actorName, ?string $ip): void
     {
         DB::transaction(function () use ($cv, $data, $actorName) {
+            $this->assignCustomerCode($cv);
             $this->updateCustomer($cv, $data['identity'] ?? [], $actorName);
             $this->saveRegisteredAddress($cv, $data['identity'] ?? [], $data['registered_address'] ?? []);
             $this->saveInvoiceContact($cv, $data['invoice_contact'] ?? []);
@@ -37,6 +40,24 @@ class SubmitCustomerOnboardingAction
 
             $this->saveDocuments($cv, $data['documents'] ?? []);
         });
+    }
+
+    // customer_code belum pernah di-generate di manapun (live: semua row masih '').
+    // Digenerate di sini, pas submit onboarding, bukan pas customer record pertama
+    // dibuat -- soalnya data live udah ada 70+ customer tanpa onboarding, jadi kalau
+    // digenerate lebih awal butuh backfill terpisah buat data existing itu.
+    // Guard-nya idempotent -- kalau udah keisi (submit ulang, meski sekarang
+    // digerbangi is_submitted), gak digenerate lagi.
+    private function assignCustomerCode(CustomerVerification $cv): void
+    {
+        $customer = $cv->customer;
+
+        if (!empty($customer->customer_code)) {
+            return;
+        }
+
+        $customer->customer_code = CustomerCodeGenerator::generate();
+        $customer->save();
     }
 
     private function updateCustomer(CustomerVerification $cv, array $identity, string $actorName): void
@@ -158,22 +179,23 @@ class SubmitCustomerOnboardingAction
 
     private function storeDocument(CustomerVerification $cv, string $code, UploadedFile $file, ?string $documentNumber): void
     {
-        $typeId = CustomerDocumentType::where('code', $code)->value('id_document_type');
+        $type = CustomerDocumentType::where('code', $code)->first();
 
-        if (!$typeId) {
+        if (!$type) {
             Log::warning("SubmitCustomerOnboardingAction: CustomerDocumentType not found for code '{$code}'.");
 
             return;
         }
 
-        $path = $file->store("customer_documents/{$cv->id_customer}", 'public');
+        [$folder, $fileName] = CustomerFileNamingService::build($cv->customer, $type, null, $file->getClientOriginalExtension());
+        $path = $file->storeAs($folder, $fileName, 'public');
 
         CustomerDocument::create([
             'id_customer'      => $cv->id_customer,
-            'id_document_type' => $typeId,
+            'id_document_type' => $type->id_document_type,
             'document_number'  => $documentNumber,
             'file_path'        => $path,
-            'file_name'        => $file->getClientOriginalName(),
+            'file_name'        => $fileName,
             'uploaded_at'      => now(),
             'uploaded_by'      => null,
         ]);

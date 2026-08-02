@@ -22,6 +22,13 @@
 
     .muted { color: #777; font-style: italic; }
     .section { margin-bottom: 4px; }
+
+    /* financial_review butuh list-nya balik lagi -- kena strip sama reset
+       `* { margin:0; padding:0 }` di atas, mirip masalah Preflight di app. */
+    .rich-text-content ul { list-style: disc; padding-left: 1.4em; margin: 4px 0; }
+    .rich-text-content ol { list-style: decimal; padding-left: 1.4em; margin: 4px 0; }
+    .rich-text-content li { margin: 2px 0; }
+    .rich-text-content p { margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -120,7 +127,7 @@
         <td class="label">TOP Disetujui (hari)</td><td class="colon">:</td><td>{{ $submission->top_approval ?? '-' }}</td>
       </tr>
       <tr>
-        <td class="label">Catatan</td><td class="colon">:</td><td>{{ $submission->notes ?? '-' }}</td>
+        <td class="label">Financial Review</td><td class="colon">:</td><td class="rich-text-content">{!! $submission->financial_review ?? '-' !!}</td>
       </tr>
     </table>
   @else

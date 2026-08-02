@@ -38,7 +38,6 @@ const emit = defineEmits<TomSelectEmit>();
 
 const tomSelectRef = ref<TomSelectElement>();
 
-// Compute all default options
 const computedOptions = computed(() => {
   let options: TomSelectProps["options"] = {
     ...props.options,
@@ -74,14 +73,10 @@ const computedOptions = computed(() => {
   return options;
 });
 
-// Referensi clone dipegang langsung lewat closure (bukan di-query ulang dari
-// DOM via data-id) supaya cleanup di unmounted() tidak bergantung pada elemen
-// masih bisa ditemukan lewat selector saat itu. Query-based lookup terbukti
-// tidak reliable untuk clonedEl.TomSelect.dropdown yang di-append ke <body>
-// (dropdownParent: 'body') -- dropdown itu hidup di luar subtree yang di-unmount
-// Vue, jadi satu-satunya jalan cleanup-nya adalah lewat destroy() di sini, dan
-// itu butuh referensi clone yang pasti benar, bukan hasil query yang bisa gagal
-// match / kena elemen basi kalau ada leftover.
+// Simpan referensi clone lewat closure, bukan query ulang by data-id --
+// dropdown TomSelect (dropdownParent: 'body') gak selalu ketemu lagi lewat
+// selector pas cleanup, apalagi kalau ada leftover elemen basi. Kenapa
+// cleanup-nya harus manual sama sekali, lihat penjelasan di unmounted().
 let clonedElRef: TomSelectElement | undefined;
 
 const vSelectDirective = {
@@ -93,13 +88,17 @@ const vSelectDirective = {
     const classNames = el?.getAttribute("class");
     classNames && clonedEl.setAttribute("data-initial-class", classNames);
 
-    // Hide original element
-    el?.parentNode && el?.parentNode.appendChild(clonedEl);
+    // Hide the original element. Clone goes in right after `el` via
+    // insertAdjacentElement, not parentNode.appendChild -- appendChild always
+    // lands at the end of the parent, so a sibling TomSelect that remounts
+    // later via :key (a cascading region dropdown forced to remount by its
+    // parent value, say) gets its clone pushed past siblings mounted
+    // earlier. Every select after it visibly shifts by one grid slot.
+    el?.insertAdjacentElement("afterend", clonedEl);
     el.setAttribute("hidden", "true");
 
     clonedElRef = clonedEl;
 
-    // Initialize tom select
     setValue(clonedEl, props);
     init(el, clonedEl, props, computedOptions.value, emit);
   },
@@ -109,15 +108,14 @@ const vSelectDirective = {
     updateValue(el, clonedElRef, value, props, computedOptions.value, emit);
   },
   unmounted() {
-    // `mounted()` clones `el` and appends the clone as a raw DOM sibling
-    // (outside Vue's render tree) so tom-select.js can take over that clone
-    // without Vue fighting it for control of `el` itself. Vue only knows how
-    // to clean up `el` on unmount — the manually-appended clone (the thing
-    // actually visible/interactive to the user) is invisible to Vue's own
-    // unmount cleanup and was leaking as an orphaned node whenever this
-    // component unmounts (e.g. via :key-forced remount, or an ancestor v-if),
-    // leaving a dead TomSelect (and, with dropdownParent: 'body', an orphaned
-    // dropdown stuck on <body>) behind.
+    // mounted() clones `el` and drops the clone in as a raw DOM sibling,
+    // outside Vue's render tree, so tom-select.js can own it without Vue
+    // fighting for control of `el`. Problem is, Vue only ever cleans up `el`
+    // on unmount. The clone -- the actual visible/interactive element -- is
+    // invisible to that cleanup, so it leaked as an orphaned node on every
+    // unmount (:key-forced remount, ancestor v-if, etc), leaving a dead
+    // TomSelect behind and, with dropdownParent: 'body', an orphaned
+    // dropdown stuck on <body> too.
     clonedElRef?.TomSelect?.destroy();
     clonedElRef?.remove();
     clonedElRef = undefined;

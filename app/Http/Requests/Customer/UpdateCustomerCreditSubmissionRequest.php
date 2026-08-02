@@ -6,12 +6,9 @@ use App\Enums\CustomerCreditSubmissionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
-/**
- * `authorize()` selalu true -- ownership check per-row (customer.id_user)
- * dilakukan manual di `CustomerCreditSubmissionController::update()`.
- */
 class UpdateCustomerCreditSubmissionRequest extends FormRequest
 {
+    // authorize() selalu true, ownership dicek di controller. Konvensinya ada di standards/backend.md.
     public function authorize(): bool
     {
         return true;
@@ -23,7 +20,6 @@ class UpdateCustomerCreditSubmissionRequest extends FormRequest
             'submission_type'        => ['required', new Enum(CustomerCreditSubmissionType::class)],
             'credit_limit_request'   => 'nullable|numeric|min:0',
             'top_request'            => 'nullable|integer|min:0',
-            'notes'                  => 'nullable|string',
         ];
     }
 }

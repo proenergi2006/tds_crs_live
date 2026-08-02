@@ -1,0 +1,30 @@
+/* Section: Rich text content. Tailwind Preflight strips list/paragraph styling
+   globally, including content injected via v-html (CKEditor output shown read-only
+   elsewhere). No @tailwindcss/typography here, so it's restored manually,
+   scoped to .rich-text-content. */
+
+.rich-text-content ul {
+    list-style: disc;
+    padding-left: 1.5em;
+}
+
+.rich-text-content ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+}
+
+.rich-text-content li {
+    margin: 0.25em 0;
+}
+
+.rich-text-content p {
+    margin: 0.5em 0;
+}
+
+.rich-text-content p:first-child {
+    margin-top: 0;
+}
+
+.rich-text-content p:last-child {
+    margin-bottom: 0;
+}

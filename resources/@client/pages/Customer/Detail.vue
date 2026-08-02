@@ -21,8 +21,8 @@ const { success, error: notifyError } = useNotification()
 
 const idCustomer = Number(route.params.id)
 
-/* State: load utama, dipakai bareng oleh header & CustomerDataTab (supaya
-   tidak fetch GET /api/customers/{id} dua kali). */
+/* State: load utama -- dipakai bareng header & CustomerDataTab supaya
+   GET /api/customers/{id} cukup sekali. */
 const loading = ref(true)
 const customerSummary = ref<any>({})
 
@@ -100,7 +100,6 @@ async function submitForward() {
   <div class="page-content-wrapper">
     <div class="intro-x flex flex-col gap-4">
 
-      <!-- HEADER -->
       <div
         class="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
@@ -137,7 +136,6 @@ async function submitForward() {
             <Tab.Button class="flex items-center gap-2 px-4 py-2.5 text-sm" :class="selected
               ? 'text-primary border-b-primary font-medium'
               : 'text-slate-500 border-b-transparent hover:text-slate-700 hover:border-b-slate-300'">
-              <!-- <Lucide :icon="t.icon" class="h-4 w-4" /> -->
               <span>{{ t.label }}</span>
             </Tab.Button>
           </Tab>
@@ -155,7 +153,7 @@ async function submitForward() {
             <CreditDataTab :id-customer="idCustomer" :kyc-status="kycStatus" />
           </Tab.Panel>
           <Tab.Panel>
-            <LcrDataTab :id-customer="idCustomer" />
+            <LcrDataTab :id-customer="idCustomer" :customer-logistik="customerSummary?.logistik" />
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>

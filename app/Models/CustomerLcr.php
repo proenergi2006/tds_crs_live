@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-use App\Enums\CustomerLcrVesselQuantityCheckingMethod;
 use App\Enums\CustomerLcrVesselType;
 use App\Enums\CustomerLcrVesselUnloadingMethod;
+use App\Enums\SiteEnvironment;
+use App\Enums\StorageType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
@@ -20,40 +22,37 @@ class CustomerLcr extends Model
         'id_customer',
 
         /* Grup 1: Identitas & info umum */
-        'site_name', 'survey_address', 'survey_province', 'survey_regency', 'survey_date',
+        'site_name', 'survey_date',
         'surveyor_names', 'site_business_type', 'site_business_type_other',
         'site_environment', 'site_environment_other', 'site_environment_notes',
         'competitors', 'operating_hours', 'product_volume', 'survey_notes',
-        'picustomer', 'website', 'survey_phone', 'survey_fax', 'id_wilayah', 'id_wil_oa',
+        'id_wil_oa',
 
         /* Grup 2: Akses & rute */
         'max_truck_capacity_min', 'max_truck_capacity_max', 'access_notes',
-        'route_costs', 'distance_from_depot', 'road_condition_photos',
+        'route_costs', 'distance_from_depot',
         'min_vol_kirim', 'rute_lokasi', 'note_lokasi',
 
         /* Grup 3: Layout & unloading truk */
-        'site_layout_photos', 'unloading_method', 'max_trucks_per_day',
-        'unloading_layout_photos', 'unloading_notes',
+        'unloading_method', 'max_trucks_per_day', 'unloading_notes',
 
         /* Grup 4: Penyimpanan */
         'storage_type', 'storage_type_other', 'storage_capacity',
-        'storage_notes', 'storage_facility_photos',
+        'storage_notes',
 
         /* Grup 5: Verifikasi quality/quantity */
-        'quality_checking_method', 'quality_checking_notes',
-        'quantity_checking_method', 'quantity_checking_notes',
-        'measurement_evidence_photos',
+        'quality_checking_method', 'quality_checking_method_other', 'quality_checking_notes',
+        'quantity_checking_method', 'quantity_checking_method_other', 'quantity_checking_notes',
 
         /* Grup 6: Vessel/Jetty */
-        'supports_vessel_delivery', 'vessel_type', 'vessel_cargo_capacity',
-        'vessel_unloading_method', 'vessel_quantity_checking_method',
-        'vessel_quantity_checking_notes', 'vessel_quality_checking_method',
-        'vessel_quality_checking_notes', 'vessel_layout_photos',
+        'supports_vessel_delivery', 'vessel_type', 'vessel_type_other', 'vessel_cargo_capacity',
+        'vessel_unloading_method', 'vessel_unloading_method_other',
+        'vessel_quantity_checking_method', 'vessel_quantity_checking_method_other', 'vessel_quantity_checking_notes',
+        'vessel_quality_checking_method', 'vessel_quality_checking_method_other', 'vessel_quality_checking_notes',
         'jetty_type', 'max_loa', 'min_pbl', 'draft_lws', 'jetty_capacity_dwt',
         'jetty_permit_info', 'document_requirements',
 
         /* Grup 7: Foto lain & lokasi */
-        'company_office_photos', 'additional_photos',
         'latitude', 'longitude', 'google_maps_link',
 
         /* Audit */
@@ -63,46 +62,46 @@ class CustomerLcr extends Model
 
     protected $casts = [
         'id_customer' => 'integer',
-        'id_wilayah'  => 'integer',
         'id_wil_oa'   => 'integer',
+
+        // Pakai enum reusable App\Enums\SiteEnvironment, sama kayak yang dipakai
+        // CustomerLogistik::site_environment. Gak perlu enum khusus LCR karena
+        // opsinya identik (Industri/Pemukiman/Lainnya).
+        'site_environment' => SiteEnvironment::class,
 
         'survey_date' => 'date',
 
-        'surveyor_names' => 'array',
-        'competitors'    => 'array',
-        'operating_hours'=> 'array',
         'product_volume' => 'array',
-        'picustomer'     => 'array',
 
         'max_truck_capacity_min' => 'float',
         'max_truck_capacity_max' => 'float',
         'route_costs'            => 'array',
-        'road_condition_photos'  => 'array',
 
-        'site_layout_photos'      => 'array',
-        'max_trucks_per_day'      => 'integer',
-        'unloading_layout_photos' => 'array',
+        'max_trucks_per_day' => 'integer',
 
-        'storage_facility_photos' => 'array',
+        // Reuse StorageType::class, enum yang sama dipakai CustomerLogistik::storage_type.
+        'storage_type'     => StorageType::class,
+        'storage_capacity' => 'float',
 
-        'measurement_evidence_photos' => 'array',
+        // quality_checking_method/quantity_checking_method/vessel_quality_checking_method/
+        // vessel_quantity_checking_method cast-nya 'array' biasa, bukan enum. Isinya array
+        // of string enum value karena checkbox multi-select; validasi per-item dilempar
+        // ke request layer, bukan di sini.
+        'quality_checking_method'  => 'array',
+        'quantity_checking_method' => 'array',
 
         'supports_vessel_delivery'        => 'boolean',
         'vessel_type'                     => CustomerLcrVesselType::class,
         'vessel_unloading_method'         => CustomerLcrVesselUnloadingMethod::class,
-        'vessel_quantity_checking_method' => CustomerLcrVesselQuantityCheckingMethod::class,
-        'vessel_layout_photos'            => 'array',
+        'vessel_quantity_checking_method' => 'array',
+        'vessel_quality_checking_method'  => 'array',
         'max_loa'                         => 'float',
         'min_pbl'                         => 'float',
         'draft_lws'                       => 'float',
         'jetty_capacity_dwt'              => 'float',
 
-        'company_office_photos' => 'array',
-        'additional_photos'     => 'array',
-        'latitude'              => 'float',
-        'longitude'             => 'float',
-
-        'storage_capacity' => 'float',
+        'latitude'  => 'float',
+        'longitude' => 'float',
 
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -123,11 +122,18 @@ class CustomerLcr extends Model
         return $this->hasMany(\App\Models\CustomerContact::class, 'id_lcr', 'id_lcr');
     }
 
+    // Kebalikan dari CustomerAddress::lcr(). Cuma baris address_type=site_address yang
+    // punya id_lcr terisi, jadi relasi ini otomatis kefilter ke alamat site survei saja.
+    public function address(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerAddress::class, 'id_lcr', 'id_lcr');
+    }
+
     /**
-     * Riwayat approval polymorphic (`document_approvals`, code=customer_lcr_survey).
-     * morphMany (bukan morphOne) supaya re-submit setelah reject tetap
-     * menyisakan riwayat siklus sebelumnya -- pola sama dengan
-     * CustomerVerification::documentApprovals().
+     * Riwayat approval polymorphic (`document_approvals`, code=customer_lcr_survey),
+     * mengikuti pola yang sama dengan CustomerVerification::documentApprovals().
+     * Pakai morphMany supaya riwayat siklus sebelumnya tetap tersimpan walau
+     * ada re-submit setelah reject.
      */
     public function documentApprovals(): MorphMany
     {

@@ -13,10 +13,11 @@ const props = withDefaults(
     required?: boolean;
     disabled?: boolean;
     readonly?: boolean;
+    prefix?: string;
     suffix?: string;
     min?: number;
     max?: number;
-    decimals?: number; // jumlah desimal yang diizinkan; 0 = bilangan bulat
+    decimals?: number;
   }>(),
   {
     label: '',
@@ -25,6 +26,7 @@ const props = withDefaults(
     required: false,
     disabled: false,
     readonly: false,
+    prefix: '',
     suffix: '',
     min: undefined,
     max: undefined,
@@ -78,7 +80,7 @@ function formatDisplay(n: number): string {
 }
 
 function sanitize(raw: string): string {
-  // Strip thousand separator dots; sisakan hanya digit dan satu koma desimal
+  // Sisain digit & koma doang, sisanya dibuang
   let val = raw.replace(/[^\d,]/g, '')
 
   const parts = val.split(',')
@@ -125,6 +127,13 @@ function handleBlur() {
     </FormLabel>
 
     <div class="relative">
+      <div
+        v-if="prefix"
+        class="font-caption pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3 text-slate-500"
+      >
+        {{ prefix }}
+      </div>
+
       <FormInput
         :model-value="displayValue"
         type="text"
@@ -134,7 +143,7 @@ function handleBlur() {
         :disabled="disabled"
         :readonly="readonly"
         class="text-right"
-        :class="[error ? 'input-error' : '', suffix ? 'pr-9' : '']"
+        :class="[error ? 'input-error' : '', suffix ? 'pr-9' : '', prefix ? 'pl-10' : '']"
         @input="handleInput"
         @blur="handleBlur"
       />

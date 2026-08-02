@@ -4,17 +4,17 @@ import { ref, computed, onMounted } from 'vue'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Alert from '@/components/Base/Alert'
-import { FormLabel, FormTextarea } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi'
 
-// Header-only (credit_limit_request + top_request + notes) -- limit kredit
-// itu agregat, bukan per-produk, jadi tidak ada UI list item produk.
-// credit_limit_approval/top_approval read-only, cuma tampil kalau sudah
-// closed -- tidak pernah diisi lewat form Marketing.
+// Header-only (credit_limit_request + top_request): limit kredit sifatnya
+// agregat, bukan per-produk, jadi gak ada UI list item produk di sini.
+// credit_limit_approval/top_approval/financial_review read-only dan cuma
+// muncul kalau sudah closed -- semua diisi Admin Finance saat Tutup KYC
+// (AdminFinance/Verify.vue), gak pernah lewat form Marketing ini.
 
 const props = defineProps<{
   idCustomer: number
@@ -25,17 +25,16 @@ const { success, error: notifyError } = useNotification()
 
 const creditSubmissionsApi = createResourceApi(`/customers/${props.idCustomer}/credit-submissions`)
 
-/* State: pengajuan kredit -- endpoint CRUD multi-row secara teknis, tapi Tab
-   4 KYC cuma butuh 1 row "current" (index 0 dari response, sudah
-   orderByDesc di backend). */
+/* State: pengajuan kredit. Endpoint-nya CRUD multi-row, tapi Tab 4 KYC cuma
+   pakai 1 row "current" -- index 0 dari response, backend sudah orderByDesc. */
 const loading = ref(true)
 const saving = ref(false)
 const submissionId = ref<number | null>(null)
 const creditLimitRequest = ref<number | null>(null)
 const topRequest = ref<number | null>(null)
-const notes = ref<string>('')
 const creditLimitApproval = ref<number | null>(null)
 const topApproval = ref<number | null>(null)
+const financialReview = ref<string>('')
 
 const locked = computed(() => !!props.kycStatus && props.kycStatus !== 'draft')
 
@@ -43,9 +42,9 @@ function applySubmission(row: any) {
   submissionId.value = row?.id ?? null
   creditLimitRequest.value = row?.credit_limit_request ?? null
   topRequest.value = row?.top_request ?? null
-  notes.value = row?.notes ?? ''
   creditLimitApproval.value = row?.credit_limit_approval ?? null
   topApproval.value = row?.top_approval ?? null
+  financialReview.value = row?.financial_review ?? ''
 }
 
 function formatCurrency(value: number | null): string {
@@ -75,7 +74,6 @@ async function saveSubmission() {
       submission_type: 'new_customer',
       credit_limit_request: creditLimitRequest.value,
       top_request: topRequest.value,
-      notes: notes.value,
     }
 
     const { data } = submissionId.value === null
@@ -119,10 +117,6 @@ onMounted(fetchSubmission)
         <div class="grid gap-4 sm:grid-cols-2">
           <CurrencyField v-model="creditLimitRequest" label="Credit Limit Request" required :disabled="locked" />
           <NumberField v-model="topRequest" label="TOP Request" suffix="hari" :decimals="0" :disabled="locked" />
-          <div class="sm:col-span-2">
-            <FormLabel>Catatan</FormLabel>
-            <FormTextarea v-model="notes" rows="3" :auto-resize="true" :disabled="locked" />
-          </div>
         </div>
 
         <div class="mt-5 flex justify-end">
@@ -147,6 +141,12 @@ onMounted(fetchSubmission)
           <span class="font-label">TOP Approval</span>
           <span class="font-strong text-right">{{ topApproval !== null ? `${topApproval} hari` : '-' }}</span>
         </div>
+      </div>
+      <div class="mt-3">
+        <div class="font-label">Financial Review</div>
+        <div v-if="financialReview" class="font-body rich-text-content mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+          v-html="financialReview" />
+        <div v-else class="font-body mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">-</div>
       </div>
     </CardSection>
   </div>

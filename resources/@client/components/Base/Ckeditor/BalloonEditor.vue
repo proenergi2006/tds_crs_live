@@ -2,7 +2,7 @@
 import "@/assets/css/vendors/ckeditor.css";
 import BalloonEditor from "@ckeditor/ckeditor5-build-balloon";
 import { ref, onMounted, inject } from "vue";
-import { type CkeditorElement, init } from "./ckeditor";
+import { type CkeditorElement, init, updateData } from "./ckeditor";
 
 export type ProvideBalloonEditor = (el: CkeditorElement) => void;
 
@@ -42,6 +42,9 @@ const bindInstance = (el: CkeditorElement) => {
 const vEditorDirective = {
   mounted(el: CkeditorElement) {
     init(el, BalloonEditor, { props, emit, cacheData });
+  },
+  updated(el: CkeditorElement) {
+    updateData(el, { props, cacheData });
   },
 };
 

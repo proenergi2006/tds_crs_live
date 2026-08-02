@@ -4,14 +4,9 @@ namespace App\Http\Requests\Customer;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * `authorize()` selalu true -- ownership check per-row (customer.id_user)
- * dilakukan manual di `CustomerContactController::store()`, bukan di sini,
- * karena butuh route param `customer` yang FormRequest ini tidak punya akses
- * sebelum route resolve.
- */
 class StoreCustomerContactRequest extends FormRequest
 {
+    // authorize() selalu true, ownership dicek di controller. Konvensinya ada di standards/backend.md.
     public function authorize(): bool
     {
         return true;

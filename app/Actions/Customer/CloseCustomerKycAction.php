@@ -10,15 +10,16 @@ use Illuminate\Support\Facades\DB;
 class CloseCustomerKycAction
 {
     /**
-     * Close a KYC cycle: record the final approved credit limit/TOP on the
-     * submission and move the verification to `closed`. Not reversible.
+     * Closes out a KYC cycle -- saves the final approved credit limit/TOP on
+     * the submission and flips the verification to `closed`. Can't be undone.
      */
-    public function execute(CustomerVerification $verification, CustomerCreditSubmission $submission, int $creditLimitApproval, int $topApproval): CustomerCreditSubmission
+    public function execute(CustomerVerification $verification, CustomerCreditSubmission $submission, int $creditLimitApproval, int $topApproval, ?string $financialReview): CustomerCreditSubmission
     {
-        return DB::transaction(function () use ($verification, $submission, $creditLimitApproval, $topApproval) {
+        return DB::transaction(function () use ($verification, $submission, $creditLimitApproval, $topApproval, $financialReview) {
             $submission->update([
                 'credit_limit_approval' => $creditLimitApproval,
                 'top_approval'          => $topApproval,
+                'financial_review'      => $financialReview,
             ]);
 
             $verification->update(['kyc_status' => CustomerKycStatus::Closed]);

@@ -5,17 +5,12 @@ import Button from '@/components/Base/Button'
 import { FormInput } from '@/components/Base/Form'
 import Lucide from '@/components/Base/Lucide'
 
-// Pengembangan dari FileUploadField.vue (baris ikon generik, tidak ada
-// thumbnail) jadi grid thumbnail gambar. File tersimpan pakai
-// existingFiles[].url (sudah ada), file baru pakai URL.createObjectURL() --
-// WAJIB revoke saat file dihapus atau component unmount supaya tidak leak
-// memory.
-
 type ExistingImage = {
   id?: string | number;
   name: string;
   url: string;
   size?: number;
+  caption?: string | null;
 }
 
 type ModelValue = File | File[] | null
@@ -90,9 +85,9 @@ const acceptedText = computed(() => {
 
 const displayError = computed(() => props.error || localError.value)
 
-/* Object URL lifecycle: dibuat untuk tiap file baru, di-revoke saat file
-   dihapus dari selectedFiles atau saat component unmount -- supaya tidak
-   menumpuk blob URL (memory leak). */
+/* Object URL lifecycle: dibikin per file baru, di-revoke begitu file itu
+   hilang dari selectedFiles atau pas component unmount, biar blob URL-nya
+   gak numpuk jadi memory leak. */
 const objectUrls = ref<Map<File, string>>(new Map())
 
 watch(
@@ -122,14 +117,19 @@ onBeforeUnmount(() => {
   }
 })
 
-/* Caption lokal per thumbnail (opsional, withCaption) -- komponen ini tidak
-   menyimpan caption di state parent, cuma emit perubahan lewat
-   update:caption supaya parent yang menyimpan nilainya. */
+/* Caption lokal per thumbnail, opsional lewat withCaption. Komponen ini gak
+   nyimpen caption-nya sendiri di state parent -- cuma emit update:caption,
+   parent yang urus penyimpanannya. */
 const existingCaptions = ref<Map<string | number, string>>(new Map())
 const newCaptions = ref<Map<File, string>>(new Map())
 
 function existingCaptionValue(file: ExistingImage) {
-  return existingCaptions.value.get(file.id ?? file.name) ?? ''
+  // Map ini cuma nyimpen edit yang kejadian di sesi ini. Kalau belum pernah
+  // diketik ulang, jatuhkan ke caption awal dari server (file.caption) --
+  // bukan '' langsung, soalnya itu yang bikin caption tersimpan hilang
+  // begitu reload.
+  const key = file.id ?? file.name
+  return existingCaptions.value.has(key) ? existingCaptions.value.get(key)! : (file.caption ?? '')
 }
 
 function updateExistingCaption(file: ExistingImage, value: string) {
@@ -219,7 +219,7 @@ function formatSize(bytes?: number) {
 <template>
   <div class="space-y-2">
     <div v-if="label || hint" class="flex flex-col gap-1">
-      <label v-if="label" class="font-strong">
+      <label v-if="label" class="font-label">
         {{ label }}
       </label>
 
