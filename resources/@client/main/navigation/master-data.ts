@@ -72,6 +72,12 @@ export const masterDataNavigation: NavItem[] = [
         ],
       },
       {
+        icon: "Building2",
+        pageName: "cabang",
+        title: "Cabang",
+        permission: "master-data.cabang.manage",
+      },
+      {
         icon: "MapPin",
         title: "Wilayah",
         subMenu: [

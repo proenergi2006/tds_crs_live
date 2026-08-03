@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\CustomerMigrationController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
@@ -74,7 +74,7 @@ Route::get('produk-hargas/check', [ProdukHargaController::class, 'check']);
 // 3. Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // a) Get current user
-    Route::get('user', fn(Request $req) => $req->user());
+    Route::get('user', [ImpersonationController::class, 'whoami']);
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
     Route::get('/dashboard/marketing-summary', [DashboardController::class, 'marketingSummary']);
 
@@ -94,6 +94,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
     });
+
+    Route::middleware(['can:admin.users.impersonate', 'throttle:10,1'])->group(function () {
+        Route::post('/users/{user}/impersonate', [ImpersonationController::class, 'start']);
+    });
+
+    Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])
+        ->middleware('throttle:30,1');
 
     // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class, 'generate']);

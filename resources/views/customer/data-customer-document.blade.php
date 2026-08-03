@@ -58,6 +58,8 @@
       border: 1px solid #1e3a8a; border-top: none; padding: 4px 6px 8px; text-align: left;
       font-size: 11px; color: #1e5fbf;
     }
+
+    .page-break-before { page-break-before: always; }
   </style>
 </head>
 <body>
@@ -205,7 +207,7 @@
   </div>
 
   {{-- 3. Person In Charge --}}
-  <div class="section">
+  <div class="section page-break-before">
     <div class="section-header">3. Person In Charge</div>
     <div class="section-body">
       @php

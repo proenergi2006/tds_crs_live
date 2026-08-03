@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required, email, requiredIf } from '@vuelidate/validators'
 import { debounce } from 'lodash'
@@ -14,6 +15,7 @@ import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
 
 /* Section: Types */
@@ -44,6 +46,8 @@ const userApi = createResourceApi('/users')
 const roleApi = createResourceApi('/roles')
 const cabangApi = createResourceApi('/cabangs')
 const { success, error } = useNotification()
+const router = useRouter()
+const auth = useAuthStore()
 
 /* State: data & pagination */
 const allUsers = ref<User[]>([])
@@ -106,6 +110,11 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const userToDelete = ref<number | null>(null)
 
+/* State: impersonate */
+const impersonateModal = ref(false)
+const impersonateTarget = ref<User | null>(null)
+const impersonateLoading = ref(false)
+
 /* Section: Computed */
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -135,6 +144,8 @@ const users = computed(() => {
 const totalUsers = computed(() => allUsers.value.length)
 const activeUsers = computed(() => allUsers.value.filter(u => !!u.is_active).length)
 const inactiveUsers = computed(() => allUsers.value.filter(u => !u.is_active).length)
+
+const canImpersonate = computed((): boolean => auth.can('admin.users.impersonate'))
 
 /* Section: Lifecycle & watch */
 onMounted(() => {
@@ -328,6 +339,35 @@ async function submitDelete() {
   }
 }
 
+/* Section: Action handlers - impersonate */
+function openImpersonateConfirm(user: User) {
+  impersonateTarget.value = user
+  impersonateModal.value = true
+}
+
+function cancelImpersonate() {
+  impersonateModal.value = false
+  impersonateTarget.value = null
+}
+
+async function submitImpersonate() {
+  if (!impersonateTarget.value) return
+
+  impersonateLoading.value = true
+  try {
+    const { data } = await axios.post(`/api/users/${impersonateTarget.value.id}/impersonate`)
+
+    auth.setToken(data.access_token)
+    impersonateModal.value = false
+
+    window.location.href = router.resolve({ name: 'dashboard-overview-1' }).href
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message || 'Gagal impersonate user')
+  } finally {
+    impersonateLoading.value = false
+  }
+}
+
 /* Section: Helpers */
 function getInitials(name: string) {
   if (!name) return 'U'
@@ -450,6 +490,11 @@ function getInitials(name: string) {
                   @click="confirmDelete(user.id)" title="Delete">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
+                <Button v-if="canImpersonate" variant="soft-info" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                  :disabled="Number(user.id_role) === 1 || !user.is_active || Number(user.id) === Number(auth.user?.id)"
+                  @click="openImpersonateConfirm(user)" title="Impersonate">
+                  <Lucide icon="LogIn" class="h-4 w-4" />
+                </Button>
               </div>
             </Table.Td>
           </Table.Tr>
@@ -558,6 +603,30 @@ function getInitials(name: string) {
           <Button variant="outline-secondary" @click="resetModal = false">Cancel</Button>
           <Button variant="primary" :loading="resetLoading" @click="submitResetPassword">
             Reset Password
+          </Button>
+        </div>
+      </Dialog.Panel>
+    </Dialog>
+
+    <!-- Impersonate Confirm Modal -->
+    <Dialog v-model:open="impersonateModal">
+      <Dialog.Panel class="w-full max-w-md p-0 overflow-hidden">
+        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <h3 class="text-lg font-semibold text-slate-800">Impersonate User</h3>
+        </div>
+
+        <div class="p-6">
+          <p class="text-sm text-slate-600">
+            Anda akan masuk sebagai
+            <span class="font-medium text-slate-800">{{ impersonateTarget?.name }}</span>.
+            Sesi ini berlaku 2 jam dan bisa diakhiri kapan saja lewat tombol Kembali ke Admin.
+          </p>
+        </div>
+
+        <div class="flex justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4">
+          <Button variant="outline-secondary" @click="cancelImpersonate">Cancel</Button>
+          <Button variant="primary" :loading="impersonateLoading" @click="submitImpersonate">
+            Impersonate
           </Button>
         </div>
       </Dialog.Panel>

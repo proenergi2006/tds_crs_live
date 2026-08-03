@@ -21,6 +21,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Lihat application logs (Monitoring)',
             'roles'       => [1],
         ],
+        [
+            'name'        => 'admin.users.impersonate',
+            'module'      => 'admin',
+            'description' => 'Impersonate user lain untuk keperluan debug (masuk sebagai user tsb)',
+            'roles'       => [1],
+        ],
 
         // Master Data
         [
@@ -33,7 +39,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'master-data.wilayah.manage',
             'module'      => 'master-data',
             'description' => 'Kelola data wilayah (Provinsi, Kabupaten)',
-            'roles'       => [1, 2, 8],
+            'roles'       => [1, 8],
         ],
         [
             'name'        => 'master-data.cabang.manage',
