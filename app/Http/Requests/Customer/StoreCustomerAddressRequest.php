@@ -6,14 +6,9 @@ use App\Enums\CustomerAddressType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
-/**
- * `authorize()` selalu true -- ownership check per-row (customer.id_user)
- * dilakukan manual di `CustomerAddressController::store()`, bukan di sini,
- * karena butuh route param `customer` yang FormRequest ini tidak punya akses
- * sebelum route resolve.
- */
 class StoreCustomerAddressRequest extends FormRequest
 {
+    // authorize() selalu true, ownership dicek di controller. Konvensinya ada di standards/backend.md.
     public function authorize(): bool
     {
         return true;

@@ -13,7 +13,7 @@ import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 const { error } = useNotification()
-const api = createResourceApi('/review/admin/customer-verifications')
+const api = createResourceApi('/review/customer-verifications')
 
 const rows = ref<any[]>([])
 const searchQuery = ref('')
@@ -26,8 +26,8 @@ const loading = ref(false)
 
 async function fetchStats() {
   try {
-    const { data } = await axios.get('/api/review/admin/customer-verifications/stats')
-    queueCount.value = data.queue ?? 0
+    const { data } = await axios.get('/api/review/customer-verifications/stats')
+    queueCount.value = data.forwarded ?? 0
   } catch {
     // stats gagal dimuat tidak menghalangi list utama
   }
@@ -40,6 +40,7 @@ async function fetchData(page = 1) {
       page,
       per_page: perPage.value,
       q: searchQuery.value || undefined,
+      tab: 'forwarded',
     })
 
     rows.value = data.data ?? []
@@ -100,19 +101,19 @@ watch(perPage, () => fetchData(1))
               <span v-else class="font-strong">LC{{ row.id_verification }}</span>
             </Table.Td>
 
-            <Table.Td class="text-slate-700">{{ row.customer?.kode_pelanggan || '-' }}</Table.Td>
+            <Table.Td class="text-slate-700">{{ row.customer?.customer_code || '-' }}</Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ row.customer?.nama_perusahaan || '-' }}</div>
+              <div class="font-strong">{{ row.customer?.company_name || '-' }}</div>
             </Table.Td>
 
-            <Table.Td class="text-slate-600">{{ row.customer?.alamat_perusahaan || '-' }}</Table.Td>
+            <Table.Td class="text-slate-600">{{ row.customer?.company_address || '-' }}</Table.Td>
 
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-1">
                 <RouterLink :to="{ name: 'review-data-customer-admin-detail', params: { id: row.id_verification } }"
                   class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                  title="Evaluasi">
+                  title="Verifikasi">
                   <Lucide icon="Eye" class="h-4 w-4" />
                 </RouterLink>
               </div>

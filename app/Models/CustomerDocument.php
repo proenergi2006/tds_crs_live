@@ -19,6 +19,8 @@ class CustomerDocument extends Model
         'file_name',
         'uploaded_at',
         'uploaded_by',
+        'id_lcr',
+        'metadata',
         'status',
         'notes',
         'created_by',
@@ -27,12 +29,19 @@ class CustomerDocument extends Model
 
     protected $casts = [
         'uploaded_at' => 'datetime',
+        'metadata'    => 'array',
         'status'      => CustomerDocumentStatus::class,
     ];
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
+    }
+
+    // Nullable -- cuma keisi buat dokumen foto LCR (id_document_type=lcr_*), lainnya NULL.
+    public function lcr(): BelongsTo
+    {
+        return $this->belongsTo(CustomerLcr::class, 'id_lcr', 'id_lcr');
     }
 
     public function documentType(): BelongsTo

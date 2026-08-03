@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', {
       id_role: number
       two_factor_secret: string | null
       permissions: string[]
+      impersonation: { admin: { id: number; name: string } | null; expires_at: string } | null
     } | null,
   }),
 
@@ -33,6 +34,11 @@ export const useAuthStore = defineStore('auth', {
     // forceLogout() sedang/baru saja menangani sebuah 401, sebelum guard lain
     // melakukan clear+redirect-nya sendiri (cegah double-redirect).
     isForceLoggingOut: (): boolean => isLoggingOut,
+
+    isImpersonating: (state): boolean => state.user?.impersonation != null,
+
+    impersonationAdmin: (state): { id: number; name: string } | null =>
+      state.user?.impersonation?.admin ?? null,
   },
 
   actions: {
@@ -49,6 +55,11 @@ export const useAuthStore = defineStore('auth', {
           this.forceLogout()
         }
       }
+    },
+
+    setToken(token: string) {
+      localStorage.setItem('access_token', token)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
     },
 
     clear() {

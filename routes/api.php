@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\CustomerMigrationController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
@@ -51,6 +51,7 @@ use App\Http\Controllers\OngkosTruckController;
 use App\Http\Controllers\PoCustomerController;
 use App\Http\Controllers\SalesConfirmationController;
 use App\Http\Controllers\CustomerLcrController;
+use App\Http\Controllers\MapsLinkController;
 use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\DeliveryPlanController;
 use App\Http\Controllers\PrController;
@@ -61,22 +62,6 @@ use App\Http\Controllers\Monitoring\LogViewerController;
 // Controller Proenergi
 use App\Http\Controllers\PenawaranProenergiController;
 // End
-
-
-// use Illuminate\Support\Facades\Mail;
-
-// Route::get('/debug-test-mail', function () {
-//     try {
-//         Mail::raw('Test kirim email dari Laravel (API).', function ($m) {
-//             $m->to('iwan.hermawan@proenergi.co.id')->subject('Test SMTP (API)');
-//         });
-//         return response()->json(['ok' => true, 'message' => 'Email test dikirim. Cek inbox/spam.']);
-//     } catch (\Throwable $e) {
-//         // Lihat juga storage/logs/laravel.log
-//         return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
-//     }
-// });
-
 
 // 1. Login
 Route::post('login', [AuthController::class, 'login']);
@@ -89,15 +74,14 @@ Route::get('produk-hargas/check', [ProdukHargaController::class, 'check']);
 // 3. Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // a) Get current user
-    Route::get('user', fn(Request $req) => $req->user());
+    Route::get('user', [ImpersonationController::class, 'whoami']);
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
     Route::get('/dashboard/marketing-summary', [DashboardController::class, 'marketingSummary']);
 
-    // b) Roles CRUD + permission matrix, c) Users CRUD — admin-only. Pakai middleware `can`
-    // (alias existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize, sudah
-    // terhubung ke Spatie Gate::before + admin bypass id_role=1 di AuthServiceProvider) supaya
-    // endpoint role/permission/user benar-benar digerbangi backend, bukan cuma disembunyikan
-    // di menu FE. Mirrors the `can:approval-template.manage` block below.
+    // b) Roles CRUD + permission matrix, c) Users CRUD -- admin-only. Middleware `can` di sini
+    // alias ke Illuminate\Auth\Middleware\Authorize (app/Http/Kernel.php), udah nyambung ke
+    // Spatie Gate::before + admin bypass id_role=1 di AuthServiceProvider. Jadi endpoint
+    // role/permission/user beneran digerbangi backend, bukan cuma disembunyikan di menu FE.
     Route::middleware('can:admin.users.manage')->group(function () {
         Route::apiResource('roles', RoleController::class);
         Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
@@ -110,6 +94,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::put('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
     });
+
+    Route::middleware(['can:admin.users.impersonate', 'throttle:10,1'])->group(function () {
+        Route::post('/users/{user}/impersonate', [ImpersonationController::class, 'start']);
+    });
+
+    Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])
+        ->middleware('throttle:30,1');
 
     // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class, 'generate']);
@@ -132,51 +123,43 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/produk-hargas/add-margin', [ProdukHargaController::class, 'addMargin']);
 
     // Approval Template master data (admin-only, Prioritas H4 -
-    // approval-system-customer-verification.md). Pakai middleware `can` (alias
-    // existing di app/Http/Kernel.php -> Illuminate\Auth\Middleware\Authorize,
-    // sudah terhubung ke Spatie Gate::before + admin bypass id_role=1 di
-    // AuthServiceProvider) supaya endpoint ini benar-benar digerbangi backend,
-    // bukan cuma disembunyikan di menu FE.
+    // approval-system-customer-verification.md). Sama pola gate-nya kayak
+    // blok Roles/Users di atas (middleware `can`).
     Route::middleware('can:approval-template.manage')->group(function () {
         Route::apiResource('approval-templates', ApprovalTemplateController::class);
     });
 
-    // Customer ownership migration (Administrator-only) -- reassign customers.id_user
-    // from one owner to another, bulk, with audit trail (customer_ownership_migrations).
-    // penawarans.user_id is intentionally untouched by this feature.
+    // Customer ownership migration (Administrator-only) -- pindahin customers.id_user
+    // dari satu owner ke owner lain secara bulk, ada audit trail-nya di
+    // customer_ownership_migrations. penawarans.user_id sengaja gak ikut disentuh.
     Route::middleware('can:admin.customer-migration.manage')->group(function () {
         Route::get('admin/customers/by-owner', [CustomerMigrationController::class, 'byOwner']);
         Route::post('admin/customers/migrate-ownership', [CustomerMigrationController::class, 'migrateOwnership']);
     });
 
-    // Customer Document Type master data. READ (index/show) dan WRITE
-    // (store/update/destroy) digerbangi TERPISAH -- read dikonsumsi juga
-    // oleh Customer/Detail.vue Tab 1 untuk role yang jauh lebih luas dari
-    // Administrator (Key Account dkk, lihat gate customer.viewOwn/
-    // customer.viewAny di CustomerController), bukan cuma admin.
+    // Customer Document Type master data. READ dan WRITE digerbangi terpisah.
+    // Read-nya dipakai juga di Customer/Detail.vue Tab 1, dan itu diakses role
+    // yang jauh lebih luas dari Administrator (Key Account dkk, lihat gate
+    // customer.viewOwn/customer.viewAny di CustomerController), jadi gak bisa
+    // dikunci admin-only.
     //
-    // READ: cukup authenticated, TIDAK digerbangi permission tambahan --
-    // pola sama dengan lookup master data read-only lain di project (lihat
-    // apiResource('satuans'/'ukurans'/'produks'/'vendors'/'terminals', ...)
-    // di bawah, semuanya TANPA middleware `can:` sama sekali untuk index/show).
+    // READ: cukup authenticated, gak ada permission tambahan -- sama kayak
+    // lookup master data read-only lain di project (satuans/ukurans/produks/
+    // vendors/terminals di bawah, semuanya tanpa middleware `can:` buat index/show).
     Route::apiResource('customer-document-types', CustomerDocumentTypeController::class)
         ->only(['index', 'show']);
 
-    // WRITE: admin-only -- pola sama dengan approval-templates di atas
-    // (`can` middleware, alias existing di app/Http/Kernel.php ->
-    // Illuminate\Auth\Middleware\Authorize, sudah terhubung ke Spatie
-    // Gate::before + admin bypass id_role=1 di AuthServiceProvider).
+    // WRITE: admin-only -- sama pola gate-nya kayak blok Roles/Users di atas.
     Route::middleware('can:master-data.customer-document-type.manage')->group(function () {
         Route::apiResource('customer-document-types', CustomerDocumentTypeController::class)
             ->only(['store', 'update', 'destroy']);
     });
 
-    // Customer Contact Type master data. Read/write digerbangi terpisah dengan
-    // pola sama seperti customer-document-types di atas -- read akan dikonsumsi
-    // juga oleh Customer/Detail.vue untuk role yang lebih luas dari
-    // Administrator.
+    // Customer Contact Type master data. Sama pola read/write terpisahnya
+    // kayak customer-document-types di atas -- read dipakai juga di
+    // Customer/Detail.vue buat role yang lebih luas dari Administrator.
     //
-    // READ: cukup authenticated, TIDAK digerbangi permission tambahan.
+    // READ: cukup authenticated, gak ada permission tambahan.
     Route::apiResource('customer-contact-types', CustomerContactTypeController::class)
         ->only(['index', 'show']);
 
@@ -193,39 +176,38 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
 
-    // customer_documents, scoped id_customer -- menggantikan kolom flat
-    // nib/nomor_npwp/nomor_sertifikat/dokumen_lainnya (+ pasangan _file)
-    // di customers. Authorization dilakukan di dalam controller (pola sama dengan
-    // CustomerController::show/update/destroy), bukan lewat middleware can:,
-    // karena butuh ownership check per-row (customer.id_user), bukan cek
-    // permission statis.
+    // customer_documents, scoped id_customer -- gantiin kolom flat lama
+    // nib/nomor_npwp/nomor_sertifikat/dokumen_lainnya (+ pasangan _file) di
+    // customers. Authorization-nya di dalam controller, bukan middleware can:,
+    // soalnya butuh ownership check per-row (customer.id_user), sama kayak
+    // pola di CustomerController::show/update/destroy.
     Route::get('customers/{customer}/documents', [CustomerDocumentController::class, 'index']);
     Route::post('customers/{customer}/documents', [CustomerDocumentController::class, 'store']);
+    Route::put('customers/{customer}/documents/{document}', [CustomerDocumentController::class, 'update']);
     Route::delete('customers/{customer}/documents/{document}', [CustomerDocumentController::class, 'destroy']);
 
     // customer_addresses, scoped id_customer -- alamat berbasis sistem BPS
-    // (province_id/regency_id/district_id/village_id), bukan legacy
-    // id_provinsi/id_kabupaten. Authorization sama pola dengan
-    // customer_documents di atas (ownership check di dalam controller).
+    // (province_id/regency_id/district_id/village_id), bukan id_provinsi/
+    // id_kabupaten legacy. Authorization sama pola kayak customer_documents
+    // di atas (ownership check di controller).
     Route::get('customers/{customer}/addresses', [CustomerAddressController::class, 'index']);
     Route::post('customers/{customer}/addresses', [CustomerAddressController::class, 'store']);
     Route::put('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'update']);
     Route::delete('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy']);
 
-    // customer_contacts, scoped id_customer -- multi-row PIC per customer
-    // (restrukturisasi dari kolom fixed pic_decision/pic_ordering/pic_billing/
-    // pic_invoice lama). Authorization sama pola dengan customer_addresses.
+    // customer_contacts, scoped id_customer -- multi-row PIC per customer,
+    // restrukturisasi dari kolom fixed pic_decision/pic_ordering/pic_billing/
+    // pic_invoice lama. Authorization sama pola dengan customer_addresses.
     Route::get('customers/{customer}/contacts', [CustomerContactController::class, 'index']);
     Route::post('customers/{customer}/contacts', [CustomerContactController::class, 'store']);
     Route::put('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'update']);
     Route::delete('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'destroy']);
 
     // customer_credit_submissions + customer_credit_items, scoped id_customer
-    // -- pengajuan kredit (header + detail per produk), approval siklusnya
-    // sendiri lewat document_approvals (code=customer_credit), independen
-    // dari siklus customer_verifications. Authorization sama pola dengan
-    // customer_addresses/customer_contacts di atas (ownership check di dalam
-    // controller).
+    // -- pengajuan kredit (header + detail per produk). Approval siklusnya
+    // sendiri lewat document_approvals (code=customer_credit), gak nyambung
+    // ke siklus customer_verifications. Authorization sama pola dengan
+    // customer_addresses/customer_contacts di atas.
     Route::get('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'index']);
     Route::post('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'store']);
     Route::get('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'show']);
@@ -236,15 +218,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'update']);
     Route::delete('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'destroy']);
 
-    // customer_lcr (site LCR, 1 customer bisa multi-site), approval siklusnya
-    // sendiri lewat document_approvals (code=customer_lcr_survey). Authorization
-    // sama pola dengan blok Customer di atas (ownership check di dalam controller).
+    // customer_lcr (site LCR, 1 customer bisa multi-site), approval-nya lewat
+    // document_approvals sendiri (code=customer_lcr_survey). Authorization sama
+    // pola dengan blok Customer di atas (ownership check di controller).
     Route::get('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'index']);
     Route::post('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'store']);
     Route::get('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'show']);
     Route::put('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'update']);
     Route::delete('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'destroy']);
     Route::get('lcr-sites/{lcrSite}/approval-timeline', [CustomerLcrController::class, 'approvalTimeline']);
+    Route::get('maps-link/resolve', [MapsLinkController::class, 'resolve']);
+
+    // Daftar Penawaran milik customer, bukti pendukung Admin Finance saat
+    // menilai pengajuan credit.
+    Route::get('customers/{customer}/penawarans', [PenawaranController::class, 'lookupForCustomer']);
 
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
@@ -292,7 +279,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('penawarans',                    [PenawaranController::class, 'store']);
     Route::put('penawarans/{id}',                [PenawaranController::class, 'update']);
     Route::delete('penawarans/{id}',             [PenawaranController::class, 'destroy']);
-    // routes/web.php (atau api.php kalau kamu expose via API)
     Route::get('/penawarans/{id}/preview', [\App\Http\Controllers\PenawaranController::class, 'previewPdfMultiLang']);
 
 
@@ -310,10 +296,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan']);
     Route::apiResource('customer-pos', PoCustomerController::class);
 
-    Route::post('uploads/lcr-image', [CustomerLcrController::class, 'uploadImage']);
-
-    // Antrean review Logistik lintas-customer untuk site LCR (role 6, permission
-    // logistik.lcr.verify) -- menggantikan flag_disposisi/flag_approval mentah lama.
+    // Antrean review Logistik lintas-customer buat site LCR (role 6, permission
+    // logistik.lcr.verify) -- gantiin flag_disposisi/flag_approval mentah lama.
     Route::get('review/lcr-sites', [CustomerLcrController::class, 'reviewIndex']);
     Route::get('review/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'reviewShow']);
     Route::patch('review/lcr-sites/{lcrSite}/decision', [CustomerLcrController::class, 'decide']);
@@ -322,16 +306,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Public form (pakai token) - upload internal (auth)
     Route::post('customer-verifications/{customerVerification}/upload', [CustomerVerificationController::class, 'upload']);
 
-    // Resource CustomerVerification (internal)
     Route::apiResource('customer-verifications', CustomerVerificationController::class);
 
-    // ===== Review (Marketing/Finance) – umum =====
+    /* Section: Review (Marketing/Finance) - umum */
     Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/approval-timeline', [CustomerVerificationController::class, 'approvalTimeline'])->whereNumber('id');
-    Route::patch('review/customer-verifications/{id}/review-data',   [CustomerVerificationController::class, 'saveReviewData'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review-upload', [CustomerVerificationController::class, 'uploadReviewFile'])->whereNumber('id');
 
     Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
 
@@ -339,37 +320,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
     Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
+    Route::post('review/customer-verifications/{id}/forward', [CustomerVerificationController::class, 'forward'])->whereNumber('id');
+    Route::post('review/customer-verifications/{id}/close',   [CustomerVerificationController::class, 'close'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document', [CustomerVerificationController::class, 'document'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document/data-customer', [CustomerVerificationController::class, 'dataCustomerDocument'])->whereNumber('id');
 
-    // ====== ⬇⬇⬇ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬇⬇⬇ ======
-    Route::get('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-    Route::get('/review/customer-verifications/{id}/admin-evaluation', [CustomerVerificationController::class, 'getAdminEvaluation']);
-
-
-    Route::post('review/customer-verifications/{id}/evaluation',            [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/evaluation-attachment', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
-    // ====== ⬆⬆⬆ TAMBAHAN: EVALUATION (COCOK DENGAN FE) ⬆⬆⬆ ======
-
-    // ===== Admin (biarkan seperti semula) =====
+    /* Section: Admin */
     Route::prefix('review/admin')->group(function () {
         Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
         Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-
-        // (yang ini biarkan — URL-nya menjadi /api/review/admin/review/customer-verifications/{id}/evaluation)
-        Route::prefix('review/customer-verifications')->group(function () {
-            Route::get('{id}/evaluation',  [CustomerVerificationController::class, 'getEvaluation'])->whereNumber('id');
-            Route::post('{id}/evaluation', [CustomerVerificationController::class, 'saveEvaluation'])->whereNumber('id');
-        });
-
-        // Dan alias lain yang sudah ada sebelumnya (tetap dibiarkan)
-        Route::get('/review/customer-verifications/{id}/evaluation',  [CustomerVerificationController::class, 'evaluationShow'])->whereNumber('id');
-        Route::post('/review/customer-verifications/{id}/evaluation-file', [CustomerVerificationController::class, 'evaluationUploadFile'])->whereNumber('id');
     });
 
     Route::prefix('review/bm')->group(function () {
         Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
         Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-        // simpan verifikasi BM
-        Route::patch('customer-verifications/{id}/verify', [CustomerVerificationController::class, 'bmVerify']);
     });
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
@@ -378,14 +342,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
 
     // simpan keputusan ADMIN (sudah ada): POST /api/sales-confirmations/po/{poc}
-    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']); // ⬅️ baru
+    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']);
 
     Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
     Route::post('/po-customers/{poc}/close', [PoCustomerController::class, 'closePo']);
 
     Route::get('/po-customers/{poc}/plan', [PoCustomerController::class, 'getPoPlan']);
-    Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']); // ⬅️ baru
-    Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']); // opsional
+    Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']);
+    Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']);
 
     Route::prefix('logistics')->group(function () {
         // Delivery Plan (list / edit volume / split)
@@ -423,7 +387,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('penawarans-proenergi',                    [PenawaranProenergiController::class, 'store']);
     Route::put('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'update']);
     Route::delete('penawarans-proenergi/{id}',             [PenawaranProenergiController::class, 'destroy']);
-    // routes/web.php (atau api.php kalau kamu expose via API)
     Route::get('/penawarans-proenergi/{id}/preview', [\App\Http\Controllers\PenawaranProenergiController::class, 'previewPdfMultiLang']);
     Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranProenergiController::class, 'ajukan']);
     Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
@@ -451,11 +414,10 @@ Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'u
 Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
 Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
 
-// Lookup alamat BPS 4 level (laravel-nusa-address-full-migration Task 7) —
-// pengganti fungsi /masters/provinsis + /masters/kabupatens lama di atas,
-// diperluas ke province/regency/district/village. Publik (tanpa auth) —
-// dipakai juga oleh portal onboarding /verify/:token yang tidak punya token
-// Bearer. Route lama TIDAK dihapus.
+// Lookup alamat BPS 4 level -- gantiin /masters/provinsis + /masters/kabupatens
+// lama di atas, diperluas ke province/regency/district/village. Publik (tanpa
+// auth) karena dipakai juga oleh portal onboarding /verify/:token yang gak
+// punya token Bearer. Route lama tetap dibiarkan, gak dihapus.
 Route::get('/provinces',                       [AddressController::class, 'provinces']);
 Route::get('/provinces/{province}',             [AddressController::class, 'showProvince']);
 Route::get('/provinces/{province}/regencies',   [AddressController::class, 'regencies']);

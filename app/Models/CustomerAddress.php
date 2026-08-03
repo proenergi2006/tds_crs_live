@@ -21,6 +21,7 @@ class CustomerAddress extends Model
         'village_id',
         'postal_code',
         'is_primary',
+        'id_lcr',
     ];
 
     protected $casts = [
@@ -31,6 +32,12 @@ class CustomerAddress extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
+    }
+
+    // Nullable -- cuma keisi buat address_type=site_address, sisanya NULL.
+    public function lcr(): BelongsTo
+    {
+        return $this->belongsTo(CustomerLcr::class, 'id_lcr', 'id_lcr');
     }
 
     public function province(): BelongsTo

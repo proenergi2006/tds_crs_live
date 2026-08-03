@@ -4,12 +4,9 @@ namespace App\Http\Requests\Customer;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * `authorize()` selalu true -- ownership check per-row (customer.id_user)
- * dilakukan manual di `CustomerCreditItemController::update()`.
- */
 class UpdateCustomerCreditItemRequest extends FormRequest
 {
+    // authorize() selalu true, ownership dicek di controller. Konvensinya ada di standards/backend.md.
     public function authorize(): bool
     {
         return true;

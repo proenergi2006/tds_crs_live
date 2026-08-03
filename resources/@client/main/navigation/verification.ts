@@ -13,19 +13,18 @@ export const verificationNavigation: NavItem[] = [
         permission: "verification.po-supplier",
       },
       {
-        icon: "Users",
-        pageName: "customers-verification-list",
+        icon: "Landmark",
+        pageName: "review-data-customer-admin",
         title: "Customer",
         permission: "verification.customer",
+        activePageNames: ["review-data-customer-admin-detail"],
       },
       {
         icon: "File",
         pageName: "penawarans-verifikasi",
         title: "Quotation",
         permission: "verification.quotation",
-        activePageNames: [
-          "penawarans-verifikasi-detail"
-        ]
+        activePageNames: ["penawarans-verifikasi-detail"],
       },
       {
         icon: "File",
@@ -34,8 +33,8 @@ export const verificationNavigation: NavItem[] = [
         permission: "penawaran.proenergi.verify",
         activePageNames: [
           "penawarans-verifikasi-detail-proenergi",
-          "penawarans-verifikasi-om-detail-proenergi"
-        ]
+          "penawarans-verifikasi-om-detail-proenergi",
+        ],
       },
       {
         icon: "ClipboardCheck",

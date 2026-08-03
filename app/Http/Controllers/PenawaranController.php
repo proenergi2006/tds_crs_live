@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Penawaran;
 use App\Models\PenawaranItem;
 use App\Models\PenawaranOngkos;
@@ -14,9 +15,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
-use App\Mail\PenawaranSubmittedMail;            // notifikasi ke BM saat diajukan
-use App\Mail\PenawaranNeedOmApprovalMail;       // notifikasi ke OM saat approved BM
-use App\Mail\PenawaranRejectedMail;             // notifikasi ke pembuat saat ditolak (BM/OM)
+use App\Mail\PenawaranSubmittedMail;
+use App\Mail\PenawaranNeedOmApprovalMail;
+use App\Mail\PenawaranRejectedMail;
 use PDF;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
@@ -88,11 +89,40 @@ class PenawaranController extends Controller
         return response()->json($data);
     }
 
-   /** ============================ QR HELPERS ============================ */
-   
+    // Ini bukti pendukung buat Admin Finance, bukan customer_credit_items (itu
+    // gak kepakai sama sekali). Sengaja gak difilter status, soalnya Penawaran
+    // bisa balik draft diam-diam setelah approved_om (lihat update()) -- kalau
+    // di-filter malah bisa nyembunyiin data yang relevan.
+    public function lookupForCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $penawarans = $customer->penawarans()
+            ->withSum('items as total_volume', 'volume_order')
+            ->orderByDesc('id_penawaran')
+            ->get();
+
+        $data = $penawarans->map(function (Penawaran $penawaran) {
+            return [
+                'id_penawaran'    => $penawaran->id_penawaran,
+                'nomor_penawaran' => $penawaran->nomor_penawaran,
+                'masa_berlaku'    => $penawaran->masa_berlaku,
+                'sampai_dengan'   => $penawaran->sampai_dengan,
+                'harga_dasar'     => $penawaran->harga_dasar,
+                'oat'             => $penawaran->oat,
+                'total_volume'    => $penawaran->total_volume,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+   /* Section: QR helpers */
+
    private function generateNumericCode(int $length = 8): string
 {
-    // contoh length 8 → range 10000000..99999999 (hindari leading zero)
     $min = (int) str_pad('1', $length, '0');
     $max = (int) str_pad('',  $length, '9');
     return (string) random_int($min, $max);
@@ -110,44 +140,18 @@ class PenawaranController extends Controller
        ];
    }
 
-   /** Simpan PNG ke storage/public/qrcodes/YYYY/mm/penawaran-<id>.png */
-//    private function saveQrPngToStorage(array $payload, int $idPenawaran): array
-//    {
-//        // pastikan simple-qrcode pakai GD, bukan Imagick
-//        config(['qrcode.image_backend' => 'gd']);
-
-//        $pngBinary = QrCode::format('png')
-//            ->size(512)->margin(0)->errorCorrection('M')
-//            ->generate(json_encode($payload, JSON_UNESCAPED_SLASHES));
-
-//        $dir = 'qrcodes/' . now()->format('Y/m');
-//        $safe = Str::slug("penawaran-{$idPenawaran}");
-//        $name = "{$safe}.png";
-
-//        Storage::disk('public')->put("$dir/$name", $pngBinary);
-
-//        $abs = public_path("storage/$dir/$name"); // path lokal absolut
-//        return [
-//            'abs_for_pdf' => 'file://' . $abs,        // dipakai dompdf
-//            'url'         => asset("storage/$dir/$name"), // untuk FE jika perlu
-//            'rel'         => "$dir/$name",
-//        ];
-//    }
-
-/** Simpan PNG ke storage/public/qrcodes/YYYY/mm/penawaran-<id>_<ts>.png */
 private function saveQrPngToStorage(string|array $payload, int $idPenawaran): array
 {
     // pastikan simple-qrcode pakai GD, bukan Imagick
     config(['qrcode.image_backend' => 'gd']);
 
-    // Jika array → jadikan JSON; jika string → pakai apa adanya
     $data = is_array($payload)
         ? json_encode($payload, JSON_UNESCAPED_SLASHES)
         : (string) $payload;
 
     $pngBinary = QrCode::format('png')
         ->size(512)
-        ->margin(1)                 // beri margin tipis biar mudah dipindai
+        ->margin(1)
         ->errorCorrection('M')
         ->generate($data);
 
@@ -158,16 +162,15 @@ private function saveQrPngToStorage(string|array $payload, int $idPenawaran): ar
 
     \Storage::disk('public')->put("$dir/$name", $pngBinary);
 
-    $abs = public_path("storage/$dir/$name"); // path lokal absolut
+    $abs = public_path("storage/$dir/$name");
     return [
-        'abs_for_pdf' => 'file://' . $abs,            // untuk dompdf/mpdf
-        'url'         => asset("storage/$dir/$name"), // untuk FE
+        'abs_for_pdf' => 'file://' . $abs,
+        'url'         => asset("storage/$dir/$name"),
         'rel'         => "$dir/$name",
     ];
 }
 
 
-  /** Simpan SVG ke storage (fallback) */
 private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): array
 {
     $data = is_array($payload)
@@ -200,7 +203,6 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
            'customer', 'cabang', 'items.produk.ukuran', 'user.role'
        ])->findOrFail($id);
 
-       // contact card
        $u = $penawaran->user ?: (
            !empty($penawaran->created_by)
                ? User::with('role')->where('name', $penawaran->created_by)->first()
@@ -222,12 +224,11 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
            'logo_path'       => null,
        ];
 
-       /** QR untuk dompdf: pakai file lokal jika ada; regenerate jika perlu */
        $qrPathForPdf = null;   // file://...
        $qrInlineSvg  = null;   // isi svg string (fallback terakhir)
 
        if (!empty($penawaran->qr_code)) {
-           $parsed = parse_url($penawaran->qr_code, PHP_URL_PATH); // /storage/qrcodes/...png
+           $parsed = parse_url($penawaran->qr_code, PHP_URL_PATH);
            if ($parsed && Str::startsWith($parsed, '/storage/')) {
                $abs = public_path(ltrim($parsed, '/'));
                if (is_file($abs)) {
@@ -240,11 +241,9 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
            try {
                $saved = $this->saveQrPngToStorage($this->buildQrPayload($penawaran), $penawaran->id_penawaran);
                $qrPathForPdf = $saved['abs_for_pdf'];
-               // update kolom agar konsisten
                $penawaran->forceFill(['qr_code' => $saved['url']])->save();
            } catch (\Throwable $e) {
                report($e);
-               // fallback SVG inline
                $saved = $this->saveQrSvgToStorage($this->buildQrPayload($penawaran), $penawaran->id_penawaran);
                $svg = preg_replace('/^<\?xml.*?\?>/i', '', $saved['svg']);
                if (!preg_match('/\bwidth=|\bheight=/', $svg)) {
@@ -262,32 +261,6 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
        return $pdf->stream("Quotation-{$safeNomor}.pdf");
    }
 
-
-
-    
-
-
-    /** GET /api/penawarans/{id}/preview-lub */
-    // public function previewPdflub($id)
-    // {
-    //     $penawaran = Penawaran::with(['customer', 'cabang', 'items.produk.ukuran'])
-    //         ->findOrFail($id);
-
-    //     $company = [
-    //         'nama_perusahaan' => config('app.name'),
-    //         'alamat'          => 'Alamat Perusahaan Anda',
-    //         'telepon'         => '021-xxxxxxx',
-    //         'fax'             => '021-xxxxxxx',
-    //         'logo_path'       => null,
-    //     ];
-
-    //     $pdf = PDF::loadView('penawaran.pdflub', compact('penawaran', 'company'))
-    //         ->setPaper('A4', 'portrait');
-
-    //     $safeNomor = str_replace(['/', '\\'], '-', $penawaran->nomor_penawaran);
-    //     return $pdf->stream("Quotation-{$safeNomor}.pdf");
-    // }
-
     /** GET /api/penawarans/{id} */
     public function show(Request $request, $id)
     {
@@ -296,13 +269,12 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             'cabang',
             'items.produk.jenis',
             'items.produk.ukuran.satuan',
-            'produk_harga', // relasi baru
-            'ongkos.volume', // ✅
+            'produk_harga',
+            'ongkos.volume',
             'ongkos.transportir',
             'ongkos.wilayah.provinsi',
             'ongkos.wilayah.kabupaten',
-            // Kolom BPS baru (laravel-nusa-address-full-migration Task 8.2),
-            // di samping provinsi/kabupaten lama di atas — lama tidak dihapus.
+            // Kolom BPS baru, di samping provinsi/kabupaten lama di atas — lama tidak dihapus.
             'ongkos.wilayah.province',
             'ongkos.wilayah.regency',
         ])->findOrFail($id);
@@ -334,14 +306,12 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
         $data = $request->validated();
         $data['user_id'] = $request->user()->id ?? ($data['user_id'] ?? null);
 
-        // nomor penawaran per cabang
         $cabang = Cabang::findOrFail($data['id_cabang']);
         $urut  = (int) $cabang->urut_penawaran + 1;
         $nomor = str_pad($urut, 5, '0', STR_PAD_LEFT)
                . '/TDS-PN/' . $cabang->inisial_cabang . '/' . $this->getRomanMonth(date('m')) . '/' . substr(date('Y'), -2);
         $cabang->urut_penawaran = $urut; $cabang->save();
 
-        // hitung subtotal/diskon/ppn dll
         $subtotal = 0.0;
         foreach ($data['items'] as $it) {
             $subtotal += ((float)$it['volume_order']) * ((float)$it['harga_tebus']);
@@ -368,7 +338,7 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             'discount'                   => $diskon,
             'status'                     => 'draft',
             'disposisi_penawaran'        => '1',
-            'type_pengiriman'            => $data['type_pengiriman'] ?? null, // ✅ field baru
+            'type_pengiriman'            => $data['type_pengiriman'] ?? null,
             'created_at'                 => now(),
             'created_by'                 => optional($request->user())->name,
         ]);
@@ -382,13 +352,13 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
             if (!empty($data['ongkos'])) {
                 foreach ($data['ongkos'] as $o) {
                     $penawaran->ongkos()->create([
-                         'penawaran_id'   => $penawaran->id_penawaran, // 🔥 WAJIB
-                       'wilayah_id'     => $o['id_angkut_wilayah'], // ✅ mapping
+                         'penawaran_id'   => $penawaran->id_penawaran,
+                       'wilayah_id'     => $o['id_angkut_wilayah'],
                         'transportir_id' => $o['id_transportir'],
-                        'jenis'          => $o['jenis'], 
-                     'volume_id' => $o['id_volume'], 
+                        'jenis'          => $o['jenis'],
+                     'volume_id' => $o['id_volume'],
                         'ongkos'         => $o['ongkos'],
-                      
+
                     ]);
                 }
             }
@@ -407,7 +377,7 @@ private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): ar
 
             // generate & simpan QR angka random (TANPA simpan token ke DB)
 $penawaran->refresh();
-$payloadNumber = $this->generateNumericCode(8); // ubah length kalau perlu
+$payloadNumber = $this->generateNumericCode(8);
 
 try {
     $saved = $this->saveQrPngToStorage($payloadNumber, $penawaran->id_penawaran);
@@ -419,7 +389,6 @@ try {
 $penawaran->forceFill(['qr_code' => $saved['url']])->save();
 
 
-            // update customer metadata (tidak mengganggu utama)
             DB::table('customers')
                 ->where('id_customer', $data['id_customer'])
                 ->update([
@@ -450,11 +419,10 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
 
         $data = $request->validated();
 
-        // NOTE: ownership (user_id) sengaja TIDAK di-set/overwrite di sini.
-        // Kolom ini hanya diisi sekali saat store() (create). Mengubahnya di update()
-        // akan diam-diam memindahkan kepemilikan record ke siapapun yang sedang mengedit
-        // (termasuk pemegang penawaran.viewAny yang mengedit milik user lain) — lihat
-        // catatan bug serupa yang sudah diperbaiki di CustomerController::update().
+        // NOTE: user_id (ownership) sengaja gak disentuh di sini. Kolom ini cuma
+        // diisi sekali waktu store() (create) -- kalau ikut di-overwrite di update(),
+        // kepemilikan record bisa diam-diam pindah ke siapapun yang lagi edit,
+        // termasuk pemegang penawaran.viewAny yang edit punya user lain.
 
         $subtotal = 0.0;
         foreach ($data['items'] as $it) {
@@ -492,17 +460,12 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
         try {
             $penawaran->update($data);
 
-            // ✅ RESET DISPOSISI & APPROVAL karena penawaran diubah
                 $penawaran->forceFill([
-                    'status'             => 'draft', // opsional kalau mau status juga balik draft
-                    'disposisi_penawaran'=> '1',     // draft — samakan dengan nilai store() agar Index.vue's getDisposisiLabel tetap match
-
-                    // BM reset
+                    'status'             => 'draft',
+                    'disposisi_penawaran'=> '1',     // samakan dengan store() agar Index.vue's getDisposisiLabel tetap match
                     'bm_result'          => 0,
                     'bm_tanggal'         => now(),
                     'catatan_verifikasi' => null,
-
-                    // OM reset (pastikan kolomnya ada di tabel & model)
                     'om_result'          => 0,
                     'om_tanggal'         => now(),
                     'catatan_om'         => null,
@@ -513,10 +476,10 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
         if ($request->has('ongkos')) {
             foreach ($request->ongkos as $o) {
                 $penawaran->ongkos()->create([
-                    'penawaran_id'   => $penawaran->id_penawaran, // 🔥 WAJIB
-                    'wilayah_id'     => $o['id_angkut_wilayah'], // ✅ mapping
+                    'penawaran_id'   => $penawaran->id_penawaran,
+                    'wilayah_id'     => $o['id_angkut_wilayah'],
                         'transportir_id' => $o['id_transportir'],
-                        'jenis'          => $o['jenis'],    
+                        'jenis'          => $o['jenis'],
                       'volume_id' => $o['id_volume'],
 
                         'ongkos'         => $o['ongkos'],
@@ -551,18 +514,17 @@ $penawaran->forceFill(['qr_code' => $saved['url']])->save();
 
     private function deleteQrFiles(int $idPenawaran, ?string $qrUrl = null): void
 {
-    // 1) Hapus file yang sekarang dipakai (dari kolom qr_code → URL /storage/…)
     if (!empty($qrUrl)) {
-        $path = parse_url($qrUrl, PHP_URL_PATH); // contoh: /storage/qrcodes/2025/10/penawaran-123_20251006.png
+        $path = parse_url($qrUrl, PHP_URL_PATH);
         if ($path && str_starts_with($path, '/storage/')) {
-            $rel = ltrim(substr($path, strlen('/storage/')), '/'); // qrcodes/2025/10/penawaran-123_....
+            $rel = ltrim(substr($path, strlen('/storage/')), '/');
             \Storage::disk('public')->delete($rel);
         }
     }
 
-    // 2) Sapu bersih file-file lama (jika pernah regenerate): penawaran-<id>_*.png/svg
-    $prefix = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}"); // sama seperti saat simpan
-    $all = \Storage::disk('public')->allFiles('qrcodes'); // jalan di subfolder Tahunan/Bulanan
+    // Sapu juga file lama kalau pernah regenerate -- qr_code cuma nyimpan URL yang aktif sekarang.
+    $prefix = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}");
+    $all = \Storage::disk('public')->allFiles('qrcodes');
     foreach ($all as $file) {
         $base = basename($file);
         if (str_starts_with($base, $prefix) && (str_ends_with($base, '.png') || str_ends_with($base, '.svg'))) {
@@ -584,7 +546,6 @@ public function destroy(Request $request, $id)
         return response()->json(['message' => 'Forbidden'], 403);
     }
 
-    // simpan data yang dibutuhkan sebelum record dihapus
     $idPenawaran = (int)($penawaran->id_penawaran ?? $penawaran->id);
     $qrUrl = $penawaran->qr_code;
 
@@ -599,52 +560,6 @@ public function destroy(Request $request, $id)
     return response()->json(null, 204);
 }
 
-
-    /** DELETE /api/penawarans/{id} */
-    // public function destroy($id)
-    // {
-    //     $penawaran = Penawaran::findOrFail($id);
-    //     $penawaran->delete();
-    //     return response()->json(null, 204);
-    // }
-
-    /** PATCH /api/penawarans/{id}/ajukan — kirim email ke BM */
-    // public function ajukan($id)
-    // {
-    //     $penawaran = Penawaran::with(['customer','cabang'])->findOrFail($id);
-
-    //     if ($penawaran->status !== 'draft') {
-    //         return response()->json(['message' => 'Penawaran sudah diajukan sebelumnya'], 400);
-    //     }
-
-    //     $penawaran->update([
-    //         'status'              => 'waiting_branch_manager',
-    //         'disposisi_penawaran' => '2',
-    //         'updated_at'          => now(),
-    //     ]);
-
-    //     // Ambil email Branch Manager (id_role = 8)
-    //     $recipients = \App\Models\User::where('id_role', 8)
-    //     ->whereNotNull('email')
-    //     ->pluck('email')
-    //     ->toArray();
-
-
-    //    if (!empty($recipients)) {
-    //     try {
-    //         $detailUrl = $this->detailUrl($penawaran->id_penawaran);
-
-    //         Mail::to($recipients)->send(
-    //             new PenawaranSubmittedMail($penawaran, $detailUrl)
-    //         );
-    //     } catch (\Throwable $e) {
-    //         report($e); // jangan gagalkan proses utama
-    //     }
-    // }
-
-    //     return response()->json(['message' => 'Penawaran berhasil diajukan']);
-    // }
-
     /** PATCH /api/penawarans/{id}/ajukan — kirim email ke BM */
 public function ajukan($id)
 {
@@ -658,14 +573,13 @@ public function ajukan($id)
 
     DB::beginTransaction();
     try {
-        // 1) update status penawaran
         $penawaran->update([
             'status'              => 'waiting_branch_manager',
             'disposisi_penawaran' => '2',
             'updated_at'          => now(),
         ]);
 
-        // 2) ambil email BM (id_role = 8)
+        // id_role 8 = BM
         $recipients = User::query()
             ->where('id_role', 8)
             ->whereNotNull('email')
@@ -676,14 +590,12 @@ public function ajukan($id)
             ->values()
             ->all();
 
-        // 3) log untuk debug
         \Log::info('AJUKAN PENAWARAN - BM RECIPIENTS', [
             'id_penawaran' => $penawaran->id_penawaran,
             'nomor'        => $penawaran->nomor_penawaran,
             'recipients'   => $recipients,
         ]);
 
-        // 4) kalau BM kosong, jangan dianggap sukses kirim email
         if (empty($recipients)) {
             DB::commit();
             return response()->json([
@@ -691,18 +603,10 @@ public function ajukan($id)
             ], 200);
         }
 
-        // 5) kirim email
         $detailUrl = $this->detailUrl($penawaran->id_penawaran);
 
         try {
-            // opsi 1: pakai Mailable kamu
             Mail::to($recipients)->send(new PenawaranSubmittedMail($penawaran, $detailUrl));
-
-            // opsi 2 (debug cepat): kalau mau pastikan SMTP jalan, pakai raw:
-            // Mail::raw("Penawaran {$penawaran->nomor_penawaran} diajukan. Link: {$detailUrl}", function ($m) use ($recipients) {
-            //     $m->to($recipients)->subject('Penawaran Diajukan');
-            // });
-
         } catch (\Throwable $mailErr) {
             // rollback status biar konsisten kalau email wajib sukses
             DB::rollBack();
@@ -741,37 +645,6 @@ public function ajukan($id)
     }
 }
 
-
-   
-    // public function verifikasi(Request $request, $id)
-    // {
-    //     $penawaran = Penawaran::with(['customer','cabang'])->findOrFail($id);
-    //     $request->validate(['catatan' => 'nullable|string']);
-
-    //     $penawaran->update([
-    //         'status'              => 'approved_bm',
-    //         'catatan_verifikasi'  => $request->catatan,
-    //         'bm_result'           => '1',
-    //         'bm_tanggal'          => now(),
-    //         'approved_at'         => now(),
-    //         'approved_by'         => $request->user()->name ?? 'BM',
-    //         'disposisi_penawaran' => 3, // next: OM
-    //     ]);
-
-    //     // >>> Kirim email ke semua OM untuk verifikasi <<<
-    //     $omRecipients = $this->getRoleEmails(['CEO', 'CEO', 'CEO']);
-    //     if (!empty($omRecipients)) {
-    //         try {
-    //             $detailUrl = $this->detailUrl($penawaran->id_penawaran);
-    //             Mail::to($omRecipients)->send(new PenawaranNeedOmApprovalMail($penawaran, $detailUrl));
-    //         } catch (\Throwable $e) {
-    //             report($e);
-    //         }
-    //     }
-
-    //     return response()->json(['message' => 'Status penawaran diperbarui']);
-    // }
-
     public function verifikasi(Request $request, $id)
 {
     if ($request->user()->cant('verification.quotation')) {
@@ -787,7 +660,6 @@ public function ajukan($id)
 
     DB::beginTransaction();
     try {
-        // 1) Update status penawaran
         $penawaran->update([
             'status'              => 'approved_bm',
             'catatan_verifikasi'  => $request->catatan,
@@ -800,9 +672,6 @@ public function ajukan($id)
 
         $detailUrl = $this->detailUrl($penawaran->id_penawaran);
 
-        /**
-         * 2) EMAIL KE USER PEMBUAT (penawaran.user_id)
-         */
         $creatorEmail = null;
 
         if (!empty($penawaran->user_id)) {
@@ -811,7 +680,6 @@ public function ajukan($id)
                 ->value('email');
         }
 
-        // fallback kalau user_id kosong: pakai created_by
         if (!$creatorEmail && !empty($penawaran->created_by)) {
             $creatorEmail = User::where('name', $penawaran->created_by)
                 ->whereNotNull('email')
@@ -820,7 +688,6 @@ public function ajukan($id)
 
         if ($creatorEmail) {
             try {
-                // Pakai mailable khusus update status (ideal). Kalau belum ada, sementara bisa pakai raw.
                 Mail::raw(
                     "Penawaran {$penawaran->nomor_penawaran} sudah disetujui Branch Manager.\nMenunggu approval OM/CEO.\n\nLink: {$detailUrl}",
                     function ($m) use ($creatorEmail) {
@@ -843,9 +710,6 @@ public function ajukan($id)
             ]);
         }
 
-        /**
-         * 3) EMAIL KE OM (id_role = 10) dan CEO (id_role = 2)
-         */
         $approverRecipients = User::query()
             ->whereIn('id_role', [10, 2])          // OM=10, CEO=2
             ->whereNotNull('email')
@@ -863,7 +727,6 @@ public function ajukan($id)
 
         if (!empty($approverRecipients)) {
             try {
-                // Kamu bisa pakai mailable existing untuk approval OM:
                 Mail::to($approverRecipients)->send(
                     new PenawaranNeedOmApprovalMail($penawaran, $detailUrl)
                 );
@@ -913,7 +776,6 @@ public function ajukan($id)
             'disposisi_penawaran' => 5,
         ]);
 
-        // >>> Kirim email ke pembuat penawaran <<<
         $creatorEmail = $this->getCreatorEmail($penawaran->created_by);
         if ($creatorEmail) {
             try {
@@ -951,7 +813,6 @@ public function ajukan($id)
             'disposisi_penawaran' => 6,
         ]);
 
-        // >>> Kirim email ke pembuat penawaran <<<
         $creatorEmail = $this->getCreatorEmail($penawaran->created_by);
         if ($creatorEmail) {
             try {
@@ -977,8 +838,8 @@ public function ajukan($id)
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
-        // Antrian OM: menunggu OM (sudah di-approve BM), approved, dan ditolak OM saja
-        // (ditolak BM tidak pernah sampai ke tahap OM — hanya tampil di menu BM).
+        // Antrian OM: yang nunggu OM (udah di-approve BM), approved, sama yang ditolak
+        // OM saja -- ditolak BM gak pernah sampai tahap OM, cuma nongol di menu BM.
         $query = Penawaran::with(['customer', 'cabang', 'items.produk'])
             ->whereIn('disposisi_penawaran', [3, 4, 6]);
 
@@ -1016,11 +877,9 @@ public function ajukan($id)
             'catatan_om'          => $request->catatan,
         ]);
 
-        // (opsional) Bisa juga kirim email ke creator bahwa penawaran sudah disetujui OM
         return response()->json(['message' => 'Status penawaran diperbarui oleh OM']);
     }
 
-    /** Helper: bulan Romawi */
     public function getRomanMonth($month)
     {
         $months = [
@@ -1031,7 +890,6 @@ public function ajukan($id)
         return $months[$month] ?? '';
     }
 
-    /** Helper: normalisasi angka lokal -> float */
     private function toFloat($v): float
     {
         if ($v === null || $v === '') return 0.0;
@@ -1049,18 +907,13 @@ public function ajukan($id)
         return (float)$s;
     }
 
-    /** ====== EMAIL HELPERS ====== */
+    /* Section: Email helpers */
 
     private function detailUrl(int $idPenawaran): string
     {
-        // sesuaikan dengan route FE kamu
         return url("/app/penawarans/{$idPenawaran}/detail");
     }
 
-    /**
-     * Ambil email semua user dengan role_name di daftar $roleNames.
-     * Menghormati kolom is_active jika ada.
-     */
     private function getRoleEmails(array $roleNames): array
     {
         $roleIds = Role::whereIn('role_name', $roleNames)->pluck('id_role');
@@ -1075,10 +928,6 @@ public function ajukan($id)
         return $query->pluck('email')->unique()->values()->all();
     }
 
-    /**
-     * Ambil email pembuat penawaran berdasarkan kolom created_by (nama user).
-     * Return null jika tidak ditemukan.
-     */
     private function getCreatorEmail(?string $creatorName): ?string
     {
         if (!$creatorName) return null;
@@ -1095,7 +944,7 @@ public function ajukan($id)
 
     public function previewPdfMultiLang(Request $request, $id)
     {
-        $lang = strtolower($request->query('lang', 'id')); // default: Indonesia
+        $lang = strtolower($request->query('lang', 'id'));
         $priceDetail = $request->query('price_format') === 'detail';
 
         $penawaran = Penawaran::with(['customer', 'cabang', 'items.produk.ukuran', 'user.role'])
@@ -1107,16 +956,14 @@ public function ajukan($id)
                 ->where('name', $penawaran->created_by)
                 ->first();
         }
-    
-        // Contact
+
         $contact = [
             'name'  => $u?->name ?? ($penawaran->kontak_nama ?? 'Robby Pratama Putra'),
             'role'  => $u?->role?->role_name ?? 'Project Manager',
             'phone' => $u?->telepon ?? $u?->phone ?? $u?->no_hp ?? ($penawaran->kontak_telepon ?? '-'),
             'email' => $u?->email ?? ($penawaran->kontak_email ?? '-'),
         ];
-    
-        // Company
+
         $company = [
             'nama_perusahaan' => config('app.name'),
             'alamat'          => 'Alamat Perusahaan Anda',
@@ -1124,8 +971,7 @@ public function ajukan($id)
             'fax'             => '021-xxxxxxx',
             'logo_path'       => null,
         ];
-    
-        // Pilih view berdasarkan bahasa + jenis_penawaran
+
         $jenis = (int) ($penawaran->jenis_penawaran ?? 1);
         if ($jenis === 2) {
             $view = $lang === 'en' ? 'penawaran.pdf_lub_en' : 'penawaran.pdf_lub_id';
@@ -1133,25 +979,13 @@ public function ajukan($id)
             $view = $lang === 'en' ? 'penawaran.pdf_en' : 'penawaran.pdf_id';
         }
     
-        /**
-         * ==========================
-         * QR (PO STYLE) -> BASE64 PNG
-         * ==========================
-         * Payload bisa nomor saja, atau json.
-         * Jika mau sama persis PO: pakai nomor_penawaran string.
-         */
+        /* QR gaya PO -> base64 PNG. Payload-nya bisa nomor doang atau json --
+           biar sama persis kayak PO, dipakai string nomor_penawaran. */
         $qrBase64 = null;
-    
-        // opsi 1: string saja (paling aman untuk scan)
+
+        // string saja -- paling aman untuk discan
         $qrPayload = (string) ($penawaran->nomor_penawaran ?? '');
-    
-        // opsi 2 (kalau mau detail):
-        // $qrPayload = json_encode([
-        //     'type' => 'APPROVAL_PENAWARAN',
-        //     'quotation' => $penawaran->nomor_penawaran,
-        //     'date' => now()->format('Y-m-d H:i:s'),
-        // ], JSON_UNESCAPED_SLASHES);
-    
+
         if (!empty($qrPayload)) {
             $result = Builder::create()
                 ->writer(new PngWriter())
@@ -1175,8 +1009,7 @@ public function ajukan($id)
         $logoRight = is_file($logoRightPath)
         ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoRightPath))
         : null;
-    
-        // Generate PDF
+
         $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft', 'logoRight', 'priceDetail'))
             ->setPaper('A4', 'portrait')
             ->setOptions([

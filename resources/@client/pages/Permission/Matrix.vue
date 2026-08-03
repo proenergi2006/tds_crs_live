@@ -11,42 +11,40 @@
     <template v-else>
       <div class="overflow-hidden border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-max divide-y divide-slate-200">
+          <table class="w-full min-w-max border-collapse">
             <thead class="bg-slate-50">
               <tr>
-                <th
-                  class="sticky left-0 z-20 min-w-[260px] bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
-                  Permission
+                <th class="w-52 border border-slate-200 px-3 py-3 text-left align-bottom">
+                  <FormInput v-model="searchQuery" placeholder="Cari permission yang tersedia..." class="!py-1.5 text-xs">
+                    <template #icon><Lucide icon="Search" class="h-3.5 w-3.5" /></template>
+                  </FormInput>
                 </th>
                 <th v-for="role in roles" :key="role.id_role"
-                  class="min-w-[110px] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <span class="block max-w-[100px] break-words leading-tight">{{ role.role_name }}</span>
+                  class="w-10 border border-slate-200 px-1 py-3 text-center align-bottom text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span class="mx-auto block w-fit [writing-mode:vertical-rl] rotate-180 whitespace-nowrap leading-tight"
+                    :title="role.role_name">{{ role.role_name }}</span>
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              <template v-for="group in permissionGroups" :key="group.module">
+              <template v-for="group in filteredPermissionGroups" :key="group.module">
                 <!-- Module header row -->
-                <tr class="border-t border-slate-200 bg-slate-100">
-                  <td
-                    class="sticky left-0 z-10 bg-slate-100 px-5 py-2 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
+                <tr class="bg-slate-100">
+                  <td class="border border-slate-200 px-3 py-2">
                     <span class="text-xs font-bold uppercase tracking-widest text-slate-600">
                       {{ group.module }}
                     </span>
                   </td>
-                  <td :colspan="roles.length"></td>
+                  <td class="border border-slate-200" :colspan="roles.length"></td>
                 </tr>
 
                 <!-- Permission rows -->
-                <tr v-for="perm in group.permissions" :key="perm.id"
-                  class="group border-t border-slate-100 transition hover:bg-slate-50">
-                  <td
-                    class="sticky left-0 z-10 min-w-[260px] bg-white px-5 py-3 group-hover:bg-slate-50 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:translate-x-full after:bg-gradient-to-r after:from-black/10 after:to-transparent after:content-['']">
+                <tr v-for="perm in group.permissions" :key="perm.id" class="transition hover:bg-slate-50">
+                  <td class="border border-slate-200 px-3 py-3">
                     <div class="text-sm font-medium text-slate-800">{{ perm.name }}</div>
-                    <div class="mt-0.5 text-xs text-slate-500">{{ perm.description }}</div>
                   </td>
-                  <td v-for="role in roles" :key="role.id_role" class="px-3 py-3 text-center">
+                  <td v-for="role in roles" :key="role.id_role" class="border border-slate-200 px-3 py-3 text-center">
                     <input type="checkbox" class="h-4 w-4 cursor-pointer rounded border-slate-300"
                       :checked="matrix[perm.id]?.[role.id_role] ?? false"
                       @change="toggle(perm.id, role.id_role, ($event.target as HTMLInputElement).checked)" />
@@ -89,6 +87,7 @@ import axios from 'axios'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Button from '@/components/Base/Button'
+import { FormInput } from '@/components/Base/Form'
 import Lucide from '@/components/Base/Lucide'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -122,12 +121,25 @@ const isSaving = ref(false)
 
 const permissionGroups = ref<PermissionGroup[]>([])
 const roles = ref<RoleItem[]>([])
+const searchQuery = ref('')
 
 // matrix[permId][roleId] = boolean
 const matrix = ref<Record<number, Record<number, boolean>>>({})
 const originalMatrix = ref<Record<number, Record<number, boolean>>>({})
 
 /* Section: Computed */
+const filteredPermissionGroups = computed((): PermissionGroup[] => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return permissionGroups.value
+
+  return permissionGroups.value
+    .map(group => ({
+      ...group,
+      permissions: group.permissions.filter(p => p.name.toLowerCase().includes(query)),
+    }))
+    .filter(group => group.permissions.length > 0)
+})
+
 const allPermIds = computed(() =>
   permissionGroups.value.flatMap(g => g.permissions.map(p => p.id))
 )

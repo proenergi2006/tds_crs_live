@@ -46,7 +46,7 @@ class CustomerCreditItemController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($submission->id_customer !== $customer->id_customer || $item->id_submission !== $submission->id) {
+        if ($submission->id_customer !== $customer->id_customer || $item->id_submission !== $submission->id_submission) {
             return response()->json(['message' => 'Item pengajuan kredit tidak ditemukan.'], 404);
         }
 
@@ -68,7 +68,7 @@ class CustomerCreditItemController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($submission->id_customer !== $customer->id_customer || $item->id_submission !== $submission->id) {
+        if ($submission->id_customer !== $customer->id_customer || $item->id_submission !== $submission->id_submission) {
             return response()->json(['message' => 'Item pengajuan kredit tidak ditemukan.'], 404);
         }
 

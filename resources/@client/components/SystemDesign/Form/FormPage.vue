@@ -78,8 +78,12 @@ function handleSubmit() {
   emit('submit')
 }
 
-// Cegah implicit submit saat user menekan Enter di dalam input.
-// Textarea (butuh newline) dan tombol (Enter = klik) tetap dibiarkan normal.
+// Cegah Enter di input men-trigger submit form secara implisit. Textarea
+// (perlu newline) dan tombol (Enter = klik) dibiarkan jalan normal aja.
+// contenteditable (CKEditor dkk) juga wajib dikecualikan: preventDefault()
+// di sini nyetop keydown sebelum browser sempat munculin event `beforeinput`
+// yang dipakai editor semacam itu buat deteksi "insert paragraph" -- kalau
+// gak dikecualikan, Enter di dalam editor jadi mati total.
 function handleKeydown(event: KeyboardEvent) {
   if (!props.disableEnterSubmit) return
   if (event.key !== 'Enter') return
@@ -88,6 +92,7 @@ function handleKeydown(event: KeyboardEvent) {
   const tag = target?.tagName
 
   if (tag === 'TEXTAREA' || tag === 'BUTTON') return
+  if (target?.isContentEditable) return
 
   event.preventDefault()
 }

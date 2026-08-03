@@ -36,6 +36,11 @@ const loading = ref(false)
 const pageLoading = ref(false)
 const formError = ref<string | null>(null)
 
+/* State: kunci edit field inti customer -- true kalau mode edit & kyc_status
+   != draft (guard 409 backend, CustomerController::update()). Widget kontak
+   & dokumen (CustomerDataTab.vue, endpoint terpisah) TIDAK ikut guard ini. */
+const isLocked = ref(false)
+
 /* State: lookups (cascading province -> regency, BPS data via useRegionCascade) */
 const region = useRegionCascade()
 
@@ -183,6 +188,7 @@ async function fetchCustomer() {
       postal_code: data.postal_code || '',
     })
     editOwnerName.value = data.user?.name || ''
+    isLocked.value = !!data.latest_verification && data.latest_verification.kyc_status !== 'draft'
 
     if (data.province_id) {
       isHydratingRegion.value = true
@@ -310,13 +316,18 @@ function cancel() {
 <template>
   <FormPage :title="pageTitle" :description="pageDescription" surface="plain" size="full" layout="sidebar"
     footer-placement="sidebar" :loading="loading || pageLoading" :error="formError" :submit-text="submitText"
-    submit-icon="Save" cancel-icon="ArrowLeft" @cancel="cancel" @submit="submit">
+    :disable-submit="isLocked" submit-icon="Save" cancel-icon="ArrowLeft" @cancel="cancel" @submit="submit">
     <template #action>
       <Button type="button" variant="outline-secondary" class="inline-flex items-center gap-2" @click="cancel">
         <Lucide icon="ArrowLeft" class="h-4 w-4" />
         Kembali
       </Button>
     </template>
+
+    <Alert v-if="isLocked" variant="soft-warning" class="mb-4">
+      Data inti customer ini terkunci (KYC sudah di-forward). Kontak &amp; dokumen tetap bisa diedit dari halaman
+      Detail.
+    </Alert>
 
     <!-- Section: Informasi Dasar -->
     <CardSection title="Informasi Dasar" description="Data utama customer dalam sistem">
@@ -326,7 +337,7 @@ function cancel() {
             Nama Perusahaan
             <RequiredAsterisk />
           </FormLabel>
-          <FormInput id="company_name" :value="form.company_name" placeholder="Nama Perusahaan"
+          <FormInput id="company_name" :value="form.company_name" placeholder="Nama Perusahaan" :disabled="isLocked"
             :class="getFieldError('company_name') ? 'border-rose-500' : ''" @input="onCompanyNameInput"
             @blur="v$.company_name.$touch()" />
           <small v-if="getFieldError('company_name')" class="font-caption !text-rose-600 mt-1">
@@ -351,12 +362,12 @@ function cancel() {
           </FormLabel>
           <div class="flex gap-6">
             <FormCheck>
-              <FormCheck.Input id="customer_type-retail" type="radio" value="Retail"
+              <FormCheck.Input id="customer_type-retail" type="radio" value="Retail" :disabled="isLocked"
                 v-model="form.customer_type" @change="v$.customer_type.$touch()" />
               <FormCheck.Label htmlFor="customer_type-retail">Retail</FormCheck.Label>
             </FormCheck>
             <FormCheck>
-              <FormCheck.Input id="customer_type-project" type="radio" value="Project"
+              <FormCheck.Input id="customer_type-project" type="radio" value="Project" :disabled="isLocked"
                 v-model="form.customer_type" @change="v$.customer_type.$touch()" />
               <FormCheck.Label htmlFor="customer_type-project">Project</FormCheck.Label>
             </FormCheck>
@@ -371,7 +382,7 @@ function cancel() {
             Telepon
             <RequiredAsterisk />
           </FormLabel>
-          <FormInput id="phone" v-model="form.phone" placeholder="Telepon"
+          <FormInput id="phone" v-model="form.phone" placeholder="Telepon" :disabled="isLocked"
             :class="getFieldError('phone') ? 'border-rose-500' : ''" @blur="v$.phone.$touch()" />
           <small v-if="getFieldError('phone')" class="font-caption !text-rose-600">
             {{ getFieldError('phone') }}
@@ -380,12 +391,13 @@ function cancel() {
 
         <div>
           <FormLabel for="fax">Fax</FormLabel>
-          <FormInput id="fax" v-model="form.fax" placeholder="Fax (opsional)" />
+          <FormInput id="fax" v-model="form.fax" placeholder="Fax (opsional)" :disabled="isLocked" />
         </div>
 
         <div>
           <FormLabel for="email">Email</FormLabel>
-          <FormInput id="email" v-model="form.email" type="email" placeholder="Email (opsional)" autocomplete="off" />
+          <FormInput id="email" v-model="form.email" type="email" placeholder="Email (opsional)" autocomplete="off"
+            :disabled="isLocked" />
         </div>
       </div>
     </CardSection>
@@ -401,7 +413,7 @@ function cancel() {
         <div class="md:col-span-2">
           <FormLabel for="company_address">Alamat Perusahaan</FormLabel>
           <FormTextarea id="company_address" v-model="form.company_address" placeholder="Alamat perusahaan (opsional)"
-            :rows="3" />
+            :rows="3" :disabled="isLocked" />
         </div>
 
         <div>
@@ -409,7 +421,7 @@ function cancel() {
             Provinsi
             <RequiredAsterisk />
           </FormLabel>
-          <TomSelect id="province_id" v-model="form.province_id" class="w-full"
+          <TomSelect id="province_id" v-model="form.province_id" class="w-full" :disabled="isLocked"
             :class="getFieldError('province_id') ? 'border-rose-500' : ''" @change="v$.province_id.$touch()">
             <option value="">Cari Provinsi</option>
             <option v-for="p in region.provinces.value" :key="p.id" :value="p.id">
@@ -427,7 +439,8 @@ function cancel() {
             <RequiredAsterisk />
           </FormLabel>
           <TomSelect :key="String(!!form.province_id)" id="regency_id" v-model="form.regency_id" class="w-full"
-            :class="getFieldError('regency_id') ? 'border-rose-500' : ''" @change="v$.regency_id.$touch()">
+            :disabled="isLocked" :class="getFieldError('regency_id') ? 'border-rose-500' : ''"
+            @change="v$.regency_id.$touch()">
             <option value="">
               {{ form.province_id ? 'Cari Kabupaten/Kota' : '-- Pilih Provinsi dulu --' }}
             </option>
@@ -442,7 +455,8 @@ function cancel() {
 
         <div>
           <FormLabel for="district_id">Kecamatan</FormLabel>
-          <TomSelect :key="String(!!form.regency_id)" id="district_id" v-model="form.district_id" class="w-full">
+          <TomSelect :key="String(!!form.regency_id)" id="district_id" v-model="form.district_id" class="w-full"
+            :disabled="isLocked">
             <option value="">
               {{ form.regency_id ? 'Cari Kecamatan' : '-- Pilih Kabupaten/Kota dulu --' }}
             </option>
@@ -454,7 +468,8 @@ function cancel() {
 
         <div>
           <FormLabel for="village_id">Kelurahan/Desa</FormLabel>
-          <TomSelect :key="String(!!form.district_id)" id="village_id" v-model="form.village_id" class="w-full">
+          <TomSelect :key="String(!!form.district_id)" id="village_id" v-model="form.village_id" class="w-full"
+            :disabled="isLocked">
             <option value="">
               {{ form.district_id ? 'Cari Kelurahan/Desa' : '-- Pilih Kecamatan dulu --' }}
             </option>
@@ -466,7 +481,8 @@ function cancel() {
 
         <div>
           <FormLabel for="postal_code">Kode Pos</FormLabel>
-          <FormInput id="postal_code" v-model="form.postal_code" placeholder="Kode Pos (opsional)" />
+          <FormInput id="postal_code" v-model="form.postal_code" placeholder="Kode Pos (opsional)"
+            :disabled="isLocked" />
         </div>
       </div>
     </CardSection>

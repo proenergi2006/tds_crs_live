@@ -19,8 +19,9 @@ class CustomerCreditSubmission extends Model
         'submission_type',
         'credit_limit_approval',
         'credit_limit_request',
-        'top_payment',
-        'financial_review_notes',
+        'top_request',
+        'top_approval',
+        'financial_review',
         'submitted_by',
         'submitted_at',
         'created_by',
@@ -31,7 +32,8 @@ class CustomerCreditSubmission extends Model
         'submission_type'        => CustomerCreditSubmissionType::class,
         'credit_limit_approval'  => 'integer',
         'credit_limit_request'   => 'integer',
-        'top_payment'            => 'integer',
+        'top_request'            => 'integer',
+        'top_approval'           => 'integer',
         'submitted_at'           => 'datetime',
     ];
 
@@ -61,10 +63,10 @@ class CustomerCreditSubmission extends Model
     }
 
     /**
-     * Riwayat approval polymorphic (sistem approval generik, sama mesin yang
-     * dipakai CustomerVerification) -- `morphMany` (bukan `morphOne`) karena
-     * `document_approvals` tidak mencegah lebih dari satu row approval per
-     * submission di masa depan (mis. re-submit setelah reject).
+     * Riwayat approval polymorphic, pakai mesin approval generik yang sama
+     * dengan CustomerVerification. `morphMany` dipilih ketimbang `morphOne`
+     * karena `document_approvals` bisa punya lebih dari satu row approval per
+     * submission nantinya, misalnya kalau ada re-submit setelah reject.
      */
     public function documentApprovals(): MorphMany
     {

@@ -213,6 +213,11 @@ async function submitDelete() {
    customer_status (Fase 7), tambahkan ulang function serupa yang membaca
    field baru itu. */
 
+// Badge berbasis kyc_status. Tidak ada badge "ditolak"/"proses_internal" --
+// tidak ada BM step / penolakan customer di model KYC ini. Tab 'verified'
+// aksi "Pembaruan Data" mengarah ke Tab 1 CustomerDataTab (endpoint
+// kontak/dokumen TIDAK ikut guard kunci backend); "Create Sales Order"
+// reuse shortcut openCreatePenawaran.
 function getVerificationBadgeLabel(item: any) {
   switch (item.verification_badge) {
     case 'verified': return 'Verified'
@@ -220,8 +225,7 @@ function getVerificationBadgeLabel(item: any) {
     case 'menunggu_customer': return 'Menunggu Customer'
     case 'link_kedaluwarsa': return 'Link Kedaluwarsa'
     case 'perlu_direview': return 'Perlu Direview'
-    case 'proses_internal': return `Proses Internal (${item.latest_verification?.stage_label ?? '-'})`
-    case 'ditolak': return 'Ditolak'
+    case 'menunggu_admin_finance': return 'Menunggu Admin Finance'
     default: return '-'
   }
 }
@@ -233,8 +237,7 @@ function getVerificationBadgeClass(badge?: string) {
     case 'menunggu_customer': return 'bg-amber-100 text-amber-700'
     case 'link_kedaluwarsa': return 'bg-red-100 text-red-700'
     case 'perlu_direview': return 'bg-sky-100 text-sky-700'
-    case 'proses_internal': return 'bg-indigo-100 text-indigo-700'
-    case 'ditolak': return 'bg-red-100 text-red-700'
+    case 'menunggu_admin_finance': return 'bg-indigo-100 text-indigo-700'
     default: return 'bg-slate-100 text-slate-500'
   }
 }
@@ -367,6 +370,20 @@ function getVerificationBadgeClass(badge?: string) {
                 <ExtendableButton v-else-if="row.verification_badge === 'perlu_direview'" variant="soft-info" rounded
                   label="Verifikasi" @click="openReview(row.id_customer)">
                   <Lucide icon="ClipboardCheck" class="h-4 w-4" />
+                </ExtendableButton>
+                <ExtendableButton v-else-if="row.verification_badge === 'menunggu_admin_finance'"
+                  variant="soft-secondary" rounded label="Lihat Detail" @click="openReview(row.id_customer)">
+                  <Lucide icon="Eye" class="h-4 w-4" />
+                </ExtendableButton>
+              </div>
+
+              <div v-else-if="activeTab === 'verified'" class="inline-flex items-center justify-center gap-2">
+                <ExtendableButton variant="soft-info" rounded label="Pembaruan Data" @click="openReview(row.id_customer)">
+                  <Lucide icon="RefreshCw" class="h-4 w-4" />
+                </ExtendableButton>
+                <ExtendableButton variant="soft-primary" rounded label="Create Sales Order"
+                  @click="openCreatePenawaran(row.id_customer)">
+                  <Lucide icon="FilePlus" class="h-4 w-4" />
                 </ExtendableButton>
               </div>
             </Table.Td>

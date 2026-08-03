@@ -127,7 +127,7 @@ watch(perPage, () => fetchData(1))
 
             <Table.Td class="text-center">
               <div class="inline-flex items-center justify-center gap-1">
-                <RouterLink :to="{ name: 'review-customer-detail', params: { id: row.id_verification } }"
+                <RouterLink :to="{ name: 'customer-detail', params: { id: row.customer?.id_customer } }"
                   class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
                   title="Lihat Detail">
                   <Lucide icon="Eye" class="h-4 w-4" />

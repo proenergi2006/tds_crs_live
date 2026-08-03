@@ -28,7 +28,7 @@ class CustomerCreditSubmissionController extends Controller
 
         $submissions = $customer->creditSubmissions()
             ->with(self::RELATIONS)
-            ->orderByDesc('id')
+            ->orderByDesc('id_submission')
             ->get();
 
         return response()->json(
@@ -71,11 +71,12 @@ class CustomerCreditSubmissionController extends Controller
 
         $submission = DB::transaction(function () use ($data, $customer, $user) {
             $submission = CustomerCreditSubmission::create([
-                'id_customer'      => $customer->id_customer,
-                'submission_type'  => $data['submission_type'],
-                'top_payment'      => $data['top_payment'] ?? null,
-                'created_by'       => $user->id,
-                'updated_by'       => $user->id,
+                'id_customer'            => $customer->id_customer,
+                'submission_type'        => $data['submission_type'],
+                'credit_limit_request'   => $data['credit_limit_request'] ?? null,
+                'top_request'            => $data['top_request'] ?? null,
+                'created_by'             => $user->id,
+                'updated_by'             => $user->id,
             ]);
 
             foreach ($data['items'] ?? [] as $item) {
@@ -108,9 +109,10 @@ class CustomerCreditSubmissionController extends Controller
         $data = $request->validated();
 
         $submission->update([
-            'submission_type' => $data['submission_type'],
-            'top_payment'      => $data['top_payment'] ?? null,
-            'updated_by'       => $user->id,
+            'submission_type'        => $data['submission_type'],
+            'credit_limit_request'   => $data['credit_limit_request'] ?? null,
+            'top_request'            => $data['top_request'] ?? null,
+            'updated_by'             => $user->id,
         ]);
 
         return response()->json($this->formatSubmission($submission->fresh(self::RELATIONS)));
@@ -158,11 +160,15 @@ class CustomerCreditSubmissionController extends Controller
         $cycle = $submission->latestDocumentApproval;
 
         return [
-            'id'               => $submission->id,
+            'id'               => $submission->id_submission,
             'id_customer'      => $submission->id_customer,
             'submission_type'  => $submission->submission_type->value,
             'submission_type_label' => $submission->submission_type->label(),
-            'top_payment'      => $submission->top_payment,
+            'credit_limit_request'  => $submission->credit_limit_request,
+            'credit_limit_approval' => $submission->credit_limit_approval,
+            'top_request'      => $submission->top_request,
+            'top_approval'     => $submission->top_approval,
+            'financial_review' => $submission->financial_review,
             'items'            => $submission->items->map(fn (CustomerCreditItem $item) => $this->formatItem($item))->values(),
             'approval'         => $cycle ? [
                 'status'              => $cycle->status->value,
