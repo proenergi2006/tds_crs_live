@@ -61,7 +61,7 @@ import router from "./router";
 import "./assets/css/app.css";
 import "sweetalert2/dist/sweetalert2.min.css";
 import Vue3SignaturePad from "vue3-signature-pad";
-import { useAuthStore } from "./stores/auth";
+import { installAuthInterceptor } from "./utils/httpAuthInterceptor";
 
 // ganti sesuai URL Laravel Anda
 console.log("📌 axios baseURL:", axios.defaults.baseURL);
@@ -72,24 +72,9 @@ if (token) {
   axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 }
 
-axios.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      // token expired / session expired — abaikan kalau yang gagal adalah
-      // request login itu sendiri (401 di sana berarti kredensial salah,
-      // bukan token expired), jangan trigger forceLogout untuk kasus itu.
-      const requestUrl: string = err.config?.url || "";
-      const isLoginRequest = requestUrl.includes("/login");
-
-      if (!isLoginRequest) {
-        const auth = useAuthStore();
-        auth.forceLogout();
-      }
-    }
-    return Promise.reject(err);
-  },
-);
+// Interceptor 401 di-extract ke httpAuthInterceptor.ts supaya main.ts dan
+// resourceApi.ts memakai satu sumber logic yang sama untuk deteksi 401.
+installAuthInterceptor(axios);
 
 const app = createApp(App);
 app.config.globalProperties.$axios = axios;

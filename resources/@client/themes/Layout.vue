@@ -3,7 +3,6 @@ import { useThemeStore, getTheme, themes, type Themes } from "@/stores/theme";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useRoute } from "vue-router";
 import { onMounted, computed } from "vue";
-import AppNotification from "@/components/SystemDesign/Notification/AppNotification.vue";
 
 const route = useRoute();
 const Component = computed(() => getTheme(themeStore.theme).component);
@@ -28,6 +27,5 @@ onMounted(() => {
   <div>
     <ThemeSwitcher />
     <Component />
-    <AppNotification />
   </div>
 </template>

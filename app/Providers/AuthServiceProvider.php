@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -30,6 +32,31 @@ class AuthServiceProvider extends ServiceProvider
             if ($user->id_role === 1) {
                 return true;
             }
+        });
+
+        // Sentralisasi idle-based + absolute-cap token expiry di titik validasi Sanctum
+        // (bukan middleware per route group) supaya otomatis berlaku ke semua route
+        // auth:sanctum tanpa didaftarkan ulang satu-satu.
+        Sanctum::authenticateAccessTokensUsing(function (PersonalAccessToken $accessToken, bool $isValid) {
+            if (! $isValid) {
+                request()->attributes->set('token_expired_reason', 'session_expired');
+                $accessToken->delete();
+
+                return false;
+            }
+
+            $idleMinutes = config('sanctum.idle_expiration');
+
+            // last_used_at NULL berarti token belum pernah dipakai sejak diterbitkan —
+            // treat sebagai "belum idle", bukan "idle sejak awal waktu".
+            if ($accessToken->last_used_at && $accessToken->last_used_at->lt(now()->subMinutes($idleMinutes))) {
+                request()->attributes->set('token_expired_reason', 'session_expired');
+                $accessToken->delete();
+
+                return false;
+            }
+
+            return true;
         });
     }
 }

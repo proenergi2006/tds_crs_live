@@ -46,7 +46,20 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 24 * 7),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Idle Expiration Minutes
+    |--------------------------------------------------------------------------
+    |
+    | Not a native Sanctum config key — read manually by the token validation
+    | callback registered in AuthServiceProvider. A token whose last_used_at
+    | is older than this many minutes is treated as idle-expired.
+    |
+    */
+
+    'idle_expiration' => env('SANCTUM_IDLE_EXPIRATION', 120),
 
     /*
     |--------------------------------------------------------------------------

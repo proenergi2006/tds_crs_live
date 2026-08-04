@@ -1,4 +1,5 @@
 import axios from "axios";
+import { installAuthInterceptor } from "./httpAuthInterceptor";
 
 const http = axios.create({
   baseURL: "/api",
@@ -6,6 +7,10 @@ const http = axios.create({
     Accept: "application/json",
   },
 });
+
+// 43 modul yang pakai createResourceApi sebelumnya tidak punya interceptor 401
+// sama sekali — reason session_expired tidak pernah kebaca di jalur ini.
+installAuthInterceptor(http);
 
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");

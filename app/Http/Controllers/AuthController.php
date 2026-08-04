@@ -28,7 +28,10 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('api_token', ['*'], now()->addYear())->plainTextToken;
+        // Expiry token sekarang sepenuhnya diatur config('sanctum.expiration')
+        // (absolute cap) + idle-check callback di AuthServiceProvider — tidak
+        // perlu argumen expiry per-token lagi di sini.
+        $token = $user->createToken('api_token')->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
