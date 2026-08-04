@@ -82,18 +82,6 @@ export const masterDataNavigation: NavItem[] = [
         title: "Wilayah",
         subMenu: [
           {
-            icon: "Flag",
-            pageName: "provinsi-list",
-            title: "Provinsi",
-            permission: "master-data.wilayah.manage",
-          },
-          {
-            icon: "Flag",
-            pageName: "kabupatens-list",
-            title: "Kabupaten",
-            permission: "master-data.wilayah.manage",
-          },
-          {
             icon: "Globe",
             pageName: "master-address",
             title: "Master Address",

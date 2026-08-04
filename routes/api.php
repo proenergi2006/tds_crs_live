@@ -22,8 +22,6 @@ use App\Http\Controllers\MasterData\TerminalController;
 use App\Http\Controllers\MasterData\UkuranController;
 use App\Http\Controllers\MasterData\VendorController;
 use App\Http\Controllers\AttachmentHargaDasarController;
-use App\Http\Controllers\ProvinsiController;
-use App\Http\Controllers\KabupatenController;
 use App\Http\Controllers\MasterData\AddressController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerAddressController;
@@ -170,8 +168,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
-    Route::apiResource('provinsis', ProvinsiController::class);
-    Route::apiResource('kabupatens', KabupatenController::class);
     Route::get('customers/check-company-name', [CustomerController::class, 'checkCompanyName']);
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
@@ -411,13 +407,9 @@ Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class,
 Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
 Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'uploadByToken'])
     ->where('token', '[A-Za-z0-9\-]{10,}');
-Route::get('/masters/provinsis',  [ProvinsiController::class,  'publicIndex']);
-Route::get('/masters/kabupatens', [KabupatenController::class, 'publicIndex']);
-
-// Lookup alamat BPS 4 level -- gantiin /masters/provinsis + /masters/kabupatens
-// lama di atas, diperluas ke province/regency/district/village. Publik (tanpa
+// Lookup alamat BPS 4 level -- province/regency/district/village. Publik (tanpa
 // auth) karena dipakai juga oleh portal onboarding /verify/:token yang gak
-// punya token Bearer. Route lama tetap dibiarkan, gak dihapus.
+// punya token Bearer.
 Route::get('/provinces',                       [AddressController::class, 'provinces']);
 Route::get('/provinces/{province}',             [AddressController::class, 'showProvince']);
 Route::get('/provinces/{province}/regencies',   [AddressController::class, 'regencies']);

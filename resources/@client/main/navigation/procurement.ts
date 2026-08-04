@@ -23,13 +23,6 @@ export const procurementNavigation: NavItem[] = [
         title: 'Good Receipts',
         permission: 'good-receipt.manage',
       },
-      {
-        icon: 'ClipboardList',
-        pageName: 'procurement-delivery-requests',
-        title: 'Delivery Request',
-        activePageNames: ['procurement-dr-detail'],
-        permission: 'delivery-request.manage',
-      },
     ],
   },
   {
