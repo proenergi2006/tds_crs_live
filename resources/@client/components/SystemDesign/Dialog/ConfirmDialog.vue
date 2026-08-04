@@ -19,6 +19,9 @@ withDefaults(
     variant?: 'primary' | 'danger' | 'success' | 'warning';
     loading?: boolean;
     confirmDisabled?: boolean;
+    showCancel?: boolean;
+    // diteruskan ke Dialog dasar — klik luar/ESC gak nutup dialog kalau true
+    staticBackdrop?: boolean;
   }>(),
   {
     title: 'Konfirmasi',
@@ -30,6 +33,8 @@ withDefaults(
     variant: 'primary',
     loading: false,
     confirmDisabled: false,
+    showCancel: true,
+    staticBackdrop: false,
   },
 );
 
@@ -40,7 +45,7 @@ defineEmits<{
 </script>
 
 <template>
-  <Dialog :open="open" @close="$emit('close')" :initialFocus="confirmButtonRef">
+  <Dialog :open="open" :staticBackdrop="staticBackdrop" @close="$emit('close')" :initialFocus="confirmButtonRef">
     <Dialog.Panel>
       <div class="p-6 text-center">
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full" :class="iconClass">
@@ -61,9 +66,12 @@ defineEmits<{
       </div>
 
       <div class="flex justify-center gap-3 border-t border-slate-200 px-6 py-4">
-        <Button variant="outline-secondary" :disabled="loading" @click="$emit('close')">
-          {{ cancelText }}
-        </Button>
+        <!-- showCancel=false dipakai dialog yang cuma boleh ditutup lewat tombol konfirmasi -->
+        <template v-if="showCancel">
+          <Button variant="outline-secondary" :disabled="loading" @click="$emit('close')">
+            {{ cancelText }}
+          </Button>
+        </template>
 
         <Button ref="confirmButtonRef" :variant="variant" :disabled="loading || confirmDisabled" @click="$emit('confirm')">
           <Lucide v-if="loading" icon="Loader2" class="mr-1 h-4 w-4 animate-spin" />

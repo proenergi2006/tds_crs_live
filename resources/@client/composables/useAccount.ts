@@ -19,14 +19,9 @@ export function useAccount() {
     } catch (e) {
       console.error('Logout error', e);
     } finally {
-      // Delay redirect so nextTick can fire showToast() before AppNotification unmounts.
-      // Toastify clones the toast node into document.body (survives Layout unmount),
-      // but only if showToast() runs before templateRef is nulled by unmount.
-      setTimeout(() => {
-        localStorage.removeItem('access_token');
-        delete axios.defaults.headers.common['Authorization'];
-        router.push({ name: 'login' });
-      }, 500)
+      localStorage.removeItem('access_token');
+      delete axios.defaults.headers.common['Authorization'];
+      router.push({ name: 'login' });
     }
   }
 

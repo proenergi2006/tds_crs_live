@@ -1,4 +1,5 @@
 import axios from "axios";
+import { installAuthInterceptor } from "./httpAuthInterceptor";
 
 const http = axios.create({
   baseURL: "/api",
@@ -6,6 +7,9 @@ const http = axios.create({
     Accept: "application/json",
   },
 });
+
+// createResourceApi sebelumnya gak punya interceptor 401 sama sekali
+installAuthInterceptor(http);
 
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");

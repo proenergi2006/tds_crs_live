@@ -45,12 +45,6 @@ export const customerNavigation: NavItem[] = [
         activePageNames: ["penawarans-po", "po-customer-plan"],
         permission: "penawaran.tds.manage",
       },
-      {
-        icon: "ClipboardCheck",
-        pageName: "sales-confirmations",
-        title: "Sales Confirmation",
-        permission: "sales-confirmation.manage",
-      },
     ],
   },
 ];

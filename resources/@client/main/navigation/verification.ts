@@ -36,16 +36,6 @@ export const verificationNavigation: NavItem[] = [
           "penawarans-verifikasi-om-detail-proenergi",
         ],
       },
-      {
-        icon: "ClipboardCheck",
-        pageName: "sales-confirmations-bm",
-        title: "Sales Confirmation (BM)",
-        activePageNames: [
-          "sales-confirmations-bm-detail",
-          "sales-confirmations-bm-detail-po",
-        ],
-        permission: "sales-confirmation.manage",
-      },
     ],
   },
 ];

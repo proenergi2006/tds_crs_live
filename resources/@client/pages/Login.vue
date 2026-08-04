@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import axios from 'axios'
-import Swal from 'sweetalert2'
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useVuelidate } from '@vuelidate/core'
+import { required, email as emailRule } from '@vuelidate/validators'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import { FormInput, FormCheck } from '@/components/Base/Form'
 import Button from '@/components/Base/Button'
@@ -11,6 +12,7 @@ import logoUrl from '@/assets/images/tds-crs-new.png'
 import logoUrll from '@/assets/images/putih-tulisan-atas.png'
 import bgLogin from '@/assets/images/bg-quary.png'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
 const email = ref('')
 const password = ref('')
@@ -22,17 +24,18 @@ const isLoading = ref(false)
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const notification = useNotification()
+
+const rules = {
+  email: { required, email: emailRule },
+  password: { required },
+}
+const v$ = useVuelidate(rules, { email, password })
 
 onMounted(() => {
   if (route.name === 'login' && route.query.logged_out === '1') {
-    Swal.fire({
-      icon: 'success',
-      title: 'You have been logged out',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
-    })
+    // toast pindah dari Swal ke useNotification(), host-nya sekarang AppNotification di App.vue
+    notification.success('You have been logged out')
     router.replace({ name: 'login', query: {} })
   }
 
@@ -45,6 +48,11 @@ onMounted(() => {
 
 async function onSubmit() {
   errorMsg.value = ''
+
+  // validasi client-side dulu biar gak request percuma buat input kosong/salah format
+  const valid = await v$.value.$validate()
+  if (!valid) return
+
   isLoading.value = true
 
   try {
@@ -68,8 +76,7 @@ async function onSubmit() {
       localStorage.removeItem('remember_email')
     }
 
-    localStorage.setItem('access_token', data.access_token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
+    auth.setToken(data.access_token)
 
     await auth.fetchUser()
     router.push({ name: 'dashboard-overview-1' })
@@ -136,17 +143,24 @@ async function onSubmit() {
 
           <form @submit.prevent="onSubmit" class="mt-8 intro-x">
             <FormInput v-model="email" type="text" name="email" autocomplete="username" placeholder="Email"
-              class="block min-w-full px-4 py-3" />
+              class="block min-w-full px-4 py-3" @blur="v$.email.$touch()" />
+            <small v-if="v$.email.$error" class="font-caption !text-rose-600">
+              {{ v$.email.$errors[0].$message }}
+            </small>
 
             <div class="relative mt-4">
               <FormInput v-model="password" :type="showPassword ? 'text' : 'password'" name="password"
-                autocomplete="current-password" placeholder="Password" class="block min-w-full px-4 py-3 pr-12" />
+                autocomplete="current-password" placeholder="Password" class="block min-w-full px-4 py-3 pr-12"
+                @blur="v$.password.$touch()" />
 
               <button type="button" @click="showPassword = !showPassword"
                 class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700">
                 <Lucide :icon="showPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
               </button>
             </div>
+            <small v-if="v$.password.$error" class="font-caption !text-rose-600">
+              {{ v$.password.$errors[0].$message }}
+            </small>
 
             <div class="mt-4 flex text-xs text-slate-600 dark:text-darkmode-300 sm:text-sm">
               <div class="mr-auto flex items-center">

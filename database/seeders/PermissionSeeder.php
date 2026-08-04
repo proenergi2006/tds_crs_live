@@ -36,12 +36,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [2, 5],
         ],
         [
-            'name'        => 'master-data.wilayah.manage',
-            'module'      => 'master-data',
-            'description' => 'Kelola data wilayah (Provinsi, Kabupaten)',
-            'roles'       => [1, 8],
-        ],
-        [
             'name'        => 'master-data.cabang.manage',
             'module'      => 'master-data',
             'description' => 'Kelola data cabang',
@@ -134,8 +128,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'customer.viewAny',
             'module'      => 'customer',
-            'description' => 'Lihat semua customer lintas-marketing (Administrator/Admin Finance/BM/OM)',
-            'roles'       => [1, 9, 8, 10],
+            'description' => 'Lihat semua customer lintas-marketing (Administrator/Admin Finance/BM/OM, CEO merangkap OM)',
+            'roles'       => [1, 9, 8, 10, 2],
         ],
         [
             'name'        => 'customer.manage',
@@ -166,8 +160,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'penawaran.viewAny',
             'module'      => 'penawaran',
-            'description' => 'Lihat semua penawaran lintas-marketing (Administrator/Admin Finance/BM/OM)',
-            'roles'       => [1, 9, 8, 10],
+            'description' => 'Lihat semua penawaran lintas-marketing (Administrator/Admin Finance/BM/OM, CEO merangkap OM)',
+            'roles'       => [1, 9, 8, 10, 2],
         ],
         [
             'name'        => 'penawaran.manage',
@@ -284,6 +278,7 @@ class PermissionSeeder extends Seeder
             'customer.verify',
             'penawaran.verify',
             'po-supplier.verify',
+            'master-data.wilayah.manage',
         ];
 
         $retiredIds = DB::table('permissions')

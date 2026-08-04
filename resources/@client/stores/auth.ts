@@ -2,12 +2,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import router from '@/router'
-import Swal from 'sweetalert2'
-
-// Guard modul-level: cegah forceLogout() jalan dobel kalau dipicu bersamaan
-// oleh interceptor axios global (main.ts) dan fetchUser() (dipanggil dari
-// router guard) untuk 401 yang sama.
-let isLoggingOut = false
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -20,20 +14,22 @@ export const useAuthStore = defineStore('auth', {
       permissions: string[]
       impersonation: { admin: { id: number; name: string } | null; expires_at: string } | null
     } | null,
+
+    // dipindah dari module-level let ke state Pinia biar reaktif
+    isLoggingOut: false,
+    sessionExpiredDialog: {
+      open: false,
+      message: 'Session expired. Please login again.',
+    } as { open: boolean; message: string },
   }),
 
   getters: {
-    // Cek apakah user memiliki permission tertentu.
-    // Return false (bukan error) jika user null atau permissions belum ter-load.
-    // Admin sudah mendapat semua 23 permission dari backend (via $appends accessor),
-    // sehingga getter ini cukup array.includes() tanpa perlu bypass khusus di FE.
+    // return false (bukan error) kalau user null/permissions belum load; admin udah dapet semua permission dari backend
     can: (state) => (permission: string): boolean =>
       state.user?.permissions?.includes(permission) ?? false,
 
-    // Expose module-level isLoggingOut flag agar router guard bisa cek apakah
-    // forceLogout() sedang/baru saja menangani sebuah 401, sebelum guard lain
-    // melakukan clear+redirect-nya sendiri (cegah double-redirect).
-    isForceLoggingOut: (): boolean => isLoggingOut,
+    // dipakai router guard buat cek forceLogout udah/lagi jalan, cegah double-redirect
+    isForceLoggingOut: (state) => state.isLoggingOut,
 
     isImpersonating: (state): boolean => state.user?.impersonation != null,
 
@@ -49,10 +45,9 @@ export const useAuthStore = defineStore('auth', {
       } catch (err: any) {
         this.user = null
 
-        // Token expired/invalid → paksa logout (clear token + redirect).
-        // Error lain (network hiccup, 500, dll) cukup null-kan user tanpa logout.
+        // token expired/invalid doang yang force logout, error lain (network/500) cukup null-kan user
         if (err?.response?.status === 401) {
-          this.forceLogout()
+          this.forceLogout(err?.response?.data?.reason)
         }
       }
     },
@@ -68,23 +63,24 @@ export const useAuthStore = defineStore('auth', {
       delete axios.defaults.headers.common['Authorization']
     },
 
-    forceLogout(message = 'Session expired. Please login again.') {
-      // Cegah dobel trigger (mis. dari axios interceptor & fetchUser() untuk
-      // 401 yang sama) — jangan tampilkan toast/redirect dua kali.
-      if (isLoggingOut) return
-      isLoggingOut = true
+    // deklaratif (set state) — dialog session-expired dirender App.vue yang baca state ini
+    forceLogout(reason?: string) {
+      // cegah dobel trigger dari axios interceptor & fetchUser() buat 401 yang sama
+      if (this.isLoggingOut) return
+      this.isLoggingOut = true
+      this.sessionExpiredDialog = {
+        open: true,
+        message: reason === 'session_expired'
+          ? 'Session expired. Please login again.'
+          : 'Your session is invalid. Please login again.',
+      }
+    },
 
-      Swal.fire({
-        icon: 'warning',
-        title: 'Logged out',
-        text: message,
-        confirmButtonText: 'OK',
-        allowOutsideClick: false,
-      }).then(() => {
-        this.clear()
-        router.push({ name: 'login' })
-        isLoggingOut = false
-      })
-    }
+    confirmSessionExpired() {
+      this.sessionExpiredDialog.open = false
+      this.clear()
+      router.push({ name: 'login' })
+      this.isLoggingOut = false
+    },
   }
 })

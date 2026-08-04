@@ -172,24 +172,6 @@ const routes = [
         meta: { permission: "harga-produk.view" },
       },
       {
-        path: "provinsis",
-        name: "provinsi-list",
-        component: () => import("@/pages/ProvinsiList.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
-      },
-      {
-        path: "provinsis/create",
-        name: "provinsi-create",
-        component: () => import("@/pages/ProvinsiCreate.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
-      },
-      {
-        path: "provinsis/:id/edit",
-        name: "provinsi-edit",
-        component: () => import("@/pages/ProvinsiEdit.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
-      },
-      {
         path: "calendar",
         name: "calendar",
         component: () => import("@/pages/Calendar.vue"),
@@ -198,25 +180,6 @@ const routes = [
         path: "validation",
         name: "validation",
         component: () => import("@/pages/Validation.vue"),
-      },
-
-      {
-        path: "kabupatens",
-        name: "kabupatens-list",
-        component: () => import("@/pages/KabupatenList.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
-      },
-      {
-        path: "kabupatens/create",
-        name: "kabupatens-create",
-        component: () => import("@/pages/KabupatenCreate.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
-      },
-      {
-        path: "kabupatens/:id/edit",
-        name: "kabupatens-edit",
-        component: () => import("@/pages/KabupatenEdit.vue"),
-        meta: { permission: "master-data.wilayah.manage" },
       },
       {
         path: "master-address",
