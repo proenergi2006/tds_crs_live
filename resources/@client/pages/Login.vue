@@ -34,9 +34,7 @@ const v$ = useVuelidate(rules, { email, password })
 
 onMounted(() => {
   if (route.name === 'login' && route.query.logged_out === '1') {
-    // Toast pindah dari Swal ke useNotification() — host-nya sekarang
-    // AppNotification di App.vue (dulu di Layout.vue, tidak terjangkau
-    // dari halaman login sebelum autentikasi berhasil).
+    // toast pindah dari Swal ke useNotification(), host-nya sekarang AppNotification di App.vue
     notification.success('You have been logged out')
     router.replace({ name: 'login', query: {} })
   }
@@ -51,8 +49,7 @@ onMounted(() => {
 async function onSubmit() {
   errorMsg.value = ''
 
-  // Validasi client-side sebelum submit — tidak mengurangi validasi backend,
-  // cuma mencegah request percuma untuk input yang jelas kosong/format salah.
+  // validasi client-side dulu biar gak request percuma buat input kosong/salah format
   const valid = await v$.value.$validate()
   if (!valid) return
 

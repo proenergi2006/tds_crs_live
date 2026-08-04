@@ -6,16 +6,12 @@ export function installAuthInterceptor(instance: AxiosInstance) {
     (res) => res,
     (err) => {
       if (err.response?.status === 401) {
-        // token expired / session expired — abaikan kalau yang gagal adalah
-        // request login itu sendiri (401 di sana berarti kredensial salah,
-        // bukan token expired), jangan trigger forceLogout untuk kasus itu.
+        // abaikan 401 dari request /login itu sendiri (itu kredensial salah, bukan token expired)
         const requestUrl: string = err.config?.url || ''
         const isLoginRequest = requestUrl.includes('/login')
 
         if (!isLoginRequest) {
-          // useAuthStore() dipanggil di dalam callback error (bukan top-level module)
-          // supaya Pinia sudah pasti ter-install duluan saat instance ini dipasang
-          // (main.ts App mount), baik untuk axios global maupun resourceApi.
+          // dipanggil di dalam callback biar Pinia udah pasti ke-install duluan saat instance ini dipasang
           const auth = useAuthStore()
           auth.forceLogout(err.response?.data?.reason)
         }

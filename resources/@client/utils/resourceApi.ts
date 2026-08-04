@@ -8,8 +8,7 @@ const http = axios.create({
   },
 });
 
-// 43 modul yang pakai createResourceApi sebelumnya tidak punya interceptor 401
-// sama sekali — reason session_expired tidak pernah kebaca di jalur ini.
+// createResourceApi sebelumnya gak punya interceptor 401 sama sekali
 installAuthInterceptor(http);
 
 http.interceptors.request.use((config) => {

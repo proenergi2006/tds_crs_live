@@ -23,9 +23,7 @@ class LeaveImpersonationAction
             abort(403, 'Sesi admin sudah tidak valid, silakan login ulang');
         }
 
-        // Expiry token sekarang sepenuhnya diatur config('sanctum.expiration')
-        // (absolute cap) + idle-check callback di AuthServiceProvider — tidak
-        // perlu argumen expiry per-token lagi di sini.
+        // expiry diatur config('sanctum.expiration') + idle-check di AuthServiceProvider, gak perlu argumen expiry di sini
         $adminToken = $admin->createToken('api_token');
 
         $currentToken->delete();

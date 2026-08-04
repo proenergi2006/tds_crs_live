@@ -3,8 +3,7 @@
   <RouteLoading />
   <ImpersonationBanner />
   <AppNotification />
-  <!-- staticBackdrop=true + show-cancel=false: satu-satunya jalan keluar
-       dialog ini adalah tombol OK (@confirm) -->
+  <!-- staticBackdrop + showCancel=false: cuma bisa ditutup lewat tombol OK -->
   <ConfirmDialog
     :open="auth.sessionExpiredDialog.open"
     title="Logged out"

@@ -29,9 +29,7 @@ class Handler extends ExceptionHandler
             //
         });
 
-        // Callback Sanctum di AuthServiceProvider tidak menerima $request di
-        // signature-nya, jadi reason expiry dititipkan lewat request attributes
-        // dan dibaca ulang di sini untuk memperkaya payload 401.
+        // reason expiry dititipkan lewat request attributes karena callback Sanctum gak nerima $request
         $this->renderable(function (AuthenticationException $e, Request $request) {
             $reason = $request->attributes->get('token_expired_reason');
 

@@ -64,7 +64,6 @@ import Vue3SignaturePad from "vue3-signature-pad";
 import { installAuthInterceptor } from "./utils/httpAuthInterceptor";
 
 // ganti sesuai URL Laravel Anda
-console.log("📌 axios baseURL:", axios.defaults.baseURL);
 axios.defaults.baseURL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 const token = localStorage.getItem("access_token");
@@ -72,8 +71,7 @@ if (token) {
   axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 }
 
-// Interceptor 401 di-extract ke httpAuthInterceptor.ts supaya main.ts dan
-// resourceApi.ts memakai satu sumber logic yang sama untuk deteksi 401.
+// interceptor 401 di-extract ke sini biar main.ts & resourceApi.ts share logic yang sama
 installAuthInterceptor(axios);
 
 const app = createApp(App);

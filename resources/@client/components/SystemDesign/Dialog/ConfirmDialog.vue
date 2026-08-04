@@ -20,8 +20,7 @@ withDefaults(
     loading?: boolean;
     confirmDisabled?: boolean;
     showCancel?: boolean;
-    // staticBackdrop diteruskan ke Dialog dasar (sudah native mendukungnya —
-    // klik luar/ESC memicu animasi zoom, bukan close, saat true).
+    // diteruskan ke Dialog dasar — klik luar/ESC gak nutup dialog kalau true
     staticBackdrop?: boolean;
   }>(),
   {
