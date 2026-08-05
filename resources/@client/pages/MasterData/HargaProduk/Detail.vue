@@ -121,6 +121,7 @@ onMounted(() => {
             <div class="rounded-xl bg-slate-50 p-4">
               <div class="font-label">COGS</div>
               <div class="font-num-lg mt-2">{{ formatNumber(detail.harga_cogs) }}</div>
+              <div v-if="detail.cogs_basis_label" class="font-caption text-slate-500 mt-1">{{ detail.cogs_basis_label }}</div>
             </div>
 
             <div class="rounded-xl bg-slate-50 p-4">

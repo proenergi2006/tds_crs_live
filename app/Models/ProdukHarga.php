@@ -18,6 +18,7 @@ class ProdukHarga extends Model
         'harga_price_list_pe',
         'harga_bm',
         'harga_cogs',      // ✅ baru
+        'cogs_basis',
         'harga_margin',    // ✅ baru
         'harga_om',
         'harga_ceo',        // ✅ baru
