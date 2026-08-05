@@ -51,6 +51,7 @@ async function fetchPenawaran() {
 }
 
 const items = computed(() => penawaran.value.items ?? [])
+const isMultiProduct = computed<boolean>(() => items.value.length > 1)
 
 const isProenergi = computed(() => brand.value === 'proenergi')
 
@@ -62,6 +63,29 @@ const subTotalFinal = computed(() => dppHargaDasar.value * totalVolume.value || 
 const ppnFinal = computed(() => (Number(penawaran.value.ppn_harga_dasar) || 0) * totalVolume.value || 0)
 const totalFinal = computed(() => subTotalFinal.value + ppnFinal.value || 0)
 
+// Weighted-average COGS antar item berdasarkan Persen (bukan cuma item pertama — lihat items[].harga_cogs dari backend)
+const cogs = computed<number>(() => {
+  const totalPersen = items.value.reduce((s, it) => s + (Number(it.persen) || 0), 0)
+  if (totalPersen <= 0) return 0
+  const weighted = items.value.reduce((s, it) => s + (Number(it.persen) || 0) * (Number(it.harga_cogs) || 0), 0)
+  return weighted / totalPersen
+})
+// Margin murni harga_dasar - COGS, tanpa refund/other_cost/PPN (beda dari produk_hargas.harga_margin)
+const margin = computed<number>(() => (Number(penawaran.value.harga_dasar) || 0) - cogs.value)
+const marginPercent = computed<number>(() => {
+  const dasar = Number(penawaran.value.harga_dasar) || 0
+  return dasar > 0 ? (margin.value / dasar) * 100 : 0
+})
+const totalGrossProfit = computed<number>(() => margin.value * totalVolume.value)
+
+// Basis COGS cuma relevan ditampilkan untuk 1 produk — multi-produk sudah terwakili label Weighted-Average
+const cogsBasisNote = computed<string>(() => {
+  if (isMultiProduct.value) return ''
+  const basis = items.value[0]?.cogs_basis
+  if (!basis) return ''
+  return `Harga ${basis === 'loco' ? 'Loco' : 'Franco'}`
+})
+
 function dash(v: unknown) {
   return v === null || v === undefined || v === '' ? '-' : v
 }
@@ -72,10 +96,7 @@ const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penaw
 const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
 const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
 
-// province/regency (BPS baru) dipakai kalau tersedia, fallback ke
-// provinsi/kabupaten lama untuk record yang belum termigrasi ATAU selama
-// PenawaranController belum eager-load ongkos.wilayah.province/regency
-// (laravel-nusa-address-full-migration Task 8 — lihat laporan Apollo).
+// province/regency (BPS baru) dipakai kalau tersedia, fallback ke provinsi/kabupaten lama untuk record yang belum termigrasi
 function wilayahLabel(w: any) {
   if (!w) return null
   const parts = [
@@ -307,13 +328,15 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
             <div class="grid grid-cols-12 gap-4">
               <div class="col-span-12 md:col-span-6">
                 <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-                  <div>
-                    <div class="font-label">Tipe Pengiriman</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
-                  </div>
-                  <div>
-                    <div class="font-label">Metode</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <div class="font-label">Tipe Pengiriman</div>
+                      <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
+                    </div>
+                    <div>
+                      <div class="font-label">Metode</div>
+                      <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                    </div>
                   </div>
 
                   <!-- Ongkos Kapal (conditional, ported from old standalone Ongkos Angkut section) -->
@@ -324,20 +347,20 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                     <div v-for="oa in ongkosKapal" :key="oa.id"
                       class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-12 md:col-span-4">
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
                           <div class="font-label">Transportir</div>
                           <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
                         </div>
-                        <div class="col-span-12 md:col-span-4">
+                        <div>
                           <div class="font-label">Wilayah Angkut</div>
                           <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
-                        <div class="col-span-6 md:col-span-2">
+                        <div>
                           <div class="font-label">Volume</div>
                           <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
                         </div>
-                        <div class="col-span-6 md:col-span-2">
+                        <div>
                           <div class="font-label">Ongkos</div>
                           <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
@@ -353,20 +376,20 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                     <div v-for="oa in ongkosTruck" :key="oa.id"
                       class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-12 md:col-span-4">
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
                           <div class="font-label">Transportir</div>
                           <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
                         </div>
-                        <div class="col-span-12 md:col-span-4">
+                        <div>
                           <div class="font-label">Wilayah Angkut</div>
                           <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
-                        <div class="col-span-6 md:col-span-2">
+                        <div>
                           <div class="font-label">Volume</div>
                           <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
                         </div>
-                        <div class="col-span-6 md:col-span-2">
+                        <div>
                           <div class="font-label">Ongkos</div>
                           <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
@@ -476,6 +499,29 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div v-if="config.showMarginSection" class="mt-6 border-t border-slate-100 pt-5">
+              <h4 class="font-section mb-3">Analisa Margin</h4>
+              <dl class="grid grid-cols-3 gap-4">
+                <div v-if="config.showCogsRow" class="bg-slate-100 p-4 rounded-lg text-right">
+                  <dt class="font-label">Harga COGS<template v-if="isMultiProduct"> (Weighted-Average)</template></dt>
+                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(cogs) }}</dd>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg text-right">
+                  <dt class="font-label">Margin</dt>
+                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
+                  </dd>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg text-right">
+                  <dt class="font-label">Total Estimasi Gross Profit</dt>
+                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(totalGrossProfit) }}</dd>
+                </div>
+              </dl>
+              <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 italic font-caption text-slate-500">
+                *Weighted-Average
+                dihitung berdasarkan bobot (persen) tiap produk dalam penawaran ini.</div>
+              <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{ cogsBasisNote }}</div>
             </div>
           </CardSection>
 

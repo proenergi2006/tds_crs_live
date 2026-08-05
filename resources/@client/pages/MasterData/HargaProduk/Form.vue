@@ -10,7 +10,7 @@ import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import DateRangeInline from '@/components/SystemDesign/Form/DateRangeInline.vue'
-import { FormSelect, FormTextarea } from '@/components/Base/Form'
+import { FormCheck, FormSelect, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
@@ -34,6 +34,7 @@ type PriceRow = {
   harga_margin: number
   harga_om: number
   harga_ceo: number
+  cogs_basis: string
   catatan: string
 }
 
@@ -153,6 +154,12 @@ const rules = computed(() => ({
           (value: number) => isReadonly('harga_cogs') || toIntMoney(value) > 0,
         ),
       },
+      cogs_basis: {
+        required: helpers.withMessage(
+          'Tipe Harga COGS wajib dipilih',
+          (value: string) => isReadonly('harga_cogs') || !!value,
+        ),
+      },
       harga_margin: {
         required: helpers.withMessage(
           'Margin wajib diisi',
@@ -254,6 +261,7 @@ function makeEmptyRow(): PriceRow {
     harga_margin: 0,
     harga_om: 0,
     harga_ceo: 0,
+    cogs_basis: '',
     catatan: '',
   }
 }
@@ -271,6 +279,7 @@ function rowFromData(data: any): PriceRow {
     harga_margin: toIntMoney(data.harga_margin),
     harga_om: toIntMoney(data.harga_om),
     harga_ceo: toIntMoney(data.harga_ceo),
+    cogs_basis: data.cogs_basis ?? '',
     catatan: data.catatan ?? '',
   })
 
@@ -343,7 +352,7 @@ const periodRangeError = computed(() => {
   return startError || endError
 })
 
-function getRowFieldError(index: number, field: 'id_cabang' | 'id_produk' | MoneyField) {
+function getRowFieldError(index: number, field: 'id_cabang' | 'id_produk' | 'cogs_basis' | MoneyField) {
   if (!validationSubmitted.value) return ''
 
   const errors = v$.value.rows.$each.$response.$errors[index]?.[field]
@@ -364,6 +373,7 @@ function buildPayload(row: PriceRow) {
     harga_margin: toIntMoney(row.harga_margin),
     harga_om: toIntMoney(row.harga_om),
     harga_ceo: toIntMoney(row.harga_ceo),
+    cogs_basis: row.cogs_basis || null,
     catatan: row.catatan,
     ...(mode.value === 'create'
       ? { created_by: currentUserName.value }
@@ -541,9 +551,28 @@ function cancel() {
               </td>
 
               <td v-if="showCogsColumn" class="px-4 py-3 align-top">
-                <CurrencyField :model-value="row.harga_cogs" class="min-w-[150px]" placeholder="0"
-                  :readonly="isReadonly('harga_cogs')" :error="getRowFieldError(index, 'harga_cogs')"
-                  @update:model-value="updateMoney(row, 'harga_cogs', $event)" />
+                <div class="min-w-[150px] space-y-2">
+                  <CurrencyField :model-value="row.harga_cogs" placeholder="0"
+                    :readonly="isReadonly('harga_cogs')" :error="getRowFieldError(index, 'harga_cogs')"
+                    @update:model-value="updateMoney(row, 'harga_cogs', $event)" />
+                  <div>
+                    <div class="flex gap-3">
+                      <FormCheck>
+                        <FormCheck.Input :id="`cogs-basis-loco-${index}`" type="radio" value="loco"
+                          v-model="row.cogs_basis" :disabled="isReadonly('harga_cogs')" />
+                        <FormCheck.Label :htmlFor="`cogs-basis-loco-${index}`">Loco</FormCheck.Label>
+                      </FormCheck>
+                      <FormCheck>
+                        <FormCheck.Input :id="`cogs-basis-franco-${index}`" type="radio" value="franco"
+                          v-model="row.cogs_basis" :disabled="isReadonly('harga_cogs')" />
+                        <FormCheck.Label :htmlFor="`cogs-basis-franco-${index}`">Franco</FormCheck.Label>
+                      </FormCheck>
+                    </div>
+                    <small v-if="getRowFieldError(index, 'cogs_basis')" class="font-caption !text-rose-600">
+                      {{ getRowFieldError(index, 'cogs_basis') }}
+                    </small>
+                  </div>
+                </div>
               </td>
 
               <td v-if="showMarginColumn" class="px-4 py-3 align-top">

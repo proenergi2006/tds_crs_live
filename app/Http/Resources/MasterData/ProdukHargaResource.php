@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\MasterData;
 
+use App\Enums\ProdukHargaCogsBasis;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,6 +20,8 @@ class ProdukHargaResource extends JsonResource
             'harga_price_list_pe'=> $this->harga_price_list_pe,
             'harga_bm'           => $this->harga_bm,
             'harga_cogs'         => $this->harga_cogs,
+            'cogs_basis'         => $this->cogs_basis,
+            'cogs_basis_label'   => $this->cogs_basis ? ProdukHargaCogsBasis::from($this->cogs_basis)->label() : null,
             'harga_margin'       => $this->harga_margin,
             'harga_om'           => $this->harga_om,
             'harga_ceo'          => $this->harga_ceo,
