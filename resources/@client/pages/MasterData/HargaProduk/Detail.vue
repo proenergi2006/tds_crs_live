@@ -23,7 +23,7 @@ async function fetchDetail() {
 
   try {
     const { data } = await hargaProdukApi.getById(id as string)
-    detail.value = data
+    detail.value = data.data ?? data
   } catch (e: any) {
     error('Gagal', e.response?.data?.message || 'Gagal memuat detail data')
     router.push({ name: 'produk-hargas' })
