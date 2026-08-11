@@ -111,10 +111,7 @@ const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penaw
 const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
 const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
 
-// province/regency (BPS baru) dipakai kalau tersedia, fallback ke
-// provinsi/kabupaten lama untuk record yang belum termigrasi ATAU selama
-// PenawaranController belum eager-load ongkos.wilayah.province/regency
-// (laravel-nusa-address-full-migration Task 8 — lihat laporan Apollo).
+// province/regency (BPS baru) dipakai kalau ada, fallback ke provinsi/kabupaten lama buat record yang belum termigrasi
 function wilayahLabel(w: any) {
   if (!w) return null
   const parts = [
@@ -245,10 +242,17 @@ function formatNumber(v: number | string = 0) {
           <h2 class="font-display">{{ cfg.title }}</h2>
           <p class="font-lead mt-1">{{ cfg.description }}</p>
         </div>
-        <Button variant="outline-secondary" @click="goBack">
-          <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
-          Kembali
-        </Button>
+        <div class="flex items-center gap-2">
+          <Button v-if="['draft', 'rejected_bm', 'rejected_om'].includes(penawaran.status)" variant="soft-pending"
+            @click="openEdit">
+            <Lucide icon="Edit" class="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+          <Button variant="outline-secondary" @click="goBack">
+            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+            Kembali
+          </Button>
+        </div>
       </div>
 
       <!-- 2-COLUMN LAYOUT -->
@@ -582,8 +586,8 @@ function formatNumber(v: number | string = 0) {
                 </p>
 
                 <div class="flex flex-col gap-2">
-                  <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
-                    @click="previewLangDialogOpen = true">
+                  <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
+                    class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
                     <Lucide icon="Printer" class="h-4 w-4" />
                     Preview PDF
                   </Button>

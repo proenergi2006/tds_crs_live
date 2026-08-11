@@ -62,11 +62,10 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
 
-const canManagePenawaran = computed(() => brand.value === 'proenergi' ? true : auth.can('penawaran.manage'))
-const canViewAnyPenawaran = computed(() => brand.value === 'proenergi' ? true : auth.can('penawaran.viewAny'))
+const canManagePenawaran = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.manage') : auth.can('penawaran.manage'))
+const canViewAnyPenawaran = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.viewAny') : auth.can('penawaran.viewAny'))
 
 function canManageRow(pen: any) {
-  if (brand.value === 'proenergi') return true
   return (
     canManagePenawaran.value &&
     (canViewAnyPenawaran.value || Number(pen.user_id) === Number(auth.user?.id))

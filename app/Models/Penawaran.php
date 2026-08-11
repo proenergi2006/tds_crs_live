@@ -26,11 +26,11 @@ class Penawaran extends Model
         'nama',
         'alamat',
         'fax',
-        'type_pengiriman', // ✅ kolom baru
+        'type_pengiriman',
         'dp_persen',
-    'dp_keterangan',
-    'repayment_persen',
-    'repayment_hari',
+        'dp_keterangan',
+        'repayment_persen',
+        'repayment_hari',
         'tipe_pembayaran',
         'order_method',
         'toleransi_penyusutan',
@@ -54,37 +54,38 @@ class Penawaran extends Model
         'updated_at',
         'updated_by',
         'jenis_penawaran',
-        'status', // tambahkan ini
+        'status',
         'disposisi_penawaran',
         'bm_result',
         'bm_tanggal',
+        'om_result',
+        'om_tanggal',
+        'approved_at',
+        'approved_by',
+        'token_verifikasi',
         'catatan_verifikasi',
         'catatan_om',
         'abrasi',
-        'user_id', // atau 'id_user' kalau pakai opsi B
+        'user_id',
     ];
 
     /******** Relasi ********/
 
-    // Penawaran belongsTo Customer
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
     public function produk_harga()
-{
-    // relasi ke tabel produk_hargas berdasarkan id_produk
-    return $this->belongsTo(\App\Models\ProdukHarga::class, 'id_produk', 'id_produk');
-}
+    {
+        return $this->belongsTo(\App\Models\ProdukHarga::class, 'id_produk', 'id_produk');
+    }
 
-    // Penawaran belongsTo Cabang
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
     }
 
-    // Penawaran hasMany PenawaranItem
     public function items()
     {
         return $this->hasMany(PenawaranItem::class, 'id_penawaran', 'id_penawaran');
@@ -92,7 +93,6 @@ class Penawaran extends Model
 
     public function user()
     {
-        // pakai foreign key user_id (kalau kamu pakai id_user, ganti argumennya)
         return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
@@ -101,5 +101,19 @@ class Penawaran extends Model
         return $this->hasMany(PenawaranOngkos::class, 'penawaran_id', 'id_penawaran');
     }
 
-    
+    /**
+     * Riwayat approval polymorphic (`document_approvals`, code=penawaran_tds),
+     * mengikuti pola yang sama dengan CustomerLcr::documentApprovals().
+     * Pakai morphMany supaya riwayat siklus sebelumnya tetap tersimpan walau
+     * ada re-submit setelah reject.
+     */
+    public function documentApprovals(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Models\DocumentApproval::class, 'approvable', 'approvable_type', 'approvable_id', 'id_penawaran');
+    }
+
+    public function latestDocumentApproval(): \Illuminate\Database\Eloquent\Relations\MorphOne
+    {
+        return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
 }

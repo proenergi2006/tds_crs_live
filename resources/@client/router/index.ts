@@ -42,6 +42,12 @@ const routes = [
   },
 
   {
+    path: "/verifikasi-penawaran/:token",
+    name: "penawaran-verification",
+    component: () => import("@/pages/PenawaranVerification/Index.vue"),
+  },
+
+  {
     path: "/",
     component: () => import("@/themes/Layout.vue"),
     children: [
@@ -68,11 +74,6 @@ const routes = [
         name: "users",
         component: () => import("@/pages/Users.vue"),
         meta: { permission: "admin.users.manage" },
-      },
-      {
-        path: "profile-overview-1",
-        name: "profile-overview-1",
-        component: () => import("@/pages/ProfileOverview1.vue"),
       },
       {
         path: "profile-overview-2",
@@ -344,7 +345,7 @@ const routes = [
         path: "/penawarans-proenergi",
         name: "penawarans-list-proenergi",
         component: () => import("@/pages/Penawaran/Index.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
+        meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
       },
       {
         path: "/penawarans/create",
@@ -382,7 +383,7 @@ const routes = [
         path: "/penawarans-proenergi/:id",
         name: "penawarans-detail-proenergi",
         component: () => import("@/pages/Penawaran/Detail.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
+        meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
       },
 
       {
@@ -703,7 +704,6 @@ const routes = [
         },
       },
 
-      // ... child routes lain ...
       {
         path: "testing-page",
         name: "testing-page",
@@ -770,6 +770,7 @@ router.beforeEach(async (to, from, next) => {
     to.name !== "login" &&
     to.name !== "two-factor" &&
     to.name !== "customer-onboarding" &&
+    to.name !== "penawaran-verification" &&
     to.name !== "forgot-password"
   ) {
     // stop lebih cepat saat redirect agar tidak menggantung
@@ -777,14 +778,13 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "login", query: { logged_out: "1" } });
   }
 
-  // Token ada tapi fetchUser() gagal (401 atau non-401) → auth.user tetap null.
-  // Jangan biarkan navigasi lolos dengan user null (topbar akan fallback ke "Guest").
-  // Skip kalau forceLogout() sedang menangani 401 yang sama, supaya tidak double-redirect.
+  // fetchUser() gagal, user tetap null -- jangan biarkan navigasi lolos, kecuali forceLogout udah nangani
   if (
     !auth.user &&
     to.name !== "login" &&
     to.name !== "two-factor" &&
     to.name !== "customer-onboarding" &&
+    to.name !== "penawaran-verification" &&
     to.name !== "forgot-password" &&
     !auth.isForceLoggingOut
   ) {

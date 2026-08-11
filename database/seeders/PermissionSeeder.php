@@ -178,6 +178,18 @@ class PermissionSeeder extends Seeder
 
         // Penawaran Proenergi (Customer Proenergi kini pakai customer.viewOwn/customer.manage TDS)
         [
+            'name'        => 'penawaran.proenergi.viewOwn',
+            'module'      => 'penawaran',
+            'description' => 'Lihat penawaran Proenergi milik sendiri (Marketing/KAE Proenergi)',
+            'roles'       => [13, 14],
+        ],
+        [
+            'name'        => 'penawaran.proenergi.viewAny',
+            'module'      => 'penawaran',
+            'description' => 'Lihat semua penawaran Proenergi lintas-marketing (Administrator/Admin Finance/CEO/BM/OM Proenergi)',
+            'roles'       => [1, 9, 2, 15, 16],
+        ],
+        [
             'name'        => 'penawaran.proenergi.manage',
             'module'      => 'penawaran',
             'description' => 'Kelola Penawaran Proenergi',

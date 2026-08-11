@@ -48,8 +48,8 @@ const brand = computed(() => route.meta.brand as VerifikasiBrand)
 
 // Proenergi: role dari permission verify-bm/verify-om (role 15/16).
 // TDS: permission verification.quotation dipakai bersama, jadi dibedakan dari id_role
-// (BM=8, OM/CFO/CEO=2/3/10 — lihat PenawaranController::verifikasiOm/tolakom).
-const TDS_OM_ID_ROLES = [2, 3, 10]
+// (BM=8, OM=10 saja — lihat PenawaranController::verifikasiOm/tolakom).
+const TDS_OM_ID_ROLES = [10]
 
 const idRole = computed(() => Number(auth.user?.id_role))
 const canSeeBm = computed(() => brand.value === 'proenergi'

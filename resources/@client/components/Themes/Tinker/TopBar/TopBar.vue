@@ -24,10 +24,8 @@ const hideSearchDropdown = () => {
 
 const router = useRouter()
 const auth = useAuthStore()
-// --- computed untuk menampilkan nama user ---
 const userName = computed(() => auth.user?.name || 'Guest')
 const userEmail = computed(() => auth.user?.email || '-')
-//const userEmail = computed(() => auth.user?.email || '')
 
 async function onLogout() {
   try {
@@ -66,26 +64,7 @@ async function onLogout() {
       <Breadcrumb.Link to="/app" :active="true"> CrushedStone </Breadcrumb.Link>
     </Breadcrumb>
     <!-- END: Breadcrumb -->
-    <!-- BEGIN: Search -->
-    <div class="relative mr-3 intro-x sm:mr-6">
-      <!-- <div class="relative hidden sm:block">
-        <FormInput
-          type="text"
-          class="border-transparent w-56 shadow-none rounded-full bg-slate-300/50 pr-8 transition-[width] duration-300 ease-in-out focus:border-transparent focus:w-72 dark:bg-darkmode-400/70"
-          placeholder="Search..."
-          @focus="showSearchDropdown"
-          @blur="hideSearchDropdown"
-        />
-        <Lucide
-          icon="Search"
-          class="absolute inset-y-0 right-0 w-5 h-5 my-auto mr-3 text-slate-600 dark:text-slate-500"
-        />
-      </div> -->
-      <!-- <a class="relative text-slate-600 sm:hidden" href="">
-        <Lucide icon="Search" class="w-5 h-5 dark:text-slate-500" />
-      </a> -->
-     </div>
-    <!-- END: Notifications  -->
+    <div class="relative mr-3 intro-x sm:mr-6"></div>
     <!-- BEGIN: Account Menu -->
     <Menu>
       <Menu.Button
@@ -105,14 +84,6 @@ async function onLogout() {
           </div>
         </Menu.Header>
         <Menu.Divider class="bg-white/[0.08]" />
-        <Menu.Item
-  as="button"
-  class="hover:bg-white/5"
-  @click="router.push({ name: 'profile-overview-1' })"
->
-  <Lucide icon="User" class="w-4 h-4 mr-2" />
-  Profile
-</Menu.Item>
       <Menu.Item
           v-if="auth.user?.id_role === 1"
           as="button"
