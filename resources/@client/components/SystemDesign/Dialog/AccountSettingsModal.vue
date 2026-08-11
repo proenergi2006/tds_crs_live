@@ -47,6 +47,7 @@ const profileServerErrors = reactive({ name: '', no_telepon: '' });
 
 const profileRules = {
   name: { required: helpers.withMessage('Nama wajib diisi', required) },
+  no_telepon: {},
 };
 const profileV$ = useVuelidate(profileRules, profileForm);
 
@@ -95,11 +96,11 @@ function resetPasswordForm() {
 }
 
 function getProfileFieldError(field: keyof typeof profileServerErrors) {
-  return profileServerErrors[field] || profileV$.value[field].$errors[0]?.$message?.toString() || '';
+  return profileServerErrors[field] || profileV$.value[field]?.$errors[0]?.$message?.toString() || '';
 }
 
 function getPasswordFieldError(field: keyof typeof passwordServerErrors) {
-  return passwordServerErrors[field] || passwordV$.value[field].$errors[0]?.$message?.toString() || '';
+  return passwordServerErrors[field] || passwordV$.value[field]?.$errors[0]?.$message?.toString() || '';
 }
 
 async function submitProfile() {

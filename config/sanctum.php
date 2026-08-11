@@ -50,6 +50,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Unremembered Expiration Minutes
+    |--------------------------------------------------------------------------
+    |
+    | Not a native Sanctum config key — read manually in AuthController::login()
+    | when the user does NOT check "Remember me". Token expiry is set to this
+    | value instead of the "expiration" value above.
+    |
+    */
+
+    'unremembered_expiration' => env('SANCTUM_UNREMEMBERED_EXPIRATION', 60 * 8),
+
+    /*
+    |--------------------------------------------------------------------------
     | Idle Expiration Minutes
     |--------------------------------------------------------------------------
     |

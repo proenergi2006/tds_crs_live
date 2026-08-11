@@ -32,7 +32,7 @@ class GeneratePenawaranPdfAction
         $contact = [
             'name'  => $u?->name ?? ($penawaran->kontak_nama ?? 'Robby Pratama Putra'),
             'role'  => $u?->role?->role_name ?? 'Project Manager',
-            'phone' => $u?->telepon ?? $u?->phone ?? $u?->no_hp ?? ($penawaran->kontak_telepon ?? '-'),
+            'phone' => $u?->no_telepon ?? ($penawaran->kontak_telepon ?? '-'),
             'email' => $u?->email ?? ($penawaran->kontak_email ?? '-'),
         ];
 
