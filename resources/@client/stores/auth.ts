@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', {
       id: string
       name: string
       email: string
+      no_telepon: string | null
       id_role: number
       two_factor_secret: string | null
       permissions: string[]

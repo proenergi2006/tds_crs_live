@@ -1,14 +1,26 @@
 @php
     $p = $penawaran;
-    $customer = $p->customer->nama_perusahaan ?? '-';
-    $cabang   = $p->cabang->nama_cabang ?? '-';
+    $customer        = $p->customer->company_name ?? '-';
+    $cabang          = $p->cabang->nama_cabang ?? '-';
+    $pengaju         = $p->user->name ?? $p->created_by ?? '-';
+    $dppHargaDasar   = (float) ($p->harga_dasar ?? 0) + (float) ($p->oat ?? 0);
+    $ppnHargaDasar   = round($dppHargaDasar * 0.11);
+    $totalHargaDasar = 'Rp ' . number_format($dppHargaDasar + $ppnHargaDasar, 0, ',', '.');
+@endphp
+
+@php
+    $isOmLevel = $level === 'om';
+    $headerTitle = $isOmLevel ? 'Update Penawaran: Disetujui Penuh' : 'Update Penawaran: Disetujui BM';
+    $bodyText = $isOmLevel
+        ? 'Penawaran Anda sudah <strong>disetujui penuh (OM/CEO)</strong>. Dokumen siap diproses ke tahap berikutnya.'
+        : 'Penawaran Anda sudah <strong>disetujui Branch Manager</strong> dan sedang menunggu persetujuan OM/CEO.';
 @endphp
 
 <!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <title>Penawaran Baru</title>
+  <title>{{ $headerTitle }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body style="margin:0;background:#f5f7fb;font-family:Segoe UI,Arial,sans-serif;color:#111;">
@@ -18,16 +30,16 @@
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.06);">
           <tr>
             <td style="background:#1f2937;padding:20px 24px;color:#fff;">
-              <h1 style="margin:0;font-size:18px;font-weight:600;">Penawaran Menunggu Persetujuan (BM)</h1>
-              <p style="margin:4px 0 0;font-size:12px;opacity:.85;">Mohon ditindaklanjuti</p>
+              <h1 style="margin:0;font-size:18px;font-weight:600;">{{ $headerTitle }}</h1>
+              <p style="margin:4px 0 0;font-size:12px;opacity:.85;">Informasi status terbaru</p>
             </td>
           </tr>
 
           <tr>
             <td style="padding:24px;">
-              <p style="margin:0 0 14px;font-size:14px;">Halo Branch Manager,</p>
+              <p style="margin:0 0 14px;font-size:14px;">Halo,</p>
               <p style="margin:0 0 18px;font-size:14px;line-height:1.6;">
-                Sebuah penawaran baru telah diajukan dan memerlukan persetujuan Anda.
+                {!! $bodyText !!}
               </p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:14px;">
@@ -40,31 +52,23 @@
                   <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $customer }}</td>
                 </tr>
                 <tr>
+                  <td style="padding:8px 0;color:#6b7280;">Diajukan oleh</td>
+                  <td style="padding:8px 0;color:#111827;">{{ $pengaju }}</td>
+                </tr>
+                <tr>
                   <td style="padding:8px 0;color:#6b7280;">Cabang</td>
                   <td style="padding:8px 0;color:#111827;">{{ $cabang }}</td>
                 </tr>
                 <tr>
-                  <td style="padding:8px 0;color:#6b7280;">Masa Berlaku</td>
-                  <td style="padding:8px 0;color:#111827;">{{ \Carbon\Carbon::parse($p->masa_berlaku)->translatedFormat('d F Y') }}</td>
-                </tr>
-                <tr>
-                  <td style="padding:8px 0;color:#6b7280;">Sampai Dengan</td>
-                  <td style="padding:8px 0;color:#111827;">{{ \Carbon\Carbon::parse($p->sampai_dengan)->translatedFormat('d F Y') }}</td>
-                </tr>
-                <tr>
-                  <td style="padding:8px 0;color:#6b7280;">Metode</td>
-                  <td style="padding:8px 0;color:#111827;">{{ $p->metode ?? '-' }}</td>
-                </tr>
-                <tr>
-                  <td style="padding:8px 0;color:#6b7280;">Total Item</td>
-                  <td style="padding:8px 0;color:#111827;">{{ $p->items->count() }} item</td>
+                  <td style="padding:8px 0;color:#6b7280;">Total Harga Dasar Penawaran</td>
+                  <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $totalHargaDasar }}</td>
                 </tr>
               </table>
 
               <div style="margin:22px 0;">
                 <a href="{{ $detailUrl }}"
                    style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600;">
-                  Buka Detail & Approve
+                  Lihat Detail Penawaran
                 </a>
               </div>
 

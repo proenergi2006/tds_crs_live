@@ -19,6 +19,12 @@ class PenawaranItemProenergi extends Model
         'jumlah_harga',
     ];
 
+    protected $casts = [
+        'volume_order' => 'integer',
+        'harga_tebus'  => 'integer',
+        'jumlah_harga' => 'integer',
+    ];
+
     /******** Relasi ********/
 
     // PenawaranItem belongsTo Penawaran

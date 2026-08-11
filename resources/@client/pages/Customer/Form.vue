@@ -403,7 +403,7 @@ function cancel() {
     </CardSection>
 
     <!-- Section: Detail Alamat -->
-    <CardSection title="Detail Alamat" description="Alamat lengkap customer berdasarkan wilayah BPS">
+    <CardSection title="Detail Alamat" description="Alamat lengkap customer">
       <Alert v-if="hasLegacyAddressOnly" variant="soft-warning" class="mb-4">
         Data lokasi customer ini masih pakai skema lama: <strong>{{ legacyAddressLabel }}</strong>.
         Silakan pilih ulang Provinsi &amp; Kabupaten/Kota di bawah berdasarkan daftar wilayah terbaru

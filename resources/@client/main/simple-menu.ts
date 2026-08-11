@@ -178,11 +178,6 @@ const menu: Array<Menu | "divider"> = [
     subMenu: [
       {
         icon: "Activity",
-        pageName: "profile-overview-1",
-        title: "Overview 1",
-      },
-      {
-        icon: "Activity",
         pageName: "profile-overview-2",
         title: "Overview 2",
       },

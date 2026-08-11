@@ -12,9 +12,10 @@ class AuthController extends Controller
         $creds = $request->validate([
             'email'    => ['required','email'],
             'password' => ['required','string'],
+            'remember' => ['sometimes','boolean'],
         ]);
 
-        if (! Auth::attempt($creds)) {
+        if (! Auth::attempt(['email' => $creds['email'], 'password' => $creds['password']])) {
             return response()->json(['message'=>'Invalid credentials'], 401);
         }
 
@@ -28,8 +29,13 @@ class AuthController extends Controller
             ]);
         }
 
-        // expiry diatur config('sanctum.expiration') + idle-check di AuthServiceProvider, gak perlu argumen expiry di sini
-        $token = $user->createToken('api_token')->plainTextToken;
+        // expiry beda tergantung remember: 7 hari kalau dicentang, 8 jam kalau tidak
+        $expiresAt = now()->addMinutes(
+            $request->boolean('remember')
+                ? config('sanctum.expiration')
+                : config('sanctum.unremembered_expiration')
+        );
+        $token = $user->createToken('api_token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'access_token' => $token,

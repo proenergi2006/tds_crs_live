@@ -5,6 +5,7 @@ import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import { FormLabel, FormTextarea } from '@/components/Base/Form'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
@@ -170,6 +171,11 @@ async function verifikasi() {
 }
 
 async function tolak() {
+  if (!tolakCatatan.value.trim()) {
+    notifyError('Gagal', 'Catatan penolakan wajib diisi.')
+    return
+  }
+
   tolakLoading.value = true
   try {
     await axios.patch(`/api${config.value.rejectEndpoint(id.value)}`, { catatan: tolakCatatan.value })
@@ -469,7 +475,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                   <dt class="font-label">Total Harga Dasar</dt>
                   <dd class="font-num-lg text-xl mt-1 text-success">{{
                     formatCurrency(penawaran.grand_total_harga_dasar)
-                    }}</dd>
+                  }}</dd>
                 </div>
               </dl>
 
@@ -509,7 +515,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                   <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(cogs) }}</dd>
                 </div>
                 <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Margin</dt>
+                  <dt class="font-label">Margin Harga Dasar terhadap COGS</dt>
                   <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
                   </dd>
                 </div>
@@ -521,7 +527,9 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 italic font-caption text-slate-500">
                 *Weighted-Average
                 dihitung berdasarkan bobot (persen) tiap produk dalam penawaran ini.</div>
-              <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{ cogsBasisNote }}</div>
+              <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{
+                cogsBasisNote }}
+              </div>
             </div>
           </CardSection>
 
@@ -621,8 +629,8 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               <div class="space-y-5 px-2">
                 <Stepper :steps="approvalSteps" direction="vertical" />
 
-                <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
-                  @click="previewLangDialogOpen = true">
+                <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
+                  class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
                   <Lucide icon="Printer" class="h-4 w-4" />
                   Preview PDF
                 </Button>
@@ -679,8 +687,10 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
   <ConfirmDialog :open="tolakDialogOpen" :title="`Tolak Penawaran ${role.toUpperCase()}?`"
     description="Penawaran akan ditolak dan dikembalikan ke tahap sebelumnya." confirm-text="Ya, Tolak" icon="X"
     icon-class="bg-danger/10 text-danger" variant="danger" :loading="tolakLoading"
-    @close="tolakDialogOpen = false; tolakCatatan = ''" @confirm="tolak">
-    <FormLabel>Catatan Penolakan</FormLabel>
+    :confirm-disabled="!tolakCatatan.trim()" @close="tolakDialogOpen = false; tolakCatatan = ''" @confirm="tolak">
+    <FormLabel>Catatan Penolakan
+      <RequiredAsterisk />
+    </FormLabel>
     <FormTextarea v-model="tolakCatatan" placeholder="Masukkan alasan penolakan..." :rows="3" />
   </ConfirmDialog>
 

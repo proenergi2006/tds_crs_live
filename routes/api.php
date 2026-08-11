@@ -38,6 +38,7 @@ use App\Http\Controllers\PoVerificationController;
 use App\Http\Controllers\ReceiveItemController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\PenawaranController;
+use App\Http\Controllers\PenawaranVerificationController;
 use App\Http\Controllers\TransportirController;
 use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\VolumeController;
@@ -107,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // e) Update password & profile
     Route::post('user/password', [ProfileController::class, 'updatePassword']);
+    Route::put('user/profile', [ProfileController::class, 'updateProfile']);
     Route::post('/user/face', [ProfileController::class, 'updateFace']);
 
     // f) Master data
@@ -407,6 +409,7 @@ Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class,
 Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
 Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'uploadByToken'])
     ->where('token', '[A-Za-z0-9\-]{10,}');
+Route::get('/verifikasi-penawaran/{token}', [PenawaranVerificationController::class, 'show']);
 // Lookup alamat BPS 4 level -- province/regency/district/village. Publik (tanpa
 // auth) karena dipakai juga oleh portal onboarding /verify/:token yang gak
 // punya token Bearer.

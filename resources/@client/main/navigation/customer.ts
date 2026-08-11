@@ -36,7 +36,7 @@ export const customerNavigation: NavItem[] = [
           "penawarans-edit-proenergi",
           "penawarans-detail-proenergi",
         ],
-        permission: "penawaran.proenergi.manage",
+        permission: "penawaran.proenergi.viewOwn",
       },
       {
         icon: "ShoppingCart",

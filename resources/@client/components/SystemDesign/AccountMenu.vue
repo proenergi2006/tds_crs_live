@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import Lucide from '@/components/Base/Lucide'
 import { Menu } from '@/components/Base/Headless'
+import AccountSettingsModal from '@/components/SystemDesign/Dialog/AccountSettingsModal.vue'
 import defaultLogoUrl from '@/assets/images/logo-tds-1.png'
 import agenLogoUrl from '@/assets/images/logo-proenergi.png'
 import { useAuthStore } from '@/stores/auth'
@@ -28,6 +29,8 @@ const isAgenRole = computed(() => {
 const currentLogo = computed(() => {
   return isAgenRole.value ? agenLogoUrl : defaultLogoUrl
 })
+
+const showSettingsModal = ref(false)
 </script>
 
 <template>
@@ -59,20 +62,9 @@ const currentLogo = computed(() => {
 
       <Menu.Divider class="bg-white/[0.08]" />
 
-      <Menu.Item as="button" class="hover:bg-white/5" @click="router.push({ name: 'profile-overview-1' })">
-        <Lucide icon="User" class="w-4 h-4 mr-2" />
-        Profile
-      </Menu.Item>
-
-      <Menu.Item v-if="auth.can('admin.users.manage')" as="button" class="hover:bg-white/5"
-        @click="() => router.push({ name: 'users' })">
-        <Lucide icon="Edit" class="w-4 h-4 mr-2" />
-        Add Account
-      </Menu.Item>
-
-      <Menu.Item class="hover:bg-white/5">
-        <Lucide icon="HelpCircle" class="w-4 h-4 mr-2" />
-        Help
+      <Menu.Item as="button" @click="showSettingsModal = true" class="w-full text-left hover:bg-white/5 flex items-center px-4 py-2">
+        <Lucide icon="Settings" class="w-4 h-4 mr-2" />
+        Settings
       </Menu.Item>
 
       <Menu.Divider class="bg-white/[0.08]" />
@@ -83,4 +75,6 @@ const currentLogo = computed(() => {
       </Menu.Item>
     </Menu.Items>
   </Menu>
+
+  <AccountSettingsModal :open="showSettingsModal" @close="showSettingsModal = false" />
 </template>

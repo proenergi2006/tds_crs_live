@@ -1,8 +1,12 @@
 @php
-    /** @var \App\Models\Penawaran $penawaran */
+    /** @var \App\Models\Penawaran|\App\Models\PenawaranProenergi $penawaran */
     $p = $penawaran;
-    $customer = $p->customer->nama_perusahaan ?? '-';
-    $cabang   = $p->cabang->nama_cabang ?? '-';
+    $customer   = $p->customer->company_name ?? '-';
+    $cabang     = $p->cabang->nama_cabang ?? '-';
+    $pengaju        = $p->user->name ?? $p->created_by ?? '-';
+    $dppHargaDasar  = (float) ($p->harga_dasar ?? 0) + (float) ($p->oat ?? 0);
+    $ppnHargaDasar  = round($dppHargaDasar * 0.11);
+    $totalHargaDasar = 'Rp ' . number_format($dppHargaDasar + $ppnHargaDasar, 0, ',', '.');
     // variabel tambahan dari Mailable: $alasan (string), $catatan (nullable)
 @endphp
 
@@ -42,8 +46,16 @@
                   <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $customer }}</td>
                 </tr>
                 <tr>
+                  <td style="padding:8px 0;color:#6b7280;">Diajukan oleh</td>
+                  <td style="padding:8px 0;color:#111827;">{{ $pengaju }}</td>
+                </tr>
+                <tr>
                   <td style="padding:8px 0;color:#6b7280;">Cabang</td>
                   <td style="padding:8px 0;color:#111827;">{{ $cabang }}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#6b7280;">Total Harga Dasar Penawaran</td>
+                  <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $totalHargaDasar }}</td>
                 </tr>
                 <tr>
                   <td style="padding:8px 0;color:#6b7280;">Status</td>

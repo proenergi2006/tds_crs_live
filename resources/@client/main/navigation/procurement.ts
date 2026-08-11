@@ -27,14 +27,8 @@ export const procurementNavigation: NavItem[] = [
   },
   {
     icon: 'Boxes',
+    pageName: 'StockInventory',
     title: 'Inventory',
-    subMenu: [
-      {
-        icon: 'Inbox',
-        pageName: 'StockInventory',
-        title: 'Stock Inventory',
-        permission: 'inventory.view',
-      },
-    ],
+    permission: 'inventory.view',
   },
 ]

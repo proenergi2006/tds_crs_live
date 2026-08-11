@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Penawaran;
+use App\Models\PenawaranProenergi;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -11,12 +12,12 @@ class PenawaranRejectedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public Penawaran $penawaran;
+    public Penawaran|PenawaranProenergi $penawaran;
     public string $detailUrl;
     public string $alasan;   // mis: "Ditolak BM" / "Ditolak OM"
     public ?string $catatan; // optional
 
-    public function __construct(Penawaran $penawaran, string $detailUrl, string $alasan, ?string $catatan = null)
+    public function __construct(Penawaran|PenawaranProenergi $penawaran, string $detailUrl, string $alasan, ?string $catatan = null)
     {
         $this->penawaran = $penawaran;
         $this->detailUrl = $detailUrl;
@@ -26,8 +27,8 @@ class PenawaranRejectedMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Penawaran ditolak')
-            ->view('emails.penawaran.rejected') // resources/views/emails/penawaran/rejected.blade.php
+        return $this->subject("[Ditolak] Penawaran {$this->penawaran->nomor_penawaran} — {$this->alasan}")
+            ->view('emails.penawaran.rejected')
             ->with([
                 'penawaran' => $this->penawaran,
                 'detailUrl' => $this->detailUrl,
