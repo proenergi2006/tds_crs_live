@@ -6,7 +6,7 @@ import Lucide, { type Icon } from '@/components/Base/Lucide/Lucide.vue';
 export interface StepItem {
   title: string;
   description?: string;
-  status: 'completed' | 'active' | 'pending';
+  status: 'completed' | 'active' | 'pending' | 'rejected';
   icon?: Icon;
   label?: string;
   statusText?: string;
@@ -88,6 +88,7 @@ function getStatusText(step: StepItem): string {
   if (step.statusText) return step.statusText;
   if (step.status === 'completed') return 'DONE';
   if (step.status === 'active') return 'ACTIVE';
+  if (step.status === 'rejected') return 'DITOLAK';
   return 'PENDING';
 }
 
@@ -99,6 +100,7 @@ function circleClass(status: StepItem['status'], wrapSize: string): string {
     status === 'completed' && 'border-success bg-success text-white step-pop',
     status === 'active' && 'relative border-success bg-white text-success step-pop',
     status === 'pending' && 'border-slate-200 bg-white text-slate-400',
+    status === 'rejected' && 'border-rose-500 bg-rose-500 text-white step-pop',
   );
 }
 
@@ -109,6 +111,7 @@ function titleClass(status: StepItem['status']): string {
     status === 'completed' && 'text-slate-700',
     status === 'active' && 'text-slate-800',
     status === 'pending' && 'text-slate-400',
+    status === 'rejected' && 'text-rose-600',
   );
 }
 
@@ -120,6 +123,7 @@ function badgeClass(status: StepItem['status']): string {
     status === 'completed' && 'bg-emerald-100 text-emerald-700',
     status === 'active' && 'bg-primary/10 text-success',
     status === 'pending' && 'bg-slate-100 text-slate-500',
+    status === 'rejected' && 'bg-rose-100 text-rose-700',
   );
 }
 
@@ -137,6 +141,7 @@ function isConnectorFilled(step: StepItem): boolean {
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'completed'" icon="CheckCheck" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'active'" icon="Loader2" :class="sz.iconInner" />
+          <Lucide v-else-if="step.status === 'rejected'" icon="X" :class="sz.iconInner" />
           <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
@@ -157,6 +162,7 @@ function isConnectorFilled(step: StepItem): boolean {
             <span v-if="showStatusBadge" :class="badgeClass(step.status)">
               <Lucide v-if="step.status === 'completed'" icon="Check" class="h-3 w-3" />
               <span v-else-if="step.status === 'active'" class="h-1.5 w-1.5 rounded-full bg-current" />
+              <Lucide v-else-if="step.status === 'rejected'" icon="X" class="h-3 w-3" />
               {{ getStatusText(step) }}
             </span>
           </div>
@@ -186,6 +192,7 @@ function isConnectorFilled(step: StepItem): boolean {
           <Lucide v-if="step.icon" :icon="step.icon" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
           <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success', sz.dot)" />
+          <Lucide v-else-if="step.status === 'rejected'" icon="X" :class="sz.iconInner" />
           <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
@@ -210,6 +217,7 @@ function isConnectorFilled(step: StepItem): boolean {
         <span v-if="showStatusBadge" :class="twMerge('mt-1.5', badgeClass(step.status))">
           <Lucide v-if="step.status === 'completed'" icon="Check" class="h-3 w-3" />
           <span v-else-if="step.status === 'active'" class="h-1.5 w-1.5 rounded-full bg-current" />
+          <Lucide v-else-if="step.status === 'rejected'" icon="X" class="h-3 w-3" />
           {{ getStatusText(step) }}
         </span>
       </div>
@@ -218,9 +226,7 @@ function isConnectorFilled(step: StepItem): boolean {
 </template>
 
 <style scoped>
-/* Cincin putus-putus buat step aktif -- kesan "lagi berlangsung" tanpa
-   animasi berputar terus (spinner versi sebelumnya kerasa ganggu). Efek
-   "napas": ring membesar dikit sambil memudar, terus balik lagi. */
+/* Ring napas buat step aktif -- ganti spinner lama yang kerasa ganggu */
 .step-pulse-ring {
   position: absolute;
   inset: -4px;
@@ -240,10 +246,7 @@ function isConnectorFilled(step: StepItem): boolean {
   }
 }
 
-/* Pop sekali pas circle-nya baru pindah status (pending → active / active →
-   completed). Class ini baru muncul di DOM tepat saat status berubah, jadi
-   animasinya otomatis ke-trigger ulang tiap kali circleClass() ngehasilin
-   string yang beda. */
+/* Pop sekali tiap status circle berubah -- class-nya re-render jadi animasi auto-retrigger */
 .step-pop {
   animation: step-pop 0.35s ease-out;
 }

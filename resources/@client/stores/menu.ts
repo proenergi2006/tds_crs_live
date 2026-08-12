@@ -1,4 +1,3 @@
-// src/stores/menu.ts
 import { defineStore } from "pinia";
 import { type Icon } from "@/components/Base/Lucide/Lucide.vue";
 import { type Themes } from "@/stores/theme";
@@ -16,32 +15,30 @@ export interface Menu {
   ignore?: boolean;
   permission?: string;
   badgeKey?: string;
-  badge?: {
-    counter: "pendingCfo" | "pendingCeo";
-    role?: number; // kalau diisi, badge hanya tampil untuk role ini
-  };
+  // roles/excludeRoles cuma soal DI MANA item muncul per role, permission tetap yang nentuin KEWENANGAN
+  roles?: number[]; // kalau diisi, item CUMA tampil untuk id_role di list ini
+  excludeRoles?: number[]; // kalau diisi, item disembunyikan untuk id_role di list ini
 }
 
 export interface MenuState {
   menuValue: Array<Menu | "divider">;
 }
 
-/**
- * Filter satu item navigasi secara rekursif berdasarkan permission.
- *
- * Aturan:
- *   - Leaf item tanpa `permission`  → selalu tampil (universal: Dashboard, Profile)
- *   - Leaf item dengan `permission` → tampil jika auth.can(permission)
- *   - Grup tanpa `permission`       → tampil jika ≥ 1 child lolos filter
- *   - Grup dengan `permission`      → tampil jika auth.can(permission) && ≥ 1 child lolos
- */
-const filterByPermission = (
+// filter navigasi rekursif: roles/excludeRoles dicek duluan sebelum permission, grup tampil kalau ada child yang lolos
+const filterMenuItem = (
   item: Menu,
   canFn: (permission: string) => boolean,
+  currentRoleId?: number,
 ): Menu | null => {
+  const roleAllowed =
+    (!item.roles || (currentRoleId !== undefined && item.roles.includes(currentRoleId))) &&
+    (!item.excludeRoles || currentRoleId === undefined || !item.excludeRoles.includes(currentRoleId));
+
+  if (!roleAllowed) return null;
+
   if (item.subMenu?.length) {
     const filteredSub = item.subMenu
-      .map((sub) => filterByPermission(sub, canFn))
+      .map((sub) => filterMenuItem(sub, canFn, currentRoleId))
       .filter((sub): sub is Menu => sub !== null);
 
     if (!filteredSub.length) return null;
@@ -66,12 +63,13 @@ export const useMenuStore = defineStore("menu", {
   getters: {
     menu: (state) => (layout: Themes["layout"]) => {
       const auth = useAuthStore();
+      const currentRoleId = auth.user?.id_role !== undefined ? Number(auth.user.id_role) : undefined;
 
       if (layout === "top-menu") return topMenu;
       if (layout === "simple-menu") return simpleMenu;
 
       return (navigation as Menu[])
-        .map((item) => filterByPermission(item, (p) => auth.can(p)))
+        .map((item) => filterMenuItem(item, (p) => auth.can(p), currentRoleId))
         .filter((item): item is Menu => item !== null);
     },
   },

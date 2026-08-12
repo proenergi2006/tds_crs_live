@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\MasterData\ProdukHargaPeriodeResource;
 use App\Http\Resources\MasterData\ProdukHargaResource;
 use App\Models\ProdukHarga;
+use App\Support\ProdukHarga\PricePeriodCompletenessQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -55,19 +56,7 @@ class ProdukHargaController extends Controller
 
     public function periode(Request $request)
     {
-        $rows = ProdukHarga::query()
-            ->selectRaw(
-                'periode_awal, periode_akhir, ' .
-                    'COUNT(*) AS jumlah_data, ' .
-                    'COUNT(DISTINCT id_cabang) AS jumlah_cabang, ' .
-                    'MAX(COALESCE(lastupdate_time, created_time)) AS terakhir_diupdate'
-            )
-            ->groupBy('periode_awal', 'periode_akhir')
-            ->orderBy('periode_awal', 'desc')
-            ->orderBy('periode_akhir', 'desc')
-            ->get();
-
-        return ProdukHargaPeriodeResource::collection($rows);
+        return ProdukHargaPeriodeResource::collection(app(PricePeriodCompletenessQuery::class)->grouped());
     }
 
     public function check(Request $request)
@@ -88,12 +77,7 @@ class ProdukHargaController extends Controller
         ]);
     }
 
-    // Mengembalikan map {id_produk: harga} untuk produk yang harganya ter-cover oleh
-    // rentang periode pengiriman. Jika satu produk punya >1 harga di rentang itu,
-    // ambil yang paling baru (periode_akhir paling lama).
-    //
-    // Param `pe=1` (Proenergi): pakai harga_price_list_pe, fallback ke harga_price_list
-    // bila harga PE belum diisi (<= 0). Default (TDS): pakai harga_price_list.
+    // map {id_produk: harga} yang ter-cover rentang periode pengiriman (ambil paling baru kalau >1); pe=1 pakai harga_price_list_pe, fallback ke harga_price_list kalau belum diisi.
     public function byDate(Request $request)
     {
         $awal  = $request->query('periode_awal');
@@ -104,8 +88,6 @@ class ProdukHargaController extends Controller
             return response()->json([]);
         }
 
-        // Overlap: harga berlaku selama rentang pengiriman bila
-        // periode_awal harga <= akhir pengiriman DAN periode_akhir harga >= awal pengiriman.
         $q = DB::table('produk_hargas')
             ->whereDate('periode_awal', '<=', $akhir)
             ->whereDate('periode_akhir', '>=', $awal)
@@ -127,8 +109,7 @@ class ProdukHargaController extends Controller
                 continue;
             }
 
-            // Proenergi: harga_price_list_pe ?? harga_price_list. Kolom pe nullable &
-            // default 0, jadi nilai <= 0 dianggap "belum diisi" lalu fallback ke TDS.
+            // kolom pe nullable & default 0, jadi nilai <= 0 dianggap "belum diisi" lalu fallback ke TDS.
             $map[$row->id_produk] = ($usePe && (float) ($row->harga_price_list_pe ?? 0) > 0)
                 ? $row->harga_price_list_pe
                 : $row->harga_price_list;

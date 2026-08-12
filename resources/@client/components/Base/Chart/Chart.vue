@@ -72,6 +72,7 @@ onMounted(() => {
 
 <template>
   <div
+    class="h-full w-full"
     :style="{
       width: `${width}px`,
       height: `${height}px`,

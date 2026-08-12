@@ -14,15 +14,16 @@ import { createResourceApi } from '@/utils/resourceApi'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
+/* Types */
 type PeriodeRow = {
   periode_awal: string
   periode_akhir: string
   label: string
-  status: 'aktif' | 'berakhir'
+  masa_aktif: 'aktif' | 'berakhir'
+  status: 'lengkap' | 'belum_lengkap'
   jumlah_data: number
   jumlah_cabang: number
+  jumlah_belum_lengkap: number
   terakhir_diupdate: string | null
 }
 
@@ -46,8 +47,7 @@ type HargaRow = {
   }
 }
 
-// ─── Composables & APIs ──────────────────────────────────────────────────────
-
+/* Composables & APIs */
 const auth = useAuthStore()
 const periodeApi = createResourceApi('/produk-hargas/periode')
 const hargaProdukApi = createResourceApi('/produk-hargas')
@@ -55,16 +55,14 @@ const cabangApi = createResourceApi('/cabangs')
 const produkApi = createResourceApi('/produks')
 const { success, error } = useNotification()
 
-// ─── State: tabel utama (periode level, CSR) ─────────────────────────────────
-
+/* State: tabel utama (periode level, CSR) */
 const periodeList = ref<PeriodeRow[]>([])
 const periodeLoading = ref(false)
 const periodeSearch = ref('')
 const periodeCurrentPage = ref(1)
 const periodePerPage = ref(10)
 
-// ─── State: SlideOver detail harga ───────────────────────────────────────────
-
+/* State: SlideOver detail harga */
 const slideoverOpen = ref(false)
 const selectedPeriode = ref<PeriodeRow | null>(null)
 
@@ -76,23 +74,19 @@ const slideoverFilterProduk = ref<string | number>('')
 const slideoverCurrentPage = ref(1)
 const slideoverPerPage = ref(10)
 
-// ─── State: dropdown shared ───────────────────────────────────────────────────
-
+/* State: dropdown shared */
 const cabangs = ref<any[]>([])
 const produks = ref<any[]>([])
 
-// ─── State: delete ────────────────────────────────────────────────────────────
-
+/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-
+/* Auth */
 const canManageHarga = computed(() => auth.can('harga-produk.manage'))
 
-// ─── Computed: tabel utama ────────────────────────────────────────────────────
-
+/* Computed: tabel utama */
 const filteredPeriode = computed(() => {
   const q = periodeSearch.value.trim().toLowerCase()
   if (!q) return periodeList.value
@@ -145,8 +139,7 @@ const paginatedRows = computed(() => {
   return filteredRows.value.slice(start, start + slideoverPerPage.value)
 })
 
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
-
+/* Lifecycle */
 onMounted(async () => {
   await Promise.all([
     fetchDropdowns(),
@@ -155,8 +148,7 @@ onMounted(async () => {
   await fetchPeriode()
 })
 
-// ─── Watchers ─────────────────────────────────────────────────────────────────
-
+/* Watchers */
 watch(periodeSearch, () => { periodeCurrentPage.value = 1 })
 
 watch(
@@ -164,8 +156,7 @@ watch(
   () => { slideoverCurrentPage.value = 1 },
 )
 
-// ─── Fetch ────────────────────────────────────────────────────────────────────
-
+/* Fetch */
 async function fetchDropdowns() {
   try {
     const [cabangRes, produkRes] = await Promise.all([
@@ -211,8 +202,7 @@ async function fetchSlideoverData() {
   }
 }
 
-// ─── Action handlers ──────────────────────────────────────────────────────────
-
+/* Action handlers */
 function openSlideover(row: PeriodeRow) {
   selectedPeriode.value = row
   slideoverSearch.value = ''
@@ -256,8 +246,7 @@ async function submitDelete() {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
+/* Helpers */
 function formatDateTime(dateStr: string | null) {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -298,15 +287,16 @@ function produkText(row: HargaRow) {
 
       <!-- Tabel utama: Periode -->
       <DataList v-model:search="periodeSearch" v-model:per-page="periodePerPage" :loading="periodeLoading"
-        :empty="filteredPeriode.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true"
+        :empty="filteredPeriode.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true"
         :total="filteredPeriode.length" :current-page="periodeCurrentPage" :total-pages="periodeTotalPages"
         search-placeholder="Cari periode..." loading-text="Memuat data periode..."
         empty-description="Belum ada data periode harga produk." @page-change="(p) => { periodeCurrentPage = p }">
         <template #head>
           <Table.Th>Periode</Table.Th>
-          <Table.Th class="w-28">Status</Table.Th>
-          <Table.Th class="text-right w-32">Jumlah Cabang</Table.Th>
-          <Table.Th class="text-right w-32">Jumlah Data</Table.Th>
+          <Table.Th class="w-28">Masa Aktif</Table.Th>
+          <Table.Th class="w-44">Status</Table.Th>
+          <Table.Th class="text-right w-24">Jumlah Cabang</Table.Th>
+          <Table.Th class="text-right w-24">Jumlah Data</Table.Th>
           <Table.Th class="w-40">Diupdate</Table.Th>
           <Table.Th class="text-center w-24">Aksi</Table.Th>
         </template>
@@ -325,11 +315,24 @@ function produkText(row: HargaRow) {
             </Table.Td>
 
             <Table.Td>
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-1" :class="row.status === 'aktif'
+              <span class="font-label inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1" :class="row.masa_aktif === 'aktif'
                 ? 'bg-success/10 text-success'
                 : 'bg-slate-100 text-slate-500'">
-                {{ row.status === 'aktif' ? 'Aktif' : 'Berakhir' }}
+                {{ row.masa_aktif === 'aktif' ? 'Aktif' : 'Berakhir' }}
               </span>
+            </Table.Td>
+
+            <Table.Td>
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-label inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1" :class="row.status === 'lengkap'
+                  ? 'bg-success/10 text-success'
+                  : 'bg-amber-100 text-amber-600'">
+                  {{ row.status === 'lengkap' ? 'Lengkap' : 'Belum Lengkap' }}
+                </span>
+                <span v-if="row.status === 'belum_lengkap'" class="font-caption whitespace-nowrap">
+                  ({{ row.jumlah_belum_lengkap }}/{{ row.jumlah_data }})
+                </span>
+              </div>
             </Table.Td>
 
             <Table.Td class="font-num text-right">
@@ -368,10 +371,16 @@ function produkText(row: HargaRow) {
                   {{ selectedPeriode?.label ?? '' }}
                 </h2>
                 <span v-if="selectedPeriode"
-                  class="font-label inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5" :class="selectedPeriode.status === 'aktif'
+                  class="font-label inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5" :class="selectedPeriode.masa_aktif === 'aktif'
                     ? 'bg-success/10 text-success'
                     : 'bg-slate-100 text-slate-500'">
-                  {{ selectedPeriode.status === 'aktif' ? 'Aktif' : 'Berakhir' }}
+                  {{ selectedPeriode.masa_aktif === 'aktif' ? 'Aktif' : 'Berakhir' }}
+                </span>
+                <span v-if="selectedPeriode"
+                  class="font-label inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5" :class="selectedPeriode.status === 'lengkap'
+                    ? 'bg-success/10 text-success'
+                    : 'bg-amber-100 text-amber-600'">
+                  {{ selectedPeriode.status === 'lengkap' ? 'Lengkap' : 'Belum Lengkap' }}
                 </span>
               </div>
               <p class="font-caption">

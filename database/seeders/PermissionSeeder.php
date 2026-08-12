@@ -172,8 +172,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'verification.quotation',
             'module'      => 'verification',
-            'description' => 'Akses modul approval penawaran (BM/CFO/CEO/OM)',
-            'roles'       => [8, 2, 3, 10],
+            'description' => 'Akses modul approval penawaran (BM/CFO/OM)',
+            'roles'       => [8, 3, 10],
         ],
 
         // Penawaran Proenergi (Customer Proenergi kini pakai customer.viewOwn/customer.manage TDS)
@@ -279,6 +279,30 @@ class PermissionSeeder extends Seeder
         }
 
         $this->cleanupRetiredPermissions();
+        $this->cleanupRevokedRolePermissions();
+    }
+
+    // loop upsert di atas cuma NAMBAH grant, gak pernah nyabut -- role yang ilang dari array 'roles' harus dibersihin manual di sini
+    private function cleanupRevokedRolePermissions(): void
+    {
+        $revoked = [
+            // CEO gak berwenang approve Quotation, flow-nya cuma BM->OM
+            ['permission' => 'verification.quotation', 'id_role' => 2],
+        ];
+
+        foreach ($revoked as $entry) {
+            $permissionId = DB::table('permissions')
+                ->where('name', $entry['permission'])
+                ->where('guard_name', 'web')
+                ->value('id');
+
+            if ($permissionId) {
+                DB::table('role_has_permissions')
+                    ->where('permission_id', $permissionId)
+                    ->where('id_role', $entry['id_role'])
+                    ->delete();
+            }
+        }
     }
 
     private function cleanupRetiredPermissions(): void

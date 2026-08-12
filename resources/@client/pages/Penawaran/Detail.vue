@@ -122,41 +122,18 @@ function wilayahLabel(w: any) {
   return parts.length ? parts.join(' - ') : null
 }
 
-const approvalSteps = computed<StepItem[]>(() => {
-  const s = penawaran.value.status
-  const step = s === 'approved_om' ? 4 : s === 'approved_bm' ? 3 : s === 'waiting_branch_manager' ? 2 : 1
-
-  function st(completedWhen: boolean, activeWhen: boolean): StepItem['status'] {
-    if (completedWhen) return 'completed'
-    if (activeWhen) return 'active'
-    return 'pending'
-  }
-
-  return [
-    {
-      title: 'Draft',
-      description: 'Penawaran dibuat dan masih dapat diubah.',
-      status: st(step > 1, step === 1),
-      timestamp: formatDateTime(penawaran.value.created_at),
-    },
-    {
-      title: 'Waiting BM',
-      description: 'Menunggu verifikasi dari Branch Manager.',
-      status: st(step > 2, step === 2),
-    },
-    {
-      title: 'Approved BM',
-      description: 'Disetujui Branch Manager, diteruskan ke Operations Manager.',
-      status: st(step > 3, step === 3),
-      timestamp: formatDateTime(penawaran.value.bm_tanggal),
-    },
-    {
-      title: 'Approved OM',
-      description: 'Disetujui Operations Manager. Penawaran final.',
-      status: st(step === 4, false),
-    },
-  ]
-})
+// backend (PenawaranApprovalStepsBuilder) yang nentuin title/status/label, frontend cuma format timestamp-nya
+const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>(() =>
+  (penawaran.value.approval_attempts ?? []).map((attempt: any) => ({
+    label: attempt.label,
+    steps: (attempt.steps ?? []).map((s: any) => ({
+      title: s.title,
+      description: s.description,
+      status: s.status,
+      timestamp: s.timestamp ? formatDateTime(s.timestamp) : undefined,
+    })),
+  }))
+)
 
 watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
@@ -578,7 +555,15 @@ function formatNumber(v: number | string = 0) {
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
-                <Stepper :steps="approvalSteps" direction="vertical" />
+                <div class="space-y-6">
+                  <div v-for="(attempt, idx) in approvalAttempts" :key="idx" class="space-y-3">
+                    <span v-if="attempt.label"
+                      class="font-label inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">
+                      {{ attempt.label }}
+                    </span>
+                    <Stepper :steps="attempt.steps" direction="vertical" />
+                  </div>
+                </div>
 
                 <p v-if="penawaran.status === 'draft'"
                   class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
@@ -599,25 +584,6 @@ function formatNumber(v: number | string = 0) {
                 </div>
               </div>
             </CardSection>
-
-            <!-- Catatan Verifikasi BM / OM -->
-            <section class="p-6 rounded-lg bg-white shadow-sm space-y-3">
-              <div v-if="!penawaran.catatan_verifikasi && !penawaran.catatan_om"
-                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-label">Catatan Verifikasi</div>
-                <i class="font-body text-xs mt-1 whitespace-pre-line">Tidak ada catatan verifikasi untuk penawaran
-                  ini.</i>
-              </div>
-              <div v-if="penawaran.catatan_verifikasi" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-label">Catatan Verifikasi BM</div>
-                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}</p>
-              </div>
-              <div v-if="penawaran.catatan_om" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-label">Catatan Verifikasi OM</div>
-                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
-              </div>
-            </section>
-
           </div>
         </div>
 

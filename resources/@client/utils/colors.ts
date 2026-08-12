@@ -55,4 +55,31 @@ const getColor = (colorKey: DotNestedKeys<Colors>, opacity: number = 1) => {
   }
 };
 
-export { getColor };
+// warna ke-N dipasang ke slice dengan RANK ke-N (slice terbesar dapet warna pertama), bukan urutan kategori di data
+const DONUT_COLOR_PALETTE: Parameters<typeof getColor>[0][] = [
+  "primary",
+  "emerald.400",
+  "amber.400",
+  "sky.400",
+  "rose.400",
+  "violet.400",
+  "cyan.400",
+  "lime.400",
+  "fuchsia.400",
+  "slate.400",
+];
+
+// hasil array tetap sejajar urutan `values` asli (bukan hasil sort), jadi bisa langsung dipasang ke backgroundColor
+const getDonutColors = (values: number[], opacity: number = 0.85): string[] => {
+  const rankedIndexes = values
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => b.value - a.value);
+
+  const colorByIndex = new Array<string>(values.length);
+  rankedIndexes.forEach(({ index }, rank) => {
+    colorByIndex[index] = getColor(DONUT_COLOR_PALETTE[rank % DONUT_COLOR_PALETTE.length], opacity);
+  });
+  return colorByIndex;
+};
+
+export { getColor, getDonutColors };

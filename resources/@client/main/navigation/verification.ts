@@ -11,6 +11,21 @@ export const verificationNavigation: NavItem[] = [
         pageName: "po-verification-list",
         title: "PO Supplier",
         permission: "verification.po-supplier",
+        badgeKey: "vendor_po",
+      },
+      {
+        icon: "ShoppingBag",
+        pageName: "produk-hargas",
+        title: "Periode Harga",
+        activePageNames: [
+          "produk-hargas-create",
+          "produk-hargas-edit",
+          "produk-hargas-detail",
+        ],
+        permission: "harga-produk.view",
+        // item yang sama juga ada di Master Data > Harga buat role lain, ini khusus CEO
+        roles: [2],
+        badgeKey: "price_period",
       },
       {
         icon: "Landmark",
@@ -25,6 +40,7 @@ export const verificationNavigation: NavItem[] = [
         title: "Quotation",
         permission: "verification.quotation",
         activePageNames: ["penawarans-verifikasi-detail"],
+        badgeKey: "penawaran",
       },
       {
         icon: "File",

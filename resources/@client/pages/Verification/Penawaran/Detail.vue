@@ -108,42 +108,18 @@ function wilayahLabel(w: any) {
   return parts.length ? parts.join(' - ') : null
 }
 
-const approvalSteps = computed<StepItem[]>(() => {
-  const s = penawaran.value.status
-  const step = s === 'approved_om' ? 4 : s === 'approved_bm' ? 3 : s === 'waiting_branch_manager' ? 2 : 1
-
-  function st(completedWhen: boolean, activeWhen: boolean): StepItem['status'] {
-    if (completedWhen) return 'completed'
-    if (activeWhen) return 'active'
-    return 'pending'
-  }
-
-  return [
-    {
-      title: 'Draft',
-      description: 'Penawaran dibuat dan masih dapat diubah.',
-      status: st(step > 1, step === 1),
-      timestamp: formatDateTime(penawaran.value.created_at),
-    },
-    {
-      title: 'Waiting BM',
-      description: 'Menunggu verifikasi dari Branch Manager.',
-      status: st(step > 2, step === 2),
-    },
-    {
-      title: 'Approved BM',
-      description: 'Disetujui Branch Manager, diteruskan ke Operations Manager.',
-      status: st(step > 3, step === 3),
-      timestamp: formatDateTime(penawaran.value.bm_tanggal),
-    },
-    {
-      title: 'Approved OM',
-      description: 'Disetujui Operations Manager. Penawaran final.',
-      status: st(step === 4, false),
-    },
-  ]
-})
-
+// backend (PenawaranApprovalStepsBuilder) yang nentuin title/status/label, frontend cuma format timestamp-nya
+const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>(() =>
+  (penawaran.value.approval_attempts ?? []).map((attempt: any) => ({
+    label: attempt.label,
+    steps: (attempt.steps ?? []).map((s: any) => ({
+      title: s.title,
+      description: s.description,
+      status: s.status,
+      timestamp: s.timestamp ? formatDateTime(s.timestamp) : undefined,
+    })),
+  }))
+)
 
 const verifikasiDialogOpen = ref(false)
 const verifikasiCatatan = ref('')
@@ -627,7 +603,15 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
-                <Stepper :steps="approvalSteps" direction="vertical" />
+                <div class="space-y-6">
+                  <div v-for="(attempt, idx) in approvalAttempts" :key="idx" class="space-y-3">
+                    <span v-if="attempt.label"
+                      class="font-label inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">
+                      {{ attempt.label }}
+                    </span>
+                    <Stepper :steps="attempt.steps" direction="vertical" />
+                  </div>
+                </div>
 
                 <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
                   class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
@@ -637,21 +621,10 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               </div>
             </CardSection>
 
-            <CardSection title="Catatan Verifikasi" icon="MessageSquare" icon-class="bg-blue-100 text-blue-600">
+            <CardSection v-if="penawaran.status === config.actionWaitingStatus" title="Aksi Verifikasi"
+              icon="CheckCircle" icon-class="bg-blue-100 text-blue-600">
               <div class="space-y-3">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">{{
-                    config.catatanVerifikasiLabel }}
-                  </div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_verifikasi || '-' }}
-                  </p>
-                </div>
-                <div v-if="config.showOmCatatan" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-label">Catatan Verifikasi OM</div>
-                  <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan_om || '-' }}</p>
-                </div>
-
-                <div v-if="penawaran.status === config.actionWaitingStatus" class="flex flex-row gap-2">
+                <div class="flex flex-row gap-2">
                   <Button variant="danger" class="inline-flex w-full items-center justify-center gap-2"
                     @click="tolakDialogOpen = true">
                     <Lucide icon="X" class="h-4 w-4" />
@@ -663,10 +636,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     Setujui
                   </Button>
                 </div>
-
-                <p v-else class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
-                  Tidak ada aksi yang bisa dilakukan pada status penawaran saat ini.
-                </p>
               </div>
             </CardSection>
           </div>

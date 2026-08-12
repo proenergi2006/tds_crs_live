@@ -1,5 +1,4 @@
-﻿<!-- pages/Penawaran/Verifikasi/Index.vue -->
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { debounce } from 'lodash'
@@ -17,27 +16,12 @@ import {
   getVerifikasiConfig,
   getDisposisiLabel,
   disposisiBadgeClass,
-  formatStatusLabel,
-  statusBadgeClass,
-  getDisposisiTanggal,
   type VerifikasiRole,
   type VerifikasiBrand,
 } from './config'
 import { formatDate } from '@/utils/format'
 
 type PenawaranItem = any
-// type PenawaranItem = {
-//   id_penawaran: number
-//   nomor_penawaran?: string
-//   masa_berlaku?: string
-//   sampai_dengan?: string
-//   status?: string
-//   disposisi_penawaran?: string | number
-//   bm_tanggal?: string | null
-//   om_tanggal?: string | null
-//   customer?: { company_name?: string }
-//   cabang?: { nama_cabang?: string }
-// }
 
 const route = useRoute()
 const { error } = useNotification()
@@ -46,9 +30,7 @@ const auth = useAuthStore()
 // computed, bukan const: route ini di-share TDS/Proenergi tanpa remount antar navigasi
 const brand = computed(() => route.meta.brand as VerifikasiBrand)
 
-// Proenergi: role dari permission verify-bm/verify-om (role 15/16).
-// TDS: permission verification.quotation dipakai bersama, jadi dibedakan dari id_role
-// (BM=8, OM=10 saja — lihat PenawaranController::verifikasiOm/tolakom).
+// TDS pakai permission bareng jadi dibedain dari id_role, Proenergi udah punya permission verify-bm/verify-om sendiri
 const TDS_OM_ID_ROLES = [10]
 
 const idRole = computed(() => Number(auth.user?.id_role))
@@ -130,7 +112,7 @@ watch(perPage, () => fetchData(1))
       </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="penawarans.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :empty="penawarans.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
         :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor atau customer..."
         loading-text="Memuat data penawaran..."
         empty-description="Belum ada penawaran yang sesuai dengan filter pencarian." @page-change="goToPage">
@@ -140,7 +122,6 @@ watch(perPage, () => fetchData(1))
           <Table.Th>Customer</Table.Th>
           <Table.Th>Cabang</Table.Th>
           <Table.Th class="text-center">Masa Berlaku</Table.Th>
-          <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">Disposisi</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
@@ -171,22 +152,9 @@ watch(perPage, () => fetchData(1))
 
             <Table.Td class="text-center">
               <span class="font-label inline-flex items-center rounded-full px-3 py-1"
-                :class="statusBadgeClass(pen.status)">
-                {{ formatStatusLabel(pen.status) }}
+                :class="disposisiBadgeClass(pen.disposisi_penawaran)">
+                {{ getDisposisiLabel(pen.disposisi_penawaran) }}
               </span>
-            </Table.Td>
-
-            <Table.Td class="text-center">
-              <div class="flex flex-col items-center gap-1">
-                <span class="font-label inline-flex items-center rounded-full px-3 py-1"
-                  :class="disposisiBadgeClass(pen.disposisi_penawaran)">
-                  {{ getDisposisiLabel(pen.disposisi_penawaran) }}
-                </span>
-
-                <span v-if="getDisposisiTanggal(pen)" class="text-[11px] italic text-slate-400">
-                  {{ getDisposisiTanggal(pen) }}
-                </span>
-              </div>
             </Table.Td>
 
             <Table.Td class="text-center">
