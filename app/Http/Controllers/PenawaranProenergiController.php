@@ -21,6 +21,7 @@ use App\Actions\Penawaran\ResolvePenawaranOmQueueAction;
 use App\Actions\Penawaran\GeneratePenawaranPdfAction;
 use App\Enums\ProdukHargaCogsBasis;
 use App\Models\ProdukHarga;
+use App\Support\Approval\PenawaranApprovalStepsBuilder;
 
 class PenawaranProenergiController extends Controller
 {
@@ -169,6 +170,8 @@ class PenawaranProenergiController extends Controller
             'ongkos.wilayah.kabupaten',
             'ongkos.wilayah.province',
             'ongkos.wilayah.regency',
+            'documentApprovals.steps.templateStep',
+            'documentApprovals.steps.actor',
         ])->findOrFail($id);
 
         $user = $request->user();
@@ -215,7 +218,10 @@ class PenawaranProenergiController extends Controller
                 : null;
         }
 
-        return response()->json($penawaran);
+        $payload = $penawaran->makeHidden('documentApprovals')->toArray();
+        $payload['approval_attempts'] = app(PenawaranApprovalStepsBuilder::class)->buildAttempts($penawaran);
+
+        return response()->json($payload);
     }
 
     public function update(UpdatePenawaranProenergiRequest $request, $id)

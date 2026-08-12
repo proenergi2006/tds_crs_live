@@ -45,35 +45,29 @@ const isSidebarCollapsed = computed(
   () => windowWidth.value < 1280 || userCollapsedPref.value
 );
 
-// Ambil user dari auth store
 const user = computed(() => authStore.user);
 
 const badgeStore = useApprovalBadgeStore();
 
-const getMenuBadge = (pageName?: string): number => {
-  if (!pageName) return 0;
-  if (pageName === 'po-verification-list') return badgeStore.vendorPo;
-  if (pageName === 'penawarans-verifikasi-om') return badgeStore.penawaran;
-  if (pageName === 'Verifikasi') return badgeStore.total;
-  return 0;
+// "Verifikasi" itu sentinel khusus buat grand total, bukan masuk breakdown biasa
+const getMenuBadge = (badgeKey?: string): number => {
+  if (!badgeKey) return 0;
+  if (badgeKey === 'Verifikasi') return badgeStore.total;
+  return badgeStore.breakdown[badgeKey] ?? 0;
 };
 
-// Role agen
 const agenRoles = [13, 14, 15, 16];
 
-// Cek apakah user role agen
 const isAgenRole = computed(() => {
   return agenRoles.includes(Number(user.value?.id_role));
 });
 
-// Nama aplikasi dinamis
 const appName = computed(() => {
   return isAgenRole.value
     ? "Agen TDS"
     : "Tri Daya Selaras";
 });
 
-// Logo dinamis
 const currentLogo = computed(() => {
   return isAgenRole.value ? agenLogoUrl : defaultLogoUrl;
 });
@@ -130,9 +124,7 @@ watch(
 onMounted(() => {
   setFormattedMenu(menu.value);
 
-  if (Number(user.value?.id_role) === 2) {
-    badgeStore.fetch()
-  }
+  badgeStore.fetch();
 
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
@@ -178,7 +170,6 @@ onUnmounted(() => {
         <div class="side-nav__brand-divider" :class="isSidebarCollapsed && 'side-nav__brand-divider--collapsed'">
         </div>
         <div :class="['side-nav__body pt-6', !isSidebarCollapsed && 'flex-1 w-full overflow-y-auto pt-6 pb-16']">
-          <!-- <div class="my-3 side-nav__divider"></div> -->
           <ul>
             <template v-for="(menu, menuKey) in formattedMenu">
               <li v-if="menu == 'divider'" type="li" class="my-6 side-nav__divider" :key="'divider-' + menuKey"></li>
@@ -208,13 +199,13 @@ onUnmounted(() => {
                   </div>
                   <div class="side-menu__title">
                     <span class="flex-1 min-w-0 truncate">{{ menu.title }}</span>
-                    <span v-if="getMenuBadge(menu.pageName) > 0" :class="[
+                    <span v-if="getMenuBadge(menu.badgeKey) > 0" :class="[
                       'shrink-0 mr-[1.25rem] text-[10px] font-semibold rounded-full px-1.5 leading-5 min-w-[18px] text-center',
                       menu.active ? 'bg-emerald-800 text-white' : 'bg-white text-emerald-700',
                     ]">
-                      {{ getMenuBadge(menu.pageName) }}
+                      {{ getMenuBadge(menu.badgeKey) }}
                     </span>
-                    <div v-if="menu.subMenu && getMenuBadge(menu.pageName) === 0" :class="[
+                    <div v-if="menu.subMenu && getMenuBadge(menu.badgeKey) === 0" :class="[
                       'side-menu__sub-icon ',
                       { 'transform rotate-180': menu.activeDropdown },
                     ]">
@@ -251,9 +242,9 @@ onUnmounted(() => {
                     ]" @click="(event: MouseEvent) => onCollapsedPanelItemClick(event, subMenu)">
                       <Lucide :icon="subMenu.icon" />
                       <span>{{ subMenu.title }}</span>
-                      <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                      <span v-if="getMenuBadge(subMenu.badgeKey) > 0"
                         class="ml-auto text-[10px] font-semibold bg-emerald-800 text-white rounded-full px-1.5 leading-5 min-w-[18px] text-center">
-                        {{ getMenuBadge(subMenu.pageName) }}
+                        {{ getMenuBadge(subMenu.badgeKey) }}
                       </span>
                     </a>
                   </template>
@@ -289,9 +280,9 @@ onUnmounted(() => {
                         </div>
                         <div class="side-menu__title">
                           {{ subMenu.title }}
-                          <span v-if="getMenuBadge(subMenu.pageName) > 0"
+                          <span v-if="getMenuBadge(subMenu.badgeKey) > 0"
                             class="ml-auto mr-[10px] shrink-0 text-[10px] font-semibold bg-white text-emerald-700 rounded-full px-1.5 leading-5 min-w-[18px] text-center">
-                            {{ getMenuBadge(subMenu.pageName) }}
+                            {{ getMenuBadge(subMenu.badgeKey) }}
                           </span>
                           <div v-if="subMenu.subMenu" :class="[
                             'side-menu__sub-icon',

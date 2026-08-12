@@ -6,6 +6,8 @@ import Button from "@/components/Base/Button";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import Marketing from "@/pages/Dashboard/Marketing.vue";
+import Ceo from "@/pages/Dashboard/Ceo.vue";
+import Om from "@/pages/Dashboard/Om.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -29,6 +31,8 @@ const isAgenRole = computed(() =>
 const isMarketingRole = computed(() =>
   marketingRoles.includes(Number(currentUser.value?.id_role)),
 );
+const isCeoRole = computed(() => Number(currentUser.value?.id_role) === 2);
+const isOmRole = computed(() => Number(currentUser.value?.id_role) === 10);
 
 const displayName = computed(() => currentUser.value?.name || "User");
 
@@ -84,6 +88,16 @@ onMounted(async () => {
       <!-- DASHBOARD KHUSUS MARKETING / KEY ACCOUNT -->
       <template v-if="isMarketingRole">
         <Marketing />
+      </template>
+
+      <!-- DASHBOARD KHUSUS CEO -->
+      <template v-else-if="isCeoRole">
+        <Ceo />
+      </template>
+
+      <!-- DASHBOARD KHUSUS OM -->
+      <template v-else-if="isOmRole">
+        <Om />
       </template>
 
       <!-- DASHBOARD KHUSUS AGENT -->

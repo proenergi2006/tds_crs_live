@@ -15,13 +15,15 @@ class ProdukHargaPeriodeResource extends JsonResource
         $today  = Carbon::today();
 
         return [
-            'periode_awal'      => $this->periode_awal,
-            'periode_akhir'     => $this->periode_akhir,
-            'label'             => $awal->locale('id')->translatedFormat('j M Y') . ' – ' . $akhir->locale('id')->translatedFormat('j M Y'),
-            'status'            => $today->between($awal, $akhir) ? 'aktif' : 'berakhir',
-            'jumlah_data'       => (int) $this->jumlah_data,
-            'jumlah_cabang'     => (int) $this->jumlah_cabang,
-            'terakhir_diupdate' => $this->terakhir_diupdate,
+            'periode_awal'         => $this->periode_awal,
+            'periode_akhir'        => $this->periode_akhir,
+            'label'                => $awal->locale('id')->translatedFormat('j M Y') . ' – ' . $akhir->locale('id')->translatedFormat('j M Y'),
+            'masa_aktif'           => $today->between($awal, $akhir) ? 'aktif' : 'berakhir',
+            'status'               => (int) $this->jumlah_belum_lengkap > 0 ? 'belum_lengkap' : 'lengkap',
+            'jumlah_data'          => (int) $this->jumlah_data,
+            'jumlah_cabang'        => (int) $this->jumlah_cabang,
+            'jumlah_belum_lengkap' => (int) $this->jumlah_belum_lengkap,
+            'terakhir_diupdate'    => $this->terakhir_diupdate,
         ];
     }
 }
