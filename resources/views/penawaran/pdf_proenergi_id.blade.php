@@ -270,7 +270,7 @@
         <div class="attn">
           <strong>Kepada Yth :</strong><br>
           {{ $cust->company_name ?? '-' }}<br>
-          {{ $cust->company_address ?? 'Alamat belum diisi' }}<br><br>
+          {{ $cust->headOfficeAddress?->address_line ?: 'Alamat belum diisi' }}<br><br>
 
           <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
           {{ $penawaran->jabatan ?? '-' }}

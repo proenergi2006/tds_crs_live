@@ -17,25 +17,28 @@ class GenerateCustomerDataDocumentAction
     {
         $customer->load([
             'user',
-            'province', 'regency', 'district', 'village',
             'addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village',
             'contacts.contactType',
             'payment',
         ]);
 
+        $headOfficeAddress = $customer->addresses->first(
+            fn ($a) => $a->address_type === CustomerAddressType::HeadOffice
+        );
+
         $npwpAddress = $customer->addresses->first(
             fn ($a) => $a->address_type === CustomerAddressType::RegisteredNpwp
         );
 
-        // "Alamat lainnya" ini di luar Head Office (kolomnya langsung di Customer,
-        // bukan baris di customer_addresses) dan NPWP (udah dipisah di atas).
-        // SiteAddress gak diikutkan, itu punya LCR bukan level customer.
+        // Alamat kantor pusat sekarang jadi salah satu baris di customer_addresses, sama
+        // seperti NPWP -- dua-duanya dikeluarkan dari daftar "alamat lainnya" supaya tidak
+        // tampil dobel. SiteAddress juga tidak diikutkan, itu punya LCR bukan level customer.
         $otherAddresses = $customer->addresses->reject(
-            fn ($a) => in_array($a->address_type, [CustomerAddressType::RegisteredNpwp, CustomerAddressType::SiteAddress], true)
+            fn ($a) => in_array($a->address_type, [CustomerAddressType::HeadOffice, CustomerAddressType::RegisteredNpwp, CustomerAddressType::SiteAddress], true)
         );
 
         $contactsByType = $customer->contacts->groupBy(fn ($c) => $c->contactType?->code ?? 'other');
 
-        return compact('customer', 'npwpAddress', 'otherAddresses', 'contactsByType');
+        return compact('customer', 'headOfficeAddress', 'npwpAddress', 'otherAddresses', 'contactsByType');
     }
 }

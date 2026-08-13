@@ -45,7 +45,7 @@
       <td class="label">Kode Customer</td><td class="colon">:</td><td>{{ $customer->customer_code ?? '-' }}</td>
     </tr>
     <tr>
-      <td class="label">Alamat Perusahaan</td><td class="colon">:</td><td>{{ $customer->company_address ?? '-' }}</td>
+      <td class="label">Alamat Perusahaan</td><td class="colon">:</td><td>{{ $customer->headOfficeAddress?->address_line ?: '-' }}</td>
     </tr>
     <tr>
       <td class="label">Telepon</td><td class="colon">:</td><td>{{ $customer->phone ?? '-' }}</td>

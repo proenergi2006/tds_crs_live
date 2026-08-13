@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Actions\Customer\SyncCustomerHeadOfficeAddressAction;
+use App\Enums\CustomerAddressType;
 use App\Enums\CustomerKycStatus;
 use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
@@ -18,6 +20,20 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
+    // Delapan field alamat/BPS di bawah ini tidak lagi ditulis ke tabel customers --
+    // sumber tunggalnya sekarang baris head_office di customer_addresses. id_provinsi/
+    // id_kabupaten di luar daftar ini dan tetap ditulis seperti biasa.
+    private const HEAD_OFFICE_INPUT_COLUMNS = [
+        'company_address',
+        'province_id',
+        'regency_id',
+        'district_id',
+        'village_id',
+        'postal_code',
+        'customer_sub_district',
+        'customer_village',
+    ];
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -43,7 +59,7 @@ class CustomerController extends Controller
 
         if ($request->boolean('as_list')) {
             $list = (clone $base)
-                ->with(['user', 'province', 'regency', 'district', 'village', 'cabang'])
+                ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang'])
                 ->withExists(['lcr as has_lcr'])
                 ->withCount(['penawarans as quotation_count'])
                 ->get();
@@ -60,7 +76,7 @@ class CustomerController extends Controller
         }
 
         $q = (clone $base)
-            ->with(['user', 'province', 'regency', 'district', 'village', 'cabang', 'latestVerification.latestDocumentApproval'])
+            ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang', 'latestVerification.latestDocumentApproval'])
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as quotation_count'])
             ->orderBy('company_name');
@@ -149,7 +165,7 @@ class CustomerController extends Controller
         ];
     }
 
-    public function store(StoreCustomerRequest $request)
+    public function store(StoreCustomerRequest $request, SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
     {
         if ($request->user()->cant('customer.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -157,14 +173,18 @@ class CustomerController extends Controller
 
         $data = $request->validated();
 
+        $addressInput = array_intersect_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
+        $data = array_diff_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
+
         $data['id_user']      = $request->user()->id;
         $data['created_at']   = now();
         $data['created_by']   = $request->user()->name;
         $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
 
-        $customer = DB::transaction(function () use ($data) {
+        $customer = DB::transaction(function () use ($data, $addressInput, $syncHeadOfficeAddress) {
             $customer = Customer::create($data);
             $this->seedRelatedRecords($customer);
+            $syncHeadOfficeAddress->execute($customer->id_customer, $addressInput);
             return $customer;
         });
 
@@ -186,10 +206,6 @@ class CustomerController extends Controller
             'user',
             'provinsi',
             'kabupaten',
-            'province',
-            'regency',
-            'district',
-            'village',
             'latestVerification.latestDocumentApproval.steps',
             'addresses.province',
             'addresses.regency',
@@ -201,12 +217,32 @@ class CustomerController extends Controller
             'lcr',
             'creditSubmissions',
         ]);
+
+        // Kolom alamat di baris customers sudah berhenti diperbarui; yang dikirim ke klien
+        // diambil dari baris head_office supaya bentuk response-nya tetap sama seperti dulu.
+        // customer_sub_district/customer_village lama sudah menyatu ke address_line, jadi
+        // tidak dikirim lagi sebagai field terpisah.
+        $headOffice = $customer->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
+
+        $customer->setRelation('province', $headOffice?->province);
+        $customer->setRelation('regency', $headOffice?->regency);
+        $customer->setRelation('district', $headOffice?->district);
+        $customer->setRelation('village', $headOffice?->village);
+        $customer->company_address = $headOffice?->address_line;
+        $customer->postal_code = $headOffice?->postal_code;
+        $customer->province_id = $headOffice?->province_id;
+        $customer->regency_id = $headOffice?->regency_id;
+        $customer->district_id = $headOffice?->district_id;
+        $customer->village_id = $headOffice?->village_id;
+        $customer->customer_sub_district = null;
+        $customer->customer_village = null;
+
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
 
         return response()->json($customer);
     }
 
-    public function update(UpdateCustomerRequest $request, Customer $customer)
+    public function update(UpdateCustomerRequest $request, Customer $customer, SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
     {
         $user = $request->user();
 
@@ -229,11 +265,17 @@ class CustomerController extends Controller
 
         $data = $request->validated();
 
+        $addressInput = array_intersect_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
+        $data = array_diff_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
+
         $data['updated_at']   = now();
         $data['updated_by']   = $request->user()->name;
         $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
 
-        $customer->update($data);
+        DB::transaction(function () use ($customer, $data, $addressInput, $syncHeadOfficeAddress) {
+            $customer->update($data);
+            $syncHeadOfficeAddress->execute($customer->id_customer, $addressInput);
+        });
 
         return response()->json($customer);
     }

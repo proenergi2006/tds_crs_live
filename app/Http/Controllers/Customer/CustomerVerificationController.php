@@ -240,6 +240,8 @@ class CustomerVerificationController extends Controller
         $search  = trim((string) $request->query('search', ''));
 
         // Alias ke key lama (kode_pelanggan/nama_perusahaan) -- masih dibaca Index.vue.
+        // company_address tidak lagi diisi di tabel customers -- nilainya diambil lewat
+        // subselect dari baris head_office supaya key di response tetap sama seperti dulu.
         $q = CustomerVerification::query()
             ->with(['customer' => function ($c) {
                 $c->select(
@@ -247,11 +249,10 @@ class CustomerVerificationController extends Controller
                     'id_user',
                     DB::raw('customer_code as kode_pelanggan'),
                     DB::raw('company_name as nama_perusahaan'),
-                    'company_address',
                     'email',
                     'phone',
                     'fax'
-                );
+                )->withHeadOfficeAddressLine();
             }]);
 
         if ($user->cant('customer.viewAny')) {
@@ -399,57 +400,6 @@ class CustomerVerificationController extends Controller
         return $customerVerification->fresh()->loadMissing('customer:id_customer,company_name');
     }
 
-    public function upload(Request $request, CustomerVerification $customerVerification)
-    {
-        $user = $request->user();
-
-        $allowed = $user->can('customer.manage')
-            && ($this->verificationOwnerId($customerVerification) === $user->id || $user->can('customer.viewAny'));
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $request->validate([
-            'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
-        ]);
-
-        $path = $request->file('file')->store(
-            "customer_verifications/{$customerVerification->id_verification}/{$request->field}",
-            'public'
-        );
-
-        $legal = json_decode($customerVerification->legal_data ?? '{}', true) ?: [];
-        $legal['files'][$request->field][] = $path;
-        $customerVerification->update(['legal_data' => json_encode($legal)]);
-
-        return response()->json(['path' => Storage::url($path)]);
-    }
-
-    public function uploadByToken(Request $request, string $token)
-    {
-        $cv = CustomerVerification::where('token_verification', $token)
-            ->where('is_active', 1)->firstOrFail();
-
-        $request->validate([
-            'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
-        ]);
-
-        $path = $request->file('file')->store(
-            "customer_verifications/{$cv->id_verification}/{$request->field}",
-            'public'
-        );
-
-        $legal = json_decode($cv->legal_data ?? '{}', true) ?: [];
-        $legal['files'][$request->field][] = $path;
-        $cv->update(['legal_data' => json_encode($legal)]);
-
-        return response()->json(['path' => Storage::url($path)]);
-    }
-
-
     public function destroy(Request $request, CustomerVerification $customerVerification)
     {
         $user = $request->user();
@@ -501,7 +451,7 @@ class CustomerVerificationController extends Controller
         $tab = $r->query('tab', $r->query('status', $isAdminFinance ? 'forwarded' : 'draft'));
 
         $baseQuery = CustomerVerification::query()
-            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax,email']);
+            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
 
         if ($tab === 'draft') {
             $baseQuery->where('kyc_status', CustomerKycStatus::Draft);
@@ -517,7 +467,7 @@ class CustomerVerificationController extends Controller
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -550,7 +500,7 @@ class CustomerVerificationController extends Controller
         $user = auth()->user();
 
         $cv = CustomerVerification::with([
-            'customer:id_customer,customer_code,company_name,company_address,phone,fax,email'
+            'customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
         ])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
@@ -969,11 +919,11 @@ class CustomerVerificationController extends Controller
         $q   = trim((string) $r->query('q', ''));
 
         $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
-            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax'])
+            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -999,31 +949,6 @@ class CustomerVerificationController extends Controller
         return response()->json(['queue' => $queue]);
     }
 
-    public function logistikShow(int $id)
-    {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::with('customer')->findOrFail($id);
-
-        $legal = json_decode($cv->legal_data ?? '{}', true);
-        $businessType = $legal['corporate']['ownership'] ?? ($legal['corporate']['tipe_bisnis_text'] ?? '-');
-
-        return response()->json([
-            'customer'      => $cv->customer ? [
-                'nama_perusahaan'   => $cv->customer->company_name,
-                'alamat_perusahaan' => $cv->customer->company_address,
-            ] : null,
-            'business_type' => $businessType,
-            'form' => [
-                'logistik_summary'  => $cv->logistik_summary ?? '',
-                'logistik_result'   => $cv->logistik_result_text ?? ($cv->logistik_result ?? ''),
-                'assessment_result' => $cv->assessment_result ?? '',
-            ],
-        ]);
-    }
-
     // antrean diambil dari document_approval_steps step 2/FINAL pending (BM, id_role=8), bukan dari is_reviewed/disposisi_result.
     public function reviewBmIndex(Request $r)
     {
@@ -1039,7 +964,7 @@ class CustomerVerificationController extends Controller
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'ilike', "%{$q}%")
-                        ->orWhere('company_address', 'ilike', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'ilike', "%{$q}%"))
                         ->orWhere('customer_code', 'ilike', "%{$q}%");
                 });
             })

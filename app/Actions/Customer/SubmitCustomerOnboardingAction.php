@@ -16,21 +16,27 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+// Alamat kantor pusat ditulis lewat jalur yang sama dengan create/update customer
+// manual, bukan lagi ikut kolom identitas di tabel customers.
 class SubmitCustomerOnboardingAction
 {
     private const CUSTOMERS_IDENTITY_COLUMNS = [
-        'company_address', 'phone', 'fax', 'email', 'website',
+        'phone', 'fax', 'email', 'website',
         'business_type', 'business_type_other', 'ownership_type', 'ownership_type_other',
-        'parent_company', 'province_id', 'regency_id', 'district_id', 'village_id',
-        'postal_code', 'customer_sub_district', 'customer_village',
+        'parent_company',
         'inco_terms', 'inco_terms_other',
     ];
+
+    public function __construct(private readonly SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
+    {
+    }
 
     public function execute(CustomerVerification $cv, array $data, string $actorName, ?string $ip): void
     {
         DB::transaction(function () use ($cv, $data, $actorName) {
             $this->assignCustomerCode($cv);
             $this->updateCustomer($cv, $data['identity'] ?? [], $actorName);
+            $this->syncHeadOfficeAddress->execute($cv->id_customer, $data['identity'] ?? []);
             $this->saveRegisteredAddress($cv, $data['identity'] ?? [], $data['registered_address'] ?? []);
             $this->saveInvoiceContact($cv, $data['invoice_contact'] ?? []);
             $this->savePayment($cv, $data['payment'] ?? []);

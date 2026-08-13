@@ -256,7 +256,7 @@
         <div class="attn">
           Attention to :<br>
           <strong>{{ $cust->company_name ?? '-' }}</strong><br>
-          {{ $cust->company_address ?? 'Address not available' }}<br><br>
+          {{ $cust->headOfficeAddress?->address_line ?: 'Address not available' }}<br><br>
 
           <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
           {{ $penawaran->jabatan ?? '-' }}

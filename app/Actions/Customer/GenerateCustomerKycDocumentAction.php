@@ -16,7 +16,7 @@ class GenerateCustomerKycDocumentAction
     public function execute(CustomerVerification $verification): array
     {
         $customer = $verification->customer;
-        $customer->load(['contacts', 'payment', 'lcr', 'creditSubmissions']);
+        $customer->load(['contacts', 'payment', 'lcr', 'creditSubmissions', 'headOfficeAddress']);
 
         $review = CustomerReview::where('id_verification', $verification->id_verification)->first();
 

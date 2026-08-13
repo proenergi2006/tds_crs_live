@@ -138,12 +138,12 @@
     <div class="section-body">
       @php
         $headOfficeAddressRows = [
-          ['label' => 'Address', 'value' => $customer->company_address],
-          ['label' => 'Province', 'value' => $regionName($customer->province)],
-          ['label' => 'City/Regency', 'value' => $regionName($customer->regency)],
-          ['label' => 'District', 'value' => $regionName($customer->district)],
-          ['label' => 'Sub-district', 'value' => $regionName($customer->village)],
-          ['label' => 'Postal Code', 'value' => $customer->postal_code],
+          ['label' => 'Address', 'value' => $headOfficeAddress->address_line ?? null],
+          ['label' => 'Province', 'value' => $regionName($headOfficeAddress->province ?? null)],
+          ['label' => 'City/Regency', 'value' => $regionName($headOfficeAddress->regency ?? null)],
+          ['label' => 'District', 'value' => $regionName($headOfficeAddress->district ?? null)],
+          ['label' => 'Sub-district', 'value' => $regionName($headOfficeAddress->village ?? null)],
+          ['label' => 'Postal Code', 'value' => $headOfficeAddress->postal_code ?? null],
         ];
         $npwpAddressRows = [
           ['label' => 'Address', 'value' => $npwpAddress->address_line ?? null],

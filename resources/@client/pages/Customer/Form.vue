@@ -44,11 +44,6 @@ const isLocked = ref(false)
 /* State: lookups (cascading province -> regency, BPS data via useRegionCascade) */
 const region = useRegionCascade()
 
-/* State: fallback notice untuk record lama yang cuma punya id_provinsi/
-   id_kabupaten (skema pra-migrasi BPS), belum punya province_id/regency_id */
-const hasLegacyAddressOnly = ref(false)
-const legacyAddressLabel = ref('')
-
 /* Nama pemilik (id_user) untuk ditampilkan di Ringkasan — create mode selalu
    user yang login (owner otomatis di-assign saat submit), edit mode ambil
    dari relasi `user` milik customer (bisa beda dari user yang sedang login). */
@@ -207,14 +202,6 @@ async function fetchCustomer() {
       } finally {
         isHydratingRegion.value = false
       }
-    } else if (data.id_provinsi) {
-      // Record lama (sebelum migrasi BPS) cuma punya id_provinsi/id_kabupaten,
-      // belum punya province_id/regency_id — tampilkan info dari relasi lama
-      // dan minta user pilih ulang dari daftar wilayah BPS baru di bawah.
-      hasLegacyAddressOnly.value = true
-      legacyAddressLabel.value = [data.provinsi?.nama_provinsi, data.kabupaten?.nama_kabupaten]
-        .filter(Boolean)
-        .join(', ') || 'Data lokasi lama tidak lengkap'
     }
   } catch (e: any) {
     const isForbidden = e.response?.status === 403
@@ -404,11 +391,6 @@ function cancel() {
 
     <!-- Section: Detail Alamat -->
     <CardSection title="Detail Alamat" description="Alamat lengkap customer">
-      <Alert v-if="hasLegacyAddressOnly" variant="soft-warning" class="mb-4">
-        Data lokasi customer ini masih pakai skema lama: <strong>{{ legacyAddressLabel }}</strong>.
-        Silakan pilih ulang Provinsi &amp; Kabupaten/Kota di bawah berdasarkan daftar wilayah terbaru
-        agar tersimpan dengan skema baru.
-      </Alert>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
           <FormLabel for="company_address">Alamat Perusahaan</FormLabel>

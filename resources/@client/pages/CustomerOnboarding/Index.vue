@@ -67,8 +67,6 @@ function createDefaultForm(): OnboardingForm {
       district_id: null,
       village_id: null,
       postal_code: '',
-      customer_sub_district: '',
-      customer_village: '',
       inco_terms: '',
       inco_terms_other: '',
     },

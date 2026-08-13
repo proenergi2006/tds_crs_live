@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerAddressType;
 use App\Enums\CustomerIncoterm;
 use App\Enums\CustomerStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -124,6 +126,28 @@ class Customer extends Model
     public function addresses(): HasMany
     {
         return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
+    }
+
+    // Alamat kantor pusat sekarang satu baris di customer_addresses, bukan kolom di
+    // customers. Unique partial index menjamin maksimal satu baris head_office per
+    // customer, jadi HasOne (bukan HasMany yang difilter di PHP).
+    public function headOfficeAddress(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer')
+            ->where('address_type', CustomerAddressType::HeadOffice->value);
+    }
+
+    // Subselect, bukan eager-load: dipakai endpoint yang mengembalikan model apa adanya
+    // dan harus tetap punya key company_address dengan bentuk yang sama seperti dulu.
+    // Wajib dipasang pada query yang daftar select kolomnya sudah eksplisit -- kalau
+    // belum, addSelect di sini akan jadi satu-satunya kolom yang keambil.
+    public function scopeWithHeadOfficeAddressLine(Builder $query): Builder
+    {
+        return $query->addSelect(['company_address' => CustomerAddress::query()
+            ->select('address_line')
+            ->whereColumn('customer_addresses.id_customer', 'customers.id_customer')
+            ->where('address_type', CustomerAddressType::HeadOffice->value)
+            ->limit(1)]);
     }
 
     public function contacts(): HasMany
