@@ -109,7 +109,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'inventory.view',
             'module'      => 'inventory',
             'description' => 'Lihat stock inventory',
-            'roles'       => [5],
+            'roles'       => [2, 5],
         ],
         [
             'name'        => 'delivery-request.manage',

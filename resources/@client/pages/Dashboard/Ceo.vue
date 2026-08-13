@@ -307,7 +307,7 @@ onMounted(async () => {
           :link-to="{ name: 'po-verification-list' }" link-label="Lihat semua" />
         <DashboardSummaryCard label="Valuasi Stok Procurement" :value="kpiStockValuation" icon="Banknote"
           icon-class="bg-primary/10 text-primary" description="Nilai PO Supplier disetujui tahun ini"
-          :link-to="{ name: 'vendor-pos-list' }" link-label="Lihat PO Supplier" />
+          :link-to="{ name: 'StockInventory' }" link-label="Lihat Stock Inventory" />
         <DashboardSummaryCard label="Periode Harga Menunggu CEO" :value="kpiPendingCeoPriceTotal" icon="FileClock"
           icon-class="bg-amber-100 text-amber-600" description="Margin/pricelist belum diisi"
           :link-to="{ name: 'produk-hargas' }" link-label="Kelola harga" />

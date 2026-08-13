@@ -31,16 +31,6 @@ class AuthServiceProvider extends ServiceProvider
                 return false;
             }
 
-            $idleMinutes = config('sanctum.idle_expiration');
-
-            // last_used_at null = belum pernah dipakai, treat sebagai belum idle
-            if ($accessToken->last_used_at && $accessToken->last_used_at->lt(now()->subMinutes($idleMinutes))) {
-                request()->attributes->set('token_expired_reason', 'session_expired');
-                $accessToken->delete();
-
-                return false;
-            }
-
             return true;
         });
     }
