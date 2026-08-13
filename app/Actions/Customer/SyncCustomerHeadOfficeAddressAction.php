@@ -5,9 +5,7 @@ namespace App\Actions\Customer;
 use App\Enums\CustomerAddressType;
 use App\Models\CustomerAddress;
 
-// Satu-satunya titik tulis alamat kantor pusat -- dipanggil dari create/update
-// customer manual dan dari submit onboarding, supaya format address_line-nya tidak
-// berbeda antar jalur.
+// satu-satunya titik tulis alamat kantor pusat, dipanggil dari create/update manual & submit onboarding biar format address_line konsisten
 class SyncCustomerHeadOfficeAddressAction
 {
     public function execute(int $customerId, array $address): CustomerAddress
@@ -31,8 +29,7 @@ class SyncCustomerHeadOfficeAddressAction
         );
     }
 
-    // customer_sub_district/customer_village string bebas pra-BPS dan tidak punya kolom
-    // padanan di customer_addresses -- digabung ke address_line biar tidak hilang.
+    // customer_sub_district/customer_village string bebas pra-BPS, gak ada kolom padanan di customer_addresses jadi digabung ke address_line
     private function buildAddressLine(?string $companyAddress, ?string $subDistrict, ?string $village): string
     {
         $parts = [];

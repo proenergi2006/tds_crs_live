@@ -239,9 +239,7 @@ class CustomerVerificationController extends Controller
         $perPage = (int) $request->query('per_page', 10);
         $search  = trim((string) $request->query('search', ''));
 
-        // Alias ke key lama (kode_pelanggan/nama_perusahaan) -- masih dibaca Index.vue.
-        // company_address tidak lagi diisi di tabel customers -- nilainya diambil lewat
-        // subselect dari baris head_office supaya key di response tetap sama seperti dulu.
+        // alias ke key lama (kode_pelanggan/nama_perusahaan) masih dibaca Index.vue; company_address diambil lewat subselect head_office
         $q = CustomerVerification::query()
             ->with(['customer' => function ($c) {
                 $c->select(
@@ -263,7 +261,7 @@ class CustomerVerificationController extends Controller
 
         if ($search !== '') {
             $q->where(function ($w) use ($search) {
-                $w->where('token_verification', 'like', "%{$search}%")
+                $w->where('verification_token', 'like', "%{$search}%")
                     ->orWhereHas('customer', function ($c) use ($search) {
                         $c->where('company_name', 'like', "%{$search}%")
                             ->orWhere('customer_code', 'like', "%{$search}%")
@@ -305,36 +303,30 @@ class CustomerVerificationController extends Controller
 
         $data = $request->validate([
             'id_customer'        => ['required', 'exists:customers,id_customer'],
-            'token_verification' => ['nullable', 'string', 'size:17', 'unique:customer_verifications,token_verification'],
+            'verification_token' => ['nullable', 'string', 'size:17', 'unique:customer_verifications,verification_token'],
 
             'is_submitted' => ['nullable', 'integer', 'in:0,1'],
             'is_forwarded' => ['nullable', 'integer', 'in:0,1'],
             'is_active'    => ['nullable', 'integer', 'in:0,1'],
 
-            'legal_data'     => ['nullable', 'string'],
-            'legal_summary'  => ['nullable', 'string'],
-            'legal_result'   => ['nullable', 'integer'],
-            'legal_tgl_proses' => ['nullable', 'date'],
-            'legal_pic'      => ['nullable', 'string', 'max:50'],
-
             'finance_data'    => ['nullable', 'string'],
             'finance_summary' => ['nullable', 'string'],
             'finance_result'  => ['nullable', 'integer'],
-            'finance_tgl_proses' => ['nullable', 'date'],
+            'finance_processed_at' => ['nullable', 'date'],
             'finance_pic'     => ['nullable', 'string', 'max:50'],
 
-            'logistik_data'    => ['nullable', 'string'],
-            'logistik_summary' => ['nullable', 'string'],
-            'logistik_result'  => ['nullable', 'integer'],
-            'logistik_tgl_proses' => ['nullable', 'date'],
-            'logistik_pic'     => ['nullable', 'string', 'max:50'],
+            'logistics_data'    => ['nullable', 'string'],
+            'logistics_summary' => ['nullable', 'string'],
+            'logistics_result'  => ['nullable', 'integer'],
+            'logistics_processed_at' => ['nullable', 'date'],
+            'logistics_pic'     => ['nullable', 'string', 'max:50'],
 
-            'jenis_datanya'    => ['nullable', 'integer'],
+            'data_type'        => ['nullable', 'integer'],
             'finance_data_kyc' => ['nullable', 'string'],
         ]);
 
-        if (empty($data['token_verification'])) {
-            $data['token_verification'] = strtoupper(Str::random(17));
+        if (empty($data['verification_token'])) {
+            $data['verification_token'] = strtoupper(Str::random(17));
         }
 
         $verification = CustomerVerification::create($data);
@@ -361,11 +353,11 @@ class CustomerVerificationController extends Controller
 
         $data = $request->validate([
             'id_customer'        => ['sometimes', 'exists:customers,id_customer'],
-            'token_verification' => [
+            'verification_token' => [
                 'sometimes',
                 'string',
                 'size:17',
-                Rule::unique('customer_verifications', 'token_verification')
+                Rule::unique('customer_verifications', 'verification_token')
                     ->ignore($customerVerification->id_verification, 'id_verification'),
             ],
 
@@ -373,25 +365,19 @@ class CustomerVerificationController extends Controller
             'is_forwarded' => ['sometimes', 'integer', 'in:0,1'],
             'is_active'    => ['sometimes', 'integer', 'in:0,1'],
 
-            'legal_data'     => ['sometimes', 'nullable', 'string'],
-            'legal_summary'  => ['sometimes', 'nullable', 'string'],
-            'legal_result'   => ['sometimes', 'nullable', 'integer'],
-            'legal_tgl_proses' => ['sometimes', 'nullable', 'date'],
-            'legal_pic'      => ['sometimes', 'nullable', 'string', 'max:50'],
-
             'finance_data'    => ['sometimes', 'nullable', 'string'],
             'finance_summary' => ['sometimes', 'nullable', 'string'],
             'finance_result'  => ['sometimes', 'nullable', 'integer'],
-            'finance_tgl_proses' => ['sometimes', 'nullable', 'date'],
+            'finance_processed_at' => ['sometimes', 'nullable', 'date'],
             'finance_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
 
-            'logistik_data'    => ['sometimes', 'nullable', 'string'],
-            'logistik_summary' => ['sometimes', 'nullable', 'string'],
-            'logistik_result'  => ['sometimes', 'nullable', 'integer'],
-            'logistik_tgl_proses' => ['sometimes', 'nullable', 'date'],
-            'logistik_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
+            'logistics_data'    => ['sometimes', 'nullable', 'string'],
+            'logistics_summary' => ['sometimes', 'nullable', 'string'],
+            'logistics_result'  => ['sometimes', 'nullable', 'integer'],
+            'logistics_processed_at' => ['sometimes', 'nullable', 'date'],
+            'logistics_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
 
-            'jenis_datanya'    => ['sometimes', 'nullable', 'integer'],
+            'data_type'        => ['sometimes', 'nullable', 'integer'],
             'finance_data_kyc' => ['sometimes', 'nullable', 'string'],
         ]);
 

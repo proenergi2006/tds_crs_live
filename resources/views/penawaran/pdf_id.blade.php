@@ -1,4 +1,3 @@
-{{-- resources/views/vendor_pos/penawaran_pdf_letter.blade.php --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -46,7 +45,7 @@
     .subject{ text-align:center; font-weight:700; font-size:13.8px; margin:12px 0 9px }
     .p{ margin:4px 0 8px; text-align:justify }
 
-    /* ====== Bagian 1–9 TANPA KOTAK ====== */
+    /* Section: bagian 1-9 tanpa kotak */
     .box{ width:94%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
     .kv{
       width:100%;
@@ -84,7 +83,6 @@
  
   
   font-size: 11.2px;
-                /* teks hijau tua agar kontras */
   background-clip: padding-box;     /* jaga sudut rounded rapi */
 }
 .contact b{
@@ -128,33 +126,6 @@
 @php
   $nowID = \Carbon\Carbon::now()->translatedFormat('d F Y');
   $cust  = optional($penawaran->customer);
-
-  // $produkList = $penawaran->items
-  //     ->map(function($it){
-  //         $p  = $it->produk;
-  //         if (!$p) return null;
-  //         $uk = optional($p->ukuran);
-  //         $st = optional($uk->satuan);
-  //         // gabung ukuran + satuan bila ada
-  //         $ukTxt = trim(implode(' ', array_filter([
-  //             $uk->nama_ukuran ?? null,
-  //             $st->nama_satuan ?? null,
-  //         ])));
-
-  //         // persen (fallback 0)
-  //       $persen = $it->persen !== null
-  //           ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.') // buang .00
-  //           : '0';
-  //         // "Nama Produk — 2-3 m³" atau hanya "Nama Produk" jika ukuran kosong
-  //         return trim(
-  //           $p->nama_produk
-  //           . ($ukTxt ? ' — ' . $ukTxt : '')
-  //           . ' (' . $persen . '%)'
-  //       );
-  //     })
-  //     ->filter()
-  //     ->unique()
-  //     ->implode(', ');
 
   $produkLines = $penawaran->items
   ->map(function($it){
@@ -268,10 +239,6 @@
   <!-- 1–9: tanpa kotak -->
   <div class="box">
     <table class="kv">
-      {{-- <tr>
-        <td class="no">1.</td><td class="label"><b>Produk</b></td><td class="colon">:</td>
-        <td class="value"><b>{!! $produkList ?: $defaultProduct !!}</b></td>
-      </tr> --}}
       @if(($produkLines ?? collect())->isEmpty())
   <tr>
     <td class="no">1.</td>

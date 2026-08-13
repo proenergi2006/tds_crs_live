@@ -8,8 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 10.5px; color: #111; line-height: 1.4; }
 
-    /* @page margin kadang diabaikan dompdf. Padding di page-wrap ini jaga-jaga --
-       sama polanya kayak vendorpos/preview.blade.php. */
+    /* @page margin kadang diabaikan dompdf, padding di sini jaga-jaga -- sama pola kayak vendorpos/preview.blade.php */
     .page-wrap { padding: 8mm 6mm; }
 
     .header-logos { width: 100%; border-collapse: collapse; margin-bottom: 10px; }

@@ -1,4 +1,3 @@
-{{-- resources/views/vendor_pos/penawaran_pdf_letter.blade.php --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -114,7 +113,7 @@
       border: none;
     }
 
-    /* ================= HALAMAN 2 ================= */
+    /* Section: halaman 2 */
     .page-break{
       page-break-before: always;
     }
@@ -234,7 +233,7 @@
   $acuanPembayaran = $penawaran->acuan_pembayaran ?? null;
 @endphp
 
-{{-- ======================== HALAMAN 1 ======================== --}}
+{{-- Section: halaman 1 --}}
 <div class="content">
   <br>
 
@@ -475,7 +474,7 @@
   </a>
 </div>
 
-{{-- ======================== HALAMAN 2: SYARAT & KETENTUAN ======================== --}}
+{{-- Section: halaman 2, syarat & ketentuan --}}
 @if($hasTerms)
   <div class="page-break"></div>
 

@@ -20,9 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
-    // Delapan field alamat/BPS di bawah ini tidak lagi ditulis ke tabel customers --
-    // sumber tunggalnya sekarang baris head_office di customer_addresses. id_provinsi/
-    // id_kabupaten di luar daftar ini dan tetap ditulis seperti biasa.
+    // 8 field alamat/BPS ini gak ditulis ke customers lagi, sumbernya baris head_office di customer_addresses
     private const HEAD_OFFICE_INPUT_COLUMNS = [
         'company_address',
         'province_id',
@@ -100,8 +98,7 @@ class CustomerController extends Controller
         ]);
     }
 
-    // Badge/filter berbasis kyc_status, bukan approval cycle lama. Tidak ada
-    // badge "ditolak" -- tidak ada penolakan customer di level KYC.
+    // badge/filter berbasis kyc_status, bukan approval cycle lama; gak ada badge "ditolak" karena gak ada penolakan di level KYC
     private function applyStatusFilter($query, string $status): void
     {
         if ($status === 'verified') {
@@ -204,8 +201,6 @@ class CustomerController extends Controller
 
         $customer->load([
             'user',
-            'provinsi',
-            'kabupaten',
             'latestVerification.latestDocumentApproval.steps',
             'addresses.province',
             'addresses.regency',
@@ -218,10 +213,7 @@ class CustomerController extends Controller
             'creditSubmissions',
         ]);
 
-        // Kolom alamat di baris customers sudah berhenti diperbarui; yang dikirim ke klien
-        // diambil dari baris head_office supaya bentuk response-nya tetap sama seperti dulu.
-        // customer_sub_district/customer_village lama sudah menyatu ke address_line, jadi
-        // tidak dikirim lagi sebagai field terpisah.
+        // kolom alamat di customers udah gak diupdate lagi, response diambil dari baris head_office biar shape-nya sama kayak dulu
         $headOffice = $customer->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
 
         $customer->setRelation('province', $headOffice?->province);
@@ -253,10 +245,7 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        // Data customer terkunci begitu KYC sudah di-forward (kyc_status != draft).
-        // Tidak berlaku untuk customer tanpa verification cycle sama sekali (pra-KYC
-        // atau belum submit onboarding) -- guard cuma aktif kalau ada cycle yang
-        // sedang berjalan.
+        // data customer terkunci begitu KYC di-forward; guard cuma aktif kalau ada verification cycle yang jalan
         $latestVerification = $customer->latestVerification;
 
         if ($latestVerification && $latestVerification->kyc_status !== CustomerKycStatus::Draft) {
@@ -382,10 +371,6 @@ class CustomerController extends Controller
             'is_active'          => true,
             'expired_at'         => now()->addDays(7),
 
-            'legal_data'    => '',
-            'legal_summary' => '',
-            'legal_pic'     => '',
-
             'finance_data'    => '',
             'finance_summary' => '',
             'finance_pic'     => '',
@@ -411,12 +396,7 @@ class CustomerController extends Controller
     {
         $id = $customer->id_customer;
 
-        // customer_contacts sekarang multi-row (0..N per customer, lihat
-        // Customer::contacts()) -- tidak ada lagi header row untuk di-seed
-        // seperti tabel 1:1 di bawah ini.
-
-        // Semua kolom customer_logistik nullable sejak rebuild rev. 3 --
-        // baris kosong cukup dibuat dengan id_customer saja.
+        // customer_contacts multi-row sekarang, gak ada header row yang perlu di-seed kayak tabel 1:1 di bawah
         CustomerLogistik::firstOrCreate(['id_customer' => $id]);
 
         CustomerPayment::firstOrCreate(['id_customer' => $id], [

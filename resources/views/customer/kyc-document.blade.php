@@ -23,8 +23,7 @@
     .muted { color: #777; font-style: italic; }
     .section { margin-bottom: 4px; }
 
-    /* financial_review butuh list-nya balik lagi -- kena strip sama reset
-       `* { margin:0; padding:0 }` di atas, mirip masalah Preflight di app. */
+    /* financial_review butuh list-nya balik lagi, kena strip reset `* { margin:0; padding:0 }` di atas */
     .rich-text-content ul { list-style: disc; padding-left: 1.4em; margin: 4px 0; }
     .rich-text-content ol { list-style: decimal; padding-left: 1.4em; margin: 4px 0; }
     .rich-text-content li { margin: 2px 0; }

@@ -30,9 +30,7 @@ class CustomerOnboardingController extends Controller
         $registeredAddress = $customer?->addresses
             ->firstWhere('address_type', CustomerAddressType::RegisteredNpwp);
 
-        // Alamat kantor pusat dibaca dari baris head_office, bukan dari kolom customers yang
-        // sudah berhenti diperbarui. Sub-district/village lama sudah menyatu ke address_line,
-        // jadi tidak dikirim lagi sebagai field terpisah supaya tidak ada dua versi alamat.
+        // head office address dibaca dari baris head_office, bukan kolom customers yang udah gak diupdate lagi
         $headOfficeAddress = $customer?->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
 
         return response()->json([

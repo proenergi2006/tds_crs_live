@@ -1,4 +1,3 @@
-{{-- resources/views/vendor_pos/penawaran_pdf_letter.blade.php --}}
 <!DOCTYPE html>
 <html lang="en">
 <head>

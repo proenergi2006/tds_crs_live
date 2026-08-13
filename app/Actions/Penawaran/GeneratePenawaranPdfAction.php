@@ -17,8 +17,7 @@ class GeneratePenawaranPdfAction
         string $viewPrefix,
         string $logoLeftPath
     ) {
-        // headOfficeAddress ikut di-load karena alamat customer di surat penawaran diambil
-        // dari situ, bukan lagi dari kolom di tabel customers.
+        // alamat customer di surat penawaran diambil dari headOfficeAddress, bukan kolom di tabel customers
         $penawaran = $modelClass::with(['customer.headOfficeAddress', 'cabang', 'items.produk.ukuran', 'user.role'])
             ->findOrFail($id);
 

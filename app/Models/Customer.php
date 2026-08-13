@@ -25,24 +25,11 @@ class Customer extends Model
     ];
 
     protected $fillable = [
-        // dasar
         'id_user',
         'email',
 
-        // kolom alamat lama
-        'id_provinsi',
-        'id_kabupaten',
-
-        // Kolom baru berbasis kode BPS (laravel-nusa-address-full-migration),
-        'province_id',
-        'regency_id',
-        'district_id',
-        'village_id',
-        'postal_code',
-
         'customer_type',
         'company_name',
-        'company_address',
         'phone',
         'fax',
         'created_at',
@@ -50,7 +37,6 @@ class Customer extends Model
         'updated_at',
         'updated_by',
 
-        // tambahan yang diminta
         'customer_code',
         'website',
         'business_type',
@@ -60,8 +46,6 @@ class Customer extends Model
         'is_link_generated',
         'update_count',
         'parent_company',
-        'customer_sub_district',
-        'customer_village',
         'id_cabang',
         'inco_terms',
         'inco_terms_other',
@@ -71,16 +55,6 @@ class Customer extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');
-    }
-
-    public function provinsi()
-    {
-        return $this->belongsTo(Provinsi::class, 'id_provinsi', 'id_provinsi');
-    }
-
-    public function kabupaten()
-    {
-        return $this->belongsTo(Kabupaten::class, 'id_kabupaten', 'id_kabupaten');
     }
 
     public function province()
@@ -128,19 +102,14 @@ class Customer extends Model
         return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
     }
 
-    // Alamat kantor pusat sekarang satu baris di customer_addresses, bukan kolom di
-    // customers. Unique partial index menjamin maksimal satu baris head_office per
-    // customer, jadi HasOne (bukan HasMany yang difilter di PHP).
+    // satu baris di customer_addresses, bukan kolom di customers; unique partial index jamin maksimal 1 head_office per customer
     public function headOfficeAddress(): HasOne
     {
         return $this->hasOne(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer')
             ->where('address_type', CustomerAddressType::HeadOffice->value);
     }
 
-    // Subselect, bukan eager-load: dipakai endpoint yang mengembalikan model apa adanya
-    // dan harus tetap punya key company_address dengan bentuk yang sama seperti dulu.
-    // Wajib dipasang pada query yang daftar select kolomnya sudah eksplisit -- kalau
-    // belum, addSelect di sini akan jadi satu-satunya kolom yang keambil.
+    // subselect (bukan eager-load) buat endpoint yang butuh key company_address apa adanya; pasang cuma kalau select kolom udah eksplisit
     public function scopeWithHeadOfficeAddressLine(Builder $query): Builder
     {
         return $query->addSelect(['company_address' => CustomerAddress::query()

@@ -16,8 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-// Alamat kantor pusat ditulis lewat jalur yang sama dengan create/update customer
-// manual, bukan lagi ikut kolom identitas di tabel customers.
+// head office address ditulis lewat jalur yang sama dengan create/update customer manual, bukan kolom identitas customers
 class SubmitCustomerOnboardingAction
 {
     private const CUSTOMERS_IDENTITY_COLUMNS = [
@@ -48,12 +47,7 @@ class SubmitCustomerOnboardingAction
         });
     }
 
-    // customer_code belum pernah di-generate di manapun (live: semua row masih '').
-    // Digenerate di sini, pas submit onboarding, bukan pas customer record pertama
-    // dibuat -- soalnya data live udah ada 70+ customer tanpa onboarding, jadi kalau
-    // digenerate lebih awal butuh backfill terpisah buat data existing itu.
-    // Guard-nya idempotent -- kalau udah keisi (submit ulang, meski sekarang
-    // digerbangi is_submitted), gak digenerate lagi.
+    // generate customer_code di sini (bukan pas create) biar gak perlu backfill data live yang udah ada tanpa onboarding; guard idempotent
     private function assignCustomerCode(CustomerVerification $cv): void
     {
         $customer = $cv->customer;
