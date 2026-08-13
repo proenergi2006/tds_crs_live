@@ -9,33 +9,21 @@ use Illuminate\Support\Facades\Log;
 
 class MigrateAddressToNewSchema extends Command
 {
-    /**
-     * @var string
-     */
     protected $signature = 'address:migrate-to-new-schema
         {--commit : Tulis hasil matching ke kolom province_id/regency_id/district_id/village_id. Tanpa flag ini, command berjalan dry-run (report only, tidak menulis apapun ke DB).}';
 
-    /**
-     * @var string
-     */
     protected $description = 'Cocokkan alamat lama (provinsis/kabupatens + kecamatan/kelurahan bebas-teks) di customers/wilayah_angkuts ke skema BPS baru (provinces/regencies/districts/villages) dan laporkan/tulis hasilnya.';
 
-    /** Threshold similarity minimum (persen dari similar_text) supaya sebuah fuzzy match di level district/village dianggap "cukup yakin" untuk ditulis. */
+    /** minimal skor similar_text biar fuzzy match district/village dianggap cukup yakin buat ditulis */
     private const FUZZY_MATCH_THRESHOLD = 85.0;
 
-    /** Selisih minimum antara skor kandidat #1 dan #2 supaya match fuzzy tidak dianggap ambigu. */
+    /** jarak minimum skor kandidat #1 vs #2, biar match fuzzy gak dianggap ambigu */
     private const FUZZY_MATCH_MARGIN = 10.0;
 
-    /**
-     * Alias nama provinsi lama -> id provinsi baru (kode BPS), untuk kasus
-     * nama lama tidak persis sama dengan nama resmi BPS. Key HARUS berupa
-     * hasil normalize() (upper-case, spasi dirapikan).
-     */
+    // alias nama provinsi lama -> id BPS buat yang namanya beda dari resmi; key harus hasil normalize()
     private const PROVINCE_ALIASES = [
         'DKI JAKARTA' => '31',
-        // Tidak ditemukan di scan 13 baris `provinsis` aktual (2026-07), tapi
-        // didaftarkan defensif sesuai instruksi task -- aman, tidak akan
-        // ke-hit kalau memang tidak ada baris dengan nama ini.
+        // belum ketemu di data aktual, tapi aman didaftarkan preventif -- gak bakal ke-hit kalau emang gak ada
         'DIY YOGYAKARTA' => '34',
         'DI YOGYAKARTA' => '34',
         'YOGYAKARTA' => '34',
@@ -43,12 +31,7 @@ class MigrateAddressToNewSchema extends Command
         'JOGJA' => '34',
     ];
 
-    /**
-     * Koreksi eksplisit untuk mislabel yang sudah diketahui di data lama.
-     * Key = normalize(nama_kabupaten lama). `province_id` = null berarti
-     * koreksi berlaku di provinsi manapun (tidak ada di kasus ini, tapi
-     * struktur dibuat generic untuk penambahan kasus lain di masa depan).
-     */
+    // koreksi eksplisit buat kabupaten yang mislabel di data lama; province_id null berarti berlaku di semua provinsi
     private const REGENCY_CORRECTIONS = [
         'KABUPATEN TANGERANG SELATAN' => ['province_id' => '36', 'regency_id' => '36.74'],
     ];
@@ -90,7 +73,7 @@ class MigrateAddressToNewSchema extends Command
         $this->newLine();
         $this->line('=================================================================');
         $this->info('DAFTAR EKSPLISIT: gagal / low-confidence di level district atau village');
-        $this->line('(tidak termasuk baris "no_source" -- baris itu memang tidak punya data kecamatan/kelurahan sumber, feed ke Task 6 di plan)');
+        $this->line('(tidak termasuk baris "no_source" -- baris itu memang tidak punya data kecamatan/kelurahan sumber)');
         $this->line('=================================================================');
         $this->renderDistrictVillageGaps($tables);
 
@@ -114,9 +97,7 @@ class MigrateAddressToNewSchema extends Command
         return self::SUCCESS;
     }
 
-    // ==================================================================
-    // Reference data loading
-    // ==================================================================
+    /* Section: reference data loading */
 
     private function loadReferenceData(): void
     {
@@ -140,12 +121,8 @@ class MigrateAddressToNewSchema extends Command
             : DB::table('villages')->where('regency_id', $regencyId)->get();
     }
 
-    // ==================================================================
-    // Per-table row processing (join ke tabel lama untuk dapat TEKS nama,
-    // bukan ID mentah -- id_provinsi/id_kabupaten lama BUKAN kode BPS,
-    // arbitrary autoincrement, jadi harus di-join dulu ke provinsis/
-    // kabupatens sebelum bisa dicocokkan berdasarkan nama).
-    // ==================================================================
+    /* Section: per-table row processing */
+    // id lama bukan kode BPS (arbitrary autoincrement) -- makanya di-join ke provinsis/kabupatens dulu buat ambil nama teksnya
 
     private function processCustomers(): array
     {
@@ -156,8 +133,8 @@ class MigrateAddressToNewSchema extends Command
                 'customers.id_customer as id',
                 'provinsis.nama_provinsi as prov_name',
                 'kabupatens.nama_kabupaten as kab_name',
-                'customers.kecamatan_customer as kec_name',
-                'customers.kelurahan_customer as kel_name',
+                'customers.customer_sub_district as kec_name',
+                'customers.customer_village as kel_name',
             ])
             ->orderBy('customers.id_customer')
             ->get();
@@ -184,9 +161,7 @@ class MigrateAddressToNewSchema extends Command
             ->orderBy('wilayah_angkuts.id')
             ->get();
 
-        // wilayah_angkuts tidak punya kolom kecamatan/kelurahan bebas-teks
-        // sama sekali (dicek via db:table sebelum menulis command ini) --
-        // level district/village SELALU "no_source" untuk tabel ini.
+        // wilayah_angkuts gak punya kolom kecamatan/kelurahan sama sekali -- district/village selalu no_source di tabel ini
         return $rows->map(fn($r) => $this->buildRowResult(
             (string) $r->id,
             $r->prov_name,
@@ -196,9 +171,7 @@ class MigrateAddressToNewSchema extends Command
         ))->all();
     }
 
-    // ==================================================================
-    // Core matching per baris
-    // ==================================================================
+    /* Section: core matching per baris */
 
     private function buildRowResult(string $id, ?string $rawProvince, ?string $rawRegency, ?string $rawDistrict, ?string $rawVillage): array
     {
@@ -335,11 +308,7 @@ class MigrateAddressToNewSchema extends Command
         return ['status' => 'failed', 'id' => null, 'name' => null, 'confidence' => null, 'reason' => "Tidak ada match untuk \"{$rawName}\" di provinsi ini. Kandidat terdekat (bukan match): {$nearby}"];
     }
 
-    /**
-     * Matcher generic dipakai untuk level district maupun village. `$attempted`
-     * membedakan "provinsi/regency tidak match jadi level ini tidak dicoba
-     * sama sekali" (status 'skipped') vs benar-benar tidak ada kandidat.
-     */
+    // generic matcher buat district & village; $attempted true kalau regency udah match, kalau enggak -> status 'skipped' aja
     private function matchAdminLevel(?string $rawName, Collection $candidates, string $levelLabel, bool $attempted): array
     {
         if (!$attempted) {
@@ -393,9 +362,7 @@ class MigrateAddressToNewSchema extends Command
         return ['status' => $status, 'id' => null, 'name' => null, 'confidence' => null, 'score' => round($top['score'], 1), 'reason' => "{$reasonPrefix}. Kandidat teratas: {$topCandidates}"];
     }
 
-    // ==================================================================
-    // Normalisasi teks
-    // ==================================================================
+    /* Section: normalisasi teks */
 
     private function normalize(string $s): string
     {
@@ -404,10 +371,7 @@ class MigrateAddressToNewSchema extends Command
         return mb_strtoupper($s);
     }
 
-    /**
-     * Lepas prefix administratif umum (longest-first supaya "Kota
-     * Administrasi X" tidak cuma kepotong jadi "Administrasi X").
-     */
+    // urutan prefix sengaja longest-first, biar "Kota Administrasi X" gak kepotong jadi "Administrasi X"
     private function stripAdminPrefix(string $normalized): string
     {
         $prefixes = [
@@ -426,9 +390,7 @@ class MigrateAddressToNewSchema extends Command
         return $normalized;
     }
 
-    // ==================================================================
-    // Rendering laporan
-    // ==================================================================
+    /* Section: rendering laporan */
 
     private function renderSummary(array $rows): void
     {
@@ -506,9 +468,7 @@ class MigrateAddressToNewSchema extends Command
         }
     }
 
-    // ==================================================================
-    // Commit (hanya dipanggil kalau --commit diberikan)
-    // ==================================================================
+    /* Section: commit (cuma jalan kalau --commit) */
 
     private function commitResults(array $tables): int
     {

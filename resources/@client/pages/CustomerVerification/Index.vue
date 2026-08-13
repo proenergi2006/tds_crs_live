@@ -20,7 +20,6 @@ const perPage = ref(10)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const totalRecords = ref(0)
-const needUpdateCount = ref(0)
 const loading = ref(false)
 
 async function fetchData(page = 1) {
@@ -36,7 +35,6 @@ async function fetchData(page = 1) {
     currentPage.value = data.current_page ?? 1
     totalPages.value = data.last_page ?? 1
     totalRecords.value = data.total ?? rows.value.length
-    needUpdateCount.value = data.need_update_count ?? 0
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data verifikasi customer.')
   } finally {
@@ -48,17 +46,6 @@ function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return
   fetchData(page)
 }
-
-/* TODO: badge status verifikasi (Fase 0 F0-D) — SEMENTARA dihilangkan dari
-   render (bukan cuma disederhanakan). `disposisi_result` (kolom lama) sudah
-   di-drop backend (F0-B/F0-C) dan endpoint ini (GET /api/customer-verifications,
-   CustomerVerificationController::index()) BELUM expose field pengganti yang
-   layak (stage_label/verification_badge per row) — beda dengan GET
-   /api/customers yang sudah expose itu. Kolom "Status" dipertahankan di tabel
-   (placeholder "-" statis) supaya layout tidak berubah, tapi jangan
-   di-render dari `is_forwarded` lagi (versi kasar sebelumnya sudah dicabut)
-   sampai backend menambahkan field status yang benar-benar mewakili siklus
-   approval untuk list ini. */
 
 onMounted(() => fetchData())
 
@@ -75,7 +62,6 @@ watch(perPage, () => fetchData(1))
             class="inline-flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 font-strong !text-white transition hover:bg-white/25">
             <Lucide icon="Link2" class="h-4 w-4" />
             Link Customers
-            <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">{{ needUpdateCount }}</span>
           </RouterLink>
         </template>
       </PageHeader>
@@ -118,8 +104,7 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td class="text-center">
-              <!-- TODO: menunggu backend expose stage_label/verification_badge
-                   per row di endpoint ini — lihat komentar di script -->
+              <!-- placeholder, nunggu backend expose field status pengganti -->
               <span class="font-label inline-flex items-center rounded-full px-3 py-1 bg-slate-100 text-slate-500">
                 -
               </span>

@@ -239,10 +239,20 @@ class CustomerVerificationController extends Controller
         $perPage = (int) $request->query('per_page', 10);
         $search  = trim((string) $request->query('search', ''));
 
+        // Alias ke key lama (kode_pelanggan/nama_perusahaan) -- masih dibaca Index.vue.
         $q = CustomerVerification::query()
-            ->with([
-                'customer:id_customer,id_user,kode_pelanggan,nama_perusahaan,alamat_perusahaan,email,telepon,fax'
-            ]);
+            ->with(['customer' => function ($c) {
+                $c->select(
+                    'id_customer',
+                    'id_user',
+                    DB::raw('customer_code as kode_pelanggan'),
+                    DB::raw('company_name as nama_perusahaan'),
+                    'company_address',
+                    'email',
+                    'phone',
+                    'fax'
+                );
+            }]);
 
         if ($user->cant('customer.viewAny')) {
             $q->whereHas('customer', function ($c) use ($user) {
@@ -254,8 +264,8 @@ class CustomerVerificationController extends Controller
             $q->where(function ($w) use ($search) {
                 $w->where('token_verification', 'like', "%{$search}%")
                     ->orWhereHas('customer', function ($c) use ($search) {
-                        $c->where('nama_perusahaan', 'like', "%{$search}%")
-                            ->orWhere('kode_pelanggan', 'like', "%{$search}%")
+                        $c->where('company_name', 'like', "%{$search}%")
+                            ->orWhere('customer_code', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
                     });
             });
@@ -263,17 +273,11 @@ class CustomerVerificationController extends Controller
 
         $rows = $q->orderByDesc('id_verification')->paginate($perPage);
 
-        $needUpdateCount = Customer::query()
-            ->where('need_update', 1)
-            ->where('is_generated_link', 0)
-            ->count();
-
         return response()->json([
             'data'               => $rows->items(),
             'current_page'       => $rows->currentPage(),
             'last_page'          => $rows->lastPage(),
             'total'              => $rows->total(),
-            'need_update_count'  => $needUpdateCount,
             'total_verification' => (int) $rows->total(),
         ]);
     }
@@ -289,7 +293,7 @@ class CustomerVerificationController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return $customerVerification->loadMissing('customer:id_customer,nama_perusahaan');
+        return $customerVerification->loadMissing('customer:id_customer,company_name');
     }
 
     public function store(Request $request)
@@ -335,10 +339,10 @@ class CustomerVerificationController extends Controller
         $verification = CustomerVerification::create($data);
 
         Customer::where('id_customer', $data['id_customer'])
-            ->update(['is_generated_link' => 1]);
+            ->update(['is_link_generated' => 1]);
 
         return response()->json(
-            $verification->loadMissing('customer:id_customer,nama_perusahaan'),
+            $verification->loadMissing('customer:id_customer,company_name'),
             201
         );
     }
@@ -392,7 +396,7 @@ class CustomerVerificationController extends Controller
 
         $customerVerification->update($data);
 
-        return $customerVerification->fresh()->loadMissing('customer:id_customer,nama_perusahaan');
+        return $customerVerification->fresh()->loadMissing('customer:id_customer,company_name');
     }
 
     public function upload(Request $request, CustomerVerification $customerVerification)
@@ -461,9 +465,7 @@ class CustomerVerificationController extends Controller
         return response()->noContent();
     }
 
-    // 1 endpoint, 2 mode, difilter dari kyc_status: Marketing (customer.manage)
-    // cuma lihat draft miliknya sendiri, Admin Finance (verification.customer)
-    // lihat forwarded+closed lintas-marketing.
+    // 1 endpoint 2 mode dari kyc_status -- Marketing cuma liat draft sendiri, Admin Finance liat forwarded+closed lintas-marketing.
     public function reviewStats(Request $r)
     {
         $user = $r->user();
@@ -542,8 +544,7 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // Cara satu-satunya buat resolve id_customer dari id_verification, karena
-    // itu satu-satunya route param yang ada di halaman verifikasi Admin Finance.
+    // satu-satunya cara resolve id_customer dari id_verification -- itu doang route param yang ada di halaman verifikasi Admin Finance.
     public function reviewShow(int $id)
     {
         $user = auth()->user();
@@ -812,11 +813,7 @@ class CustomerVerificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // Forward Marketing -> Admin Finance, 1 aksi tanpa payload. Sebelum kyc_status
-    // boleh pindah dari draft, wajib cek Tab 2 udah lengkap (semua question_code
-    // di review_answers terisi) dan Tab 4 juga (latestCreditSubmission ada &
-    // credit_limit_request terisi). Tab 1 gak perlu cek tambahan, field wajib
-    // customers udah ditegakkan sejak record dibuat lewat onboarding.
+    // forward butuh Tab 2 (review answers lengkap) & Tab 4 (credit_limit_request) siap -- Tab 1 udah ditegakkan pas onboarding.
     public function forward(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
@@ -872,10 +869,7 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    // Admin Finance nutup KYC di sini: input credit_limit_approval + top_approval
-    // final, dan gak bisa di-undo -- risiko salah input kita terima sebagai trade-off.
-    // Role 9 (Admin Finance) dicek eksplisit, di atas permission verification.customer,
-    // soalnya BM (role 8) punya permission yang sama tapi gak boleh nutup KYC.
+    // nutup KYC final & gak bisa di-undo -- role 9 dicek eksplisit karena BM (role 8) punya permission sama tapi gak boleh nutup.
     public function close(Request $request, int $id, CloseCustomerKycAction $action): \Illuminate\Http\JsonResponse
     {
         $data = $request->validate([
@@ -914,10 +908,7 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    // Gabungin Data Customer + Sales Review + LCR + Credit Application +
-    // Penawaran Lookup jadi 1 PDF, buat rapat management (offline). Cuma bisa
-    // diakses kalau kyc_status udah forwarded/closed -- dokumen cetak ini
-    // wewenangnya Admin Finance, baru relevan setelah Marketing selesai forward.
+    // gabungin Data Customer + Sales Review + LCR + Credit Application + Penawaran Lookup jadi 1 PDF buat rapat management -- cuma bisa diakses setelah forwarded/closed.
     public function document(Request $request, int $id, GenerateCustomerKycDocumentAction $action)
     {
         if ($request->user()->cant('verification.customer')) {
@@ -967,11 +958,7 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("Data-Customer-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    /**
-     * Antrean Admin Finance ini diambil dari document_approval_steps step 1 yang
-     * masih pending (Admin Finance = step pertama di model 2-step, role id_role=9),
-     * bukan dari is_active/is_reviewed/disposisi_result.
-     */
+    // antrean diambil dari document_approval_steps step 1 pending (Admin Finance, id_role=9), bukan dari is_active/is_reviewed/disposisi_result.
     public function reviewAdminIndex(Request $r)
     {
         if ($r->user()->cant('verification.customer')) {
@@ -982,12 +969,12 @@ class CustomerVerificationController extends Controller
         $q   = trim((string) $r->query('q', ''));
 
         $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
-            ->with(['customer:id_customer,kode_pelanggan,nama_perusahaan,alamat_perusahaan,telepon,fax'])
+            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax'])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
-                    $c->where('nama_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('alamat_perusahaan', 'like', "%{$q}%")
-                        ->orWhere('kode_pelanggan', 'like', "%{$q}%");
+                    $c->where('company_name', 'like', "%{$q}%")
+                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
             ->orderByDesc('id_verification')
@@ -1025,8 +1012,8 @@ class CustomerVerificationController extends Controller
 
         return response()->json([
             'customer'      => $cv->customer ? [
-                'nama_perusahaan'   => $cv->customer->nama_perusahaan,
-                'alamat_perusahaan' => $cv->customer->alamat_perusahaan,
+                'nama_perusahaan'   => $cv->customer->company_name,
+                'alamat_perusahaan' => $cv->customer->company_address,
             ] : null,
             'business_type' => $businessType,
             'form' => [
@@ -1037,11 +1024,7 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    /**
-     * Antrean BM ini diambil dari document_approval_steps step 2 (step FINAL di
-     * model 2-step) yang masih pending (role id_role=8), bukan dari
-     * is_reviewed/disposisi_result.
-     */
+    // antrean diambil dari document_approval_steps step 2/FINAL pending (BM, id_role=8), bukan dari is_reviewed/disposisi_result.
     public function reviewBmIndex(Request $r)
     {
         if ($r->user()->cant('verification.customer')) {
@@ -1055,9 +1038,9 @@ class CustomerVerificationController extends Controller
             ->with(['customer'])
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
-                    $c->where('nama_perusahaan', 'ilike', "%{$q}%")
-                        ->orWhere('alamat_perusahaan', 'ilike', "%{$q}%")
-                        ->orWhere('kode_pelanggan', 'ilike', "%{$q}%");
+                    $c->where('company_name', 'ilike', "%{$q}%")
+                        ->orWhere('company_address', 'ilike', "%{$q}%")
+                        ->orWhere('customer_code', 'ilike', "%{$q}%");
                 });
             })
             ->orderByDesc('id_verification')
