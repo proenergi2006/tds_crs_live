@@ -17,7 +17,8 @@ class GeneratePenawaranPdfAction
         string $viewPrefix,
         string $logoLeftPath
     ) {
-        $penawaran = $modelClass::with(['customer', 'cabang', 'items.produk.ukuran', 'user.role'])
+        // alamat customer di surat penawaran diambil dari headOfficeAddress, bukan kolom di tabel customers
+        $penawaran = $modelClass::with(['customer.headOfficeAddress', 'cabang', 'items.produk.ukuran', 'user.role'])
             ->findOrFail($id);
 
         if ($penawaran->status !== 'approved_om') {

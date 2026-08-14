@@ -8,15 +8,12 @@ use App\Models\CustomerVerification;
 
 class GenerateCustomerKycDocumentAction
 {
-    /**
-     * Aggregate the data (Data Customer, Sales Review, LCR, Credit
-     * Application, Penawaran Lookup) rendered into the KYC document PDF.
-     * Read-only -- does not write anything.
-     */
+    // ngumpulin data (Data Customer, Sales Review, LCR, Credit Application, Penawaran Lookup) buat KYC PDF, read-only
+
     public function execute(CustomerVerification $verification): array
     {
         $customer = $verification->customer;
-        $customer->load(['contacts', 'payment', 'lcr', 'creditSubmissions']);
+        $customer->load(['contacts', 'payment', 'lcr', 'creditSubmissions', 'headOfficeAddress']);
 
         $review = CustomerReview::where('id_verification', $verification->id_verification)->first();
 

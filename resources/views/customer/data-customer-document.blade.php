@@ -8,8 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 10.5px; color: #111; line-height: 1.4; }
 
-    /* @page margin kadang diabaikan dompdf. Padding di page-wrap ini jaga-jaga --
-       sama polanya kayak vendorpos/preview.blade.php. */
+    /* @page margin kadang diabaikan dompdf, padding di sini jaga-jaga -- sama pola kayak vendorpos/preview.blade.php */
     .page-wrap { padding: 8mm 6mm; }
 
     .header-logos { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -138,12 +137,12 @@
     <div class="section-body">
       @php
         $headOfficeAddressRows = [
-          ['label' => 'Address', 'value' => $customer->company_address],
-          ['label' => 'Province', 'value' => $regionName($customer->province)],
-          ['label' => 'City/Regency', 'value' => $regionName($customer->regency)],
-          ['label' => 'District', 'value' => $regionName($customer->district)],
-          ['label' => 'Sub-district', 'value' => $regionName($customer->village)],
-          ['label' => 'Postal Code', 'value' => $customer->postal_code],
+          ['label' => 'Address', 'value' => $headOfficeAddress->address_line ?? null],
+          ['label' => 'Province', 'value' => $regionName($headOfficeAddress->province ?? null)],
+          ['label' => 'City/Regency', 'value' => $regionName($headOfficeAddress->regency ?? null)],
+          ['label' => 'District', 'value' => $regionName($headOfficeAddress->district ?? null)],
+          ['label' => 'Sub-district', 'value' => $regionName($headOfficeAddress->village ?? null)],
+          ['label' => 'Postal Code', 'value' => $headOfficeAddress->postal_code ?? null],
         ];
         $npwpAddressRows = [
           ['label' => 'Address', 'value' => $npwpAddress->address_line ?? null],

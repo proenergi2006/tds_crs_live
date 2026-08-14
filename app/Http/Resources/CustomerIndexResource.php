@@ -7,9 +7,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CustomerIndexResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     */
     public function toArray(Request $request): array
     {
         return [
@@ -26,12 +23,12 @@ class CustomerIndexResource extends JsonResource
                 'name' => $this->user?->name,
             ],
 
-            'province' => $this->province?->name,
-            'regency' => $this->regency?->name,
-            'district' => $this->district?->name,
-            'village' => $this->village?->name,
-            'postal_code' => $this->postal_code,
-            'company_address' => $this->company_address,
+            'province' => $this->headOfficeAddress?->province?->name,
+            'regency' => $this->headOfficeAddress?->regency?->name,
+            'district' => $this->headOfficeAddress?->district?->name,
+            'village' => $this->headOfficeAddress?->village?->name,
+            'postal_code' => $this->headOfficeAddress?->postal_code,
+            'company_address' => $this->headOfficeAddress?->address_line,
 
             'quotation_count' => $this->quotation_count,
             'has_lcr' => $this->has_lcr,

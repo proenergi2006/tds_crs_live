@@ -30,11 +30,14 @@ class CustomerOnboardingController extends Controller
         $registeredAddress = $customer?->addresses
             ->firstWhere('address_type', CustomerAddressType::RegisteredNpwp);
 
+        // head office address dibaca dari baris head_office, bukan kolom customers yang udah gak diupdate lagi
+        $headOfficeAddress = $customer?->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
+
         return response()->json([
             'status' => $status,
             'customer' => [
                 'company_name'          => $customer?->company_name,
-                'company_address'       => $customer?->company_address,
+                'company_address'       => $headOfficeAddress?->address_line,
                 'phone'                 => $customer?->phone,
                 'fax'                   => $customer?->fax,
                 'email'                 => $customer?->email,
@@ -44,13 +47,13 @@ class CustomerOnboardingController extends Controller
                 'ownership_type'        => $customer?->ownership_type,
                 'ownership_type_other'  => $customer?->ownership_type_other,
                 'parent_company'        => $customer?->parent_company,
-                'province_id'           => $customer?->province_id,
-                'regency_id'            => $customer?->regency_id,
-                'district_id'           => $customer?->district_id,
-                'village_id'            => $customer?->village_id,
-                'postal_code'           => $customer?->postal_code,
-                'customer_sub_district' => $customer?->customer_sub_district,
-                'customer_village'      => $customer?->customer_village,
+                'province_id'           => $headOfficeAddress?->province_id,
+                'regency_id'            => $headOfficeAddress?->regency_id,
+                'district_id'           => $headOfficeAddress?->district_id,
+                'village_id'            => $headOfficeAddress?->village_id,
+                'postal_code'           => $headOfficeAddress?->postal_code,
+                'customer_sub_district' => null,
+                'customer_village'      => null,
                 'inco_terms'            => $customer?->inco_terms?->value,
                 'inco_terms_other'      => $customer?->inco_terms_other,
             ],

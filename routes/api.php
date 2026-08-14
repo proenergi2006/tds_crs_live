@@ -269,9 +269,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('review/lcr-sites/{lcrSite}/decision', [CustomerLcrController::class, 'decide']);
     Route::patch('review/lcr-sites/{lcrSite}/reset-decision', [CustomerLcrController::class, 'resetDecision']);
 
-    // Public form (pakai token) - upload internal (auth)
-    Route::post('customer-verifications/{customerVerification}/upload', [CustomerVerificationController::class, 'upload']);
-
     Route::apiResource('customer-verifications', CustomerVerificationController::class);
 
     /* Section: Review (Marketing/Finance) - umum */
@@ -367,8 +364,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // Public (tanpa auth)
 Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'show']);
 Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
-Route::post('/verify/{token}/upload', [CustomerVerificationController::class, 'uploadByToken'])
-    ->where('token', '[A-Za-z0-9\-]{10,}');
 Route::get('/verifikasi-penawaran/{token}', [PenawaranVerificationController::class, 'show']);
 // Lookup alamat BPS 4 level -- publik (tanpa auth) karena dipakai juga portal onboarding /verify/:token yang gak punya token Bearer.
 Route::get('/provinces',                       [AddressController::class, 'provinces']);

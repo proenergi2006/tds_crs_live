@@ -15,8 +15,6 @@ export interface OnboardingIdentity {
   district_id: string | null;
   village_id: string | null;
   postal_code: string;
-  customer_sub_district: string;
-  customer_village: string;
   inco_terms: string;
   inco_terms_other: string;
 }

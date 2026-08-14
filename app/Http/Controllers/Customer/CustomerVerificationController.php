@@ -239,7 +239,7 @@ class CustomerVerificationController extends Controller
         $perPage = (int) $request->query('per_page', 10);
         $search  = trim((string) $request->query('search', ''));
 
-        // Alias ke key lama (kode_pelanggan/nama_perusahaan) -- masih dibaca Index.vue.
+        // alias ke key lama (kode_pelanggan/nama_perusahaan) masih dibaca Index.vue; company_address diambil lewat subselect head_office
         $q = CustomerVerification::query()
             ->with(['customer' => function ($c) {
                 $c->select(
@@ -247,11 +247,10 @@ class CustomerVerificationController extends Controller
                     'id_user',
                     DB::raw('customer_code as kode_pelanggan'),
                     DB::raw('company_name as nama_perusahaan'),
-                    'company_address',
                     'email',
                     'phone',
                     'fax'
-                );
+                )->withHeadOfficeAddressLine();
             }]);
 
         if ($user->cant('customer.viewAny')) {
@@ -262,7 +261,7 @@ class CustomerVerificationController extends Controller
 
         if ($search !== '') {
             $q->where(function ($w) use ($search) {
-                $w->where('token_verification', 'like', "%{$search}%")
+                $w->where('verification_token', 'like', "%{$search}%")
                     ->orWhereHas('customer', function ($c) use ($search) {
                         $c->where('company_name', 'like', "%{$search}%")
                             ->orWhere('customer_code', 'like', "%{$search}%")
@@ -304,36 +303,30 @@ class CustomerVerificationController extends Controller
 
         $data = $request->validate([
             'id_customer'        => ['required', 'exists:customers,id_customer'],
-            'token_verification' => ['nullable', 'string', 'size:17', 'unique:customer_verifications,token_verification'],
+            'verification_token' => ['nullable', 'string', 'size:17', 'unique:customer_verifications,verification_token'],
 
             'is_submitted' => ['nullable', 'integer', 'in:0,1'],
             'is_forwarded' => ['nullable', 'integer', 'in:0,1'],
             'is_active'    => ['nullable', 'integer', 'in:0,1'],
 
-            'legal_data'     => ['nullable', 'string'],
-            'legal_summary'  => ['nullable', 'string'],
-            'legal_result'   => ['nullable', 'integer'],
-            'legal_tgl_proses' => ['nullable', 'date'],
-            'legal_pic'      => ['nullable', 'string', 'max:50'],
-
             'finance_data'    => ['nullable', 'string'],
             'finance_summary' => ['nullable', 'string'],
             'finance_result'  => ['nullable', 'integer'],
-            'finance_tgl_proses' => ['nullable', 'date'],
+            'finance_processed_at' => ['nullable', 'date'],
             'finance_pic'     => ['nullable', 'string', 'max:50'],
 
-            'logistik_data'    => ['nullable', 'string'],
-            'logistik_summary' => ['nullable', 'string'],
-            'logistik_result'  => ['nullable', 'integer'],
-            'logistik_tgl_proses' => ['nullable', 'date'],
-            'logistik_pic'     => ['nullable', 'string', 'max:50'],
+            'logistics_data'    => ['nullable', 'string'],
+            'logistics_summary' => ['nullable', 'string'],
+            'logistics_result'  => ['nullable', 'integer'],
+            'logistics_processed_at' => ['nullable', 'date'],
+            'logistics_pic'     => ['nullable', 'string', 'max:50'],
 
-            'jenis_datanya'    => ['nullable', 'integer'],
+            'data_type'        => ['nullable', 'integer'],
             'finance_data_kyc' => ['nullable', 'string'],
         ]);
 
-        if (empty($data['token_verification'])) {
-            $data['token_verification'] = strtoupper(Str::random(17));
+        if (empty($data['verification_token'])) {
+            $data['verification_token'] = strtoupper(Str::random(17));
         }
 
         $verification = CustomerVerification::create($data);
@@ -360,11 +353,11 @@ class CustomerVerificationController extends Controller
 
         $data = $request->validate([
             'id_customer'        => ['sometimes', 'exists:customers,id_customer'],
-            'token_verification' => [
+            'verification_token' => [
                 'sometimes',
                 'string',
                 'size:17',
-                Rule::unique('customer_verifications', 'token_verification')
+                Rule::unique('customer_verifications', 'verification_token')
                     ->ignore($customerVerification->id_verification, 'id_verification'),
             ],
 
@@ -372,25 +365,19 @@ class CustomerVerificationController extends Controller
             'is_forwarded' => ['sometimes', 'integer', 'in:0,1'],
             'is_active'    => ['sometimes', 'integer', 'in:0,1'],
 
-            'legal_data'     => ['sometimes', 'nullable', 'string'],
-            'legal_summary'  => ['sometimes', 'nullable', 'string'],
-            'legal_result'   => ['sometimes', 'nullable', 'integer'],
-            'legal_tgl_proses' => ['sometimes', 'nullable', 'date'],
-            'legal_pic'      => ['sometimes', 'nullable', 'string', 'max:50'],
-
             'finance_data'    => ['sometimes', 'nullable', 'string'],
             'finance_summary' => ['sometimes', 'nullable', 'string'],
             'finance_result'  => ['sometimes', 'nullable', 'integer'],
-            'finance_tgl_proses' => ['sometimes', 'nullable', 'date'],
+            'finance_processed_at' => ['sometimes', 'nullable', 'date'],
             'finance_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
 
-            'logistik_data'    => ['sometimes', 'nullable', 'string'],
-            'logistik_summary' => ['sometimes', 'nullable', 'string'],
-            'logistik_result'  => ['sometimes', 'nullable', 'integer'],
-            'logistik_tgl_proses' => ['sometimes', 'nullable', 'date'],
-            'logistik_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
+            'logistics_data'    => ['sometimes', 'nullable', 'string'],
+            'logistics_summary' => ['sometimes', 'nullable', 'string'],
+            'logistics_result'  => ['sometimes', 'nullable', 'integer'],
+            'logistics_processed_at' => ['sometimes', 'nullable', 'date'],
+            'logistics_pic'     => ['sometimes', 'nullable', 'string', 'max:50'],
 
-            'jenis_datanya'    => ['sometimes', 'nullable', 'integer'],
+            'data_type'        => ['sometimes', 'nullable', 'integer'],
             'finance_data_kyc' => ['sometimes', 'nullable', 'string'],
         ]);
 
@@ -398,57 +385,6 @@ class CustomerVerificationController extends Controller
 
         return $customerVerification->fresh()->loadMissing('customer:id_customer,company_name');
     }
-
-    public function upload(Request $request, CustomerVerification $customerVerification)
-    {
-        $user = $request->user();
-
-        $allowed = $user->can('customer.manage')
-            && ($this->verificationOwnerId($customerVerification) === $user->id || $user->can('customer.viewAny'));
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $request->validate([
-            'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
-        ]);
-
-        $path = $request->file('file')->store(
-            "customer_verifications/{$customerVerification->id_verification}/{$request->field}",
-            'public'
-        );
-
-        $legal = json_decode($customerVerification->legal_data ?? '{}', true) ?: [];
-        $legal['files'][$request->field][] = $path;
-        $customerVerification->update(['legal_data' => json_encode($legal)]);
-
-        return response()->json(['path' => Storage::url($path)]);
-    }
-
-    public function uploadByToken(Request $request, string $token)
-    {
-        $cv = CustomerVerification::where('token_verification', $token)
-            ->where('is_active', 1)->firstOrFail();
-
-        $request->validate([
-            'file'  => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-            'field' => 'required|string|in:akta_file,npwp_file,nib_file,other_file',
-        ]);
-
-        $path = $request->file('file')->store(
-            "customer_verifications/{$cv->id_verification}/{$request->field}",
-            'public'
-        );
-
-        $legal = json_decode($cv->legal_data ?? '{}', true) ?: [];
-        $legal['files'][$request->field][] = $path;
-        $cv->update(['legal_data' => json_encode($legal)]);
-
-        return response()->json(['path' => Storage::url($path)]);
-    }
-
 
     public function destroy(Request $request, CustomerVerification $customerVerification)
     {
@@ -501,7 +437,7 @@ class CustomerVerificationController extends Controller
         $tab = $r->query('tab', $r->query('status', $isAdminFinance ? 'forwarded' : 'draft'));
 
         $baseQuery = CustomerVerification::query()
-            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax,email']);
+            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
 
         if ($tab === 'draft') {
             $baseQuery->where('kyc_status', CustomerKycStatus::Draft);
@@ -517,7 +453,7 @@ class CustomerVerificationController extends Controller
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -550,7 +486,7 @@ class CustomerVerificationController extends Controller
         $user = auth()->user();
 
         $cv = CustomerVerification::with([
-            'customer:id_customer,customer_code,company_name,company_address,phone,fax,email'
+            'customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
         ])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
@@ -969,11 +905,11 @@ class CustomerVerificationController extends Controller
         $q   = trim((string) $r->query('q', ''));
 
         $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
-            ->with(['customer:id_customer,customer_code,company_name,company_address,phone,fax'])
+            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhere('company_address', 'like', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -999,31 +935,6 @@ class CustomerVerificationController extends Controller
         return response()->json(['queue' => $queue]);
     }
 
-    public function logistikShow(int $id)
-    {
-        if (auth()->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $cv = CustomerVerification::with('customer')->findOrFail($id);
-
-        $legal = json_decode($cv->legal_data ?? '{}', true);
-        $businessType = $legal['corporate']['ownership'] ?? ($legal['corporate']['tipe_bisnis_text'] ?? '-');
-
-        return response()->json([
-            'customer'      => $cv->customer ? [
-                'nama_perusahaan'   => $cv->customer->company_name,
-                'alamat_perusahaan' => $cv->customer->company_address,
-            ] : null,
-            'business_type' => $businessType,
-            'form' => [
-                'logistik_summary'  => $cv->logistik_summary ?? '',
-                'logistik_result'   => $cv->logistik_result_text ?? ($cv->logistik_result ?? ''),
-                'assessment_result' => $cv->assessment_result ?? '',
-            ],
-        ]);
-    }
-
     // antrean diambil dari document_approval_steps step 2/FINAL pending (BM, id_role=8), bukan dari is_reviewed/disposisi_result.
     public function reviewBmIndex(Request $r)
     {
@@ -1039,7 +950,7 @@ class CustomerVerificationController extends Controller
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'ilike', "%{$q}%")
-                        ->orWhere('company_address', 'ilike', "%{$q}%")
+                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'ilike', "%{$q}%"))
                         ->orWhere('customer_code', 'ilike', "%{$q}%");
                 });
             })

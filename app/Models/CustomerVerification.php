@@ -24,12 +24,6 @@ class CustomerVerification extends Model
         'is_active',
         'expired_at',
 
-        'legal_data',
-        'legal_summary',
-        'legal_result',
-        'legal_processed_at',
-        'legal_pic',
-
         'finance_data',
         'finance_summary',
         'finance_result',
@@ -52,12 +46,10 @@ class CustomerVerification extends Model
         'kyc_status'   => CustomerKycStatus::class,
         'is_active'    => 'boolean',
 
-        'legal_result'     => 'integer',
         'finance_result'   => 'integer',
         'logistics_result' => 'integer',
         'data_type'        => 'integer',
 
-        'legal_processed_at'     => 'datetime',
         'finance_processed_at'   => 'datetime',
         'logistics_processed_at' => 'datetime',
         'expired_at'              => 'datetime',

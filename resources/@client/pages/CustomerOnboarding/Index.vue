@@ -67,8 +67,6 @@ function createDefaultForm(): OnboardingForm {
       district_id: null,
       village_id: null,
       postal_code: '',
-      customer_sub_district: '',
-      customer_village: '',
       inco_terms: '',
       inco_terms_other: '',
     },
@@ -92,8 +90,7 @@ function createDefaultForm(): OnboardingForm {
       method_other: '',
       invoice_tax: false,
       note: '',
-      /* Sementara pricing method calculation cuma berlaku Quotation di TDS —
-         field disembunyikan dari user, fixed default dikirim ke backend. */
+      // pricing_method fixed 'Quotation', field disembunyikan dari user
       pricing_method: 'Quotation',
       bank_name: '',
       currency: 'IDR',
@@ -163,10 +160,7 @@ const stepsMeta = computed(() =>
   })),
 )
 
-/* Tampilan non-active state (used/expired/invalidated/not-found) -- hanya
-   pakai data yang benar-benar tersedia sekarang (nama perusahaan, status).
-   Tidak ada nomor registrasi/QR/tanggal submit/PDF karena backend belum
-   punya data itu (belum ada kolom submitted_at, nomor registrasi, dst). */
+// tampilan non-active state cuma pake data yang emang ada sekarang -- belum ada kolom submitted_at/nomor registrasi dst di backend
 type NonActiveState = 'used' | 'expired' | 'invalidated' | 'not-found'
 const statusDisplay = computed((): {
   icon: Icon
@@ -238,11 +232,7 @@ async function fetchStatus() {
 }
 onMounted(fetchStatus)
 
-/* Dev-only: isi seluruh form dengan data dummy untuk mempercepat testing alur
-   submit (upload file tetap harus manual, tidak bisa disimulasikan). Tombol
-   pemicunya di-guard isDev di template -- import.meta langsung di template
-   expression tidak didukung compiler SFC Vue ("import.meta may appear only
-   with 'sourceType: module'"), jadi harus dipindah jadi konstanta di sini. */
+// dev-only: isi form data dummy buat testing (upload file tetep manual); isDev dipindah ke const karena import.meta gak bisa dipake langsung di template expression
 const isDev = import.meta.env.DEV
 const seeding = ref(false)
 
@@ -276,7 +266,6 @@ async function seedDummyData() {
   seeding.value = true
   try {
     Object.assign(form.identity, {
-      // company_name: 'PT Contoh Sejahtera Abadi',
       parent_company: 'PT Induk Sejahtera Group',
       company_address: 'Jl. Industri Raya No. 45, Kawasan Industri Pulogadung',
       phone: '021-4600123',
@@ -345,10 +334,7 @@ async function seedDummyData() {
   }
 }
 
-/* Halaman ini sibling dari Layout.vue (route publik, di luar auth), jadi
-   ThemeSwitcher.vue (satu-satunya komponen yang menempelkan class `.theme-1`
-   ke <html>) tidak pernah mount di sini. Tanpa class itu token warna
-   (--color-theme-1) jatuh ke default :root. */
+// halaman ini di luar Layout.vue/auth jadi ThemeSwitcher gak pernah mount -- token warna theme-1 gak ke-apply tanpa class ini
 onMounted(() => { document.documentElement.classList.add('theme-1') })
 onUnmounted(() => { document.documentElement.classList.remove('theme-1') })
 
