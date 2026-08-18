@@ -329,6 +329,11 @@ class CustomerVerificationController extends Controller
             $data['verification_token'] = strtoupper(Str::random(17));
         }
 
+        // Kasih default value disini karena karena default value nya tidak di set di db
+        foreach (['finance_data', 'finance_summary', 'finance_pic', 'logistics_data', 'logistics_summary', 'logistics_pic'] as $key) {
+            $data[$key] ??= '';
+        }
+
         $verification = CustomerVerification::create($data);
 
         Customer::where('id_customer', $data['id_customer'])
@@ -412,8 +417,8 @@ class CustomerVerificationController extends Controller
 
         $isAdminFinance = $user->can('verification.customer');
 
-        $scopedQuery = fn () => CustomerVerification::query()
-            ->when(!$isAdminFinance, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('id_user', $user->id)));
+        $scopedQuery = fn() => CustomerVerification::query()
+            ->when(!$isAdminFinance, fn($q) => $q->whereHas('customer', fn($c) => $c->where('id_user', $user->id)));
 
         return response()->json([
             'draft'     => $scopedQuery()->where('kyc_status', CustomerKycStatus::Draft)->count(),
@@ -437,7 +442,7 @@ class CustomerVerificationController extends Controller
         $tab = $r->query('tab', $r->query('status', $isAdminFinance ? 'forwarded' : 'draft'));
 
         $baseQuery = CustomerVerification::query()
-            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
+            ->with(['customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
 
         if ($tab === 'draft') {
             $baseQuery->where('kyc_status', CustomerKycStatus::Draft);
@@ -446,14 +451,14 @@ class CustomerVerificationController extends Controller
         }
 
         if (!$isAdminFinance) {
-            $baseQuery->whereHas('customer', fn ($c) => $c->where('id_user', $user->id));
+            $baseQuery->whereHas('customer', fn($c) => $c->where('id_user', $user->id));
         }
 
         $rows = $baseQuery
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -486,7 +491,7 @@ class CustomerVerificationController extends Controller
         $user = auth()->user();
 
         $cv = CustomerVerification::with([
-            'customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
+            'customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
         ])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
@@ -572,7 +577,7 @@ class CustomerVerificationController extends Controller
 
         if (!$review) {
             $reviewAnswers = collect(CustomerReviewQuestionCode::cases())
-                ->map(fn (CustomerReviewQuestionCode $code) => [
+                ->map(fn(CustomerReviewQuestionCode $code) => [
                     'question_code' => $code->value,
                     'question'      => $code->question(),
                     'answer'        => null,
@@ -770,12 +775,12 @@ class CustomerVerificationController extends Controller
 
         $review         = CustomerReview::where('id_verification', $id)->first();
         $answeredCodes  = collect($review ? ($review->review_answers ?? []) : [])
-            ->filter(fn (array $item) => isset($item['answer']) && $item['answer'] !== '')
+            ->filter(fn(array $item) => isset($item['answer']) && $item['answer'] !== '')
             ->pluck('question_code');
 
         $reviewComplete = $review
             && collect(CustomerReviewQuestionCode::cases())
-                ->every(fn (CustomerReviewQuestionCode $code) => $answeredCodes->contains($code->value));
+            ->every(fn(CustomerReviewQuestionCode $code) => $answeredCodes->contains($code->value));
 
         if (!$reviewComplete) {
             $incompleteTabs[] = 'review';
@@ -884,8 +889,8 @@ class CustomerVerificationController extends Controller
         // Base64 data URI, bukan URL -- dompdf tidak resolve URL eksternal/relative dengan reliable.
         $leftPath = public_path('images/logo-new.png');
         $rightPath = public_path('images/logo-crs.png');
-        $data['logoLeft'] = file_exists($leftPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($leftPath)) : null;
-        $data['logoRight'] = file_exists($rightPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($rightPath)) : null;
+        $data['logoLeft'] = file_exists($leftPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($leftPath)) : null;
+        $data['logoRight'] = file_exists($rightPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($rightPath)) : null;
 
         $pdf = \PDF::loadView('customer.data-customer-document', $data)->setPaper('A4', 'portrait');
 
@@ -905,11 +910,11 @@ class CustomerVerificationController extends Controller
         $q   = trim((string) $r->query('q', ''));
 
         $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
-            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
+            ->with(['customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -950,7 +955,7 @@ class CustomerVerificationController extends Controller
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'ilike', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'ilike', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'ilike', "%{$q}%"))
                         ->orWhere('customer_code', 'ilike', "%{$q}%");
                 });
             })
@@ -969,5 +974,4 @@ class CustomerVerificationController extends Controller
         $queue = $this->pendingStepQuery(self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
     }
-
 }
