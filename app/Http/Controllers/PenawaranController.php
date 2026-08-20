@@ -37,7 +37,7 @@ class PenawaranController extends Controller
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
-        $query = Penawaran::with(['customer', 'cabang', 'items.produk'])
+        $query = Penawaran::with(['customer', 'cabang', 'items.produk.jenis', 'items.produk.ukuran.satuan'])
             ->withSum('items as total_volume', 'volume_order');
 
         if ($user->cant('penawaran.viewAny')) {

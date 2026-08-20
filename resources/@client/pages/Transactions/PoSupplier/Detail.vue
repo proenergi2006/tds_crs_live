@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
+import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,12 +100,18 @@ async function approve() {
 }
 
 async function preview() {
+  const previewTab = openPdfLoadingTab()
   try {
     const response = await axios.get(`/vendor-pos/${id}/preview`, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    window.open(url, '_blank')
+    if (previewTab) {
+      previewTab.location.href = url
+    } else {
+      window.open(url, '_blank')
+    }
     setTimeout(() => URL.revokeObjectURL(url), 10000)
   } catch {
+    previewTab?.close()
     error('Gagal', 'Gagal membuka preview PDF')
   }
 }
