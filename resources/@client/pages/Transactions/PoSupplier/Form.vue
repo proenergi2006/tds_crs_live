@@ -147,7 +147,7 @@ async function fetchPo() {
 
   form.items = (items || []).map((item: any) => ({
     id_produk: item.id_produk,
-    volume_po: toDbInt(item.volume_po),
+    volume_po: toFloat(item.volume_po),
     harga_tebus: toDbInt(item.harga_tebus),
     total_harga: toDbInt(item.jumlah_harga),
     kd_tax: item.kd_tax ?? '',
@@ -175,7 +175,7 @@ function removeRow(index: number) {
 
 function computeTotal(index: number) {
   const item = form.items[index]
-  item.total_harga = toInt(item.volume_po) * toInt(item.harga_tebus)
+  item.total_harga = toFloat(item.volume_po) * toInt(item.harga_tebus)
   computeTax(index)
 }
 
@@ -220,6 +220,12 @@ function toDbInt(value: unknown): number {
   return toInt(value)
 }
 
+function toFloat(value: unknown): number {
+  if (value === null || value === undefined || value === '') return 0
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value))
+  return Number.isFinite(n) ? n : 0
+}
+
 function formatNumber(value: number) {
   return toInt(value).toLocaleString('id-ID')
 }
@@ -257,7 +263,7 @@ function buildPayload(idPo?: number) {
     ...buildHeaderPayload(),
     items: form.items.map(item => ({
       id_produk: Number(item.id_produk),
-      volume_po: toInt(item.volume_po),
+      volume_po: toFloat(item.volume_po),
       harga_tebus: toInt(item.harga_tebus),
       jumlah_harga: toInt(item.total_harga),
       kd_tax: item.kd_tax || null,
@@ -437,7 +443,7 @@ function cancel() {
 
               <Table.Td class="px-4 py-3">
                 <NumberField class="w-32" :id="`volume-po-${index}`" v-model="item.volume_po" placeholder="100" :min="0"
-                  :decimals="0" @update:model-value="computeTotal(index)" />
+                  :decimals="2" @update:model-value="computeTotal(index)" />
               </Table.Td>
 
               <Table.Td class="px-4 py-3">
