@@ -158,7 +158,6 @@ function goBack() {
         <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
-          <!-- Informasi PO -->
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -192,7 +191,6 @@ function goBack() {
             </div>
           </CardSection>
 
-          <!-- Rincian Produk -->
           <CardSection title="Rincian Produk" description="Daftar item produk pada purchase order" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
             <div class="overflow-x-auto">
@@ -250,7 +248,6 @@ function goBack() {
             </div>
           </CardSection>
 
-          <!-- Catatan & Terms -->
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <CardSection title="Catatan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div

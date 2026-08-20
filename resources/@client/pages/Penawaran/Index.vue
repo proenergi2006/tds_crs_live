@@ -174,7 +174,6 @@ function disposisiClass(v: string | number) {
   }
 }
 
-/* Timestamp disposisi (mis. "Approved BM: 23 Jun 2026 14:30"). */
 function getDisposisiTanggal(pen: any): string {
   const d = String(pen.disposisi_penawaran)
   if (d === '3' && pen.bm_tanggal) return `Approved BM: ${formatDateTime(pen.bm_tanggal)}`
@@ -184,15 +183,13 @@ function getDisposisiTanggal(pen: any): string {
   return ''
 }
 
-/* nama_ukuran adalah free-text campuran breakdown ukuran, mis. "1-2 cm (28%), 0,5-1 cm (17%)".
-   Split cuma di koma yang diikuti spasi supaya koma desimal ("0,5") tidak ikut kepotong. */
+/* split di koma+spasi doang, biar koma desimal kayak "0,5" gak ikut kepotong */
 function sizePills(item: any): string[] {
   const nama = item?.produk?.ukuran?.nama_ukuran
   if (!nama) return []
   return String(nama).split(/,\s+/).map((s: string) => s.trim()).filter(Boolean)
 }
 
-/* "3-5 cm, 5-7 cm & Abu Batu" -- koma di antara, "&" sebelum item terakhir. */
 function joinWithAmpersand(items: string[]): string {
   if (items.length <= 1) return items[0] || ''
   return `${items.slice(0, -1).join(', ')} & ${items[items.length - 1]}`

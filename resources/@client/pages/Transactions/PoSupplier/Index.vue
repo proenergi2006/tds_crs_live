@@ -17,19 +17,19 @@ import { formatDate } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
-// Composables
+/* Composables */
 const router = useRouter()
 const { success, error } = useNotification()
 const vendorPoApi = createResourceApi('/vendor-pos')
 
-// State: data & pagination
+/* State: data & pagination */
 const vendorPos = ref<any[]>([])
 const vendors = ref<any[]>([])
 const terminals = ref<any[]>([])
 const loading = ref(false)
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 
-// State: filters
+/* State: filters */
 const searchQuery = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
@@ -37,12 +37,12 @@ const filterTerminal = ref('')
 const filterVendor = ref('')
 const perPage = ref(10)
 
-// State: delete
+/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; label: string } | null>(null)
 
-// Computed
+/* Computed */
 const activeFilterCount = computed(() =>
   [
     filterDateFrom.value,
@@ -52,7 +52,7 @@ const activeFilterCount = computed(() =>
   ].filter(Boolean).length,
 )
 
-// Lifecycle / watch
+/* Lifecycle / watch */
 onMounted(async () => {
   await Promise.all([fetchVendors(), fetchTerminals()])
   fetchData(1)
@@ -61,7 +61,7 @@ onMounted(async () => {
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
 
-// Fetch
+/* Fetch */
 async function fetchData(page = 1) {
   loading.value = true
   try {
@@ -105,7 +105,7 @@ async function fetchTerminals() {
   }
 }
 
-// Action handlers
+/* Action handlers */
 function goToPage(page: number) {
   if (page < 1 || page > meta.value.last_page) return
   fetchData(page)
@@ -174,7 +174,7 @@ async function submitDelete() {
   }
 }
 
-// Helpers
+/* Helpers */
 function isEditableState(key?: string): boolean {
   return key !== 'Approved'
 }

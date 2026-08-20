@@ -160,7 +160,6 @@ function formatNumber(v: number | string = 0) {
         <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
-          <!-- Informasi PO -->
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -194,7 +193,6 @@ function formatNumber(v: number | string = 0) {
             </div>
           </CardSection>
 
-          <!-- Rincian Produk -->
           <CardSection title="Rincian Produk" description="Daftar item produk pada purchase order" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
             <div class="overflow-x-auto">
@@ -252,7 +250,6 @@ function formatNumber(v: number | string = 0) {
             </div>
           </CardSection>
 
-          <!-- Catatan & Terms -->
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <CardSection title="Catatan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div
@@ -274,14 +271,12 @@ function formatNumber(v: number | string = 0) {
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
           <div class="sticky top-6 space-y-4">
-            <!-- Status Approval -->
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <Stepper :steps="approvalSteps" direction="vertical" />
             </CardSection>
 
             <div class="bg-white p-6 rounded-lg">
-              <!-- Approval Notes -->
               <div
                 class="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
                 <div class="font-label mb-3">APPROVAL NOTES</div>

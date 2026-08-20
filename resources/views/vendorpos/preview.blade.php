@@ -93,7 +93,6 @@
   }
 @endphp
 
-<!-- ======================== HALAMAN 1 ======================== -->
 <div class="content">
   <table class="hdr">
     <tr>
@@ -262,7 +261,6 @@
   @endif
 </div>
 
-<!-- ======================== HALAMAN 2 (TERMS) ======================== -->
 @if($hasTerms)
 <div class="page-break"></div>
 
