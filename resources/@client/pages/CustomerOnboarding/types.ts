@@ -28,8 +28,9 @@ export interface OnboardingAddress {
   postal_code: string;
 }
 
-export interface OnboardingInvoiceContact {
-  name: string;
+export interface OnboardingContactItem {
+  id?: number;
+  full_name: string;
   position: string;
   phone: string;
   mobile: string;
@@ -78,11 +79,30 @@ export interface OnboardingDocumentSlot {
   number: string;
 }
 
+export interface OnboardingFreeFormDocumentItem {
+  file: File | null;
+  label: string;
+}
+
 export interface OnboardingDocuments {
   nib: OnboardingDocumentSlot;
   npwp: OnboardingDocumentSlot;
-  sertifikat: OnboardingDocumentSlot;
-  dokumen_lainnya: File[];
+  dokumen_lainnya: OnboardingFreeFormDocumentItem[];
+  remove_document_ids: number[];
+}
+
+export interface OnboardingExistingDocument {
+  id?: string | number;
+  name: string;
+  url?: string;
+  document_number?: string;
+  label?: string;
+}
+
+export interface OnboardingExistingDocuments {
+  nib: OnboardingExistingDocument[];
+  npwp: OnboardingExistingDocument[];
+  dokumen_lainnya: OnboardingExistingDocument[];
 }
 
 export interface OnboardingAgreement {
@@ -93,7 +113,8 @@ export interface OnboardingAgreement {
 export interface OnboardingForm {
   identity: OnboardingIdentity;
   registered_address: OnboardingAddress;
-  invoice_contact: OnboardingInvoiceContact;
+  contacts: OnboardingContactItem[];
+  remove_contact_ids: number[];
   payment: OnboardingPayment;
   logistics: OnboardingLogistics;
   documents: OnboardingDocuments;

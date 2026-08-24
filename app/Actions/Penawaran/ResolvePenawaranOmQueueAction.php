@@ -13,10 +13,11 @@ class ResolvePenawaranOmQueueAction
             ->whereIn('disposisi_penawaran', [3, 4, 6]);
 
         if ($search) {
+            // Kontak tujuan bukan kolom sendiri lagi; search menjangkau nama perusahaan customer + nama kontaknya.
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_penawaran', 'like', "%{$search}%")
-                    ->orWhere('kepada', 'like', "%{$search}%")
-                    ->orWhere('nama', 'like', "%{$search}%");
+                    ->orWhereHas('customer', fn ($cq) => $cq->where('company_name', 'like', "%{$search}%"))
+                    ->orWhereHas('customerContact', fn ($cq) => $cq->where('full_name', 'like', "%{$search}%"));
             });
         }
 

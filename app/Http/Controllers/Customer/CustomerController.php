@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Customer;
 
-use App\Actions\Customer\SyncCustomerHeadOfficeAddressAction;
+use App\Actions\Customer\EvaluateCustomerTabCompletenessAction;
+use App\Actions\Customer\UpsertCustomerAddressAction;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerKycStatus;
-use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
+use App\Http\Requests\Customer\UpdateCustomerAddressByTypeRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Http\Resources\CustomerIndexResource;
 use App\Models\Customer;
@@ -20,16 +21,9 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
-    // 8 field alamat/BPS ini gak ditulis ke customers lagi, sumbernya baris head_office di customer_addresses
-    private const HEAD_OFFICE_INPUT_COLUMNS = [
-        'company_address',
-        'province_id',
-        'regency_id',
-        'district_id',
-        'village_id',
-        'postal_code',
-        'customer_sub_district',
-        'customer_village',
+    // site_address punya jalur sync sendiri (SyncCustomerLcrSiteDetailsAction) -- ditolak di updateAddress() biar gak bikin data gak sinkron.
+    private const ADDRESS_TYPES_MANAGED_ELSEWHERE = [
+        CustomerAddressType::SiteAddress,
     ];
 
     public function index(Request $request)
@@ -115,7 +109,7 @@ class CustomerController extends Controller
     {
         $latest = $customer->latestVerification;
 
-        if (!$latest || !$customer->is_link_generated) {
+        if (!$latest) {
             return 'belum_ada_link';
         }
 
@@ -162,33 +156,32 @@ class CustomerController extends Controller
         ];
     }
 
-    public function store(StoreCustomerRequest $request, SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
+    public function store(StoreCustomerRequest $request, UpsertCustomerAddressAction $upsertAddress)
     {
         if ($request->user()->cant('customer.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $data = $request->validated();
-
-        $addressInput = array_intersect_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
-        $data = array_diff_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
+        $validated    = $request->validated();
+        $data         = $validated['corporate_detail'];
+        $addressInput = $validated['head_office_address'];
 
         $data['id_user']      = $request->user()->id;
         $data['created_at']   = now();
         $data['created_by']   = $request->user()->name;
         $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
 
-        $customer = DB::transaction(function () use ($data, $addressInput, $syncHeadOfficeAddress) {
+        $customer = DB::transaction(function () use ($data, $addressInput, $upsertAddress) {
             $customer = Customer::create($data);
             $this->seedRelatedRecords($customer);
-            $syncHeadOfficeAddress->execute($customer->id_customer, $addressInput);
+            $upsertAddress->execute($customer->id_customer, CustomerAddressType::HeadOffice, $addressInput);
             return $customer;
         });
 
         return response()->json($customer, 201);
     }
 
-    public function show(Request $request, Customer $customer)
+    public function show(Request $request, Customer $customer, EvaluateCustomerTabCompletenessAction $evaluateTabCompleteness)
     {
         $user = $request->user();
 
@@ -211,6 +204,7 @@ class CustomerController extends Controller
             'logistik',
             'lcr',
             'creditSubmissions',
+            'documents.documentType',
         ]);
 
         // kolom alamat di customers udah gak diupdate lagi, response diambil dari baris head_office biar shape-nya sama kayak dulu
@@ -226,15 +220,14 @@ class CustomerController extends Controller
         $customer->regency_id = $headOffice?->regency_id;
         $customer->district_id = $headOffice?->district_id;
         $customer->village_id = $headOffice?->village_id;
-        $customer->customer_sub_district = null;
-        $customer->customer_village = null;
 
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
+        $customer->tab_completeness = $evaluateTabCompleteness->execute($customer);
 
         return response()->json($customer);
     }
 
-    public function update(UpdateCustomerRequest $request, Customer $customer, SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
+    public function update(UpdateCustomerRequest $request, Customer $customer)
     {
         $user = $request->user();
 
@@ -254,17 +247,13 @@ class CustomerController extends Controller
 
         $data = $request->validated();
 
-        $addressInput = array_intersect_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
-        $data = array_diff_key($data, array_flip(self::HEAD_OFFICE_INPUT_COLUMNS));
-
         $data['updated_at']   = now();
         $data['updated_by']   = $request->user()->name;
         $data['company_name'] = $this->normalizeName($data['company_name'] ?? null);
+        $data['parent_company'] = $this->normalizeName($data['parent_company'] ?? null);
+        $data['website'] = $data['website'] ?? '';
 
-        DB::transaction(function () use ($customer, $data, $addressInput, $syncHeadOfficeAddress) {
-            $customer->update($data);
-            $syncHeadOfficeAddress->execute($customer->id_customer, $addressInput);
-        });
+        $customer->update($data);
 
         return response()->json($customer);
     }
@@ -334,62 +323,66 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $existing = CustomerVerification::where('id_customer', $customer->id_customer)
-            ->where('is_active', true)
-            ->latest('id_verification')
-            ->first();
+        $isExpired = $customer->token_expired_at !== null && $customer->token_expired_at->lte(now());
 
-        if ($existing) {
-            $isExpired = $existing->expired_at !== null && $existing->expired_at->lte(now());
-            $isRejected = $existing->latestDocumentApproval?->status === DocumentApprovalStatus::Rejected;
+        if ($customer->onboarding_token && !$isExpired) {
+            $link = rtrim(config('app.frontend_url', config('app.url')), '/')
+                . '/customer-onboarding/' . $customer->onboarding_token;
 
-            if (!$isExpired && !$isRejected) {
-                $link = rtrim(config('app.frontend_url', config('app.url')), '/')
-                    . '/customer-onboarding/' . $existing->verification_token;
-
-                $customer->update(['is_link_generated' => true]);
-
-                return response()->json([
-                    'already_exists' => true,
-                    'verification'   => $existing,
-                    'link'           => $link,
-                ]);
-            }
-
-            $existing->update(['is_active' => false]);
+            return response()->json([
+                'already_exists' => true,
+                'token'          => $customer->onboarding_token,
+                'expires_at'     => $customer->token_expired_at,
+                'link'           => $link,
+            ]);
         }
 
         do {
             $token = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(17));
-        } while (CustomerVerification::where('verification_token', $token)->exists());
+        } while (Customer::where('onboarding_token', $token)->exists());
 
-        $cv = CustomerVerification::create([
-            'id_customer'        => $customer->id_customer,
-            'verification_token' => $token,
-            'is_submitted'       => false,
-            'is_forwarded'       => false,
-            'is_active'          => true,
-            'expired_at'         => now()->addDays(7),
-
-            'finance_data'    => '',
-            'finance_summary' => '',
-            'finance_pic'     => '',
-
-            'logistics_data'    => '',
-            'logistics_summary' => '',
-            'logistics_pic'     => '',
+        $customer->update([
+            'onboarding_token' => $token,
+            'token_expired_at' => now()->addHours(24),
         ]);
 
         $link = rtrim(config('app.frontend_url', config('app.url')), '/')
             . '/customer-onboarding/' . $token;
 
-        $customer->update(['is_link_generated' => true]);
-
         return response()->json([
             'already_exists' => false,
-            'verification'   => $cv,
+            'token'          => $token,
+            'expires_at'     => $customer->token_expired_at,
             'link'           => $link,
         ], 201);
+    }
+
+    public function updateAddress(UpdateCustomerAddressByTypeRequest $request, Customer $customer, string $addressType, UpsertCustomerAddressAction $upsertAddress)
+    {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.manage')
+            && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $type = CustomerAddressType::tryFrom($addressType);
+
+        if ($type === null) {
+            return response()->json(['message' => 'Tipe alamat tidak valid.'], 422);
+        }
+
+        if (in_array($type, self::ADDRESS_TYPES_MANAGED_ELSEWHERE, true)) {
+            return response()->json(['message' => 'Tipe alamat ini dikelola lewat jalur tersendiri, tidak lewat endpoint ini.'], 422);
+        }
+
+        $data = $request->validated();
+
+        $address = $upsertAddress->execute($customer->id_customer, $type, $data);
+
+        return response()->json($address);
     }
 
     private function seedRelatedRecords(Customer $customer): void

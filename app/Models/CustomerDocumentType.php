@@ -13,13 +13,11 @@ class CustomerDocumentType extends Model
         'code',
         'name',
         'is_active',
-        'requires_number',
         'category',
         'sort_order',
     ];
 
     protected $casts = [
-        'is_active'       => 'boolean',
-        'requires_number' => 'boolean',
+        'is_active' => 'boolean',
     ];
 }

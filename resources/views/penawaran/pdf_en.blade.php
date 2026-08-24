@@ -22,8 +22,7 @@
     /* Header */
     .hdr{ width:100%; border-collapse:collapse; margin-bottom:6px }
     .hdr td{ vertical-align:top }
-    .logo img{ height:14mm; width:auto }   /* atur ukuran logo */
-    .right{ text-align:right; color:#555; font-size:11.5px }
+    .logo img{ height:14mm; width:auto }
 
     .refrow{ width:100%; border-collapse:collapse; margin-bottom:10px }
     .refrow td{ vertical-align:top; font-size:11.5px }
@@ -55,7 +54,7 @@
 .kv tr:last-child  td  { padding-bottom: 8px; }
 
 /* Pemisah antar baris tetap */
-.kv tr + tr td{ border-top: 0.5px dashed #e6e6e6; }*/
+.kv tr + tr td{ border-top: 0.5px dashed #e6e6e6; }
     .no{ width:20px; font-weight:700 }
     .label{ width:165px; color:#555; font-size:9.8px }
     .colon{ width:8px }
@@ -66,10 +65,9 @@
     .sigrow{ width:100%; border-collapse:collapse; margin-top:8px }
     .sigrow td{ vertical-align:top; padding-right:10px }
     .sigrow td:last-child{ padding-right:0 }
-    .sp-sign{ height:52px }
-    /* Kartu kontak dengan gradasi hijau */
+
 .contact{
-  border: 1px solid;       /* hijau muda */
+  border: 1px solid;
   border-radius: 10px;
   padding: 12px 14px;
  
@@ -83,14 +81,13 @@
   
 }
 
-/* Pita hijau full width, nempel kanan–kiri & bawah */
+/* Pita full width, nempel kanan–kiri & bawah */
 .brand-band{
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   height: 18mm;
-         /* boleh nanti diganti gradient */
   border: none;
 }
 
@@ -107,10 +104,77 @@
 }
 
 .qrwrap{ text-align:left; margin-left:4mm; margin-top:6mm; }
-.qrimg{ width:18mm; height:18mm; display:inline-block; }
-.qrimg img{ width:18mm; height:18mm; display:block; }
-.qrimg svg{ width:18mm; height:18mm; display:block; }
 
+.t-right{ text-align:right }
+
+/* Section: halaman 2, terms & conditions */
+.page-break{
+  page-break-before: always;
+}
+
+.terms-wrap{
+  width:82%;
+  margin:0 auto;
+  padding-top:8mm;
+}
+
+.terms-title{
+  text-align:center;
+  font-weight:700;
+  margin:8mm 0 5mm;
+  font-size:13px;
+  letter-spacing:.3px;
+}
+
+.terms{
+  margin-top:2mm;
+  text-align:justify;
+  line-height:1.6;
+  font-size:10.3px;
+}
+
+.terms-line{
+  margin-bottom:3mm;
+  text-align:justify;
+  width:100%;
+  display:block;
+}
+
+.sig-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:14mm;
+}
+.sig-table td{
+  vertical-align:bottom;
+  padding:0;
+}
+.sig-label{
+  font-weight:700;
+  padding-bottom:8mm;
+}
+.signbox{
+  height:28mm;
+}
+.qr{
+  width:20mm;
+  height:auto;
+}
+.sig-name{
+  font-weight:700;
+  padding-top:4mm;
+}
+.sig-role{
+  font-size:10px;
+}
+
+.tiny-note{
+  margin-top:10mm;
+  text-align:center;
+  font-size:9px;
+  color:#666;
+  font-style:italic;
+}
 
   </style>
 </head>
@@ -146,22 +210,13 @@
   ->unique()
   ->values(); 
 
-  $firstItem   = $penawaran->items->first();
-  $hargaSatuan = $firstItem?->harga_tebus ?? 0;
-
   $rupiah = fn($n) => 'Rp '.number_format((float)$n, 0, ',', '.');
 
-  $due = $penawaran->periode_sampai_dengan
-      ? \Carbon\Carbon::parse($penawaran->periode_sampai_dengan)->translatedFormat('d F Y')
-      : '—';
-
   $defaultProduct   = 'Crushed Stone 2-3 (50%), 3-5 (50%) &mdash; Blending (Aggregate)';
-  $defaultPayment   = '50% After Barge Reached Jetty MBL; 50% After Unloading';
-  $defaultOrder     = 'PO no later than 2 days before delivery';
-  $defaultShipping  = 'Free on Board (FOB) + Vessel/Barge Arrangement by Pro Energi';
-  $defaultQC        = 'Loading Port (Jetty TDS) – by Surveyor and Representatives both
-Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
   $defaultTolerance = '1% of the total number of shipments';
+
+  $hasTerms = !empty(trim($penawaran->syarat_ketentuan ?? ''));
+  $hasLampiranTambahan = !empty(trim($penawaran->lampiran_tambahan ?? ''));
 @endphp
 
 <div class="content">
@@ -205,8 +260,8 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
           <strong>{{ $cust->company_name ?? '-' }}</strong><br>
           {{ $cust->headOfficeAddress?->address_line ?: 'Alamat belum diisi' }}<br><br>
 
-          <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
-          {{ $penawaran->jabatan ?? '-' }}
+          <strong>UP. <u>{{ $penawaran->customerContact->full_name ?? '-' }}</u></strong><br>
+          {{ $penawaran->customerContact->position ?? '-' }}
         </div>
       </td>
     </tr>
@@ -384,6 +439,115 @@ Sides.  &mdash; Once get QC clearance, barge will depart to Discharge Port';
 </a>
 
 </div>
+
+{{-- Section: halaman 2, terms & conditions --}}
+@if($hasTerms)
+  <div class="page-break"></div>
+
+  <div class="terms-wrap">
+    <table class="hdr">
+      <tr>
+        <td class="logo left" style="width:50%">
+          @if($logoLeft)
+            <img src="{{ $logoLeft }}" alt="Logo Kiri">
+          @endif
+        </td>
+        <td class="logo right" style="width:50%">
+          @if($logoRight)
+            <img src="{{ $logoRight }}" alt="Logo Kanan">
+          @endif
+        </td>
+      </tr>
+    </table>
+
+    <div class="terms-title">Terms &amp; Conditions</div>
+
+    <div class="terms">
+      @php
+        $terms = $penawaran->syarat_ketentuan ?? '';
+        $lines = preg_split("/\r\n|\n|\r/", trim($terms));
+      @endphp
+
+      @foreach($lines as $line)
+        @if(trim($line) !== '')
+          <div class="terms-line">
+            {{ ltrim($line) }}
+          </div>
+        @endif
+      @endforeach
+    </div>
+
+    <table class="sig-table">
+      <tr>
+        <td class="sig-label">Best Regards,<br>PT. Tri Daya Selaras</td>
+        <td class="sig-label t-right">{{ strtoupper($cust->company_name ?? '-') }}</td>
+      </tr>
+
+      <tr>
+        <td class="signbox">
+          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+            <img src="{{ $qrBase64 }}" class="qr" alt="QR">
+          @endif
+        </td>
+        <td class="signbox t-right"></td>
+      </tr>
+
+      <tr>
+        <td class="sig-name">
+          Vica Krisdianatha
+          <div class="sig-role">Chief Executive Officer</div>
+        </td>
+        <td class="sig-name t-right">
+          {{ $penawaran->customerContact->full_name ?? 'Customer' }}
+          <div class="sig-role">{{ $penawaran->customerContact->position ?? '' }}</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="tiny-note">
+      (This document is valid with computerized approval)<br>
+      Printed by {{ auth()->user()->name ?? 'system' }} {{ now()->format('d/m/Y H:i:s') }} WIB
+    </div>
+  </div>
+@endif
+
+{{-- Section: halaman lampiran tambahan --}}
+@if($hasLampiranTambahan)
+  <div class="page-break"></div>
+
+  <div class="terms-wrap">
+    <table class="hdr">
+      <tr>
+        <td class="logo left" style="width:50%">
+          @if($logoLeft)
+            <img src="{{ $logoLeft }}" alt="Logo Kiri">
+          @endif
+        </td>
+        <td class="logo right" style="width:50%">
+          @if($logoRight)
+            <img src="{{ $logoRight }}" alt="Logo Kanan">
+          @endif
+        </td>
+      </tr>
+    </table>
+
+    <div class="terms-title">Additional Attachment</div>
+
+    <div class="terms">
+      @php
+        $attachmentLines = preg_split("/\r\n|\n|\r/", trim($penawaran->lampiran_tambahan ?? ''));
+      @endphp
+
+      @foreach($attachmentLines as $line)
+        @if(trim($line) !== '')
+          <div class="terms-line">
+            {{ ltrim($line) }}
+          </div>
+        @endif
+      @endforeach
+    </div>
+  </div>
+@endif
 
 </body>
 </html>

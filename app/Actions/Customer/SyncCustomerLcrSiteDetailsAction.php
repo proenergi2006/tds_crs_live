@@ -5,7 +5,6 @@ namespace App\Actions\Customer;
 use App\Enums\CustomerAddressType;
 use App\Models\CustomerAddress;
 use App\Models\CustomerContact;
-use App\Models\CustomerContactType;
 use App\Models\CustomerLcr;
 
 class SyncCustomerLcrSiteDetailsAction
@@ -35,14 +34,7 @@ class SyncCustomerLcrSiteDetailsAction
 
     private function syncContacts(CustomerLcr $site, array $contactsData): void
     {
-        $sitePicTypeId = CustomerContactType::where('code', 'site_pic')->value('id_contact_type');
-
-        if (!$sitePicTypeId) {
-            return;
-        }
-
         $existingIds = CustomerContact::where('id_lcr', $site->id_lcr)
-            ->where('id_contact_type', $sitePicTypeId)
             ->pluck('id_contact')
             ->all();
 
@@ -52,7 +44,6 @@ class SyncCustomerLcrSiteDetailsAction
 
         if (!empty($idsToDelete)) {
             CustomerContact::where('id_lcr', $site->id_lcr)
-                ->where('id_contact_type', $sitePicTypeId)
                 ->whereIn('id_contact', $idsToDelete)
                 ->delete();
         }
@@ -76,9 +67,8 @@ class SyncCustomerLcrSiteDetailsAction
 
             CustomerContact::create([
                 ...$attributes,
-                'id_customer'     => $site->id_customer,
-                'id_lcr'          => $site->id_lcr,
-                'id_contact_type' => $sitePicTypeId,
+                'id_customer' => $site->id_customer,
+                'id_lcr'      => $site->id_lcr,
             ]);
         }
     }

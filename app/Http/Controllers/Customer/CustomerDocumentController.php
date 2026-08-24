@@ -52,31 +52,51 @@ class CustomerDocumentController extends Controller
         }
 
         $data = $request->validated();
-
         $file = $request->file('file');
-        $documentType = CustomerDocumentType::findOrFail($data['id_document_type']);
 
-        [$folder, $fileName] = CustomerFileNamingService::build(
-            $customer,
-            $documentType,
-            $data['notes'] ?? null,
-            $file->getClientOriginalExtension(),
-        );
-        $path = $file->storeAs($folder, $fileName, 'public');
+        if (!empty($data['id_document_type'])) {
+            $documentType = CustomerDocumentType::findOrFail($data['id_document_type']);
 
-        // id_lcr/notes opsional, keisi kalau dokumennya foto site LCR (id_document_type
-        // salah satu kode lcr_*); null buat dokumen customer generik lainnya (NIB/NPWP/dst).
-        $document = CustomerDocument::create([
-            'id_customer'      => $customer->id_customer,
-            'id_document_type' => $data['id_document_type'],
-            'document_number'  => $data['document_number'] ?? null,
-            'id_lcr'           => $data['id_lcr'] ?? null,
-            'notes'            => $data['notes'] ?? null,
-            'file_path'        => $path,
-            'file_name'        => $fileName,
-            'uploaded_at'      => now(),
-            'uploaded_by'      => $user->id,
-        ]);
+            [$folder, $fileName] = CustomerFileNamingService::build(
+                $customer,
+                $documentType,
+                $data['notes'] ?? null,
+                $file->getClientOriginalExtension(),
+            );
+            $path = $file->storeAs($folder, $fileName, 'public');
+
+            // id_lcr/notes opsional, keisi kalau dokumennya foto site LCR (id_document_type
+            // salah satu kode lcr_*); null buat dokumen customer generik lainnya (NIB/NPWP/dst).
+            $document = CustomerDocument::create([
+                'id_customer'      => $customer->id_customer,
+                'id_document_type' => $data['id_document_type'],
+                'document_number'  => $data['document_number'] ?? null,
+                'id_lcr'           => $data['id_lcr'] ?? null,
+                'notes'            => $data['notes'] ?? null,
+                'file_path'        => $path,
+                'file_name'        => $fileName,
+                'uploaded_at'      => now(),
+                'uploaded_by'      => $user->id,
+            ]);
+        } else {
+            [$folder, $fileName] = CustomerFileNamingService::buildFreeForm(
+                $customer,
+                $data['document_name'],
+                $file->getClientOriginalExtension(),
+            );
+            $path = $file->storeAs($folder, $fileName, 'public');
+
+            $document = CustomerDocument::create([
+                'id_customer'      => $customer->id_customer,
+                'id_document_type' => null,
+                'document_name'    => $data['document_name'],
+                'notes'            => $data['notes'] ?? null,
+                'file_path'        => $path,
+                'file_name'        => $fileName,
+                'uploaded_at'      => now(),
+                'uploaded_by'      => $user->id,
+            ]);
+        }
 
         $document->load(['documentType', 'uploadedBy']);
 
@@ -165,19 +185,19 @@ class CustomerDocumentController extends Controller
             'id_customer'      => $document->id_customer,
             'id_document_type' => $document->id_document_type,
             'document_type'    => $document->documentType ? [
-                'id'              => $document->documentType->id,
-                'code'            => $document->documentType->code,
-                'name'            => $document->documentType->name,
-                'requires_number' => $document->documentType->requires_number,
+                'id'   => $document->documentType->id_document_type,
+                'code' => $document->documentType->code,
+                'name' => $document->documentType->name,
             ] : null,
-            'document_number' => $document->document_number,
-            'id_lcr'      => $document->id_lcr,
-            'notes'       => $document->notes,
-            'file_name'   => $document->file_name,
-            'file_path'   => $document->file_path,
-            'url'         => $document->file_path ? Storage::disk('public')->url($document->file_path) : null,
-            'uploaded_at' => optional($document->uploaded_at)->toISOString(),
-            'uploaded_by' => $document->uploadedBy ? [
+            'document_name'    => $document->document_name,
+            'document_number'  => $document->document_number,
+            'id_lcr'           => $document->id_lcr,
+            'notes'            => $document->notes,
+            'file_name'        => $document->file_name,
+            'file_path'        => $document->file_path,
+            'url'              => $document->file_path ? Storage::disk('public')->url($document->file_path) : null,
+            'uploaded_at'      => optional($document->uploaded_at)->toISOString(),
+            'uploaded_by'      => $document->uploadedBy ? [
                 'id'   => $document->uploadedBy->id,
                 'name' => $document->uploadedBy->name,
             ] : null,

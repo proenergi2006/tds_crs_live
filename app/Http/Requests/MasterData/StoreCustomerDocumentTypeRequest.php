@@ -14,10 +14,9 @@ class StoreCustomerDocumentTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code'             => 'required|string|max:100|unique:customer_document_types,code',
-            'name'             => 'required|string|max:255',
-            'is_active'        => 'boolean',
-            'requires_number'  => 'boolean',
+            'code'      => 'required|string|max:100|unique:customer_document_types,code',
+            'name'      => 'required|string|max:255',
+            'is_active' => 'boolean',
         ];
     }
 }

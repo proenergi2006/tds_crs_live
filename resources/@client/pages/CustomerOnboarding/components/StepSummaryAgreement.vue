@@ -97,19 +97,23 @@ const summarySections = computed(() => [
         label: 'Incoterms',
         value: withOther(props.form.identity.inco_terms, props.form.identity.inco_terms_other, incoTermsOptions),
       },
-      { label: 'PIC Invoice Name', value: props.form.invoice_contact.name || '-' },
-      { label: 'PIC Invoice Position', value: props.form.invoice_contact.position || '-' },
-      { label: 'PIC Invoice Phone', value: props.form.invoice_contact.phone || '-' },
-      { label: 'PIC Invoice Mobile', value: props.form.invoice_contact.mobile || '-' },
-      { label: 'PIC Invoice Email', value: props.form.invoice_contact.email || '-' },
     ],
   },
+  ...props.form.contacts.map((contact, idx) => ({
+    title: contact.full_name ? `Kontak #${idx + 1} - ${contact.full_name}` : `Kontak #${idx + 1}`,
+    rows: [
+      { label: 'Name', value: contact.full_name || '-' },
+      { label: 'Division/Bagian', value: contact.position || '-' },
+      { label: 'Phone', value: contact.phone || '-' },
+      { label: 'Mobile', value: contact.mobile || '-' },
+      { label: 'Email', value: contact.email || '-' },
+    ],
+  })),
   {
     title: 'Document Attachments',
     rows: [
       { label: 'NIB', value: props.form.documents.nib.number || '-' },
       { label: 'NPWP', value: props.form.documents.npwp.number || '-' },
-      { label: 'Akta Pendirian', value: props.form.documents.sertifikat.number || '-' },
       {
         label: 'Dokumen Lainnya',
         value: props.form.documents.dokumen_lainnya.length > 0

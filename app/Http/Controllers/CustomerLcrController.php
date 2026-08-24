@@ -13,7 +13,6 @@ use App\Http\Requests\Customer\StoreCustomerLcrRequest;
 use App\Http\Requests\Customer\UpdateCustomerLcrRequest;
 use App\Models\Customer;
 use App\Models\CustomerContact;
-use App\Models\CustomerContactType;
 use App\Models\CustomerLcr;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
@@ -25,8 +24,6 @@ class CustomerLcrController extends Controller
 {
     private const APPROVAL_TEMPLATE_CODE = 'customer_lcr_survey';
     private const ROLE_LOGISTIK = 6;
-
-    private ?int $sitePicContactTypeId = null;
 
     public function __construct(
         private readonly DocumentApprovalService $approvalService,
@@ -329,13 +326,8 @@ class CustomerLcrController extends Controller
             && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
     }
 
-    private function sitePicContactTypeId(): ?int
-    {
-        return $this->sitePicContactTypeId ??= CustomerContactType::where('code', 'site_pic')->value('id_contact_type');
-    }
-
     // Key di response JSON ini sengaja beda dari nama kolom aslinya (mis.
-    // prov_survey <- survey_province), buat jaga kontrak existing.
+    // latitude_lokasi <- latitude), buat jaga kontrak existing.
     //
     // Method checking (quality/quantity truk & vessel) disimpan sebagai array
     // enum value mentah, jadi label array-nya dihitung di sini supaya FE gak
@@ -352,7 +344,7 @@ class CustomerLcrController extends Controller
                 'nama_perusahaan' => $site->customer->company_name,
             ] : null,
 
-            /* Grup 1 */
+            /* Grup 1: identitas & info umum */
             'site_name'                => $site->site_name,
             'survey_date'              => optional($site->survey_date)->toDateString(),
             'surveyor_names'           => $site->surveyor_names,
@@ -368,7 +360,7 @@ class CustomerLcrController extends Controller
             'survey_notes'             => $site->survey_notes,
             'id_wil_oa'                => $site->id_wil_oa,
 
-            /* Grup 2 */
+            /* Grup 2: akses & rute */
             'max_truck_capacity_min' => $site->max_truck_capacity_min,
             'max_truck_capacity_max' => $site->max_truck_capacity_max,
             'access_notes'           => $site->access_notes,
@@ -378,19 +370,19 @@ class CustomerLcrController extends Controller
             'rute_lokasi'            => $site->rute_lokasi,
             'note_lokasi'            => $site->note_lokasi,
 
-            /* Grup 3 */
+            /* Grup 3: layout & unloading truk */
             'unloading_method'        => $site->unloading_method,
             'max_trucks_per_day'      => $site->max_trucks_per_day,
             'unloading_notes'         => $site->unloading_notes,
 
-            /* Grup 4 */
+            /* Grup 4: penyimpanan */
             'storage_type'            => $site->storage_type,
             'storage_type_label'      => $site->storage_type?->label(),
             'storage_type_other'      => $site->storage_type_other,
             'storage_capacity'        => $site->storage_capacity,
             'storage_notes'           => $site->storage_notes,
 
-            /* Grup 5 */
+            /* Grup 5: verifikasi quality/quantity */
             'quality_checking_method'        => $site->quality_checking_method ?? [],
             'quality_checking_method_labels' => array_map(fn ($v) => QualityCheckingMethod::from($v)->label(), $site->quality_checking_method ?? []),
             'quality_checking_method_other'  => $site->quality_checking_method_other,
@@ -401,7 +393,7 @@ class CustomerLcrController extends Controller
             'quantity_checking_method_other'  => $site->quantity_checking_method_other,
             'quantity_checking_notes'         => $site->quantity_checking_notes,
 
-            /* Grup 6 */
+            /* Grup 6: vessel/jetty */
             'supports_vessel_delivery'        => $site->supports_vessel_delivery,
             'vessel_type'                     => $site->vessel_type?->value,
             'vessel_type_label'               => $site->vessel_type?->label(),
@@ -429,7 +421,7 @@ class CustomerLcrController extends Controller
             'jetty_permit_info'               => $site->jetty_permit_info,
             'document_requirements'           => $site->document_requirements,
 
-            /* Grup 7 */
+            /* Grup 7: koordinat lokasi */
             'latitude_lokasi'       => $site->latitude,
             'longitude_lokasi'      => $site->longitude,
             'link_google_maps'      => $site->google_maps_link,
@@ -455,7 +447,7 @@ class CustomerLcrController extends Controller
             ] : null,
 
             'contacts' => $site->relationLoaded('contacts')
-                ? $site->contacts->where('id_contact_type', $this->sitePicContactTypeId())->values()->map(fn (CustomerContact $c) => [
+                ? $site->contacts->map(fn (CustomerContact $c) => [
                     'id_contact' => $c->id_contact,
                     'full_name'  => $c->full_name,
                     'position'   => $c->position,

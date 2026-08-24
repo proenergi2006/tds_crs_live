@@ -22,16 +22,9 @@ import { useRegionCascade } from '@/composables/useRegionCascade'
 import { createResourceApi } from '@/utils/resourceApi'
 import { typeBusinessOptions } from '@/pages/CustomerOnboarding/optionSets'
 
-/* List + FormWizardModal 7 step, 1 step per Grup StoreCustomerLcrRequest::rules()
-   (Grup 1-7). Field foto masing-masing grup ikut ditampilkan di step yang
-   sama, gak dipisah jadi step foto sendiri. supports_vessel_delivery pindah
-   ke Step 6 (Grup 6) karena rule-nya memang di grup itu, bukan di Grup 1. */
+/* wizard 7 step, 1 step per grup rule backend -- foto tiap grup nempel di step yang sama, gak dipisah step sendiri */
 
-/* Tab ini sengaja gak menerima prop kycStatus -- LCR itu lampiran, bukan
-   syarat wajib forward, jadi tetap bisa diedit walau sudah forward/closed.
-   customerLogistik (customer_logistic_claims, isian customer sendiri saat
-   onboarding) dioper dari Detail.vue, reuse data yang sudah di-fetch di sana
-   (GET customers/{id} eager-load relasi logistik) daripada fetch ulang. */
+/* sengaja gak terima prop kycStatus -- LCR itu lampiran, tetap bisa diedit walau udah forward/closed. customerLogistik dioper dari Detail.vue biar gak fetch ulang */
 const props = defineProps<{
   idCustomer: number
   customerLogistik?: Record<string, any> | null
@@ -47,13 +40,10 @@ const documentTypesApi = createResourceApi('/customer-document-types')
 const sites = ref<any[]>([])
 const loading = ref(true)
 
-/* State: lookup Wilayah OA (id_wil_oa), sumbernya sama kayak
-   Penawaran/Form.vue -- GET wilayah-angkuts, bukan input angka bebas. */
+/* State: lookup Wilayah OA (id_wil_oa) -- sumber sama kayak Penawaran/Form.vue, GET wilayah-angkuts */
 const wilayahOaOptions = ref<any[]>([])
 
-/* dropdownParent: 'body' melepas dropdown TomSelect dari overflow container
-   FormWizardModal, pola sama dengan Penawaran/Form.vue & StepCompanyInformation.vue.
-   Tanpa ini, dropdown yang panjang kepotong atau kena scroll ganda di modal. */
+/* dropdownParent: 'body' lepas dropdown dari overflow container modal, biar gak kepotong/scroll ganda */
 const wilayahOaSelectOptions = { dropdownParent: 'body' as const }
 
 /* State: wizard (create/edit) */
@@ -66,11 +56,7 @@ const editingSite = ref<any | null>(null)
 /* State: lookups (cascading province -> regency, BPS data via useRegionCascade) */
 const region = useRegionCascade()
 
-// Guard: true selama openEditWizard() ngisi province_id -> village_id
-// berjenjang. Tanpa ini watcher cascade di bawah balik nge-reset field
-// level berikutnya ke '', race dengan nilai yang baru saja di-set manual
-// oleh openEditWizard(). Watcher tetap jalan normal buat interaksi user
-// (ganti pilihan manual di form).
+// true selama openEditWizard() ngisi province->village berjenjang, biar watcher cascade di bawah gak balik reset field ke ''
 const isHydratingRegion = ref(false)
 
 /* State: modal preview customer_logistic_claims (Load Data Customer Claims) */
@@ -91,30 +77,24 @@ const deleteDialogOpen = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<any | null>(null)
 
-/* Options: enum App\Enums\StorageType (Indoor/Outdoor/Lainnya), sama persis
-   yang dipakai customer_logistic_claims. "other" ditulis manual di template,
-   gak masuk array ini, biar konsisten sama pola CustomerOnboarding/
-   components/StepLogisticClaimInfo.vue. */
+/* Options: enum StorageType -- "other" ditulis manual di template, gak masuk array ini, konsisten sama StepLogisticClaimInfo.vue */
 const storageTypeOptions = [
   { value: 'indoor', label: 'Indoor' },
   { value: 'outdoor', label: 'Outdoor' },
 ]
 
-/* Options: enum site_environment (Industri/Pemukiman/Lainnya). "other"
-   ditulis manual di template, pola sama seperti storageTypeOptions. */
+/* Options: enum site_environment -- "other" manual di template, sama pola kayak storageTypeOptions */
 const siteEnvironmentOptions = [
   { value: 'industrial', label: 'Industri' },
   { value: 'residential', label: 'Pemukiman' },
 ]
 
-/* Options: enum App\Enums\QualityCheckingMethod -- cuma 1 opsi nyata
-   (Lab Test) + Lainnya di enum backend saat ini. */
+/* Options: enum QualityCheckingMethod -- cuma 1 opsi nyata (Lab Test) + Lainnya di backend saat ini */
 const qualityCheckingOptions = [
   { value: 'lab_test', label: 'Lab Test' },
 ]
 
-/* Options: enum App\Enums\VesselQualityCheckingMethod -- cuma 1 opsi nyata
-   (Lab Test) + Lainnya di enum backend saat ini. */
+/* Options: enum VesselQualityCheckingMethod -- cuma 1 opsi nyata (Lab Test) + Lainnya di backend saat ini */
 const vesselQualityCheckingOptions = [
   { value: 'lab_test', label: 'Lab Test' },
 ]
@@ -130,9 +110,7 @@ const quantityCheckingOptions = [
   { value: 'sampling', label: 'Sampling' },
 ]
 
-/* Options: enum backend (Grup 6 Vessel/Jetty) -- lihat
-   app/Enums/CustomerLcrVesselType.php, CustomerLcrVesselUnloadingMethod.php,
-   CustomerLcrVesselQuantityCheckingMethod.php untuk source of truth. */
+/* Options: enum backend Vessel/Jetty -- lihat app/Enums/CustomerLcrVessel*.php untuk source of truth */
 const vesselTypeOptions = [
   { value: 'bulk_carrier', label: 'Bulk Carrier' },
   { value: 'barge', label: 'Tongkang (Barge)' },
@@ -152,9 +130,7 @@ const vesselQuantityCheckingMethodOptions = [
   { value: 'other', label: 'Lainnya' },
 ]
 
-// Satu sumber kebenaran kategori foto: field lokal <-> kode
-// customer_document_types.code (prefix lcr_). documentTypeMap resolve
-// code -> id_document_type numerik yang dibutuhkan POST .../documents.
+// satu sumber kebenaran kategori foto: field lokal <-> kode customer_document_types (prefix lcr_), di-resolve documentTypeMap ke id_document_type
 const PHOTO_CATEGORIES = [
   { field: 'road_condition_photos', code: 'lcr_road_condition', label: 'Foto Kondisi Jalan Menuju Lokasi' },
   { field: 'site_layout_photos', code: 'lcr_site_layout', label: 'Foto Layout Site/Pabrik' },
@@ -175,9 +151,7 @@ interface LcrDocumentRecord {
   notes: string | null
 }
 
-/* State: form wizard, 1 objek gabungan buat semua step (bukan objek per
-   step). Field dinamai persis sama dengan key request StoreCustomerLcrRequest::rules()
-   biar payload submit gak perlu remapping lagi. */
+/* State: form wizard -- 1 objek gabungan semua step, field-nya dinamai persis sama key request backend biar submit gak perlu remapping */
 function createDefaultForm() {
   return {
     /* Grup 1: Identitas & info umum */
@@ -199,13 +173,7 @@ function createDefaultForm() {
     operating_hours: '',
     product_volume: [{ produk: '', volume_bulan: '' }] as { produk: string; volume_bulan: string }[],
     survey_notes: '',
-    // contacts: PIC site LCR (customer_contacts, id_contact_type=site_pic).
-    // id_contact null artinya baris baru -- backend yang create ID saat
-    // submit, FE cuma echo balik id_contact yang sudah ada di submit
-    // berikutnya. Cuma "mobile" (No. HP) yang dipakai; phone (telepon
-    // kantor) redundant buat kontak PIC lapangan jadi dihilangkan dari sini
-    // biar gak bingung (kolom `phone` sendiri masih ada, dipakai contact
-    // type lain).
+    // contacts: PIC site LCR -- id_contact null = baris baru (backend yang create ID). cuma pakai "mobile", field phone sengaja gak ada di sini (redundant buat PIC lapangan)
     contacts: [{ id_contact: null, full_name: '', position: '', mobile: '', email: '' }] as
       { id_contact: number | null; full_name: string; position: string; mobile: string; email: string }[],
     id_wil_oa: '',
@@ -265,29 +233,20 @@ function createDefaultForm() {
     longitude: null as number | null,
     google_maps_link: '',
 
-    // 8 field foto (road_condition_photos dkk) udah gak jadi bagian form ini,
-    // fotonya sekarang disimpan/diambil langsung dari customer_documents
-    // (id_lcr), bukan embedded di payload LCR site.
+    // 8 field foto udah gak jadi bagian form ini -- fotonya disimpan/diambil dari customer_documents (id_lcr), bukan embedded di payload site
   }
 }
 
 const form = reactive(createDefaultForm())
 
-/* State: foto per-kategori site LCR (customer_documents, id_lcr) --
-   pendingUploadFiles ditahan di FE sampai site berhasil disimpan (mode
-   create), editUploadSelection dipakai upload-on-select saat mode edit,
-   lcrDocuments menampung dokumen tersimpan hasil fetchLcrDocuments(). */
+/* State: foto per-kategori site LCR -- pendingUploadFiles ditahan di FE sampai site tersimpan (mode create), editUploadSelection upload-on-select (mode edit), lcrDocuments nampung hasil fetch */
 const documentTypeMap = reactive<Record<string, number>>({})
 let documentTypeMapReady: Promise<void> | null = null
 
 const pendingUploadFiles = reactive<Record<PhotoField, File[]>>(
   Object.fromEntries(PHOTO_CATEGORIES.map(c => [c.field, []])) as Record<PhotoField, File[]>,
 )
-// Caption yang diketik saat file masih staged (mode create, belum ada id_lcr).
-// ImageUploadField juga nyimpen caption lokal sendiri buat tampilan, tapi itu
-// gak pernah nyampe ke sini kalau gak ditangkap manual di
-// handlePhotoCaptionChange(). Bukan reactive -- Map<File,...> gak reaktif
-// berguna di Vue -- cuma dibaca sekali pas upload batch di submitWizard().
+// caption file yang masih staged (mode create) -- sengaja bukan reactive (Map<File,...> gak reaktif berguna di Vue), cuma dibaca sekali pas upload batch di submitWizard()
 const pendingUploadCaptions: Record<PhotoField, Map<File, string>> = Object.fromEntries(
   PHOTO_CATEGORIES.map(c => [c.field, new Map<File, string>()]),
 ) as Record<PhotoField, Map<File, string>>
@@ -298,12 +257,7 @@ const lcrDocuments = reactive<Record<PhotoField, LcrDocumentRecord[]>>(
   Object.fromEntries(PHOTO_CATEGORIES.map(c => [c.field, []])) as Record<PhotoField, LcrDocumentRecord[]>,
 )
 
-/* Validasi client-side Step 1. Backend-nya sendiri sebagian besar nullable,
-   tapi Step 1 (identitas & lokasi) wajib lengkap dulu sebelum lanjut step
-   berikutnya. Yang divalidasi latitude/longitude, bukan google_maps_link
-   mentah, supaya yang tervalidasi itu koordinat yang beneran berhasil
-   ter-parse dari link (lihat handleMapsLinkBlur()), bukan sekadar teks link
-   yang belum tentu valid. */
+/* validasi client-side Step 1 -- yang divalidasi latitude/longitude (bukan google_maps_link mentah), biar yang tervalidasi itu koordinat yang beneran berhasil ke-parse (lihat handleMapsLinkBlur()) */
 const requiredMsg = (label: string) => helpers.withMessage(`${label} wajib diisi.`, required)
 const wizardRules = {
   site_name: { required: requiredMsg('Nama lokasi') },
@@ -326,10 +280,7 @@ const mapPreviewUrl = computed(() => {
   return `https://maps.google.com/maps?q=${encodeURIComponent(`${form.latitude},${form.longitude}`)}&z=15&output=embed`
 })
 
-/* Watch: cascading region wilayah BPS (province -> regency -> district ->
-   village) buat blok Alamat Site, pola persis Customer/Form.vue -- termasuk
-   guard isHydratingRegion supaya nilai yang di-hydrate openEditWizard() gak
-   ketiban reset oleh watcher ini. */
+/* Watch: cascading region province->village, pola sama Customer/Form.vue -- guard isHydratingRegion biar nilai hasil hydrate openEditWizard() gak ketiban reset */
 watch(
   () => form.province_id,
   async (newProv) => {
@@ -399,9 +350,7 @@ function fetchDocumentTypeMap(): Promise<void> {
   return documentTypeMapReady
 }
 
-// fetchLcrDocuments nunggu documentTypeMapReady dulu. Tanpa guard ini, filter
-// by id_document_type di bawah bisa kosong kalau wizard edit dibuka sebelum
-// fetch customer-document-types selesai -- race pas onMounted.
+// nunggu documentTypeMapReady dulu -- tanpa ini filter by id_document_type bisa kosong kalau wizard edit dibuka sebelum fetch types selesai (race di onMounted)
 async function fetchLcrDocuments(idLcr: number): Promise<void> {
   if (documentTypeMapReady) await documentTypeMapReady
   try {
@@ -449,10 +398,7 @@ function photoExistingFiles(field: PhotoField): { id: number; name: string; url:
   return isEditMode.value ? toExistingFiles(lcrDocuments[field]) : []
 }
 
-// Mode create: file ditahan dulu di pendingUploadFiles, belum ke server,
-// belum ada id_lcr. Mode edit: file di editUploadSelection langsung
-// di-upload begitu dipilih lalu direset ke null -- pola upload-on-select
-// lama, tetap dipakai, cuma endpoint tujuannya sekarang customer_documents.
+// mode create: file ditahan di pendingUploadFiles (belum ada id_lcr). mode edit: upload-on-select langsung ke customer_documents
 async function handlePhotoFileChange(field: PhotoField, value: File | File[] | null) {
   if (!isEditMode.value) {
     pendingUploadFiles[field] = Array.isArray(value) ? value : value ? [value] : []
@@ -485,8 +431,7 @@ async function handleRemoveExistingPhoto(field: PhotoField, file: { id?: string 
   }
 }
 
-// Debounce simpan caption per document id. FormInput caption emit
-// update:model-value tiap keystroke, tanpa debounce bisa jadi PUT per huruf.
+// debounce simpan caption per document id, biar gak PUT tiap keystroke
 const captionUpdateTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
 function handlePhotoCaptionChange(
@@ -494,8 +439,7 @@ function handlePhotoCaptionChange(
   file: File | { id?: string | number; name: string; url: string },
   caption: string,
 ) {
-  // File belum ke server (mode create, masih staged), jadi belum ada id buat
-  // PUT -- tahan captionnya di sini, dipakai nanti pas upload batch di submitWizard().
+  // file masih staged (mode create), belum ada id buat PUT -- tahan captionnya, dipakai pas upload batch di submitWizard()
   if (file instanceof File) {
     pendingUploadCaptions[field].set(file, caption)
     return
@@ -560,12 +504,7 @@ function removeRouteCostRow(index: number) {
   else form.route_costs.splice(index, 1, { cost_type: '', amount: null, notes: '' })
 }
 
-// Ekstrak lat/long dari link Google Maps yang di-paste user, biar preview map
-// (mapPreviewUrl, sumbernya cuma form.latitude/longitude) ikut ter-update
-// tanpa user harus isi Lat/Lng manual. Pattern-nya sama persis dengan
-// MapsLinkController::COORD_PATTERNS di backend. Short link maps.app.goo.gl
-// yang belum pernah dibuka di browser tetap butuh fallback server (lihat
-// handleMapsLinkBlur()) karena resolve redirect-nya kena CORS dari client.
+// ekstrak lat/long dari link Google Maps yang di-paste user, pattern sama kayak MapsLinkController::COORD_PATTERNS di backend. short link (maps.app.goo.gl) butuh fallback server, lihat handleMapsLinkBlur()
 function parseCoordsFromMapsLink(link: string): { lat: number; lng: number } | null {
   const patterns = [
     /[?&]query=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
@@ -596,9 +535,7 @@ async function handleMapsLinkBlur() {
     return
   }
 
-  // Short link (maps.app.goo.gl) gak bisa di-parse langsung di client, jadi
-  // fallback ke endpoint backend yang follow redirect-nya server-side (gak
-  // kena CORS seperti kalau fetch dari browser, lihat MapsLinkController::resolve()).
+  // short link gak bisa di-parse di client, fallback ke backend yang follow redirect server-side (gak kena CORS)
   resolvingMapsLink.value = true
   try {
     const { data } = await axios.get('/api/maps-link/resolve', { params: { url: link } })
@@ -632,12 +569,7 @@ function openCreateWizard() {
   wizardOpen.value = true
 }
 
-// address_line/postal_code diambil dari relasi address (CustomerAddress,
-// address_type=site_address). site.survey_address/prov_survey/kab_survey
-// udah gak ada lagi di response (lihat CustomerLcrController::formatSite()).
-// Foto juga gak di-hydrate dari response formatSite() lagi -- formatSite()
-// udah gak ngirim key foto sama sekali, fetch-nya terpisah lewat
-// fetchLcrDocuments() setelah id_lcr diketahui.
+// address_line/postal_code dari relasi address (site_address) -- field survey_address/prov_survey/kab_survey lama udah gak ada. foto juga fetch terpisah lewat fetchLcrDocuments(), gak di-hydrate dari formatSite()
 async function openEditWizard(site: any) {
   editingSite.value = site
   wizardError.value = null
@@ -756,6 +688,7 @@ function closeWizard() {
 }
 
 async function goNext() {
+  wizardError.value = null
   if (currentStep.value === 0) {
     const valid = await v$.value.$validate()
     if (!valid) {
@@ -768,14 +701,11 @@ async function goNext() {
 }
 
 function goBack() {
+  wizardError.value = null
   if (currentStep.value > 0) currentStep.value -= 1
 }
 
-/* Actions: load data dari customer_logistic_claims (isian onboarding customer
-   sendiri) ke form site LCR yang lagi dibuka. Cuma field dengan nama & shape
-   yang persis sama yang dipetakan. operating_hours (enum+jam di claims vs
-   array teks bebas di LCR), product_notes, dan estimated_monthly_volume
-   sengaja gak dipetakan karena shape-nya beda -- bukan kelupaan. */
+/* load data dari customer_logistic_claims ke form -- cuma field yang shape-nya sama persis yang dipetakan. operating_hours/quality_checking_method/quantity_checking_method/product_notes/estimated_monthly_volume sengaja gak dipetakan karena shape beda, bukan kelupaan */
 function loadFromLogisticClaims() {
   const claim = props.customerLogistik
   if (!claim) return
@@ -787,9 +717,7 @@ function loadFromLogisticClaims() {
     storage_type: claim.storage_type ?? form.storage_type,
     storage_type_other: claim.storage_type_other ?? form.storage_type_other,
     storage_notes: claim.storage_notes ?? form.storage_notes,
-    quality_checking_method: claim.quality_checking_method ?? form.quality_checking_method,
     quality_checking_notes: claim.quality_checking_notes ?? form.quality_checking_notes,
-    quantity_checking_method: claim.quantity_checking_method ?? form.quantity_checking_method,
     quantity_checking_notes: claim.quantity_checking_notes ?? form.quantity_checking_notes,
     max_truck_capacity_min: claim.max_truck_capacity_min ?? form.max_truck_capacity_min,
     max_truck_capacity_max: claim.max_truck_capacity_max ?? form.max_truck_capacity_max,
@@ -806,27 +734,18 @@ function buildPayload() {
   const payload: Record<string, any> = {
     ...rest,
     product_volume: form.product_volume.filter(p => p.produk.trim() || p.volume_bulan.trim()),
-    // contacts selalu dikirim, termasuk array kosong -- beda dari address.
-    // Backend sync by id_contact (update/create/delete tergantung kehadiran
-    // baris di array ini), lihat CustomerLcrController (SyncCustomerLcrSiteDetailsAction).
+    // contacts selalu dikirim (termasuk kosong) -- backend sync by id_contact, lihat SyncCustomerLcrSiteDetailsAction
     contacts: contacts.filter(c =>
       c.full_name.trim() || c.position.trim() || c.mobile.trim() || c.email.trim()
     ),
-    // route_costs.*.cost_type cuma wajib diisi buat baris yang amount/notes-nya
-    // terisi -- baris yang kosong total di-skip, sesuai rule backend
-    // route_costs.*.cost_type => required.
+    // baris route_costs yang kosong total di-skip, cost_type cuma wajib buat baris yang amount/notes-nya terisi
     route_costs: form.route_costs.filter(r => r.cost_type.trim() || r.amount !== null || r.notes.trim()),
-    // Select enum kosong ('') harus dikirim null, bukan string kosong --
-    // enum rule Laravel gak menganggap '' sebagai nullable.
+    // enum kosong ('') dikirim null -- rule enum Laravel gak anggap '' sebagai nullable
     vessel_type: form.vessel_type || null,
     vessel_unloading_method: form.vessel_unloading_method || null,
   }
 
-  // address_line/province_id/regency_id/district_id/village_id/postal_code
-  // digabung jadi nested object 'address'. Kalau address_line belum diisi,
-  // key 'address' dihilangkan sama sekali (bukan dikirim dengan address_line
-  // kosong), biar gak kena required_with:address di backend dan gak nimpa
-  // address existing pas user cuma edit field lain.
+  // field alamat digabung jadi nested object 'address' -- kalau address_line kosong, key 'address' dihilangkan sama sekali biar gak kena required_with & gak nimpa address existing
   if (address_line.trim()) {
     payload.address = { address_line, province_id, regency_id, district_id, village_id, postal_code }
   }
@@ -858,11 +777,7 @@ async function submitWizard() {
       response = await api.store(payload)
     }
 
-    // Backend sudah eager-load contacts di response store()/update() (lihat
-    // CustomerLcrController), jadi baris PIC baru yang tadinya id_contact:null
-    // langsung dapat ID asli di sini. Perlu di-sync ke state lokal biar kalau
-    // wizard yang sama dipakai lagi tanpa reload, submit berikutnya update
-    // in place, bukan bikin duplikat.
+    // backend eager-load contacts di response, jadi PIC baru (id_contact:null) langsung dapat ID asli -- sync ke state lokal biar submit berikutnya update in place, gak duplikat
     if (Array.isArray(response.data?.contacts)) {
       form.contacts = response.data.contacts.map((c: any) => ({
         id_contact: c.id_contact ?? null,
@@ -873,11 +788,7 @@ async function submitWizard() {
       }))
     }
 
-    // Site LCR baru harus tersimpan dulu (biar dapat id_lcr) sebelum foto di
-    // pendingUploadFiles bisa di-upload, karena endpoint documents wajib
-    // id_lcr. Kalau sebagian foto gagal, site tetap tersimpan -- makanya
-    // wizard pindah ke mode edit alih-alih ditutup, biar user bisa retry
-    // foto yang gagal tanpa kehilangan data site.
+    // site baru harus tersimpan dulu buat dapat id_lcr sebelum foto di-upload -- kalau sebagian foto gagal, wizard pindah ke mode edit (bukan ditutup) biar user bisa retry tanpa kehilangan data site
     if (wasEditing) {
       wizardOpen.value = false
       await fetchSites()
@@ -1044,12 +955,7 @@ onMounted(() => {
           Load Data Customer Claims
         </Button>
 
-        <!-- Preview + load data customer_logistic_claims dideklarasikan di dalam
-             FormWizardModal, bukan sibling di root tab, biar headlessui mengenali
-             ini sebagai Dialog bersarang (lewat StackContext provide/inject milik
-             Dialog wizard). Kalau dipisah jadi sibling, wizard & modal ini jadi
-             2 Dialog yang saling asing di mata headlessui, dan outside-click salah
-             satu bisa nutup keduanya sekaligus (ini root cause bug close-tertukar). -->
+        <!-- modal ini dideklarasikan di dalam FormWizardModal (bukan sibling) biar headlessui kenal sebagai Dialog bersarang -- kalau dipisah, outside-click salah satu bisa nutup keduanya -->
         <FormModal :open="logisticClaimModalOpen" title="Data Logistik Customer (Onboarding)"
           description="Profil logistik yang diisi customer sendiri saat onboarding." size="md" cancel-text="Tutup"
           submit-text="Load Data" submit-icon="MousePointerSquare" @close="logisticClaimModalOpen = false"
@@ -1110,18 +1016,12 @@ onMounted(() => {
                 <option value="">{{ form.district_id ? 'Cari Kelurahan/Desa' : '-- Pilih Kecamatan dulu --' }}</option>
                 <option v-for="v in region.villages.value" :key="v.id" :value="v.id">{{ v.name }}</option>
               </TomSelect>
-              <!-- postal_code sengaja gak dirender, terisi otomatis dari watcher
-                   pas kelurahan dipilih -- tetap ikut ke payload.address tanpa
-                   perlu input manual. -->
+              <!-- postal_code sengaja gak dirender, keisi otomatis dari watcher pas kelurahan dipilih -->
             </div>
           </div>
         </div>
 
-        <!-- Koordinat & Google Maps (Grup 7 asli), dipindah ke sini karena
-             selaras dengan blok Alamat Site di atas, bukan dijadikan section
-             terpisah. latitude/longitude udah gak diisi manual -- satu-satunya
-             sumber adalah paste link Google Maps (handleMapsLinkBlur(), lihat
-             juga parseCoordsFromMapsLink()/MapsLinkController untuk short link). -->
+        <!-- koordinat dipindah ke sini biar selaras sama blok Alamat Site -- latitude/longitude udah gak diisi manual, sumbernya cuma paste link Google Maps (handleMapsLinkBlur()) -->
         <div class="grid grid-cols-12 items-start gap-4">
           <label class="col-span-3 pt-2 font-label">
             <FormLabel>
@@ -1184,9 +1084,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Step 2: Profil Bisnis & Operasional (masih Grup 1, dipisah dari
-           Identitas & Lokasi karena Step 1 kepadatan -- ini murni pemisahan
-           UI wizard, StoreCustomerLcrRequest tetap 1 Grup yang sama). -->
+      <!-- Step 2: Profil Bisnis & Operasional -- dipisah dari Step 1 karena kepadatan UI, backend tetap 1 grup rule yang sama -->
       <div v-else-if="currentStep === 1" class="space-y-5">
         <div class="grid grid-cols-12 items-start gap-4">
           <label class="col-span-3 pt-2 font-label">
@@ -1460,9 +1358,7 @@ onMounted(() => {
 
       </div>
 
-      <!-- Step 4: Unloading & Storage, Grup 3 + Grup 4 digabung di frontend.
-           StoreCustomerLcrRequest tetap pisah Grup 3/4 -- penggabungan ini
-           murni soal UI wizard. -->
+      <!-- Step 4: Unloading & Storage -- digabung di frontend, backend tetap pisah 2 grup rule -->
       <div v-else-if="currentStep === 3" class="space-y-6">
         <div class="space-y-5">
           <div class="font-section">Layout & Unloading Truk</div>
@@ -1796,10 +1692,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Step 7: Dokumentasi Foto. Semua 8 kategori foto disatukan di step
-           terakhir, gak tersebar per-step, biar selaras sama timing
-           staged-lalu-batch: foto baru baru bener-bener ke-upload setelah
-           seluruh data step 1-6 tersimpan & dapat id_lcr (lihat submitWizard()). -->
+      <!-- Step 7: semua kategori foto disatukan di step terakhir -- selaras sama timing staged-lalu-batch, foto baru ke-upload setelah id_lcr didapat (lihat submitWizard()) -->
       <div v-else class="space-y-6">
         <div class="space-y-5">
           <div class="grid grid-cols-12 items-start gap-4">

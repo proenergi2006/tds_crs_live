@@ -21,7 +21,7 @@ class Customer extends Model
     protected $casts = [
         'inco_terms' => CustomerIncoterm::class,
         'customer_status' => CustomerStatus::class,
-        'is_link_generated' => 'boolean',
+        'token_expired_at' => 'datetime',
     ];
 
     protected $fillable = [
@@ -43,38 +43,19 @@ class Customer extends Model
         'business_type_other',
         'ownership_type',
         'ownership_type_other',
-        'is_link_generated',
         'update_count',
         'parent_company',
         'id_cabang',
         'inco_terms',
         'inco_terms_other',
         'customer_status',
+        'onboarding_token',
+        'token_expired_at',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');
-    }
-
-    public function province()
-    {
-        return $this->belongsTo(Province::class, 'province_id', 'id');
-    }
-
-    public function regency()
-    {
-        return $this->belongsTo(Regency::class, 'regency_id', 'id');
-    }
-
-    public function district()
-    {
-        return $this->belongsTo(District::class, 'district_id', 'id');
-    }
-
-    public function village()
-    {
-        return $this->belongsTo(Village::class, 'village_id', 'id');
     }
 
     public function cabang()

@@ -12,7 +12,6 @@ class CustomerContact extends Model
 
     protected $fillable = [
         'id_customer',
-        'id_contact_type',
         'id_lcr',
         'full_name',
         'position',
@@ -24,11 +23,6 @@ class CustomerContact extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
-    }
-
-    public function contactType(): BelongsTo
-    {
-        return $this->belongsTo(CustomerContactType::class, 'id_contact_type');
     }
 
     public function lcr(): BelongsTo

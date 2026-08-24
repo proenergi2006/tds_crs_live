@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up()
 {
-    Schema::table('wilayah_angkuts', function (Blueprint $table) {
-        $table->boolean('is_active')->default(true)->after('destinasi');
-    });
+    // Duplikat migration _070459_ (kolom sama persis) -- guard biar gak error di history yang belum kena kolomnya duluan.
+    if (!Schema::hasColumn('wilayah_angkuts', 'is_active')) {
+        Schema::table('wilayah_angkuts', function (Blueprint $table) {
+            $table->boolean('is_active')->default(true)->after('destinasi');
+        });
+    }
 }
 
 public function down()
 {
-    Schema::table('wilayah_angkuts', function (Blueprint $table) {
-        $table->dropColumn('is_active');
-    });
+    //
 }
 
 };

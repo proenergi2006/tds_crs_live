@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Penawaran extends Model
 {
@@ -12,6 +13,7 @@ class Penawaran extends Model
 
     protected $fillable = [
         'id_customer',
+        'customer_contact_id',
         'id_cabang',
         'nomor_penawaran',
         'qr_code',
@@ -20,11 +22,6 @@ class Penawaran extends Model
         'subtotal',
         'ppn11',
         'total',
-        'kepada',
-        'jabatan',
-        'telepon',
-        'nama',
-        'alamat',
         'fax',
         'type_pengiriman',
         'dp_persen',
@@ -42,6 +39,7 @@ class Penawaran extends Model
         'keterangan',
         'catatan',
         'syarat_ketentuan',
+        'lampiran_tambahan',
         'discount',
         'harga_tebus_setelah_diskon',
         'total_with_oat',
@@ -69,16 +67,17 @@ class Penawaran extends Model
         'user_id',
     ];
 
-    /******** Relasi ********/
+    /* Section: relasi */
 
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
-    public function produk_harga()
+    // Kontak tujuan surat penawaran -- nama/jabatan/telepon dibaca live dari kontak customer, tidak di-snapshot.
+    public function customerContact(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\ProdukHarga::class, 'id_produk', 'id_produk');
+        return $this->belongsTo(CustomerContact::class, 'customer_contact_id', 'id_contact');
     }
 
     public function cabang()
@@ -101,12 +100,7 @@ class Penawaran extends Model
         return $this->hasMany(PenawaranOngkos::class, 'penawaran_id', 'id_penawaran');
     }
 
-    /**
-     * Riwayat approval polymorphic (`document_approvals`, code=penawaran_tds),
-     * mengikuti pola yang sama dengan CustomerLcr::documentApprovals().
-     * Pakai morphMany supaya riwayat siklus sebelumnya tetap tersimpan walau
-     * ada re-submit setelah reject.
-     */
+    // morphMany, bukan morphOne -- riwayat siklus approval sebelumnya tetap tersimpan walau ada re-submit setelah reject
     public function documentApprovals(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
         return $this->morphMany(\App\Models\DocumentApproval::class, 'approvable', 'approvable_type', 'approvable_id', 'id_penawaran');

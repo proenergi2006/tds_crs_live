@@ -10,14 +10,9 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
-/* Form inline (bukan FormModal/FormPage terpisah), 14 pertanyaan dari
-   CustomerReviewQuestionCode enum (question_code dikirim, question DI-STRIP
-   sebelum kirim -- backend derive dari enum). Terkunci (disabled + banner)
-   kalau kycStatus !== 'draft'. */
+// Form inline, 14 pertanyaan dari CustomerReviewQuestionCode enum; question_code dikirim, question di-strip sebelum kirim.
 
-/* Type: 1 baris jawaban Sales Review (server-derive dari
-   CustomerReviewQuestionCode -- FE tidak membangun daftar 14 baris sendiri,
-   cuma menampilkan apa yang dikirim GET review, sudah terurut by order). */
+// ReviewAnswer server-derive dari CustomerReviewQuestionCode -- FE cuma menampilkan, tidak membangun daftar sendiri.
 interface ReviewAnswer {
   question_code: string
   question: string
@@ -33,7 +28,6 @@ interface ReviewAttachment {
 
 const props = defineProps<{
   idCustomer: number
-  idVerification?: number | null
   kycStatus?: string | null
 }>()
 
@@ -47,17 +41,10 @@ const loading = ref(true)
 const saving = ref(false)
 const pendingFiles = ref<File | File[] | null>(null)
 
-/* Computed: terkunci saat KYC sudah tidak lagi draft (falsy-safe --
-   undefined/null dianggap TIDAK terkunci, supaya komponen tetap bisa dites
-   standalone sebelum Detail.vue mewiring prop kycStatus yang sebenarnya). */
+// undefined/null kycStatus dianggap TIDAK terkunci (falsy-safe), bukan cuma saat kycStatus === 'draft'.
 const locked = computed(() => !!props.kycStatus && props.kycStatus !== 'draft')
 
-/* Existing attachments ditampilkan lewat FileUploadField, yang mengharap
-   shape ExistingFile ({id,name,url,size}) -- attachments API pakai shape
-   {path,url,original_name}, jadi dipetakan di sini (index dipakai sebagai id
-   supaya deleteAttachment(index) tetap bisa dipanggil balik dari
-   @remove-existing, dan "name" diisi dari original_name karena properti itu
-   tidak ada di shape asli). */
+// Dipetakan dari shape {path,url,original_name} ke ExistingFile ({id,name,url}) yang diharap FileUploadField; index dipakai sebagai id.
 const existingAttachmentFiles = computed(() =>
   attachments.value.map((a, index) => ({ id: index, name: a.original_name, url: a.url })),
 )
@@ -73,14 +60,9 @@ function formatReviewedAt(value: string | null) {
 
 /* Fetch */
 async function fetchReview() {
-  if (!props.idVerification) {
-    loading.value = false
-    return
-  }
-
   loading.value = true
   try {
-    const { data } = await axios.get(`/api/review/customer-verifications/${props.idVerification}/review`)
+    const { data } = await axios.get(`/api/customers/${props.idCustomer}/review`)
     reviewAnswers.value = data?.review_answers ?? []
     attachments.value = data?.review_attachments ?? []
     reviewedAt.value = data?.reviewed_at ?? null
@@ -93,14 +75,14 @@ async function fetchReview() {
 
 /* Submit */
 async function saveReview() {
-  if (!props.idVerification || locked.value) return
+  if (locked.value) return
 
   saving.value = true
   try {
     const payload = {
       review_answers: reviewAnswers.value.map(({ question_code, answer }) => ({ question_code, answer })),
     }
-    const { data } = await axios.post(`/api/review/customer-verifications/${props.idVerification}/review`, payload)
+    const { data } = await axios.post(`/api/customers/${props.idCustomer}/review`, payload)
     reviewAnswers.value = data?.review_answers ?? reviewAnswers.value
     reviewedAt.value = data?.reviewed_at ?? reviewedAt.value
     success('Berhasil', 'Sales Review tersimpan.')
@@ -115,16 +97,15 @@ async function saveReview() {
   }
 }
 
-/* Actions: lampiran -- upload langsung saat file dipilih (bukan ditahan
-   sampai Simpan), konsisten pola CustomerDataTab.vue dokumen. */
+// Lampiran diupload langsung saat file dipilih (bukan ditahan sampai Simpan), konsisten pola CustomerDataTab.vue.
 async function uploadAttachment(file: File) {
-  if (!props.idVerification || locked.value) return
+  if (locked.value) return
 
   const formData = new FormData()
   formData.append('file', file)
 
   try {
-    const { data } = await axios.post(`/api/review/customer-verifications/${props.idVerification}/review-attachment`, formData)
+    const { data } = await axios.post(`/api/customers/${props.idCustomer}/review-attachment`, formData)
     attachments.value.push({ path: data.path, url: data.url, original_name: data.original_name })
   } catch (e: any) {
     if (e.response?.status === 409) {
@@ -136,20 +117,17 @@ async function uploadAttachment(file: File) {
 }
 
 async function deleteAttachment(index: number) {
-  if (!props.idVerification || locked.value) return
+  if (locked.value) return
 
   try {
-    await axios.delete(`/api/review/customer-verifications/${props.idVerification}/review-attachment/${index}`)
+    await axios.delete(`/api/customers/${props.idCustomer}/review-attachment/${index}`)
     attachments.value.splice(index, 1)
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus lampiran.')
   }
 }
 
-/* FileUploadField multiple=true bisa emit File[] sekaligus (mis. user pilih
-   beberapa file dalam satu dialog) -- setiap file di-upload satu-satu lewat
-   uploadAttachment(file: File), lalu selection lokal direset karena file
-   yang sukses diunggah langsung pindah jadi existing attachment. */
+// multiple=true bisa emit File[] sekaligus -- tiap file diupload satu-satu, selection lokal direset setelahnya.
 async function handleFilesSelected(value: File | File[] | null) {
   const files = Array.isArray(value) ? value : value ? [value] : []
   for (const file of files) {
@@ -167,41 +145,31 @@ onMounted(fetchReview)
 </script>
 
 <template>
-  <div v-if="loading" class="flex min-h-[220px] items-center justify-center gap-3 text-slate-500">
-    <Lucide icon="Loader2" class="h-6 w-6 animate-spin" />
+  <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[220px] text-slate-500">
+    <Lucide icon="Loader2" class="w-6 h-6 animate-spin" />
     <span class="font-body">Memuat Sales Review...</span>
-  </div>
-
-  <div v-else-if="!idVerification"
-    class="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
-    <Lucide icon="Inbox" class="h-8 w-8 text-slate-400" />
-    <div class="font-strong">Sales Review belum tersedia</div>
-    <div class="font-body max-w-md">
-      Siklus verifikasi customer ini belum teridentifikasi. Muat ulang halaman atau hubungi Admin bila hal ini
-      berlanjut.
-    </div>
   </div>
 
   <CardSection v-else title="Sales Review" description="Jawaban Marketing untuk 14 pertanyaan review KYC."
     icon="ClipboardEdit" icon-class="bg-primary/10 text-primary">
-    <p v-if="locked" class="font-body mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 !text-amber-700">
+    <p v-if="locked" class="bg-amber-50 mb-4 px-3 py-2.5 border border-amber-200 rounded-lg font-body !text-amber-700">
       Tab ini terkunci, KYC sudah di-forward.
     </p>
 
     <div class="overflow-x-auto">
-      <Table>
+      <Table bordered>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th></Table.Th>
+            <Table.Th>#</Table.Th>
             <Table.Th class="w-2/5">Pertanyaan</Table.Th>
             <Table.Th class="w-3/5">Jawaban</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           <Table.Tr v-for="item in reviewAnswers" :key="item.question_code">
-            <Table.Td class="align-top py-4">{{ item.order }}.</Table.Td>
-            <Table.Td class="align-top py-4">{{ item.question }}</Table.Td>
-            <Table.Td class="align-top py-4">
+            <Table.Td class="py-4 align-top">{{ item.order }}.</Table.Td>
+            <Table.Td class="py-4 align-top">{{ item.question }}</Table.Td>
+            <Table.Td class="py-4 align-top">
               <FormInput v-if="item.field_type === 'shorttext'" v-model="item.answer" :disabled="locked" />
               <FormTextarea v-else v-model="item.answer" :disabled="locked" rows="2" :auto-resize="true" />
             </Table.Td>
@@ -218,11 +186,11 @@ onMounted(fetchReview)
         @remove-existing="handleRemoveExisting" @error="(msg: string) => notifyError('Gagal', msg)" />
     </div>
 
-    <div class="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
+    <div class="flex justify-between items-center gap-3 mt-6 pt-5 border-slate-100 border-t">
       <span v-if="reviewedAt" class="font-caption">Terakhir disimpan {{ formatReviewedAt(reviewedAt) }}</span>
       <span v-else />
       <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving" @click="saveReview">
-        <Lucide v-if="saving" icon="Loader2" class="h-4 w-4 animate-spin" />
+        <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
         Simpan Review
       </Button>
     </div>

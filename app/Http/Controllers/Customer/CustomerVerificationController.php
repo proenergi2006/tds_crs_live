@@ -3,25 +3,22 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Actions\Customer\CloseCustomerKycAction;
+use App\Actions\Customer\EvaluateCustomerTabCompletenessAction;
 use App\Actions\Customer\GenerateCustomerDataDocumentAction;
 use App\Actions\Customer\GenerateCustomerKycDocumentAction;
 use App\Enums\CustomerKycStatus;
-use App\Enums\CustomerReviewQuestionCode;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalTemplate;
 use App\Models\Customer;
-use App\Models\CustomerReview;
 use App\Models\CustomerVerification;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class CustomerVerificationController extends Controller
@@ -30,37 +27,6 @@ class CustomerVerificationController extends Controller
 
     private const ROLE_ADMIN_FINANCE = 9;
     private const ROLE_BM            = 8;
-
-    private function createDocumentApprovalCycle(CustomerVerification $cv): void
-    {
-        $template = $this->activeApprovalTemplate();
-
-        if (!$template || $template->steps->count() < 2) {
-            Log::error('Approval template customer_verification tidak ditemukan/tidak lengkap saat forward verification.', [
-                'id_verification' => $cv->id_verification,
-                'id_customer'     => $cv->id_customer,
-                'template_found'  => (bool) $template,
-                'steps_count'     => $template?->steps->count(),
-            ]);
-            throw new \RuntimeException('Approval template customer_verification belum ter-setup dengan benar.');
-        }
-
-        $approval = $cv->documentApprovals()->create([
-            'id_template'        => $template->id_template,
-            'status'             => DocumentApprovalStatus::InProgress,
-            'current_step_order' => $template->steps->min('step_order'),
-            'started_at'         => now(),
-        ]);
-
-        foreach ($template->steps as $step) {
-            DocumentApprovalStep::create([
-                'id_approval'      => $approval->id_approval,
-                'id_template_step' => $step->id_step,
-                'step_order'       => $step->step_order,
-                'status'           => DocumentApprovalStepStatus::Pending,
-            ]);
-        }
-    }
 
     private function activeApprovalTemplate(): ?ApprovalTemplate
     {
@@ -72,114 +38,6 @@ class CustomerVerificationController extends Controller
     private function resolveStepOrderForRole(ApprovalTemplate $template, int $idRole): ?int
     {
         return $template->steps->firstWhere('id_role', $idRole)?->step_order;
-    }
-
-    private function advanceApprovalStep(
-        CustomerVerification $cv,
-        int $stepOrder,
-        DocumentApprovalStepStatus $status,
-        ?string $note
-    ): ?DocumentApproval {
-        $approval = $cv->documentApprovals()
-            ->with('template.steps')
-            ->where('status', DocumentApprovalStatus::InProgress)
-            ->latest('id_approval')
-            ->first();
-
-        if (!$approval) {
-            Log::warning('Tidak ada document_approvals berstatus in_progress untuk verification ini saat mencoba advance step approval.', [
-                'id_verification' => $cv->id_verification,
-                'step_order'      => $stepOrder,
-                'target_status'   => $status->value,
-            ]);
-            return null;
-        }
-
-        $step = $approval->steps()->where('step_order', $stepOrder)->first();
-
-        if (!$step) {
-            Log::warning('document_approval_steps untuk step_order ini tidak ditemukan pada document_approvals in_progress.', [
-                'id_verification' => $cv->id_verification,
-                'id_approval'     => $approval->id_approval,
-                'step_order'      => $stepOrder,
-            ]);
-            return null;
-        }
-
-        $step->update([
-            'status'        => $status,
-            'actor_id'      => auth()->id(),
-            'acted_at'      => now(),
-            'decision_note' => $note,
-        ]);
-
-        if ($status === DocumentApprovalStepStatus::Rejected) {
-            $approval->update([
-                'status'             => DocumentApprovalStatus::Rejected,
-                'current_step_order' => null,
-                'completed_at'       => now(),
-            ]);
-
-            return $approval;
-        }
-
-        $templateSteps = $approval->template?->steps ?? collect();
-
-        if ($templateSteps->isEmpty()) {
-            Log::warning('Template/steps tidak ditemukan untuk document_approvals ini saat menentukan step terakhir — cycle ditutup sebagai approved untuk mencegah macet.', [
-                'id_verification' => $cv->id_verification,
-                'id_approval'     => $approval->id_approval,
-                'step_order'      => $stepOrder,
-            ]);
-
-            $approval->update([
-                'status'             => DocumentApprovalStatus::Approved,
-                'current_step_order' => null,
-                'completed_at'       => now(),
-            ]);
-
-            return $approval;
-        }
-
-        $maxStepOrder = $templateSteps->max('step_order');
-
-        if ($stepOrder === $maxStepOrder) {
-            $approval->update([
-                'status'             => DocumentApprovalStatus::Approved,
-                'current_step_order' => null,
-                'completed_at'       => now(),
-            ]);
-
-            return $approval;
-        }
-
-        $nextStepOrder = $templateSteps->pluck('step_order')
-            ->filter(fn($order) => $order > $stepOrder)
-            ->sort()
-            ->first();
-
-        if ($nextStepOrder === null) {
-            Log::warning('Step ini bukan step_order maksimum tapi step berikutnya tidak ditemukan (data template_step tidak konsisten) — cycle ditutup sebagai approved untuk mencegah macet.', [
-                'id_verification' => $cv->id_verification,
-                'id_approval'     => $approval->id_approval,
-                'step_order'      => $stepOrder,
-                'max_step_order'  => $maxStepOrder,
-            ]);
-
-            $approval->update([
-                'status'             => DocumentApprovalStatus::Approved,
-                'current_step_order' => null,
-                'completed_at'       => now(),
-            ]);
-
-            return $approval;
-        }
-
-        $approval->update([
-            'current_step_order' => $nextStepOrder,
-        ]);
-
-        return $approval;
     }
 
     private function pendingStepQuery(int $idRole)
@@ -329,10 +187,12 @@ class CustomerVerificationController extends Controller
             $data['verification_token'] = strtoupper(Str::random(17));
         }
 
-        $verification = CustomerVerification::create($data);
+        // default value nya gak di-set di db, jadi diisi manual di sini
+        foreach (['finance_data', 'finance_summary', 'finance_pic', 'logistics_data', 'logistics_summary', 'logistics_pic'] as $key) {
+            $data[$key] ??= '';
+        }
 
-        Customer::where('id_customer', $data['id_customer'])
-            ->update(['is_link_generated' => 1]);
+        $verification = CustomerVerification::create($data);
 
         return response()->json(
             $verification->loadMissing('customer:id_customer,company_name'),
@@ -412,8 +272,8 @@ class CustomerVerificationController extends Controller
 
         $isAdminFinance = $user->can('verification.customer');
 
-        $scopedQuery = fn () => CustomerVerification::query()
-            ->when(!$isAdminFinance, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('id_user', $user->id)));
+        $scopedQuery = fn() => CustomerVerification::query()
+            ->when(!$isAdminFinance, fn($q) => $q->whereHas('customer', fn($c) => $c->where('id_user', $user->id)));
 
         return response()->json([
             'draft'     => $scopedQuery()->where('kyc_status', CustomerKycStatus::Draft)->count(),
@@ -437,7 +297,7 @@ class CustomerVerificationController extends Controller
         $tab = $r->query('tab', $r->query('status', $isAdminFinance ? 'forwarded' : 'draft'));
 
         $baseQuery = CustomerVerification::query()
-            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
+            ->with(['customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine()]);
 
         if ($tab === 'draft') {
             $baseQuery->where('kyc_status', CustomerKycStatus::Draft);
@@ -446,14 +306,14 @@ class CustomerVerificationController extends Controller
         }
 
         if (!$isAdminFinance) {
-            $baseQuery->whereHas('customer', fn ($c) => $c->where('id_user', $user->id));
+            $baseQuery->whereHas('customer', fn($c) => $c->where('id_user', $user->id));
         }
 
         $rows = $baseQuery
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -486,7 +346,7 @@ class CustomerVerificationController extends Controller
         $user = auth()->user();
 
         $cv = CustomerVerification::with([
-            'customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
+            'customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax', 'email')->withHeadOfficeAddressLine(),
         ])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
@@ -554,207 +414,17 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    // Gak nulis is_forwarded di sini, itu tanggung jawabnya forward().
-    public function getReview(Request $request, int $id): \Illuminate\Http\JsonResponse
+    // forward butuh Tab 2 (review answers lengkap) & Tab 4 (credit_limit_request + top_request) siap -- Tab 1 udah ditegakkan pas onboarding.
+    public function forward(Request $request, int $id, EvaluateCustomerTabCompletenessAction $evaluateTabCompleteness): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
 
-        $cv = CustomerVerification::findOrFail($id);
-
-        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
-            || $user->can('customer.viewAny');
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $review = CustomerReview::where('id_verification', $id)->first();
-
-        if (!$review) {
-            $reviewAnswers = collect(CustomerReviewQuestionCode::cases())
-                ->map(fn (CustomerReviewQuestionCode $code) => [
-                    'question_code' => $code->value,
-                    'question'      => $code->question(),
-                    'answer'        => null,
-                    'order'         => $code->order(),
-                    'field_type'    => $code->fieldType(),
-                ])
-                ->sortBy('order')
-                ->values()
-                ->all();
-
-            return response()->json([
-                'reviewed_at'        => null,
-                'review_answers'     => $reviewAnswers,
-                'review_attachments' => [],
-            ]);
-        }
-
-        $reviewAnswers = collect($review->review_answers)
-            ->map(function (array $item) {
-                $code = CustomerReviewQuestionCode::tryFrom($item['question_code'] ?? '');
-
-                if (!$code) {
-                    return null;
-                }
-
-                return [
-                    'question_code' => $code->value,
-                    'question'      => $code->question(),
-                    'answer'        => $item['answer'] ?? null,
-                    'order'         => $code->order(),
-                    'field_type'    => $code->fieldType(),
-                ];
-            })
-            ->filter()
-            ->sortBy('order')
-            ->values()
-            ->all();
-
-        return response()->json([
-            'reviewed_at'        => $review->reviewed_at,
-            'review_answers'     => $reviewAnswers,
-            'review_attachments' => $review->review_attachments,
-        ]);
-    }
-
-    public function saveReview(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $user = $request->user();
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
-            || $user->can('customer.viewAny');
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
-        }
-
-        $data = $request->validate([
-            'review_answers'                  => 'required|array',
-            'review_answers.*.question_code'  => ['required', new Enum(CustomerReviewQuestionCode::class)],
-            'review_answers.*.answer'         => 'nullable|string',
-        ]);
-
-        $reviewAnswers = collect($data['review_answers'])
-            ->map(function (array $item) {
-                $code = CustomerReviewQuestionCode::from($item['question_code']);
-
-                return [
-                    'question_code' => $code->value,
-                    'question'      => $code->question(),
-                    'answer'        => $item['answer'] ?? null,
-                    'order'         => $code->order(),
-                    'field_type'    => $code->fieldType(),
-                ];
-            })
-            ->sortBy('order')
-            ->values()
-            ->all();
-
-        $review = CustomerReview::updateOrCreate(
-            ['id_verification' => $id],
-            [
-                'review_answers' => $reviewAnswers,
-                'reviewed_at'    => now(),
-            ]
-        );
-
-        return response()->json([
-            'review_answers' => $review->review_answers,
-            'reviewed_at'    => $review->reviewed_at,
-        ]);
-    }
-
-    public function uploadReviewAttachment(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $user = $request->user();
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
-            || $user->can('customer.viewAny');
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
-        }
-
-        $request->validate([
-            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,pdf,zip,rar',
-        ]);
-
-        $review = CustomerReview::firstOrCreate(['id_verification' => $id]);
-
-        $file = $request->file('file');
-        $path = $file->store("customer_verifications/{$id}/review", 'public');
-        $originalName = $file->getClientOriginalName();
-
-        $attachments = $review->review_attachments ?? [];
-        $attachments[] = [
-            'path'          => $path,
-            'url'           => Storage::disk('public')->url($path),
-            'original_name' => $originalName,
-        ];
-
-        $review->update(['review_attachments' => $attachments]);
-
-        return response()->json([
-            'index'         => array_key_last($attachments),
-            'path'          => $path,
-            'url'           => Storage::disk('public')->url($path),
-            'original_name' => $originalName,
-        ]);
-    }
-
-    public function deleteReviewAttachment(int $id, int $no): \Illuminate\Http\JsonResponse
-    {
-        $user = auth()->user();
-
-        $cv = CustomerVerification::findOrFail($id);
-
-        $allowed = ($user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id)
-            || $user->can('customer.viewAny');
-
-        if (!$allowed) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        if ($cv->kyc_status !== CustomerKycStatus::Draft) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
-        }
-
-        $review = CustomerReview::where('id_verification', $id)->firstOrFail();
-
-        $attachments = $review->review_attachments ?? [];
-
-        if (!isset($attachments[$no])) {
-            return response()->json(['message' => 'Attachment tidak ditemukan.'], 404);
-        }
-
-        Storage::disk('public')->delete($attachments[$no]['path']);
-
-        array_splice($attachments, $no, 1);
-
-        $review->update(['review_attachments' => array_values($attachments)]);
-
-        return response()->json(['ok' => true]);
-    }
-
-    // forward butuh Tab 2 (review answers lengkap) & Tab 4 (credit_limit_request) siap -- Tab 1 udah ditegakkan pas onboarding.
-    public function forward(Request $request, int $id): \Illuminate\Http\JsonResponse
-    {
-        $user = $request->user();
-
-        $cv = CustomerVerification::findOrFail($id);
+        $cv = CustomerVerification::with([
+            'customer.addresses',
+            'customer.payment',
+            'customer.contacts',
+            'customer.documents.documentType',
+        ])->findOrFail($id);
 
         $allowed = $user->can('customer.manage') && $this->verificationOwnerId($cv) === $user->id;
 
@@ -766,24 +436,15 @@ class CustomerVerificationController extends Controller
             return response()->json(['message' => 'KYC sudah pernah di-forward.'], 409);
         }
 
+        $completeness = $evaluateTabCompleteness->execute($cv->customer);
+
         $incompleteTabs = [];
 
-        $review         = CustomerReview::where('id_verification', $id)->first();
-        $answeredCodes  = collect($review ? ($review->review_answers ?? []) : [])
-            ->filter(fn (array $item) => isset($item['answer']) && $item['answer'] !== '')
-            ->pluck('question_code');
-
-        $reviewComplete = $review
-            && collect(CustomerReviewQuestionCode::cases())
-                ->every(fn (CustomerReviewQuestionCode $code) => $answeredCodes->contains($code->value));
-
-        if (!$reviewComplete) {
+        if (!$completeness['review']) {
             $incompleteTabs[] = 'review';
         }
 
-        $submission = $cv->customer->latestCreditSubmission;
-
-        if (!$submission || $submission->credit_limit_request === null) {
+        if (!$completeness['credit']) {
             $incompleteTabs[] = 'credit';
         }
 
@@ -866,32 +527,14 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("KYC-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    // Terpisah dari document() -- Penawaran Lookup sengaja gak diikutkan. Gating sama kayak document().
+    // Dinonaktifkan sementara: template cetak Data Customer masih mengacu struktur kontak lama, akan didesain ulang.
     public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
     {
         if ($request->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $cv = CustomerVerification::findOrFail($id);
-
-        if (!in_array($cv->kyc_status, [CustomerKycStatus::Forwarded, CustomerKycStatus::Closed], true)) {
-            return response()->json(['message' => 'Dokumen KYC hanya bisa dicetak setelah di-forward.'], 409);
-        }
-
-        $data = $action->execute($cv->customer);
-
-        // Base64 data URI, bukan URL -- dompdf tidak resolve URL eksternal/relative dengan reliable.
-        $leftPath = public_path('images/logo-new.png');
-        $rightPath = public_path('images/logo-crs.png');
-        $data['logoLeft'] = file_exists($leftPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($leftPath)) : null;
-        $data['logoRight'] = file_exists($rightPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($rightPath)) : null;
-
-        $pdf = \PDF::loadView('customer.data-customer-document', $data)->setPaper('A4', 'portrait');
-
-        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
-
-        return $pdf->stream("Data-Customer-{$safeName}-{$cv->id_verification}.pdf");
+        return response()->json(['message' => 'Fitur cetak Data Customer sedang dalam perbaikan, akan tersedia kembali.'], 503);
     }
 
     // antrean diambil dari document_approval_steps step 1 pending (Admin Finance, id_role=9), bukan dari is_active/is_reviewed/disposisi_result.
@@ -905,11 +548,11 @@ class CustomerVerificationController extends Controller
         $q   = trim((string) $r->query('q', ''));
 
         $rows = $this->pendingStepQuery(self::ROLE_ADMIN_FINANCE)
-            ->with(['customer' => fn ($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
+            ->with(['customer' => fn($c) => $c->select('id_customer', 'customer_code', 'company_name', 'phone', 'fax')->withHeadOfficeAddressLine()])
             ->when($q !== '', function ($w) use ($q) {
                 $w->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'like', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'like', "%{$q}%"))
                         ->orWhere('customer_code', 'like', "%{$q}%");
                 });
             })
@@ -950,7 +593,7 @@ class CustomerVerificationController extends Controller
             ->when($q, function ($qq) use ($q) {
                 $qq->whereHas('customer', function ($c) use ($q) {
                     $c->where('company_name', 'ilike', "%{$q}%")
-                        ->orWhereHas('headOfficeAddress', fn ($a) => $a->where('address_line', 'ilike', "%{$q}%"))
+                        ->orWhereHas('headOfficeAddress', fn($a) => $a->where('address_line', 'ilike', "%{$q}%"))
                         ->orWhere('customer_code', 'ilike', "%{$q}%");
                 });
             })
@@ -969,5 +612,4 @@ class CustomerVerificationController extends Controller
         $queue = $this->pendingStepQuery(self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
     }
-
 }

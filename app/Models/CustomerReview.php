@@ -11,9 +11,7 @@ class CustomerReview extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_verification',
-        'review_result', 'review_pic', 'reviewed_at', 'review_summary',
-        'review_answers', 'review_attachments',
+        'id_customer', 'reviewed_at', 'review_answers', 'review_attachments',
     ];
 
     protected $casts = [
@@ -21,8 +19,8 @@ class CustomerReview extends Model
         'review_attachments' => 'array',
     ];
 
-    public function verification()
+    public function customer()
     {
-        return $this->belongsTo(CustomerVerification::class, 'id_verification', 'id_verification');
+        return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 }

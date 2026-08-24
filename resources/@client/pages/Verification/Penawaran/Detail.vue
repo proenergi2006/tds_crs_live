@@ -279,23 +279,23 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     <div class="grid grid-cols-12 gap-4">
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Kepada (Perusahaan / Dept.)</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.kepada) }}</div>
+                        <div class="font-strong mt-1">{{ dash(penawaran.customer?.company_name) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Nama (UP.)</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.nama) }}</div>
+                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.full_name) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Jabatan</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.jabatan) }}</div>
+                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.position) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Telepon</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.telepon) }}</div>
+                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.mobile) }}</div>
                       </div>
                       <div class="col-span-12">
                         <div class="font-label">Alamat</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.alamat) }}</div>
+                        <div class="font-strong mt-1">{{ dash(penawaran.customer?.head_office_address?.address_line) }}</div>
                       </div>
                     </div>
                   </div>
@@ -321,7 +321,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                   </div>
 
-                  <!-- Ongkos Kapal (conditional, ported from old standalone Ongkos Angkut section) -->
+                  <!-- Ongkos Kapal (conditional) -->
                   <div v-if="showOngkosKapal" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div class="font-label mb-2">Ongkos Kapal</div>
                     <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
@@ -350,7 +350,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                   </div>
 
-                  <!-- Ongkos Truck (conditional, ported from old standalone Ongkos Angkut section) -->
+                  <!-- Ongkos Truck (conditional) -->
                   <div v-if="showOngkosTruck" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div class="font-label mb-2">Ongkos Truck</div>
                     <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">

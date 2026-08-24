@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 
 class CustomerContactController extends Controller
 {
-    private const RELATIONS = ['contactType'];
-
     public function index(Request $request, Customer $customer)
     {
         $user = $request->user();
@@ -25,8 +23,7 @@ class CustomerContactController extends Controller
         }
 
         $contacts = $customer->contacts()
-            ->with(self::RELATIONS)
-            ->orderBy('id_contact_type')
+            ->orderBy('id_contact')
             ->get();
 
         return response()->json(
@@ -48,17 +45,14 @@ class CustomerContactController extends Controller
         $data = $request->validated();
 
         $contact = CustomerContact::create([
-            'id_customer'     => $customer->id_customer,
-            'id_contact_type' => $data['id_contact_type'],
-            'id_lcr'          => $data['id_lcr'] ?? null,
-            'full_name'       => $data['full_name'],
-            'position'        => $data['position'] ?? null,
-            'phone'           => $data['phone'] ?? null,
-            'mobile'          => $data['mobile'] ?? null,
-            'email'           => $data['email'] ?? null,
+            'id_customer' => $customer->id_customer,
+            'id_lcr'      => $data['id_lcr'] ?? null,
+            'full_name'   => $data['full_name'],
+            'position'    => $data['position'] ?? null,
+            'phone'       => $data['phone'] ?? null,
+            'mobile'      => $data['mobile'] ?? null,
+            'email'       => $data['email'] ?? null,
         ]);
-
-        $contact->load(self::RELATIONS);
 
         return response()->json($this->formatContact($contact), 201);
     }
@@ -81,16 +75,15 @@ class CustomerContactController extends Controller
         $data = $request->validated();
 
         $contact->update([
-            'id_contact_type' => $data['id_contact_type'],
-            'id_lcr'          => $data['id_lcr'] ?? null,
-            'full_name'       => $data['full_name'],
-            'position'        => $data['position'] ?? null,
-            'phone'           => $data['phone'] ?? null,
-            'mobile'          => $data['mobile'] ?? null,
-            'email'           => $data['email'] ?? null,
+            'id_lcr'    => $data['id_lcr'] ?? null,
+            'full_name' => $data['full_name'],
+            'position'  => $data['position'] ?? null,
+            'phone'     => $data['phone'] ?? null,
+            'mobile'    => $data['mobile'] ?? null,
+            'email'     => $data['email'] ?? null,
         ]);
 
-        return response()->json($this->formatContact($contact->fresh(self::RELATIONS)));
+        return response()->json($this->formatContact($contact->fresh()));
     }
 
     public function destroy(Request $request, Customer $customer, CustomerContact $contact)
@@ -115,21 +108,16 @@ class CustomerContactController extends Controller
 
     private function formatContact(CustomerContact $contact): array
     {
+        // PK tabel customer_contacts adalah id_contact, jadi $contact->id selalu null.
         return [
-            'id'              => $contact->id,
-            'id_customer'     => $contact->id_customer,
-            'id_contact_type' => $contact->id_contact_type,
-            'contact_type'    => $contact->contactType ? [
-                'id'   => $contact->contactType->id,
-                'code' => $contact->contactType->code,
-                'name' => $contact->contactType->name,
-            ] : null,
-            'id_lcr'     => $contact->id_lcr,
-            'full_name'  => $contact->full_name,
-            'position'   => $contact->position,
-            'phone'      => $contact->phone,
-            'mobile'     => $contact->mobile,
-            'email'      => $contact->email,
+            'id'          => $contact->id_contact,
+            'id_customer' => $contact->id_customer,
+            'id_lcr'      => $contact->id_lcr,
+            'full_name'   => $contact->full_name,
+            'position'    => $contact->position,
+            'phone'       => $contact->phone,
+            'mobile'      => $contact->mobile,
+            'email'       => $contact->email,
             'created_at' => optional($contact->created_at)->toISOString(),
             'updated_at' => optional($contact->updated_at)->toISOString(),
         ];

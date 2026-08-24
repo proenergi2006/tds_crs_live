@@ -17,13 +17,9 @@ class GeneratePenawaranPdfAction
         string $viewPrefix,
         string $logoLeftPath
     ) {
-        // alamat customer di surat penawaran diambil dari headOfficeAddress, bukan kolom di tabel customers
-        $penawaran = $modelClass::with(['customer.headOfficeAddress', 'cabang', 'items.produk.ukuran', 'user.role'])
-            ->findOrFail($id);
-
-        if ($penawaran->status !== 'approved_om') {
-            abort(403, 'Preview PDF hanya tersedia setelah penawaran disetujui OM.');
-        }
+        // alamat & kontak tujuan surat penawaran diambil dari relasi customer, bukan kolom di tabel penawarans
+        $with = ['customer.headOfficeAddress', 'customerContact', 'cabang', 'items.produk.ukuran', 'user.role'];
+        $penawaran = $modelClass::with($with)->findOrFail($id);
 
         $u = $penawaran->user;
         if (!$u && !empty($penawaran->created_by)) {
@@ -85,7 +81,8 @@ class GeneratePenawaranPdfAction
 
         $safeNomor = str_replace(['/', '\\'], '-', $penawaran->nomor_penawaran);
         $suffix = $lang === 'en' ? 'EN' : 'ID';
+        $fileName = "Quotation-{$safeNomor}-{$suffix}.pdf";
 
-        return $pdf->stream("Quotation-{$safeNomor}-{$suffix}.pdf");
+        return $pdf->stream($fileName);
     }
 }

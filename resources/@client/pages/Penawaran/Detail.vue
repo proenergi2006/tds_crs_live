@@ -7,7 +7,6 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
-import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import PenawaranPdfDialog from '@/components/SystemDesign/Dialog/PenawaranPdfDialog.vue'
@@ -51,7 +50,7 @@ const loading = ref(true)
 const ajukanLoading = ref(false)
 const ajukanDialogOpen = ref(false)
 
-/* Hardcode false — wiring ke role asli di luar scope, keputusan terpisah */
+// canSeeHarga masih hardcode false, nunggu role asli buat cek permission harga
 const canSeeHarga = ref(false)
 
 const items = computed<any[]>(() => penawaran.value.items || [])
@@ -130,6 +129,7 @@ const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>
       title: s.title,
       description: s.description,
       status: s.status,
+      statusText: s.status_text,
       timestamp: s.timestamp ? formatDateTime(s.timestamp) : undefined,
     })),
   }))
@@ -211,49 +211,49 @@ function formatNumber(v: number | string = 0) {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-x flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-x">
 
       <!-- HEADER -->
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
           <h2 class="font-display">{{ cfg.title }}</h2>
-          <p class="font-lead mt-1">{{ cfg.description }}</p>
+          <p class="mt-1 font-lead">{{ cfg.description }}</p>
         </div>
         <div class="flex items-center gap-2">
           <Button v-if="['draft', 'rejected_bm', 'rejected_om'].includes(penawaran.status)" variant="soft-pending"
             @click="openEdit">
-            <Lucide icon="Edit" class="mr-2 h-4 w-4" />
+            <Lucide icon="Edit" class="mr-2 w-4 h-4" />
             Edit
           </Button>
           <Button variant="outline-secondary" @click="goBack">
-            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+            <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
             Kembali
           </Button>
         </div>
       </div>
 
       <!-- 2-COLUMN LAYOUT -->
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div class="gap-6 grid grid-cols-1 xl:grid-cols-3">
 
         <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
           <!-- Section 1: Informasi Penawaran -->
           <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText">
-            <div class="grid grid-cols-12 gap-4">
+            <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-5">
                 <div class="space-y-3">
                   <div>
                     <div class="font-label">Nomor Penawaran</div>
                     <div
-                      class="font-strong mt-1 whitespace-pre-line text-danger border border-danger/20 rounded px-2 py-1 inline-block bg-danger/5 text-xs">
+                      class="inline-block bg-danger/5 mt-1 px-2 py-1 border border-danger/20 rounded font-strong text-danger text-xs whitespace-pre-line">
                       {{ dash(penawaran.nomor_penawaran) }}
                     </div>
                   </div>
 
                   <div>
                     <div class="font-label">Masa Berlaku</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">
+                    <div class="mt-1 font-strong whitespace-pre-line">
                       {{
                         penawaran.masa_berlaku
                           ? `${formatDate(penawaran.masa_berlaku)} – ${formatDate(penawaran.sampai_dengan)}`
@@ -263,14 +263,14 @@ function formatNumber(v: number | string = 0) {
                   </div>
                   <div>
                     <div class="font-label">Customer</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">
+                    <div class="mt-1 font-strong whitespace-pre-line">
                       {{ dash(penawaran.customer?.company_name) }}
                     </div>
                   </div>
 
                   <div>
                     <div class="font-label">Cabang</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">
+                    <div class="mt-1 font-strong whitespace-pre-line">
                       {{ dash(penawaran.cabang?.nama_cabang) }}
                     </div>
                   </div>
@@ -278,42 +278,42 @@ function formatNumber(v: number | string = 0) {
               </div>
 
               <div class="col-span-12 md:col-span-7">
-                <div class="font-label mx-2 mb-1">Kontak Tujuan</div>
+                <div class="mx-2 mb-1 font-label">Kontak Tujuan</div>
                 <div>
-                  <div class="rounded-xl border border-slate-200 px-4 py-3">
-                    <div class="grid grid-cols-12 gap-4">
+                  <div class="px-4 py-3 border border-slate-200 rounded-xl">
+                    <div class="gap-4 grid grid-cols-12">
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Kepada (Perusahaan / Dept.)</div>
-                        <div class="font-strong mt-1">
-                          {{ dash(penawaran.kepada) }}
+                        <div class="mt-1 font-strong">
+                          {{ dash(penawaran.customer?.company_name) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Nama (UP.)</div>
-                        <div class="font-strong mt-1">
-                          {{ dash(penawaran.nama) }}
+                        <div class="mt-1 font-strong">
+                          {{ dash(penawaran.customer_contact?.full_name) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Jabatan</div>
-                        <div class="font-strong mt-1">
-                          {{ dash(penawaran.jabatan) }}
+                        <div class="mt-1 font-strong">
+                          {{ dash(penawaran.customer_contact?.position) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
                         <div class="font-label">Telepon</div>
-                        <div class="font-strong mt-1">
-                          {{ dash(penawaran.telepon) }}
+                        <div class="mt-1 font-strong">
+                          {{ dash(penawaran.customer_contact?.mobile) }}
                         </div>
                       </div>
 
                       <div class="col-span-12">
                         <div class="font-label">Alamat</div>
-                        <div class="font-strong mt-1">
-                          {{ dash(penawaran.alamat) }}
+                        <div class="mt-1 font-strong">
+                          {{ dash(penawaran.customer?.head_office_address?.address_line) }}
                         </div>
                       </div>
                     </div>
@@ -324,75 +324,75 @@ function formatNumber(v: number | string = 0) {
 
           </CardSection>
 
-          <!-- Section 2: Detail Pengiriman & Daftar Produk (merged) -->
+          <!-- Section 2: Detail Pengiriman & Daftar Produk -->
           <CardSection title="Detail Pengiriman & Daftar Produk"
             description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
-            <div class="grid grid-cols-12 gap-4">
+            <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-6">
-                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                   <div>
                     <div class="font-label">Tipe Pengiriman</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
+                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
                   </div>
                   <div>
                     <div class="font-label">Metode</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
                   </div>
 
-                  <!-- Ongkos Kapal (conditional, ported from old standalone Ongkos Angkut section) -->
-                  <div v-if="showOngkosKapal" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-label mb-2">Ongkos Kapal</div>
+                  <!-- Ongkos Kapal (conditional) -->
+                  <div v-if="showOngkosKapal" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
+                    <div class="mb-2 font-label">Ongkos Kapal</div>
                     <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
                       Belum ada data ongkos kapal.
                     </div>
                     <div v-for="oa in ongkosKapal" :key="oa.id"
-                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-12 gap-4">
+                      class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
+                      <div class="gap-4 grid grid-cols-12">
                         <div class="col-span-12 md:col-span-4">
                           <div class="font-label">Transportir</div>
-                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
                         </div>
                         <div class="col-span-12 md:col-span-4">
                           <div class="font-label">Wilayah Angkut</div>
-                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
                           <div class="font-label">Volume</div>
-                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
                           <div class="font-label">Ongkos</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="mt-1 font-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Ongkos Truck (conditional, ported from old standalone Ongkos Angkut section) -->
-                  <div v-if="showOngkosTruck" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-label mb-2">Ongkos Truck</div>
+                  <!-- Ongkos Truck (conditional) -->
+                  <div v-if="showOngkosTruck" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
+                    <div class="mb-2 font-label">Ongkos Truck</div>
                     <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
                       Belum ada data ongkos truck.
                     </div>
                     <div v-for="oa in ongkosTruck" :key="oa.id"
-                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-12 gap-4">
+                      class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
+                      <div class="gap-4 grid grid-cols-12">
                         <div class="col-span-12 md:col-span-4">
                           <div class="font-label">Transportir</div>
-                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
                         </div>
                         <div class="col-span-12 md:col-span-4">
                           <div class="font-label">Wilayah Angkut</div>
-                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
                           <div class="font-label">Volume</div>
-                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="mt-1 font-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
                           <div class="font-label">Ongkos</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="mt-1 font-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
@@ -401,20 +401,20 @@ function formatNumber(v: number | string = 0) {
               </div>
 
               <div class="col-span-12 md:col-span-6">
-                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                   <div>
                     <div class="font-label">Lokasi Pengiriman</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
+                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
                   </div>
                   <div>
                     <div class="font-label">Titik Serah Terima & T&C Bongkar</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
+                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <Table bordered sm class="font-body mt-4">
+            <Table bordered sm class="mt-4 font-body">
               <Table.Thead class="bg-slate-50">
                 <Table.Th>Produk</Table.Th>
                 <Table.Th class="w-28 text-right">Persen</Table.Th>
@@ -424,7 +424,7 @@ function formatNumber(v: number | string = 0) {
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item">
                   <Table.Td>
                     <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="font-caption mt-0.5">
+                    <div class="mt-0.5 font-caption">
                       {{ item.produk?.jenis?.nama || '-' }}
                       <span class="mx-1">·</span>
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
@@ -437,37 +437,37 @@ function formatNumber(v: number | string = 0) {
                 </Table.Tr>
               </Table.Tbody>
 
-              <Table.Tbody v-if="items.length > 2" class="border-t border-slate-200 bg-slate-50">
+              <Table.Tbody v-if="items.length > 2" class="bg-slate-50 border-slate-200 border-t">
                 <Table.Tr>
-                  <Table.Td class="py-2.5 pr-6 text-right font-header">Total</Table.Td>
+                  <Table.Td class="py-2.5 pr-6 font-header text-right">Total</Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalPersen) }}%</Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalVolume) }}</Table.Td>
                   <Table.Td v-if="canSeeHarga" colspan="2"></Table.Td>
                 </Table.Tr>
               </Table.Tbody>
 
-              <Table.Tbody v-if="canSeeHarga" class="border-t border-slate-200 bg-slate-50">
+              <Table.Tbody v-if="canSeeHarga" class="bg-slate-50 border-slate-200 border-t">
                 <Table.Tr>
-                  <Table.Td :colspan="items.length > 2 ? 4 : 3" class="py-2.5 pr-6 text-right font-header">
+                  <Table.Td :colspan="items.length > 2 ? 4 : 3" class="py-2.5 pr-6 font-header text-right">
                     Subtotal Harga Tebus
                   </Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatCurrency(subtotal) }}</Table.Td>
                 </Table.Tr>
                 <Table.Tr v-if="totalDiskon > 0" class="bg-yellow-50">
                   <Table.Td :colspan="items.length > 2 ? 4 : 3"
-                    class="py-2.5 pr-6 text-right font-header !text-yellow-700">
+                    class="py-2.5 pr-6 font-header !text-yellow-700 text-right">
                     Diskon
                   </Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg text-xl text-right !text-yellow-800">
+                  <Table.Td class="py-2.5 font-num-lg !text-yellow-800 text-xl text-right">
                     - {{ formatCurrency(totalDiskon) }}
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr class="bg-emerald-50">
                   <Table.Td :colspan="items.length > 2 ? 4 : 3"
-                    class="py-2.5 pr-6 text-right font-header !text-emerald-700">
+                    class="py-2.5 pr-6 font-header !text-emerald-700 text-right">
                     Setelah Diskon
                   </Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg text-xl text-right !text-emerald-800">
+                  <Table.Td class="py-2.5 font-num-lg !text-emerald-800 text-xl text-right">
                     {{ formatCurrency(grandTotalHargaTebusSetelahDiskon) }}
                   </Table.Td>
                 </Table.Tr>
@@ -475,15 +475,15 @@ function formatNumber(v: number | string = 0) {
             </Table>
           </CardSection>
 
-          <div class="flex flex-col gap-6 xl:flex-row">
-            <div class="flex-1">
-              <!-- Section 3: Pembayaran & Lainnya (now standalone, no longer flex-paired) -->
+          <div class="gap-6 grid xl:grid-cols-5">
+            <div class="xl:col-span-3">
+              <!-- Section 3: Pembayaran & Lainnya -->
               <CardSection title="Pembayaran & Lainnya" description="Ketentuan pembayaran dan info lainnya"
-                icon="Wallet" icon-class="bg-amber-100 text-amber-600">
-                <div class="grid grid-cols-12 gap-4">
+                icon="Wallet" icon-class="bg-amber-100 text-amber-600" class="h-full">
+                <div class="gap-4 grid grid-cols-12">
                   <div v-for="field in paymentFields" :key="field.label" class="col-span-12 md:col-span-6">
                     <div class="font-label">{{ field.label }}</div>
-                    <div class="font-strong mt-1 whitespace-pre-line"
+                    <div class="mt-1 font-strong whitespace-pre-line"
                       :class="field.tone === 'red' ? 'text-danger' : ''">
                       {{ dash(field.value) }}
                     </div>
@@ -492,39 +492,39 @@ function formatNumber(v: number | string = 0) {
               </CardSection>
             </div>
 
-            <div class="flex-none">
+            <div class="xl:col-span-2">
               <!-- Section 4: Perhitungan Harga Dasar -->
               <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dasar dan estimasi PPN"
-                icon="Calculator" icon-class="bg-emerald-100 text-emerald-600">
+                icon="Calculator" icon-class="bg-emerald-100 text-emerald-600" class="h-full">
                 <dl class="flex flex-col gap-4 px-4">
-                  <div class="flex-row gap-4 flex items-center justify-between">
-                    <div class="grow bg-slate-100 p-4 rounded-lg text-right">
+                  <div class="flex flex-row justify-between items-center gap-4">
+                    <div class="bg-slate-100 p-4 rounded-lg text-right grow">
                       <dt class="font-label">Harga Dasar</dt>
-                      <dd class="font-num-lg text-lg mt-1 !text-slate-800">{{ formatCurrency(penawaran.harga_dasar) }}
+                      <dd class="mt-1 font-num-lg !text-slate-800 text-lg">{{ formatCurrency(penawaran.harga_dasar) }}
                       </dd>
                     </div>
-                    <div class="grow bg-slate-100 p-4 rounded-lg text-right">
+                    <div class="bg-slate-100 p-4 rounded-lg text-right grow">
                       <dt class="font-label">OAT per Volume</dt>
-                      <div class="font-num-lg text-lg mt-1 !text-slate-800">{{ formatCurrency(penawaran.oat) }}</div>
+                      <div class="mt-1 font-num-lg !text-slate-800 text-lg">{{ formatCurrency(penawaran.oat) }}</div>
                     </div>
                   </div>
-                  <div class="grow bg-slate-100 p-4 rounded-lg">
-                    <div class="flex items-start justify-between">
+                  <div class="bg-slate-100 p-4 rounded-lg grow">
+                    <div class="flex justify-between items-start">
                       <dt class="font-label">Subtotal (DPP)</dt>
-                      <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(dppHargaDasar) }}</dd>
+                      <dd class="mt-1 font-num-lg !text-slate-800 text-xl">{{ formatCurrency(dppHargaDasar) }}</dd>
                     </div>
                   </div>
-                  <div class="grow bg-slate-100 p-4 rounded-lg">
-                    <div class="flex items-start justify-between">
+                  <div class="bg-slate-100 p-4 rounded-lg grow">
+                    <div class="flex justify-between items-start">
                       <dt class="font-label">PPN 11%</dt>
-                      <dd class="font-num-lg text-xl mt-1 !text-slate-800">{{ formatCurrency(ppnHargaDasar) }}</dd>
+                      <dd class="mt-1 font-num-lg !text-slate-800 text-xl">{{ formatCurrency(ppnHargaDasar) }}</dd>
                     </div>
                   </div>
-                  <div class="grow bg-slate-100 p-4 rounded-lg">
-                    <div class="flex items-start justify-between">
+                  <div class="bg-slate-100 p-4 rounded-lg grow">
+                    <div class="flex justify-between items-start">
                       <dt class="font-label">TOTAL</dt>
-                      <dd class="font-num-lg text-xl mt-1 !text-emerald-700">{{ formatCurrency(grandTotalHargaDasar)
-                        }}</dd>
+                      <dd class="mt-1 font-num-lg !text-emerald-700 text-xl">{{ formatCurrency(grandTotalHargaDasar)
+                      }}</dd>
                     </div>
                   </div>
                 </dl>
@@ -532,24 +532,33 @@ function formatNumber(v: number | string = 0) {
             </div>
           </div>
 
-          <!-- Catatan & Syarat -->
-          <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
-            <div class="flex flex-row gap-4">
-              <div class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-label">Catatan</div>
-                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
+          <div class="gap-6 grid grid-cols-2">
+            <!-- Catatan & Syarat -->
+            <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
+              <div class="flex flex-col gap-4">
+                <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                  <div class="font-label">Catatan</div>
+                  <p class="mt-1 font-body whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
+                </div>
+                <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                  <div class="font-label">Syarat & Ketentuan</div>
+                  <p class="mt-1 font-body whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
+                </div>
               </div>
-              <div class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-label">Syarat & Ketentuan</div>
-                <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
+            </CardSection>
+
+            <!-- Lampiran Tambahan -->
+            <CardSection title="Lampiran Tambahan" icon="Paperclip" icon-class="bg-rose-100 text-rose-600">
+              <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                <p class="font-body whitespace-pre-line">{{ penawaran.lampiran_tambahan || '-' }}</p>
               </div>
-            </div>
-          </CardSection>
+            </CardSection>
+          </div>
         </div>
 
         <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-6 space-y-4">
+          <div class="top-6 sticky space-y-4">
 
             <!-- Status & Aksi -->
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
@@ -558,7 +567,7 @@ function formatNumber(v: number | string = 0) {
                 <div class="space-y-6">
                   <div v-for="(attempt, idx) in approvalAttempts" :key="idx" class="space-y-3">
                     <span v-if="attempt.label"
-                      class="font-label inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">
+                      class="inline-flex items-center bg-slate-50 px-3 py-1 border border-slate-200 rounded-full w-fit font-label text-slate-500">
                       {{ attempt.label }}
                     </span>
                     <Stepper :steps="attempt.steps" direction="vertical" />
@@ -566,19 +575,19 @@ function formatNumber(v: number | string = 0) {
                 </div>
 
                 <p v-if="penawaran.status === 'draft'"
-                  class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 font-caption">
+                  class="bg-slate-50 px-4 py-3 border border-slate-100 rounded-xl font-caption">
                   Pastikan seluruh data penawaran sudah benar sebelum diajukan ke Branch Manager.
                 </p>
 
                 <div class="flex flex-col gap-2">
-                  <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
-                    class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
-                    <Lucide icon="Printer" class="h-4 w-4" />
+                  <Button variant="outline-primary" class="inline-flex justify-center items-center gap-2 w-full"
+                    @click="previewLangDialogOpen = true">
+                    <Lucide icon="Printer" class="w-4 h-4" />
                     Preview PDF
                   </Button>
                   <Button v-if="penawaran.status === 'draft'" variant="primary"
-                    class="inline-flex w-full items-center justify-center gap-2" @click="ajukanDialogOpen = true">
-                    <Lucide icon="Send" class="h-4 w-4" />
+                    class="inline-flex justify-center items-center gap-2 w-full" @click="ajukanDialogOpen = true">
+                    <Lucide icon="Send" class="w-4 h-4" />
                     Ajukan ke Branch Manager
                   </Button>
                 </div>

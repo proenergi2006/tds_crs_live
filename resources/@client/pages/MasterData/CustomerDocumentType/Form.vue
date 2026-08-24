@@ -14,7 +14,6 @@ type CustomerDocumentTypeItem = {
   code: string
   name: string
   is_active: boolean
-  requires_number: boolean
 }
 
 const customerDocumentTypeApi = createResourceApi('/customer-document-types')
@@ -44,7 +43,6 @@ const form = reactive({
   code: '',
   name: '',
   is_active: true,
-  requires_number: false,
 })
 
 const serverErrors = reactive({
@@ -102,7 +100,6 @@ function resetForm() {
       code: props.item.code ?? '',
       name: props.item.name ?? '',
       is_active: props.item.is_active,
-      requires_number: props.item.requires_number ?? false,
     })
     return
   }
@@ -112,7 +109,6 @@ function resetForm() {
     code: '',
     name: '',
     is_active: true,
-    requires_number: false,
   })
 }
 
@@ -131,7 +127,6 @@ function getFormPayload() {
     code: form.code,
     name: form.name,
     is_active: form.is_active,
-    requires_number: form.requires_number,
   }
 }
 
@@ -213,18 +208,6 @@ async function submitForm() {
           </FormSwitch>
           <span class="font-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <FormLabel htmlFor="document-type-requires-number">Wajib Nomor Dokumen</FormLabel>
-        <div class="mt-2 flex items-center gap-3">
-          <FormSwitch>
-            <FormSwitch.Input id="document-type-requires-number" v-model="form.requires_number" type="checkbox" />
-          </FormSwitch>
-          <span class="font-body">
-            {{ form.requires_number ? 'Ya, nomor dokumen wajib diisi' : 'Tidak, nomor dokumen opsional' }}
           </span>
         </div>
       </div>
