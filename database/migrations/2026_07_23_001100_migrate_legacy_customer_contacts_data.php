@@ -10,8 +10,9 @@ return new class extends Migration
      * keputusan pembelian) dipetakan ke director; "ordering" (yang menempatkan
      * order) ke procurement; "billing" dan "invoice" keduanya urusan
      * penagihan/finance sehingga dipetakan ke finance yang sama (tidak ada tipe
-     * terpisah untuk keduanya di 4 tipe kontak yang di-seed). pic_fuelman_* tidak
-     * dipetakan sama sekali -- di-drop total per keputusan yang dikonfirmasi.
+     * terpisah untuk keduanya di 4 tipe kontak yang di-seed). pic_fuelman_*
+     * tidak dipetakan sama sekali -- di-drop total, tidak ada tipe kontak
+     * padanannya.
      */
     private const TYPE_MAP = [
         'decision' => 'director',
@@ -22,6 +23,14 @@ return new class extends Migration
 
     public function up(): void
     {
+        $legacyRows = DB::table('customer_contacts_legacy')->get();
+
+        // Tabel legacy kosong (DB fresh, dev/test) = gak ada apapun buat dipindah -- skip guard
+        // seeder di bawah, biar migrate:fresh gak selalu butuh CustomerContactTypeSeeder duluan.
+        if ($legacyRows->isEmpty()) {
+            return;
+        }
+
         $contactTypeIds = DB::table('customer_contact_types')->pluck('id', 'code');
 
         foreach (array_unique(self::TYPE_MAP) as $code) {
@@ -32,8 +41,6 @@ return new class extends Migration
                 );
             }
         }
-
-        $legacyRows = DB::table('customer_contacts_legacy')->get();
 
         $now = now();
         $contactRows = [];

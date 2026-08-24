@@ -17,6 +17,7 @@ import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import DateRangeField from '@/components/SystemDesign/Form/DateRangeField.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
+import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
@@ -58,6 +59,20 @@ const transportirs = ref<any[]>([])
 const wilayahs = ref<any[]>([])
 const volumes = ref<any[]>([])
 
+/* State: kontak tujuan */
+const customerContacts = ref<any[]>([])
+const customerContactsLoading = ref(false)
+const newContactOpen = ref(false)
+const newContactSaving = ref(false)
+const newContactError = ref<string | null>(null)
+const newContactForm = reactive({
+  full_name: '',
+  position: '',
+  phone: '',
+  mobile: '',
+  email: '',
+})
+
 /* State: ongkos angkut */
 const oaKapal = ref(0)
 const oaTruck = ref(0)
@@ -86,19 +101,15 @@ interface ItemLine {
 }
 
 const form = reactive({
-  // Section 1: Informasi Penawaran
+  /* Section 1: Informasi Penawaran */
   nomor_penawaran: '',
   id_customer: '',
+  customer_contact_id: '',
   id_cabang: '' as number | '',
   masa_berlaku: '',
   sampai_dengan: '',
-  kepada: '',
-  nama: '',
-  jabatan: '',
-  telepon: '',
-  alamat: '',
 
-  // Section 2: Detail Pengiriman & Daftar Produk
+  /* Section 2: Detail Pengiriman & Daftar Produk */
   type_pengiriman: '',
   metode: '',
   ukuran_dasar: '',
@@ -106,9 +117,9 @@ const form = reactive({
   lokasi_pengiriman: '',
   keterangan: '',
 
-  // Section 3: Pembayaran & Lainnya
+  /* Section 3: Pembayaran & Lainnya */
   tipe_pembayaran: '',
-  acuan_pembayaran: '',    // Proenergi: acuan pembayaran
+  acuan_pembayaran: '',
   dp_persen: '',
   dp_keterangan: '',
   repayment_persen: '',
@@ -119,15 +130,16 @@ const form = reactive({
   refund: 0,
   other_cost: 0,
 
-  // Section 4: Perhitungan Harga Dasar
+  /* Section 4: Perhitungan Harga Dasar */
   harga_dasar: 0,
   oat: 0,
-  // TODO: discount input — tersembunyi, akan diimplementasi di task terpisah
+  // discount field ada tapi input-nya sengaja disembunyikan dulu di UI
   discount: 0,
 
-  // Sidebar: Catatan & Syarat
+  /* Sidebar: Catatan & Syarat */
   catatan: '',
   syarat_ketentuan: '',
+  lampiran_tambahan: '',
 })
 
 /* Computed: totals */
@@ -170,6 +182,14 @@ const selectedCabangName = computed(() =>
   cabangs.value.find(c => String(c.id_cabang) === String(form.id_cabang))?.nama_cabang || '-'
 )
 
+// Kepada & alamat cerminan data Customer, bukan milik penawaran -- diubahnya di halaman Customer.
+const selectedCustomer = computed(() =>
+  customers.value.find(c => String(c.id_customer) === String(form.id_customer)) ?? null
+)
+const selectedContact = computed(() =>
+  customerContacts.value.find(c => String(c.id) === String(form.customer_contact_id)) ?? null
+)
+
 const priceReferenceRows = computed(() => {
   const q = priceRefSearch.value.trim().toLowerCase()
   return produks.value
@@ -200,9 +220,10 @@ const priceRefSummary = computed(() => {
   return { total, withPrice, without: total - withPrice }
 })
 
-/* Validation — useVuelidate (sesuai guideline project) */
+/* Validation */
 const validationRules = computed(() => ({
   id_customer: { required: helpers.withMessage('Customer wajib diisi.', required) },
+  customer_contact_id: { required: helpers.withMessage('Kontak tujuan wajib dipilih.', required) },
   id_cabang: { required: helpers.withMessage('Cabang wajib dipilih.', required) },
   type_pengiriman: { required: helpers.withMessage('Type Pengiriman wajib dipilih.', required) },
   masa_berlaku: { required: helpers.withMessage('Masa berlaku wajib diisi.', required) },
@@ -284,7 +305,7 @@ function itemInputClass(idx: number, field: 'id_produk' | 'persen'): string {
   return itemError(idx, field) ? 'input-error' : ''
 }
 
-/* Kumpulkan semua pesan error (top-level + per-baris items) untuk ringkasan sticky. */
+// gabungin semua error message (top-level + per-baris item) buat ringkasan sticky
 function collectErrorMessages(): string[] {
   const msgs: string[] = []
   const push = (m?: string) => { if (m && !msgs.includes(m)) msgs.push(m) }
@@ -349,6 +370,14 @@ async function fetchHargaByDate() {
 
 watch(() => [form.masa_berlaku, form.sampai_dengan, form.id_cabang], fetchHargaByDate)
 
+// Kontak yang lagi kepilih ikut hilang kalau dia bukan milik customer yang baru dipilih.
+watch(() => form.id_customer, async (val) => {
+  await fetchCustomerContacts(val)
+  if (form.customer_contact_id && !customerContacts.value.some(c => String(c.id) === String(form.customer_contact_id))) {
+    form.customer_contact_id = ''
+  }
+})
+
 watch(() => oaKapalInput.id_volume, (val) => {
   const vol = volumes.value.find(v => String(v.id_volume) === String(val))
   if (vol) form.ukuran_dasar = String(vol.volume ?? '')
@@ -392,6 +421,23 @@ async function fetchSelects() {
   }
 }
 
+async function fetchCustomerContacts(idCustomer: number | string) {
+  if (!idCustomer) {
+    customerContacts.value = []
+    return
+  }
+  customerContactsLoading.value = true
+  try {
+    const { data } = await axios.get(`/api/customers/${idCustomer}/contacts`)
+    customerContacts.value = Array.isArray(data) ? data : (data.data ?? [])
+  } catch {
+    customerContacts.value = []
+    notifyError('Gagal', 'Gagal memuat kontak customer')
+  } finally {
+    customerContactsLoading.value = false
+  }
+}
+
 async function fetchTransportirWilayahVolume() {
   const [t, w, v] = await Promise.all([
     axios.get('/api/transportirs'),
@@ -412,25 +458,21 @@ async function fetchPenawaran() {
     }
 
     Object.assign(form, {
-      // Section 1: Informasi Penawaran
+      /* Section 1: Informasi Penawaran */
       nomor_penawaran: data.nomor_penawaran,
       id_customer: data.id_customer ? String(data.id_customer) : '',
+      customer_contact_id: data.customer_contact?.id_contact ? String(data.customer_contact.id_contact) : '',
       id_cabang: data.id_cabang,
       masa_berlaku: data.masa_berlaku,
       sampai_dengan: data.sampai_dengan,
-      kepada: data.kepada || '',
-      nama: data.nama || '',
-      jabatan: data.jabatan || '',
-      telepon: data.telepon || '',
-      alamat: data.alamat || '',
 
-      // Section 2: Detail Pengiriman & Daftar Produk
+      /* Section 2: Detail Pengiriman & Daftar Produk */
       type_pengiriman: data.type_pengiriman || '',
       metode: data.metode || '',
       lokasi_pengiriman: data.lokasi_pengiriman || '',
       keterangan: data.keterangan || '',
 
-      // Section 3: Pembayaran & Lainnya
+      /* Section 3: Pembayaran & Lainnya */
       tipe_pembayaran: data.tipe_pembayaran || '',
       acuan_pembayaran: data.acuan_pembayaran || '',
       dp_persen: formatInt(data.dp_persen),
@@ -443,12 +485,13 @@ async function fetchPenawaran() {
       refund: data.refund != null ? Number(data.refund) : 0,
       other_cost: data.other_cost != null ? Number(data.other_cost) : 0,
 
-      // Section 4: Perhitungan Harga Dasar
+      /* Section 4: Perhitungan Harga Dasar */
       harga_dasar: data.harga_dasar != null ? Number(data.harga_dasar) : 0,
 
-      // Sidebar: Catatan & Syarat
+      /* Sidebar: Catatan & Syarat */
       catatan: data.catatan || '',
       syarat_ketentuan: data.syarat_ketentuan || '',
+      lampiran_tambahan: data.lampiran_tambahan || '',
     })
 
     const ongkosList = Array.isArray(data.ongkos) ? data.ongkos : []
@@ -516,8 +559,7 @@ function removeItem(idx: number) {
   form.items.forEach(it => updateHargaTebus(it))
 }
 
-/* Persen: evenSplitPersen dipakai saat jumlah baris berubah (baris pertama / hapus baris),
-   redistributePersen dipakai saat user mengedit persen salah satu baris secara manual. */
+/* evenSplitPersen jalan pas jumlah baris berubah, redistributePersen jalan pas user edit persen manual */
 function evenSplitPersen(items: ItemLine[]) {
   const n = items.length
   if (n === 0) return
@@ -599,10 +641,7 @@ function updateHargaTebus(item: ItemLine) {
   const hasil = harga * persen / 100
   item.harga_tebus = isNaN(hasil) ? '' : hasil.toLocaleString('id-ID')
 
-  // Volume per item = total volume order (ukuran_dasar) × persen, hanya untuk metode
-  // berbasis kapal (CIF/DAP) di mana ukuran_dasar terisi dari pilihan Volume kapal.
-  // Untuk metode non-kapal (Franco/FOT/FOB) ukuran_dasar kosong → volume diisi manual,
-  // jangan ditimpa.
+  // volume = ukuran_dasar × persen, cuma buat metode kapal (CIF/DAP); metode lain ukuran_dasar kosong jadi biarin manual
   const dasar = toFloat(form.ukuran_dasar)
   if (dasar > 0) {
     const volume = Math.round(dasar * persen / 100)
@@ -651,18 +690,14 @@ async function submitForm() {
     }
 
     const payload = {
-      // Section 1: Informasi Penawaran
+      /* Section 1: Informasi Penawaran */
       id_customer: Number(form.id_customer),
+      customer_contact_id: Number(form.customer_contact_id),
       id_cabang: form.id_cabang,
       masa_berlaku: form.masa_berlaku,
       sampai_dengan: form.sampai_dengan,
-      kepada: form.kepada,
-      nama: form.nama,
-      jabatan: form.jabatan,
-      telepon: form.telepon,
-      alamat: form.alamat,
 
-      // Section 2: Detail Pengiriman & Daftar Produk
+      /* Section 2: Detail Pengiriman & Daftar Produk */
       type_pengiriman: form.type_pengiriman,
       metode: form.metode,
       ongkos: payloadOngkos,
@@ -670,7 +705,7 @@ async function submitForm() {
       lokasi_pengiriman: form.lokasi_pengiriman,
       keterangan: form.keterangan,
 
-      // Section 3: Pembayaran & Lainnya
+      /* Section 3: Pembayaran & Lainnya */
       tipe_pembayaran: form.tipe_pembayaran,
       ...(isProenergi ? {
         acuan_pembayaran: form.acuan_pembayaran,
@@ -685,7 +720,7 @@ async function submitForm() {
       refund: form.refund,
       other_cost: form.other_cost,
 
-      // Section 4: Perhitungan Harga Dasar
+      /* Section 4: Perhitungan Harga Dasar */
       harga_dasar: form.harga_dasar,
       oat: form.oat,
       subtotal: subtotal.value,
@@ -697,9 +732,10 @@ async function submitForm() {
       ppn_harga_dasar: ppnHargaDasar.value,
       grand_total_harga_dasar: grandTotalHargaDasar.value,
 
-      // Sidebar: Catatan & Syarat
+      /* Sidebar: Catatan & Syarat */
       catatan: form.catatan,
       syarat_ketentuan: form.syarat_ketentuan,
+      lampiran_tambahan: form.lampiran_tambahan,
     }
 
     if (isEdit) {
@@ -725,6 +761,45 @@ async function submitForm() {
 
 function goBack() {
   router.push({ name: cfg.listRoute })
+}
+
+// Jalan pintas biar user gak perlu keluar dari form penawaran cuma buat nambah satu kontak.
+function openNewContactForm() {
+  if (!form.id_customer) return
+  newContactError.value = null
+  Object.assign(newContactForm, { full_name: '', position: '', phone: '', mobile: '', email: '' })
+  newContactOpen.value = true
+}
+
+async function submitNewContact() {
+  newContactError.value = null
+  if (!newContactForm.full_name.trim()) {
+    newContactError.value = 'Nama wajib diisi.'
+    return
+  }
+  newContactSaving.value = true
+  try {
+    const { data } = await axios.post(`/api/customers/${form.id_customer}/contacts`, {
+      full_name: newContactForm.full_name.trim(),
+      position: newContactForm.position.trim() || null,
+      phone: newContactForm.phone.trim() || null,
+      mobile: newContactForm.mobile.trim() || null,
+      email: newContactForm.email.trim() || null,
+    })
+    customerContacts.value.push(data)
+    form.customer_contact_id = String(data.id)
+    newContactOpen.value = false
+    success('Berhasil', 'Kontak berhasil ditambahkan.')
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errors = e.response?.data?.errors || {}
+      newContactError.value = (Object.values(errors)[0] as string[])?.[0] || 'Periksa kembali input Anda.'
+    } else {
+      newContactError.value = e.response?.data?.message ?? 'Gagal menyimpan kontak.'
+    }
+  } finally {
+    newContactSaving.value = false
+  }
 }
 
 /* Helpers */
@@ -770,6 +845,7 @@ function formatCurrency(v: number | string = 0) {
   const n = typeof v === 'string' ? parseFloat(v) : v
   return !isNaN(n) ? `Rp. ${n.toLocaleString('id-ID')}` : '-'
 }
+
 </script>
 
 <template>
@@ -847,28 +923,54 @@ function formatCurrency(v: number | string = 0) {
             <div class="grid grid-cols-12 gap-4">
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Kepada (Perusahaan / Dept.)</FormLabel>
-                <FormInput v-model="form.kepada" type="text" placeholder="PT Contoh / Purchasing" />
+                <div class="mt-1 font-strong">{{ selectedCustomer?.company_name || '-' }}</div>
               </div>
 
               <div class="col-span-12 md:col-span-6">
-                <FormLabel>Nama (UP.)</FormLabel>
-                <FormInput v-model="form.nama" type="text" placeholder="Nama PIC (UP.)" />
+                <FormLabel>Kontak Tujuan
+                  <RequiredAsterisk />
+                </FormLabel>
+                <div v-if="!form.id_customer" class="mt-1 font-body text-slate-500">
+                  Pilih Customer terlebih dahulu
+                </div>
+                <div v-else-if="customerContactsLoading" class="mt-1 inline-flex items-center gap-2 font-body text-slate-500">
+                  <Lucide icon="Loader2" class="h-4 w-4 animate-spin" />
+                  Memuat kontak…
+                </div>
+                <div v-else-if="customerContacts.length === 0" class="mt-1 font-body text-slate-500">
+                  Belum ada kontak untuk customer ini
+                </div>
+                <TomSelect v-else v-model="form.customer_contact_id" :options="{
+                  placeholder: 'Pilih Kontak Tujuan...',
+                  dropdownParent: 'body' as const,
+                }" class="w-full" :class="inputClass('customer_contact_id')">
+                  <option v-for="c in customerContacts" :key="c.id" :value="String(c.id)">
+                    {{ c.full_name }}{{ c.position ? ` (${c.position})` : '' }}
+                  </option>
+                </TomSelect>
+                <small v-if="fieldError('customer_contact_id')" class="block input-error-text">{{
+                  fieldError('customer_contact_id') }}</small>
+                <Button type="button" size="sm" :variant="customerContacts.length === 0 ? 'primary' : 'outline-primary'"
+                  class="mt-2 inline-flex items-center gap-2" :disabled="!form.id_customer || customerContactsLoading"
+                  @click="openNewContactForm">
+                  <Lucide icon="PlusCircle" class="h-4 w-4" />
+                  Tambah Kontak Baru
+                </Button>
               </div>
 
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Jabatan</FormLabel>
-                <FormInput v-model="form.jabatan" type="text" placeholder="Purchasing / Manager" />
+                <div class="mt-1 font-strong">{{ selectedContact?.position || '-' }}</div>
               </div>
 
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Telepon</FormLabel>
-                <FormInput v-model="form.telepon" type="text" placeholder="0812xxxx / 021-xxxx" />
+                <div class="mt-1 font-strong">{{ selectedContact?.mobile || '-' }}</div>
               </div>
 
               <div class="col-span-12">
                 <FormLabel>Alamat</FormLabel>
-                <FormTextarea v-model="form.alamat" :rows="2" :auto-resize="true"
-                  placeholder="Alamat surat / pengiriman" />
+                <div class="mt-1 font-strong whitespace-pre-line">{{ selectedCustomer?.company_address || '-' }}</div>
               </div>
             </div>
           </div>
@@ -876,7 +978,7 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </CardSection>
 
-    <!-- Section 2: Rincian Item -->
+    <!-- Section 2: Detail Pengiriman & Daftar Produk -->
     <CardSection title="Detail Pengiriman & Daftar Produk"
               description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
               icon-class="bg-indigo-100 text-indigo-600">
@@ -1138,7 +1240,7 @@ function formatCurrency(v: number | string = 0) {
                         <td></td>
                         <td></td>
                       </tr>
-                      <!-- TODO: discount input (form.discount) — tersembunyi, akan diimplementasi di task terpisah -->
+                      <!-- discount field (form.discount) sengaja disembunyikan dulu di UI -->
                       <tr v-if="totalDiskon > 0" class="bg-yellow-50">
                         <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
                         <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
@@ -1415,6 +1517,38 @@ function formatCurrency(v: number | string = 0) {
               </Slideover.Panel>
             </Slideover>
 
+            <FormModal :open="newContactOpen" title="Tambah Kontak Baru"
+              description="Kontak baru ini langsung tersimpan di master data customer." :loading="newContactSaving"
+              :error="newContactError" submit-text="Tambah" submit-icon="PlusCircle" @close="newContactOpen = false"
+              @submit="submitNewContact">
+              <div class="space-y-3">
+                <div>
+                  <FormLabel>Nama Lengkap
+                    <RequiredAsterisk />
+                  </FormLabel>
+                  <FormInput v-model="newContactForm.full_name" placeholder="Nama lengkap" />
+                </div>
+                <div>
+                  <FormLabel>Posisi/Jabatan</FormLabel>
+                  <FormInput v-model="newContactForm.position" placeholder="Contoh: Purchasing Manager" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <FormLabel>Telepon</FormLabel>
+                    <FormInput v-model="newContactForm.phone" placeholder="021-xxxxxxx" />
+                  </div>
+                  <div>
+                    <FormLabel>Mobile</FormLabel>
+                    <FormInput v-model="newContactForm.mobile" placeholder="08xx-xxxx-xxxx" />
+                  </div>
+                </div>
+                <div>
+                  <FormLabel>Email</FormLabel>
+                  <FormInput v-model="newContactForm.email" type="email" placeholder="nama@email.com" />
+                </div>
+              </div>
+            </FormModal>
+
             <!-- Sidebar: Catatan & Syarat Ketentuan -->
             <template #sidebar>
               <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
@@ -1429,6 +1563,14 @@ function formatCurrency(v: number | string = 0) {
                     <FormLabel>Syarat & Ketentuan</FormLabel>
                     <FormTextarea v-model="form.syarat_ketentuan" :rows="5" placeholder="Syarat dan ketentuan…" />
                   </div>
+                </div>
+              </CardSection>
+
+              <CardSection title="Lampiran Tambahan" description="Rincian tambahan di luar template standar"
+                icon="Paperclip" icon-class="bg-rose-100 text-rose-600">
+                <div>
+                  <FormLabel>Lampiran Tambahan</FormLabel>
+                  <FormTextarea v-model="form.lampiran_tambahan" :rows="5" placeholder="Lampiran tambahan…" />
                 </div>
               </CardSection>
             </template>

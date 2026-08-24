@@ -182,4 +182,24 @@ class DocumentApprovalService
 
         return $approval;
     }
+
+    /**
+     * Tutup siklus in_progress TERBARU milik $approvable sebagai Cancelled.
+     * No-op (return null) kalau tidak ada siklus in_progress.
+     */
+    public function cancelActiveCycle(Model $approvable): ?DocumentApproval
+    {
+        $approval = $this->activeCycle($approvable);
+
+        if (!$approval) {
+            return null;
+        }
+
+        $approval->update([
+            'status'       => DocumentApprovalStatus::Cancelled,
+            'completed_at' => now(),
+        ]);
+
+        return $approval;
+    }
 }

@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { debounce } from 'lodash'
-import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
-import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
-import { copyToClipboard } from '@/utils/clipboard'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
-
-type VerificationTab = 'all' | 'verified' | 'unverified'
 
 const customerApi = createResourceApi('/customers')
 const { success, error } = useNotification()
@@ -40,20 +35,6 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
 
-/* State: verification tab */
-const activeTab = ref<VerificationTab>('all')
-const tabOptions: { value: VerificationTab; label: string }[] = [
-  { value: 'all', label: 'All Data' },
-  { value: 'verified', label: 'Verified' },
-  { value: 'unverified', label: 'Unverified' },
-]
-const tabCounts = ref<Partial<Record<VerificationTab, number>>>({})
-
-/* State: link generate/regenerate, and result dialog */
-const linkBusyId = ref<number | null>(null)
-const linkResultOpen = ref(false)
-const linkResult = reactive({ token: '', link: '', alreadyExists: false })
-
 const canManageCustomer = computed(() => auth.can('customer.manage'))
 const canViewAnyCustomer = computed(() => auth.can('customer.viewAny'))
 
@@ -64,29 +45,15 @@ function canManageRow(item: any) {
   )
 }
 
-/* Computed: summary cards (Proenergi only)
-   TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
-   di-drop dari `customers` (F0-A) dan tidak lagi ada di response API.
-   totalProspect/totalTetap DIHAPUS (bukan sekadar dikosongkan) karena tidak
-   dipakai di manapun lagi di file ini — card-nya sudah placeholder "-" statis
-   di template. Kalau nanti disambungkan lagi ke customer_status (Fase 7),
-   tambahkan ulang computed serupa yang membaca field baru itu. */
+/* Computed: summary cards (Proenergi only) */
 const totalPenawaran = computed(() =>
   customers.value.reduce((sum, c) => sum + Number(c.quotation_count ?? 0), 0)
-)
-
-const linkResultTitle = computed(() => (linkResult.alreadyExists ? 'Token Sudah Ada' : 'Token Dibuat'))
-const linkResultDescription = computed(() =>
-  linkResult.alreadyExists
-    ? 'Link verifikasi untuk customer ini masih aktif dan belum kedaluwarsa.'
-    : 'Link verifikasi baru berhasil dibuat untuk customer ini.'
 )
 
 onMounted(() => fetchData())
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
-watch(activeTab, () => fetchData(1))
 
 async function fetchData(page = currentPage.value) {
   loading.value = true
@@ -95,28 +62,16 @@ async function fetchData(page = currentPage.value) {
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
-      status: activeTab.value,
     })
     customers.value = data.data ?? []
     currentPage.value = data.meta?.current_page ?? 1
     totalPages.value = data.meta?.last_page ?? 1
     totalRecords.value = data.meta?.total ?? 0
-    tabCounts.value = data.tab_counts ?? tabCounts.value
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data customer')
   } finally {
     loading.value = false
   }
-}
-
-function selectTab(tab: VerificationTab) {
-  if (activeTab.value === tab) return
-  activeTab.value = tab
-}
-
-function tabLabel(opt: { value: VerificationTab; label: string }) {
-  const count = tabCounts.value[opt.value]
-  return typeof count === 'number' ? `${opt.label} (${count})` : opt.label
 }
 
 function goToPage(page: number) {
@@ -127,61 +82,8 @@ function openCreate() {
   router.push({ name: 'customers-create' })
 }
 
-function openEdit(id: number) {
-  router.push({ name: 'customers-edit', params: { id } })
-}
-
-function openCreatePenawaran(id: number) {
-  const routeName = isProenergi ? 'penawarans-create-proenergi' : 'penawarans-create'
-  router.push({ name: routeName, query: { customer_id: id } })
-}
-
 function openReview(idCustomer: number) {
   router.push({ name: 'customer-detail', params: { id: idCustomer } })
-}
-
-async function generateLink(item: any) {
-  try {
-    linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
-
-    linkResult.token = data.verification?.verification_token ?? '-'
-    linkResult.link = data.link
-    linkResult.alreadyExists = !!data.already_exists
-    linkResultOpen.value = true
-
-    fetchData(currentPage.value)
-  } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Gagal membuat link verifikasi.')
-  } finally {
-    linkBusyId.value = null
-  }
-}
-
-async function copyLinkResult() {
-  const copied = await copyToClipboard(linkResult.link)
-  if (copied) {
-    linkResultOpen.value = false
-    success('Link disalin', 'Link verifikasi berhasil disalin ke clipboard.')
-  } else {
-    error('Gagal menyalin', 'Link tidak berhasil disalin otomatis. Silakan salin manual dari kotak token di atas.')
-  }
-}
-
-function closeLinkResult() {
-  linkResultOpen.value = false
-}
-
-async function openCustomerLink(item: any) {
-  try {
-    linkBusyId.value = item.id_customer
-    const { data } = await axios.post(`/api/customers/${item.id_customer}/onboarding-link`)
-    window.open(data.link, '_blank')
-  } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Gagal membuka link verifikasi.')
-  } finally {
-    linkBusyId.value = null
-  }
 }
 
 function confirmDelete(id: number) {
@@ -205,41 +107,13 @@ async function submitDelete() {
   }
 }
 
-/* TODO: wire ke customer_status setelah Fase 7 — `status_customer` sudah
-   di-drop dari `customers` (F0-A) dan tidak ada lagi di response API.
-   getStatusLabel/getStatusClass DIHAPUS (bukan sekadar dikosongkan) karena
-   tidak dipakai di manapun lagi di file ini — badge kolom "Status" di tabel
-   sudah placeholder "-" statis di template. Kalau nanti disambungkan lagi ke
-   customer_status (Fase 7), tambahkan ulang function serupa yang membaca
-   field baru itu. */
-
-// Badge berbasis kyc_status. Tidak ada badge "ditolak"/"proses_internal" --
-// tidak ada BM step / penolakan customer di model KYC ini. Tab 'verified'
-// aksi "Pembaruan Data" mengarah ke Tab 1 CustomerDataTab (endpoint
-// kontak/dokumen TIDAK ikut guard kunci backend); "Create Sales Order"
-// reuse shortcut openCreatePenawaran.
+// Status verifikasi disederhanakan ke UI: hanya "Verified"/"Unverified", backend tetap kirim 6 state.
 function getVerificationBadgeLabel(item: any) {
-  switch (item.verification_badge) {
-    case 'verified': return 'Verified'
-    case 'belum_ada_link': return 'Belum Ada Link'
-    case 'menunggu_customer': return 'Menunggu Customer'
-    case 'link_kedaluwarsa': return 'Link Kedaluwarsa'
-    case 'perlu_direview': return 'Perlu Direview'
-    case 'menunggu_admin_finance': return 'Menunggu Admin Finance'
-    default: return '-'
-  }
+  return item.verification_badge === 'verified' ? 'Verified' : 'Unverified'
 }
 
 function getVerificationBadgeClass(badge?: string) {
-  switch (badge) {
-    case 'verified': return 'bg-emerald-100 text-emerald-700'
-    case 'belum_ada_link': return 'bg-slate-100 text-slate-500'
-    case 'menunggu_customer': return 'bg-amber-100 text-amber-700'
-    case 'link_kedaluwarsa': return 'bg-red-100 text-red-700'
-    case 'perlu_direview': return 'bg-sky-100 text-sky-700'
-    case 'menunggu_admin_finance': return 'bg-indigo-100 text-indigo-700'
-    default: return 'bg-slate-100 text-slate-500'
-  }
+  return badge === 'verified' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-700'
 }
 </script>
 
@@ -262,8 +136,7 @@ function getVerificationBadgeClass(badge?: string) {
           <div class="font-label">Total Customer</div>
           <div class="font-num-display mt-1">{{ totalRecords }}</div>
         </div>
-        <!-- TODO: wire ke customer_status setelah Fase 7 — status_customer
-             sudah di-drop dari API, ditampilkan sebagai placeholder sementara -->
+        <!-- status_customer belum tersedia di API, ditampilkan sebagai placeholder -->
         <div class="box p-4">
           <div class="font-label">Prospect</div>
           <div class="font-num-display mt-1 text-slate-300"
@@ -280,14 +153,6 @@ function getVerificationBadgeClass(badge?: string) {
           <div class="font-label">Total Penawaran</div>
           <div class="font-num-display mt-1 !text-primary">{{ totalPenawaran }}</div>
         </div>
-      </div>
-
-      <!-- Verification tab selector -->
-      <div class="flex flex-wrap items-center gap-2">
-        <Button v-for="opt in tabOptions" :key="opt.value"
-          :variant="activeTab === opt.value ? 'primary' : 'outline-primary'" size="sm" @click="selectTab(opt.value)">
-          {{ tabLabel(opt) }}
-        </Button>
       </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
@@ -337,53 +202,13 @@ function getVerificationBadgeClass(badge?: string) {
               {{ row.quotation_count ?? 0 }}
             </Table.Td>
             <Table.Td class="text-center">
-              <div v-if="activeTab === 'all'" class="inline-flex items-center justify-center gap-2">
-                <ExtendableButton variant="soft-primary" rounded label="RFQ"
-                  @click="openCreatePenawaran(row.id_customer)">
-                  <Lucide icon="FilePlus" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton v-if="canManageRow(row)" variant="soft-pending" rounded label="Edit"
-                  @click="openEdit(row.id_customer)">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+              <div class="inline-flex items-center justify-center gap-2">
+                <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openReview(row.id_customer)">
+                  <Lucide icon="Eye" class="h-4 w-4" />
                 </ExtendableButton>
                 <ExtendableButton v-if="canManageRow(row)" variant="soft-danger" rounded label="Hapus"
                   @click="confirmDelete(row.id_customer)">
                   <Lucide icon="Trash2" class="h-4 w-4" />
-                </ExtendableButton>
-              </div>
-
-              <div v-else-if="activeTab === 'unverified'" class="inline-flex items-center justify-center gap-2">
-                <ExtendableButton v-if="row.verification_badge === 'belum_ada_link'" variant="soft-secondary" rounded
-                  label="Generate Link" :disabled="linkBusyId === row.id_customer" @click="generateLink(row)">
-                  <Lucide icon="Link" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton
-                  v-else-if="row.verification_badge === 'link_kedaluwarsa' || row.verification_badge === 'ditolak'"
-                  variant="soft-danger" rounded label="Regenerate Link" :disabled="linkBusyId === row.id_customer"
-                  @click="generateLink(row)">
-                  <Lucide icon="RefreshCw" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton v-else-if="row.verification_badge === 'menunggu_customer'" variant="soft-warning"
-                  rounded label="Buka Link" :disabled="linkBusyId === row.id_customer" @click="openCustomerLink(row)">
-                  <Lucide icon="ExternalLink" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton v-else-if="row.verification_badge === 'perlu_direview'" variant="soft-info" rounded
-                  label="Verifikasi" @click="openReview(row.id_customer)">
-                  <Lucide icon="ClipboardCheck" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton v-else-if="row.verification_badge === 'menunggu_admin_finance'"
-                  variant="soft-secondary" rounded label="Lihat Detail" @click="openReview(row.id_customer)">
-                  <Lucide icon="Eye" class="h-4 w-4" />
-                </ExtendableButton>
-              </div>
-
-              <div v-else-if="activeTab === 'verified'" class="inline-flex items-center justify-center gap-2">
-                <ExtendableButton variant="soft-info" rounded label="Pembaruan Data" @click="openReview(row.id_customer)">
-                  <Lucide icon="RefreshCw" class="h-4 w-4" />
-                </ExtendableButton>
-                <ExtendableButton variant="soft-primary" rounded label="Create Sales Order"
-                  @click="openCreatePenawaran(row.id_customer)">
-                  <Lucide icon="FilePlus" class="h-4 w-4" />
                 </ExtendableButton>
               </div>
             </Table.Td>
@@ -393,15 +218,6 @@ function getVerificationBadgeClass(badge?: string) {
 
       <DeleteRecordDialog :open="deleteModal" title="Hapus Customer" :loading="deleteLoading"
         @close="deleteModal = false" @confirm="submitDelete" />
-
-      <ConfirmDialog :open="linkResultOpen" :title="linkResultTitle" :description="linkResultDescription"
-        confirm-text="Salin Link" cancel-text="Tutup" icon="Link" icon-class="bg-primary/10 text-primary"
-        variant="primary" @close="closeLinkResult" @confirm="copyLinkResult">
-        <div class="font-caption mb-1">Token Verifikasi</div>
-        <div class="font-mono break-all rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-          {{ linkResult.token }}
-        </div>
-      </ConfirmDialog>
     </div>
   </div>
 </template>

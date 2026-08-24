@@ -43,4 +43,17 @@ class CustomerFileNamingService
 
         return Str::slug($slug);
     }
+
+    // Buat dokumen tanpa CustomerDocumentType (id_document_type NULL) -- label diisi customer sendiri.
+    /** @return array{0: string, 1: string} [folder, fileName] */
+    public static function buildFreeForm(Customer $customer, string $label, string $extension): array
+    {
+        $customerCode = $customer->customer_code ?: "id{$customer->id_customer}";
+        $labelSlug = Str::slug($label);
+
+        $folder = "customer_document/{$customerCode}/onboarding";
+        $fileName = "{$customerCode}.onboarding.lainnya.{$labelSlug}.{$extension}";
+
+        return [$folder, $fileName];
+    }
 }

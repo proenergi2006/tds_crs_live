@@ -2,15 +2,20 @@
 
 namespace App\Support\Approval;
 
+use App\Actions\Penawaran\Concerns\ResolvesApprovalTemplate;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Models\ApprovalTemplateStep;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
+use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Database\Eloquent\Model;
 
 // tiap submit bikin cycle DocumentApproval baru (gak reuse) -- kalo gak ada cycle sama sekali, fallback ke kolom legacy
 class PenawaranApprovalStepsBuilder
 {
+    use ResolvesApprovalTemplate;
+
     public function buildAttempts(Model $penawaran): array
     {
         $cycles = $penawaran->documentApprovals->sortBy('id_approval')->values();
@@ -19,19 +24,34 @@ class PenawaranApprovalStepsBuilder
             return [['label' => null, 'steps' => $this->fromLegacyStatus($penawaran)]];
         }
 
-        if ($cycles->count() === 1) {
-            return [['label' => null, 'steps' => $this->fromCycle($cycles->first())]];
+        $isDraftNow = $penawaran->status === 'draft';
+        $lastIndex = $cycles->count() - 1;
+
+        $groups = $cycles->map(function (DocumentApproval $cycle, int $index) use ($penawaran, $isDraftNow, $lastIndex) {
+            $wasReopened = $isDraftNow && $index === $lastIndex;
+
+            return ['steps' => $this->fromCycle($cycle, $wasReopened, $penawaran)];
+        })->values();
+
+        if ($isDraftNow) {
+            $groups->push(['steps' => $this->fromTemplatePreview($penawaran)]);
         }
 
-        return $cycles->map(fn (DocumentApproval $cycle, int $index) => [
-            'label' => 'Pengajuan ke-' . ($index + 1),
-            'steps' => $this->fromCycle($cycle),
-        ])->values()->all();
+        if ($groups->count() === 1) {
+            return [['label' => null, ...$groups->first()]];
+        }
+
+        $total = $groups->count();
+
+        return $groups->map(fn (array $group, int $index) => [
+            'label' => ($isDraftNow && $index === $total - 1) ? 'Draft Saat Ini' : 'Pengajuan ke-' . ($index + 1),
+            'steps' => $group['steps'],
+        ])->all();
     }
 
-    private function fromCycle(DocumentApproval $cycle): array
+    private function fromCycle(DocumentApproval $cycle, bool $wasReopened = false, ?Model $penawaran = null): array
     {
-        return $cycle->steps->map(function (DocumentApprovalStep $step) use ($cycle) {
+        $steps = $cycle->steps->map(function (DocumentApprovalStep $step) use ($cycle) {
             $isCurrent = $cycle->status === DocumentApprovalStatus::InProgress
                 && $step->step_order === $cycle->current_step_order;
 
@@ -49,6 +69,19 @@ class PenawaranApprovalStepsBuilder
                 'timestamp' => $step->acted_at,
             ];
         })->all();
+
+        // marker terpisah dari status cycle -- cycle approved/rejected/cancelled tetap akurat, ini cuma nunjukin dokumen sempat dibuka lagi setelahnya
+        if ($wasReopened) {
+            $steps[] = [
+                'title'       => 'Dikembalikan ke Draft',
+                'description' => 'Dokumen dikembalikan ke tahap drafting untuk diedit.',
+                'status'      => 'rejected',
+                'status_text' => 'DIKEMBALIKAN',
+                'timestamp'   => $penawaran?->updated_at,
+            ];
+        }
+
+        return $steps;
     }
 
     private function describeStep(DocumentApprovalStep $step, string $stepName): string
@@ -69,6 +102,11 @@ class PenawaranApprovalStepsBuilder
 
     private function fromLegacyStatus(Model $penawaran): array
     {
+        // draft belum punya cycle DocumentApproval -- preview dari template aktif langsung, biar selalu sinkron kalau template berubah
+        if ($penawaran->status === 'draft') {
+            return $this->fromTemplatePreview($penawaran);
+        }
+
         $draft = ['title' => 'Draft', 'description' => 'Penawaran dibuat dan masih dapat diubah.', 'timestamp' => $penawaran->created_at];
         $waitingBm = ['title' => 'Waiting BM', 'description' => 'Menunggu verifikasi dari Branch Manager.', 'timestamp' => null];
         $approvedBm = ['title' => 'Approved BM', 'description' => 'Disetujui Branch Manager, diteruskan ke Operations Manager.', 'timestamp' => $penawaran->bm_tanggal];
@@ -112,6 +150,31 @@ class PenawaranApprovalStepsBuilder
                 $this->step($approvedOm, 'pending'),
             ],
         };
+    }
+
+    private function fromTemplatePreview(Model $penawaran): array
+    {
+        $draft = [
+            'title'       => 'Draft',
+            'description' => 'Penawaran dibuat dan masih dapat diubah.',
+            'status'      => 'active',
+            'timestamp'   => $penawaran->created_at,
+        ];
+
+        $template = (new DocumentApprovalService())->activeTemplate($this->templateCodeFor($penawaran));
+
+        if (!$template) {
+            return [$draft];
+        }
+
+        $templateSteps = $template->steps->map(fn (ApprovalTemplateStep $step) => [
+            'title'       => $step->step_name,
+            'description' => 'Akan diproses setelah penawaran diajukan.',
+            'status'      => 'pending',
+            'timestamp'   => null,
+        ])->all();
+
+        return [$draft, ...$templateSteps];
     }
 
     private function step(array $base, string $status, ?string $descriptionOverride = null): array

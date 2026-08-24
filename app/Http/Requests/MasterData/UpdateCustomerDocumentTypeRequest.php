@@ -23,12 +23,10 @@ class UpdateCustomerDocumentTypeRequest extends FormRequest
         return [
             'code' => [
                 'required', 'string', 'max:100',
-                Rule::unique('customer_document_types', 'code')->ignore($id),
+                Rule::unique('customer_document_types', 'code')->ignore($id, 'id_document_type'),
             ],
-            'name'            => 'required|string|max:255',
-            'is_active'       => 'boolean',
-            // Optional (lihat StoreCustomerDocumentTypeRequest).
-            'requires_number' => 'boolean',
+            'name'      => 'required|string|max:255',
+            'is_active' => 'boolean',
         ];
     }
 }

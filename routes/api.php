@@ -12,7 +12,6 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CabangController;
 use App\Http\Controllers\MasterData\ApprovalTemplateController;
-use App\Http\Controllers\MasterData\CustomerContactTypeController;
 use App\Http\Controllers\MasterData\CustomerDocumentTypeController;
 use App\Http\Controllers\MasterData\JenisProdukController;
 use App\Http\Controllers\MasterData\ProdukController;
@@ -31,6 +30,7 @@ use App\Http\Controllers\Customer\CustomerCreditItemController;
 use App\Http\Controllers\Customer\CustomerCreditSubmissionController;
 use App\Http\Controllers\Customer\CustomerDocumentController;
 use App\Http\Controllers\Customer\CustomerOnboardingController;
+use App\Http\Controllers\Customer\CustomerPaymentController;
 use App\Http\Controllers\Customer\CustomerVerificationController;
 use App\Http\Controllers\VendorPoController;
 use App\Http\Controllers\VendorPoProdukController;
@@ -50,6 +50,7 @@ use App\Http\Controllers\OngkosTruckController;
 use App\Http\Controllers\PoCustomerController;
 use App\Http\Controllers\SalesConfirmationController;
 use App\Http\Controllers\CustomerLcrController;
+use App\Http\Controllers\CustomerReviewController;
 use App\Http\Controllers\MapsLinkController;
 use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\DeliveryPlanController;
@@ -58,21 +59,15 @@ use App\Http\Controllers\DeliveryRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ApprovalPendingCountController;
 use App\Http\Controllers\Monitoring\LogViewerController;
-// Controller Proenergi
 use App\Http\Controllers\PenawaranProenergiController;
-// End
 
-// 1. Login
 Route::post('login', [AuthController::class, 'login']);
 
-// 2. Verifikasi 2FA
 Route::post('two-factor', [AuthController::class, 'twoFactor']);
 
 Route::get('produk-hargas/check', [ProdukHargaController::class, 'check']);
 
-// 3. Protected routes
 Route::middleware('auth:sanctum')->group(function () {
-    // a) Get current user
     Route::get('user', [ImpersonationController::class, 'whoami']);
     Route::get('/dashboard/agent-summary', [DashboardController::class, 'agentSummary']);
     Route::get('/dashboard/marketing-summary', [DashboardController::class, 'marketingSummary']);
@@ -81,7 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/ceo-vendor-value-summary', [DashboardController::class, 'ceoVendorValueSummary']);
     Route::get('/dashboard/om-summary', [DashboardController::class, 'omSummary']);
 
-    // b) Roles CRUD + permission matrix, c) Users CRUD -- admin-only, digerbangi backend beneran (middleware `can`), bukan cuma disembunyikan di FE.
+    // admin-only, digerbangi backend beneran (middleware `can`), bukan cuma disembunyikan di FE.
     Route::middleware('can:admin.users.manage')->group(function () {
         Route::apiResource('roles', RoleController::class);
         Route::get('roles/{role}/permissions',  [RoleController::class, 'permissions']);
@@ -102,17 +97,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])
         ->middleware('throttle:30,1');
 
-    // d) 2FA management
     Route::post('2fa/generate', [TwoFactorController::class, 'generate']);
     Route::post('2fa/enable',   [TwoFactorController::class, 'enable']);
     Route::post('2fa/disable',  [TwoFactorController::class, 'disable']);
 
-    // e) Update password & profile
     Route::post('user/password', [ProfileController::class, 'updatePassword']);
     Route::put('user/profile', [ProfileController::class, 'updateProfile']);
     Route::post('/user/face', [ProfileController::class, 'updateFace']);
 
-    // f) Master data
     Route::apiResource('cabangs', CabangController::class);
     Route::get('/cabangs/suggest', [CabangController::class, 'suggest']);
     Route::apiResource('satuans', SatuanController::class);
@@ -144,16 +136,6 @@ Route::middleware('auth:sanctum')->group(function () {
             ->only(['store', 'update', 'destroy']);
     });
 
-    // Customer Contact Type: pola read/write sama kayak Customer Document Type di atas.
-    Route::apiResource('customer-contact-types', CustomerContactTypeController::class)
-        ->only(['index', 'show']);
-
-    // WRITE: admin-only.
-    Route::middleware('can:master-data.customer-contact-type.manage')->group(function () {
-        Route::apiResource('customer-contact-types', CustomerContactTypeController::class)
-            ->only(['store', 'update', 'destroy']);
-    });
-
     Route::apiResource('attachment-harga-dasar', AttachmentHargaDasarController::class);
     Route::get('customers/check-company-name', [CustomerController::class, 'checkCompanyName']);
     Route::apiResource('customers', CustomerController::class);
@@ -168,8 +150,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // customer_addresses, scoped id_customer -- authorization sama pola kayak customer_documents di atas.
     Route::get('customers/{customer}/addresses', [CustomerAddressController::class, 'index']);
     Route::post('customers/{customer}/addresses', [CustomerAddressController::class, 'store']);
-    Route::put('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'update']);
-    Route::delete('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy']);
+    // {address} numerik dikunci biar gak tabrakan sama route addresses/{addressType} (huruf) di bawah.
+    Route::put('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'update'])->whereNumber('address');
+    Route::delete('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy'])->whereNumber('address');
+
+    // Update generik per address_type (registered_npwp, billing, correspondence) -- head_office & site_address ditolak di controller, sudah dikelola jalur lain.
+    Route::put('customers/{customer}/addresses/{addressType}', [CustomerController::class, 'updateAddress'])->where('addressType', '[A-Za-z_]+');
+
+    Route::put('customers/{customer}/payment', [CustomerPaymentController::class, 'update']);
 
     // customer_contacts, scoped id_customer -- multi-row PIC per customer, authorization sama pola dengan customer_addresses.
     Route::get('customers/{customer}/contacts', [CustomerContactController::class, 'index']);
@@ -197,13 +185,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('lcr-sites/{lcrSite}/approval-timeline', [CustomerLcrController::class, 'approvalTimeline']);
     Route::get('maps-link/resolve', [MapsLinkController::class, 'resolve']);
 
+    // customer_review (Sales Review, key id_customer) -- authorization sama pola kayak blok Customer di atas.
+    Route::get('customers/{customer}/review', [CustomerReviewController::class, 'getReview']);
+    Route::post('customers/{customer}/review', [CustomerReviewController::class, 'saveReview']);
+    Route::post('customers/{customer}/review-attachment', [CustomerReviewController::class, 'uploadReviewAttachment']);
+    Route::delete('customers/{customer}/review-attachment/{no}', [CustomerReviewController::class, 'deleteReviewAttachment']);
+
     // Daftar Penawaran milik customer -- bukti pendukung Admin Finance saat menilai pengajuan credit.
     Route::get('customers/{customer}/penawarans', [PenawaranController::class, 'lookupForCustomer']);
 
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
 
-    // g) Vendor PO + detail
     Route::delete('vendor-pos-produk/batch', [VendorPoProdukController::class, 'destroyByPo'])
         ->name('vendor-pos-produk.batch-destroy');
     Route::post('vendor-pos-produk/batch', [VendorPoProdukController::class, 'storeBatch'])
@@ -232,7 +225,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('vendor-pos/{poId}/receives',  [ReceiveItemController::class, 'indexByPo'])->whereNumber('poId');
     Route::post('vendor-pos/{poId}/receives', [ReceiveItemController::class, 'store'])->whereNumber('poId');
 
-    // Stock, Penawaran, dsb.
     Route::get('stocks', [StockController::class, 'index']);
 
     Route::get('penawarans', [PenawaranController::class, 'index']);
@@ -279,10 +271,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
 
-    Route::get('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'getReview'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review',  [CustomerVerificationController::class, 'saveReview'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/review-attachment', [CustomerVerificationController::class, 'uploadReviewAttachment'])->whereNumber('id');
-    Route::delete('review/customer-verifications/{id}/review-attachment/{no}', [CustomerVerificationController::class, 'deleteReviewAttachment'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/forward', [CustomerVerificationController::class, 'forward'])->whereNumber('id');
     Route::post('review/customer-verifications/{id}/close',   [CustomerVerificationController::class, 'close'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document', [CustomerVerificationController::class, 'document'])->whereNumber('id');
@@ -315,7 +303,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']);
 
     Route::prefix('logistics')->group(function () {
-        // Delivery Plan (list / edit volume / split)
         Route::get('/delivery-plans',              [DeliveryPlanController::class, 'index']);
         Route::get('/delivery-plans/{id}',         [DeliveryPlanController::class, 'show']);
         Route::patch('/delivery-plans/{id}',         [DeliveryPlanController::class, 'update']);
@@ -327,7 +314,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('procurement')->group(function () {
-        // Delivery Request (PR + PR Detail)
         Route::get('/delivery-requests',           [DeliveryRequestController::class, 'index']);
         Route::get('/delivery-requests/{id}',      [DeliveryRequestController::class, 'show']);
         Route::post('/delivery-requests/allocate', [DeliveryRequestController::class, 'allocate']);
@@ -337,8 +323,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stocks', [StockController::class, 'index']);
     });
 
-    // PROENERGI
-
+    /* Section: Proenergi */
     Route::get('penawarans-proenergi', [PenawaranProenergiController::class, 'index']);
     Route::get('penawarans-proenergi/bm', [PenawaranProenergiController::class, 'indexForBranchManager']);
     Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
@@ -357,7 +342,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/logs/files', [LogViewerController::class, 'files'])->middleware('throttle:30,1');
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
-    // Logout
     Route::post('logout', [AuthController::class, 'logout']);
 });
 

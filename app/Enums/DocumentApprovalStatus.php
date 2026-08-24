@@ -15,6 +15,7 @@ enum DocumentApprovalStatus: string
     case InProgress = 'in_progress';
     case Approved   = 'approved';
     case Rejected   = 'rejected';
+    case Cancelled  = 'cancelled';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum DocumentApprovalStatus: string
             self::InProgress => 'Dalam Proses',
             self::Approved   => 'Disetujui',
             self::Rejected   => 'Ditolak',
+            self::Cancelled  => 'Dibatalkan',
         };
     }
 }

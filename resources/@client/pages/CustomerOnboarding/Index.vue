@@ -15,7 +15,7 @@ import StepCompanyDocuments from './components/StepCompanyDocuments.vue'
 import StepPaymentInfo from './components/StepPaymentInfo.vue'
 import StepLogisticClaimInfo from './components/StepLogisticClaimInfo.vue'
 import StepSummaryAgreement from './components/StepSummaryAgreement.vue'
-import type { OnboardingForm, OnboardingPageState } from './types'
+import type { OnboardingContactItem, OnboardingExistingDocuments, OnboardingForm, OnboardingPageState } from './types'
 import {
   incoTermsOptions,
   ownershipOptions,
@@ -78,13 +78,8 @@ function createDefaultForm(): OnboardingForm {
       village_id: null,
       postal_code: '',
     },
-    invoice_contact: {
-      name: '',
-      position: '',
-      phone: '',
-      mobile: '',
-      email: '',
-    },
+    contacts: [{ full_name: '', position: '', phone: '', mobile: '', email: '' }],
+    remove_contact_ids: [],
     payment: {
       method: '',
       method_other: '',
@@ -124,8 +119,8 @@ function createDefaultForm(): OnboardingForm {
     documents: {
       nib: { file: null, number: '' },
       npwp: { file: null, number: '' },
-      sertifikat: { file: null, number: '' },
       dokumen_lainnya: [],
+      remove_document_ids: [],
     },
     agreement: {
       agree: false,
@@ -138,6 +133,13 @@ const form = reactive<OnboardingForm>(createDefaultForm())
 const fieldErrors = reactive<Record<string, string>>({})
 const submitting = ref(false)
 
+/* State: dokumen yang sudah pernah diunggah (prefill) -- terpisah dari form.documents karena slot .file khusus buat File baru */
+const existingDocuments = reactive<OnboardingExistingDocuments>({
+  nib: [],
+  npwp: [],
+  dokumen_lainnya: [],
+})
+
 /* State: region cascade — 2 instance, Head Office & NPWP */
 const headOfficeRegion = useRegionCascade()
 const npwpRegion = useRegionCascade()
@@ -146,7 +148,7 @@ const npwpRegion = useRegionCascade()
 const GROUP_STEP_MAP: Record<string, number> = {
   identity: 1,
   registered_address: 1,
-  invoice_contact: 1,
+  contacts: 1,
   documents: 2,
   payment: 3,
   logistics: 4,
@@ -213,6 +215,16 @@ async function fetchStatus() {
 
     if (data.customer) Object.assign(form.identity, data.customer)
     if (data.registered_address) Object.assign(form.registered_address, data.registered_address)
+    if (data.contacts?.length) {
+      form.contacts.splice(0, form.contacts.length, ...data.contacts.map((c: OnboardingContactItem) => ({ ...c })))
+    }
+    if (data.payment) Object.assign(form.payment, data.payment)
+    if (data.logistics) Object.assign(form.logistics, data.logistics)
+    if (data.documents) {
+      Object.assign(existingDocuments, data.documents)
+      form.documents.nib.number = data.documents.nib?.[0]?.document_number ?? form.documents.nib.number
+      form.documents.npwp.number = data.documents.npwp?.[0]?.document_number ?? form.documents.npwp.number
+    }
 
     if (pageState.value === 'active') {
       await headOfficeRegion.fetchProvinces()
@@ -281,13 +293,21 @@ async function seedDummyData() {
     form.registered_address.address_line = form.identity.company_address
     await seedRegion(npwpRegion, form.registered_address, form.identity.postal_code)
 
-    Object.assign(form.invoice_contact, {
-      name: 'Budi Santoso',
-      position: 'Finance Manager',
-      phone: '021-4600125',
-      mobile: '081234567890',
-      email: 'budi.santoso@contohsejahtera.co.id',
-    })
+    // Baris kontak yang sudah diisi tidak ditimpa -- helper ini bisa dipencet ulang di tengah pengisian.
+    const firstContact = form.contacts[0]
+    const firstContactEmpty = !!firstContact
+      && !firstContact.full_name && !firstContact.position
+      && !firstContact.phone && !firstContact.mobile && !firstContact.email
+
+    if (form.contacts.length === 1 && firstContactEmpty) {
+      Object.assign(firstContact, {
+        full_name: 'Budi Santoso',
+        position: 'Finance Manager',
+        phone: '021-4600125',
+        mobile: '081234567890',
+        email: 'budi.santoso@contohsejahtera.co.id',
+      })
+    }
 
     Object.assign(form.payment, {
       method: paymentMethodOptions[0],
@@ -321,7 +341,6 @@ async function seedDummyData() {
 
     form.documents.nib.number = '1234567890123'
     form.documents.npwp.number = '01.234.567.8-901.000'
-    form.documents.sertifikat.number = 'SERT-2026-00123'
 
     Object.assign(form.agreement, {
       updated_by: 'Budi Santoso (Dev Seed)',
@@ -385,7 +404,8 @@ async function submit() {
     const fd = new FormData()
     appendNested(fd, form.identity, 'identity')
     appendNested(fd, form.registered_address, 'registered_address')
-    appendNested(fd, form.invoice_contact, 'invoice_contact')
+    appendNested(fd, form.contacts, 'contacts')
+    appendNested(fd, form.remove_contact_ids, 'remove_contact_ids')
     appendNested(fd, form.payment, 'payment')
     appendNested(fd, form.logistics, 'logistics')
     appendNested(fd, form.agreement, 'agreement')
@@ -394,13 +414,11 @@ async function submit() {
       {
         nib: form.documents.nib,
         npwp: form.documents.npwp,
-        sertifikat: form.documents.sertifikat,
       },
       'documents',
     )
-    form.documents.dokumen_lainnya.forEach((file, idx) => {
-      if (file) fd.append(`documents[dokumen_lainnya][${idx}][file]`, file)
-    })
+    appendNested(fd, form.documents.dokumen_lainnya, 'documents[dokumen_lainnya]')
+    appendNested(fd, form.documents.remove_document_ids, 'documents[remove_document_ids]')
 
     await api.updateMultipart(token, fd)
     pageState.value = 'used'
@@ -447,7 +465,8 @@ async function submit() {
       <template #content>
         <StepCompanyInformation v-show="currentStep === 1" :form="form" :errors="fieldErrors"
           :head-office-region="headOfficeRegion" :npwp-region="npwpRegion" />
-        <StepCompanyDocuments v-show="currentStep === 2" :form="form" :errors="fieldErrors" />
+        <StepCompanyDocuments v-show="currentStep === 2" :form="form" :errors="fieldErrors"
+          :existing-documents="existingDocuments" />
         <StepPaymentInfo v-show="currentStep === 3" :form="form" :errors="fieldErrors" />
         <StepLogisticClaimInfo v-show="currentStep === 4" :form="form" :errors="fieldErrors" />
         <StepSummaryAgreement v-show="currentStep === 5" :form="form" :errors="fieldErrors"

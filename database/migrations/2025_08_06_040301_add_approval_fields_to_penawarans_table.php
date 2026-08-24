@@ -4,15 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddApprovalFieldsToPenawaransTable extends Migration
+return new class extends Migration
 {
     public function up()
     {
         Schema::table('penawarans', function (Blueprint $table) {
             $table->boolean('penawaran_disetujui')->default(false)->after('jenis_penawaran');
 
-            // Ubah enum status
-            $table->dropColumn('status');
+            // kolom status lama kadang belum ada tergantung history DB, guard biar aman
+            if (Schema::hasColumn('penawarans', 'status')) {
+                $table->dropColumn('status');
+            }
         });
 
         Schema::table('penawarans', function (Blueprint $table) {
@@ -47,4 +49,4 @@ class AddApprovalFieldsToPenawaransTable extends Migration
             ]);
         });
     }
-}
+};

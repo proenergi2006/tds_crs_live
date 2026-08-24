@@ -13,7 +13,7 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
 const router = useRouter()
@@ -172,25 +172,15 @@ function disposisiClass(v: string | number) {
     'bg-rose-100 text-rose-700': val === '5' || val === '6',
   }
 }
-
-/* Timestamp disposisi (mis. "Approved BM: 23 Jun 2026 14:30"). */
-function getDisposisiTanggal(pen: any): string {
-  const d = String(pen.disposisi_penawaran)
-  if (d === '3' && pen.bm_tanggal) return `Approved BM: ${formatDateTime(pen.bm_tanggal)}`
-  if (d === '4' && pen.om_tanggal) return `Approved OM: ${formatDateTime(pen.om_tanggal)}`
-  if (d === '5' && pen.bm_tanggal) return `Rejected BM: ${formatDateTime(pen.bm_tanggal)}`
-  if (d === '6' && pen.om_tanggal) return `Rejected OM: ${formatDateTime(pen.om_tanggal)}`
-  return ''
-}
 </script>
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader :title="cfg.title" :description="cfg.description">
         <template #action>
           <Button v-if="canManagePenawaran" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-            <Lucide icon="PlusCircle" class="h-4 w-4" />
+            <Lucide icon="PlusCircle" class="w-4 h-4" />
             Tambah Penawaran
           </Button>
         </template>
@@ -222,7 +212,7 @@ function getDisposisiTanggal(pen: any): string {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="hover:bg-slate-50 transition">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
@@ -243,30 +233,27 @@ function getDisposisiTanggal(pen: any): string {
             </Table.Td>
             <Table.Td class="text-center">
               <div class="flex flex-col items-center gap-1">
-                <span class="font-label inline-flex items-center rounded-full px-3 py-1"
+                <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
                   :class="disposisiClass(pen.disposisi_penawaran)">
                   {{ getDisposisiLabel(pen.disposisi_penawaran) }}
                 </span>
-                <span v-if="getDisposisiTanggal(pen)" class="font-caption italic">
-                  {{ getDisposisiTanggal(pen) }}
-                </span>
               </div>
             </Table.Td>
-            <Table.Td class="text-center w-[260px]">
-              <div class="inline-flex items-center justify-center gap-1">
+            <Table.Td class="w-[260px] text-center">
+              <div class="inline-flex justify-center items-center gap-1">
                 <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openDetail(pen.id_penawaran)">
-                  <Lucide icon="Eye" class="h-4 w-4" />
+                  <Lucide icon="Eye" class="w-4 h-4" />
                 </ExtendableButton>
 
                 <ExtendableButton variant="soft-pending" rounded label="Edit" @click="openEdit(pen.id_penawaran)">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </ExtendableButton>
 
                 <ExtendableButton
                   v-if="String(pen.disposisi_penawaran) === '1' || String(pen.disposisi_penawaran) === '2'"
                   variant="soft-danger" rounded label="Hapus"
                   @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
+                  <Lucide icon="Trash2" class="w-4 h-4" />
                 </ExtendableButton>
               </div>
             </Table.Td>

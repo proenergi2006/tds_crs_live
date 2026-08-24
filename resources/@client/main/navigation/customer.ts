@@ -9,11 +9,7 @@ export const customerNavigation: NavItem[] = [
         icon: "User",
         pageName: "customers-list",
         title: "Customer",
-        activePageNames: [
-          "customer-detail",
-          "customers-create",
-          "customers-edit",
-        ],
+        activePageNames: ["customer-detail", "customers-create"],
         permission: "customer.viewOwn",
       },
       {

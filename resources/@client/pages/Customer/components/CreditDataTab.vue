@@ -10,12 +10,7 @@ import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { createResourceApi } from '@/utils/resourceApi'
 
-// Header-only (credit_limit_request + top_request): limit kredit sifatnya
-// agregat, bukan per-produk, jadi gak ada UI list item produk di sini.
-// credit_limit_approval/top_approval/financial_review read-only dan cuma
-// muncul kalau sudah closed -- semua diisi Admin Finance saat Tutup KYC
-// (AdminFinance/Verify.vue), gak pernah lewat form Marketing ini.
-
+// limit kredit agregat (bukan per-produk) -- approval/review-nya read-only, diisi Admin Finance pas Tutup KYC, bukan dari form ini
 const props = defineProps<{
   idCustomer: number
   kycStatus?: string | null
@@ -25,8 +20,7 @@ const { success, error: notifyError } = useNotification()
 
 const creditSubmissionsApi = createResourceApi(`/customers/${props.idCustomer}/credit-submissions`)
 
-/* State: pengajuan kredit. Endpoint-nya CRUD multi-row, tapi Tab 4 KYC cuma
-   pakai 1 row "current" -- index 0 dari response, backend sudah orderByDesc. */
+/* State: pengajuan kredit -- endpoint-nya CRUD multi-row, di sini cuma pakai row terbaru (index 0, backend udah orderByDesc) */
 const loading = ref(true)
 const saving = ref(false)
 const submissionId = ref<number | null>(null)
@@ -100,54 +94,56 @@ onMounted(fetchSubmission)
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="gap-6 grid">
     <Alert v-if="locked" variant="soft-warning">
       Tab ini terkunci — KYC sudah di-forward. Pengajuan kredit tidak bisa diubah dari halaman ini.
     </Alert>
 
-    <CardSection title="Credit Application"
-      description="Pengajuan limit kredit &amp; term of payment (TOP) untuk customer ini." icon="Wallet"
-      icon-class="bg-emerald-100 text-emerald-600">
-      <div v-if="loading" class="flex min-h-[120px] items-center justify-center gap-3 text-slate-500">
-        <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-        <span class="font-body">Memuat pengajuan kredit...</span>
-      </div>
-
-      <template v-else>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <CurrencyField v-model="creditLimitRequest" label="Credit Limit Request" required :disabled="locked" />
-          <NumberField v-model="topRequest" label="TOP Request" suffix="hari" :decimals="0" :disabled="locked" />
+    <div class="gap-6 grid" :class="creditLimitApproval !== null ? 'sm:grid-cols-2' : ''">
+      <CardSection title=" Credit Application"
+        description="Pengajuan limit kredit &amp; term of payment (TOP) untuk customer ini." icon="Wallet"
+        icon-class="bg-emerald-100 text-emerald-600">
+        <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[120px] text-slate-500">
+          <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
+          <span class="font-body">Memuat pengajuan kredit...</span>
         </div>
 
-        <div class="mt-5 flex justify-end">
-          <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving"
-            @click="saveSubmission">
-            <Lucide v-if="saving" icon="Loader2" class="h-4 w-4 animate-spin" />
-            Simpan
-          </Button>
-        </div>
-      </template>
-    </CardSection>
+        <template v-else>
+          <div class="gap-4 grid sm:grid-cols-2">
+            <CurrencyField v-model="creditLimitRequest" label="Credit Limit Request" required :disabled="locked" />
+            <NumberField v-model="topRequest" label="TOP Request" suffix="hari" :decimals="0" :disabled="locked" />
+          </div>
 
-    <CardSection v-if="creditLimitApproval !== null" title="Hasil Final Credit Limit"
-      description="Nilai final yang disetujui setelah KYC closed." icon="CheckCircle2"
-      icon-class="bg-blue-100 text-blue-600">
-      <div class="grid gap-y-3 gap-x-8 sm:grid-cols-2">
-        <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-          <span class="font-label">Credit Limit Approval</span>
-          <span class="font-strong text-right">{{ formatCurrency(creditLimitApproval) }}</span>
+          <div class="flex justify-end mt-5">
+            <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving"
+              @click="saveSubmission">
+              <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
+              Simpan
+            </Button>
+          </div>
+        </template>
+      </CardSection>
+
+      <CardSection v-if="creditLimitApproval !== null" title="Hasil Final Credit Limit"
+        description="Nilai final yang disetujui." icon="CheckCircle2" icon-class="bg-blue-100 text-blue-600">
+        <div class="gap-x-8 gap-y-3 grid sm:grid-cols-2">
+          <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+            <span class="font-label">Credit Limit Approval</span>
+            <span class="font-strong text-right">{{ formatCurrency(creditLimitApproval) }}</span>
+          </div>
+          <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+            <span class="font-label">TOP Approval</span>
+            <span class="font-strong text-right">{{ topApproval !== null ? `${topApproval} hari` : '-' }}</span>
+          </div>
         </div>
-        <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-          <span class="font-label">TOP Approval</span>
-          <span class="font-strong text-right">{{ topApproval !== null ? `${topApproval} hari` : '-' }}</span>
+        <div class="mt-3">
+          <div class="font-label">Financial Review</div>
+          <div v-if="financialReview"
+            class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body rich-text-content"
+            v-html="financialReview" />
+          <div v-else class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body">-</div>
         </div>
-      </div>
-      <div class="mt-3">
-        <div class="font-label">Financial Review</div>
-        <div v-if="financialReview" class="font-body rich-text-content mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-          v-html="financialReview" />
-        <div v-else class="font-body mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">-</div>
-      </div>
-    </CardSection>
+      </CardSection>
+    </div>
   </div>
 </template>

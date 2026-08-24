@@ -45,10 +45,11 @@ class PenawaranController extends Controller
         }
 
         if ($search) {
+            // Kontak tujuan bukan kolom sendiri lagi; search menjangkau nama perusahaan customer + nama kontaknya.
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_penawaran', 'like', "%{$search}%")
-                    ->orWhere('kepada', 'like', "%{$search}%")
-                    ->orWhere('nama', 'like', "%{$search}%");
+                    ->orWhereHas('customer', fn ($cq) => $cq->where('company_name', 'like', "%{$search}%"))
+                    ->orWhereHas('customerContact', fn ($cq) => $cq->where('full_name', 'like', "%{$search}%"));
             });
         }
 
@@ -167,6 +168,8 @@ class PenawaranController extends Controller
     {
         $penawaran = Penawaran::with([
             'customer',
+            'customer.headOfficeAddress',
+            'customerContact',
             'cabang',
             'items.produk.jenis',
             'items.produk.ukuran.satuan',
@@ -233,6 +236,11 @@ class PenawaranController extends Controller
     {
         $penawaran = Penawaran::findOrFail($id);
 
+        $user = $request->user();
+        if (!($user->can('penawaran.manage') && (int) $penawaran->user_id === (int) $user->id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $data = $request->validated();
 
         $subtotal = 0.0;
@@ -267,6 +275,10 @@ class PenawaranController extends Controller
         DB::beginTransaction();
         try {
             $penawaran->update($data);
+
+            if ($penawaran->status !== 'draft') {
+                (new \App\Services\Approval\DocumentApprovalService())->cancelActiveCycle($penawaran);
+            }
 
             $penawaran->forceFill([
                 'status'             => 'draft',
@@ -324,7 +336,7 @@ class PenawaranController extends Controller
 
         $user = $request->user();
         $allowed = $user->can('penawaran.manage')
-            && ((int) $penawaran->user_id === (int) $user->id || $user->can('penawaran.viewAny'));
+            && (int) $penawaran->user_id === (int) $user->id;
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);

@@ -28,6 +28,11 @@ class PenawaranProenergiController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+
+        if ($user->cant('penawaran.proenergi.viewAny') && $user->cant('penawaran.proenergi.viewOwn')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
@@ -39,10 +44,11 @@ class PenawaranProenergiController extends Controller
         }
 
         if ($search) {
+            // Kontak tujuan bukan kolom sendiri lagi; search menjangkau nama perusahaan customer + nama kontaknya.
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_penawaran', 'like', "%{$search}%")
-                    ->orWhere('kepada', 'like', "%{$search}%")
-                    ->orWhere('nama', 'like', "%{$search}%");
+                    ->orWhereHas('customer', fn ($cq) => $cq->where('company_name', 'like', "%{$search}%"))
+                    ->orWhereHas('customerContact', fn ($cq) => $cq->where('full_name', 'like', "%{$search}%"));
             });
         }
 
@@ -161,6 +167,8 @@ class PenawaranProenergiController extends Controller
     {
         $penawaran = PenawaranProenergi::with([
             'customer',
+            'customer.headOfficeAddress',
+            'customerContact',
             'cabang',
             'items.produk.jenis',
             'items.produk.ukuran.satuan',
@@ -263,9 +271,13 @@ class PenawaranProenergiController extends Controller
         try {
             $penawaran->update($data);
 
+            if ($penawaran->status !== 'draft') {
+                (new \App\Services\Approval\DocumentApprovalService())->cancelActiveCycle($penawaran);
+            }
+
             $penawaran->forceFill([
                 'status'             => 'draft',
-                'disposisi_penawaran' => 0,
+                'disposisi_penawaran' => '1',
                 'bm_result'          => 0,
                 'bm_tanggal'         => now(),
                 'catatan_verifikasi' => null,

@@ -18,7 +18,16 @@ type CustomerDocumentTypeRow = {
   code: string
   name: string
   is_active: boolean
-  requires_number: boolean
+  category: string | null
+}
+
+const categoryBadgeClass: Record<string, string> = {
+  onboarding: 'bg-blue-100 text-blue-700',
+  lcr: 'bg-emerald-100 text-emerald-700',
+}
+
+function getCategoryBadgeClass(category: string | null) {
+  return category ? categoryBadgeClass[category] ?? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-600'
 }
 
 const customerDocumentTypeApi = createResourceApi('/customer-document-types')
@@ -58,6 +67,7 @@ const filteredDocumentTypes = computed(() => {
     return [
       item.code,
       item.name,
+      item.category,
       item.is_active ? 'active' : 'inactive',
     ].some(value => String(value || '').toLowerCase().includes(query))
   })
@@ -139,6 +149,11 @@ function confirmDelete(id: number) {
   deleteModal.value = true
 }
 
+function closeDeleteModal() {
+  deleteModal.value = false
+  deleteTarget.value = null
+}
+
 async function submitDelete() {
   if (!deleteTarget.value) return
 
@@ -155,7 +170,7 @@ async function submitDelete() {
       currentPage.value = totalPages.value
     }
 
-    deleteModal.value = false
+    closeDeleteModal()
     success('Berhasil', 'Jenis dokumen customer berhasil dihapus.')
   } catch (e: any) {
     error(
@@ -164,7 +179,6 @@ async function submitDelete() {
     )
   } finally {
     deleteLoading.value = false
-    deleteTarget.value = null
   }
 }
 </script>
@@ -184,7 +198,7 @@ async function submitDelete() {
 
       <!-- Data Table List -->
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="documentTypes.length === 0" :colspan="6" :show-footer="true" :show-toolbar="true"
+        :empty="documentTypes.length === 0" :colspan="5" :show-footer="true" :show-toolbar="true"
         :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
         search-placeholder="Cari kode / nama jenis dokumen..." loading-text="Memuat data jenis dokumen..."
         empty-description="Belum ada jenis dokumen untuk ditampilkan." @page-change="goToPage">
@@ -192,7 +206,6 @@ async function submitDelete() {
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Kode</Table.Th>
           <Table.Th>Nama Jenis Dokumen</Table.Th>
-          <Table.Th class="text-center">No. Dokumen</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
@@ -203,16 +216,16 @@ async function submitDelete() {
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td class="font-strong">
-              {{ item.code }}
+              <div class="inline-flex items-center gap-2">
+                <span v-if="item.category" class="font-label inline-flex rounded-full px-3 py-1"
+                  :class="getCategoryBadgeClass(item.category)">
+                  {{ item.category }}
+                </span>
+                {{ item.code }}
+              </div>
             </Table.Td>
             <Table.Td>
               {{ item.name }}
-            </Table.Td>
-            <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
-                :class="item.requires_number ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'">
-                {{ item.requires_number ? 'Wajib' : 'Opsional' }}
-              </span>
             </Table.Td>
             <Table.Td class="text-center">
               <span class="font-label inline-flex rounded-full px-3 py-1"
@@ -242,7 +255,7 @@ async function submitDelete() {
 
       <!-- Delete Confirmation Modal -->
       <DeleteRecordDialog :open="deleteModal" title="Hapus Jenis Dokumen Customer" :loading="deleteLoading"
-        @close="deleteModal = false" @confirm="submitDelete" />
+        @close="closeDeleteModal" @confirm="submitDelete" />
     </div>
   </div>
 </template>

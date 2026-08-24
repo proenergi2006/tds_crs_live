@@ -15,7 +15,7 @@ class GenerateCustomerKycDocumentAction
         $customer = $verification->customer;
         $customer->load(['contacts', 'payment', 'lcr', 'creditSubmissions', 'headOfficeAddress']);
 
-        $review = CustomerReview::where('id_verification', $verification->id_verification)->first();
+        $review = CustomerReview::where('id_customer', $verification->id_customer)->first();
 
         $lcrSites = CustomerLcr::where('id_customer', $verification->id_customer)
             ->with('latestDocumentApproval')

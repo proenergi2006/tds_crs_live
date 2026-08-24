@@ -18,9 +18,7 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 
-// 5 fetch terpisah, sengaja gak ada endpoint agregasi -- biar logic shaping
-// data gak dobel di 2 tempat. Close KYC gak bisa di-undo, jadi wajib lewat
-// dialog konfirmasi eksplisit.
+// 5 fetch terpisah sengaja, gak ada endpoint agregasi -- biar logic shaping gak dobel di 2 tempat
 
 const route = useRoute()
 const router = useRouter()
@@ -34,9 +32,7 @@ const idCustomer = ref<number | null>(null)
 const kycStatus = ref<string | null>(null)
 const customer = ref<any>(null)
 
-/* State: Tab 1 -- Data Customer, reuse Customer/Detail.vue::CustomerDataTab.
-   Butuh shape customer lengkap, jadi pakai GET /api/customers/{id} yang sama,
-   bukan proyeksi 6-kolom dari reviewShow() yang cuma cukup buat page title. */
+/* State: Tab 1 -- Data Customer, perlu fetch /customers/{id} sendiri karena reviewShow() cuma proyeksi tipis buat page title */
 const fullCustomer = ref<any>(null)
 const fullCustomerLoading = ref(true)
 
@@ -82,11 +78,9 @@ const kycStatusLabel = computed(() => {
 })
 const pageTitle = computed(() => customer.value?.company_name ? `Verifikasi KYC — ${customer.value.company_name}` : 'Verifikasi KYC Customer')
 const pageDescription = computed(() => `Status KYC saat ini: ${kycStatusLabel.value}.`)
-// Falsy-safe: kycStatus null (misal bootstrap gagal) tetap dianggap
-// draft/terkunci, bukan malah diam-diam mengizinkan aksi.
+// kycStatus null (bootstrap gagal) dianggap terkunci, bukan malah izinin aksi diam-diam
 const printDisabled = computed(() => kycStatus.value !== 'forwarded' && kycStatus.value !== 'closed')
 const closeFormDisabled = computed(() => kycStatus.value !== 'forwarded')
-const hasOnboardingData = computed(() => fullCustomer.value?.latest_verification?.is_submitted === true)
 
 /* Fetch */
 async function fetchAll() {
@@ -172,12 +166,7 @@ async function fetchPenawarans() {
 }
 
 /* Actions */
-// window.open() langsung ke URL API gak bisa dipakai di sini. Itu jadi
-// navigasi browser biasa (bukan lewat axios), gak dikenali middleware
-// auth:sanctum sebagai request stateful SPA, jadi dianggap unauthenticated
-// dan diarahkan ke route 'login' yang memang gak ada di app API-only ini
-// (RouteNotFoundException). Pola blob+tab pre-open ini sudah dipakai di
-// 10+ halaman lain buat kasus yang sama, lihat utils/pdfPreviewTab.ts.
+// window.open() langsung ke URL gak bisa -- bukan lewat axios jadi gak kebaca middleware auth:sanctum, makanya pola blob+tab pre-open (lihat pdfPreviewTab.ts)
 async function openDocument() {
   const tab = openPdfLoadingTab()
   try {
@@ -192,30 +181,9 @@ async function openDocument() {
     }
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch {
-    // responseType: 'blob' bikin e.response.data ikut jadi Blob saat error juga
-    // (bukan ke-parse jadi JSON), jadi .message-nya gak kebaca langsung -- pakai
-    // pesan generic saja, sama seperti preview() di Penawaran/Detail.vue.
+    // responseType: 'blob' bikin error response ikut jadi Blob juga, .message gak kebaca -- pesan generic aja
     tab?.close()
     notifyError('Gagal', 'Gagal membuka dokumen KYC.')
-  }
-}
-
-async function openDataCustomerDocument() {
-  const tab = openPdfLoadingTab()
-  try {
-    const response = await axios.get(`/api/review/customer-verifications/${idVerification}/document/data-customer`, {
-      responseType: 'blob',
-    })
-    const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    if (tab) {
-      tab.location.href = url
-    } else {
-      window.open(url, '_blank')
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
-  } catch {
-    tab?.close()
-    notifyError('Gagal', 'Gagal membuka dokumen Data Customer.')
   }
 }
 
@@ -279,8 +247,7 @@ onMounted(fetchAll)
             <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
             <span class="font-body">Memuat Data Customer...</span>
           </div>
-          <CustomerDataTab v-else :id-customer="idCustomer!" :customer="fullCustomer"
-            :has-onboarding-data="hasOnboardingData" />
+          <CustomerDataTab v-else :id-customer="idCustomer!" :customer="fullCustomer" />
         </Tab.Panel>
 
         <Tab.Panel>
@@ -452,11 +419,6 @@ onMounted(fetchAll)
             :disabled="printDisabled" @click="openDocument">
             <Lucide icon="Printer" class="h-4 w-4" />
             Cetak Dokumen (Gabungan)
-          </Button>
-          <Button variant="outline-secondary" class="inline-flex w-full items-center justify-center gap-2"
-            :disabled="printDisabled" @click="openDataCustomerDocument">
-            <Lucide icon="Printer" class="h-4 w-4" />
-            Cetak Data Customer
           </Button>
         </div>
         <p v-if="printDisabled" class="font-caption mt-2">

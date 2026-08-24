@@ -201,12 +201,6 @@ const routes = [
         meta: { permission: "customer.manage" },
       },
       {
-        path: "customers/:id/edit",
-        name: "customers-edit",
-        component: () => import("@/pages/Customer/Form.vue"),
-        meta: { permission: "customer.manage" },
-      },
-      {
         path: "customers/:id",
         name: "customer-detail",
         component: () => import("@/pages/Customer/Detail.vue"),
@@ -554,13 +548,21 @@ const routes = [
         path: "/penawarans/:id/verifikasi",
         name: "penawarans-verifikasi-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "bm", brand: "reguler", permission: "verification.quotation" },
+        meta: {
+          role: "bm",
+          brand: "reguler",
+          permission: "verification.quotation",
+        },
       },
       {
         path: "/penawarans-proenergi/:id/verifikasi",
         name: "penawarans-verifikasi-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
+        meta: {
+          role: "bm",
+          brand: "proenergi",
+          permission: "penawaran.proenergi.verify-bm",
+        },
       },
       {
         path: "/penawarans/verifikasi/om/:id",
@@ -576,7 +578,11 @@ const routes = [
         path: "/penawarans-proenergi/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
+        meta: {
+          role: "om",
+          brand: "proenergi",
+          permission: "penawaran.proenergi.verify-om",
+        },
       },
 
       {
@@ -708,6 +714,12 @@ const routes = [
         path: "testing-page",
         name: "testing-page",
         component: () => import("@/pages/Testing/Index.vue"),
+      },
+
+      {
+        path: "testing-page-2",
+        name: "testing-page-2",
+        component: () => import("@/pages/Tooltip.vue"),
       },
     ],
   },

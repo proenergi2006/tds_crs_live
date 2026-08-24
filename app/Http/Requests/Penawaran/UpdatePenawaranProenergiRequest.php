@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Penawaran;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePenawaranProenergiRequest extends FormRequest
 {
@@ -19,6 +20,14 @@ class UpdatePenawaranProenergiRequest extends FormRequest
     {
         return [
             'id_customer'          => 'required|exists:customers,id_customer',
+            // Ownership: kontak tujuan wajib milik id_customer di payload yang sama -- FK sendiri cuma menjamin barisnya ada.
+            'customer_contact_id' => [
+                'required',
+                'integer',
+                Rule::exists('customer_contacts', 'id_contact')->where(
+                    fn ($query) => $query->where('id_customer', $this->input('id_customer'))
+                ),
+            ],
             'id_cabang'            => 'required|exists:cabangs,id_cabang',
             'masa_berlaku'         => 'required|date',
             'sampai_dengan'        => 'required|date|after_or_equal:masa_berlaku',
@@ -54,13 +63,9 @@ class UpdatePenawaranProenergiRequest extends FormRequest
             'keterangan'           => 'nullable|string',
             'catatan'              => 'nullable|string',
             'syarat_ketentuan'     => 'nullable|string',
+            'lampiran_tambahan'    => 'nullable|string',
             'discount'             => 'nullable|numeric|min:0',
             'oat'                  => 'nullable|numeric|min:0',
-            'kepada'   => 'nullable|string|max:255',
-            'nama'     => 'nullable|string|max:255',
-            'jabatan'  => 'nullable|string|max:255',
-            'telepon'  => 'nullable|string|max:255',
-            'alamat'   => 'nullable|string',
             'abrasi'   => 'nullable|string|max:100',
 
             'user_id' => 'nullable|exists:users,id',

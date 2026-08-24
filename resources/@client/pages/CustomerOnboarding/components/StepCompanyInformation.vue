@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
+import Button from '@/components/Base/Button'
 import { FormCheck, FormInput, FormLabel, FormTextarea } from '@/components/Base/Form'
+import Lucide from '@/components/Base/Lucide'
 import TomSelect from '@/components/Base/TomSelect'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import type { useRegionCascade } from '@/composables/useRegionCascade'
@@ -16,21 +18,10 @@ const props = defineProps<{
   npwpRegion: ReturnType<typeof useRegionCascade>
 }>()
 
-/* Halaman ini punya scroll container sendiri (overflow-y-auto di
-   OnboardingLayout.vue, bukan document-flow biasa) -- dropdown TomSelect yang
-   tinggi (list provinsi/kabupaten dsb) meluas keluar batas box wrapper-nya,
-   dan overflow-y-auto ancestor ikut menghitungnya ke scrollable area sendiri
-   walau posisinya absolute, jadi halaman jadi ada blank space + scrollbar
-   ganda. dropdownParent: 'body' melepas dropdown dari container itu -- pola
-   yang sama dipakai di Penawaran/Form.vue & Permission/Form.vue. */
+/* dropdownParent: 'body' -- halaman ini scroll container sendiri, dropdown TomSelect tinggi bikin blank space + scrollbar ganda kalau nempel di container (pola sama di Penawaran/Form.vue & Permission/Form.vue) */
 const regionSelectOptions = { dropdownParent: 'body' as const }
 
-/* Cascade: Head Office
-   TomSelect.vue meng-emit 'update:modelValue' (bukan native 'change') karena
-   tom-select.js mengoperasikan clone dari <select> asli, bukan elemen aslinya
-   -- native 'change' pada elemen asli tidak pernah terpicu dari interaksi user
-   di widget. Handler ini harus di-bind ke @update:model-value, bukan @change,
-   supaya benar-benar terpanggil saat user memilih opsi. */
+/* Cascade: Head Office -- pakai @update:model-value bukan @change, soalnya tom-select.js clone <select> asli jadi native change gak pernah kepicu */
 function onHeadOfficeProvinceChange(value: string | string[]) {
   const v = (Array.isArray(value) ? value[0] : value) || null
   props.form.identity.province_id = v
@@ -123,6 +114,17 @@ function resetNpwpAddress() {
   props.npwpRegion.regencies.value = []
   props.npwpRegion.districts.value = []
   props.npwpRegion.villages.value = []
+}
+
+function addContact() {
+  props.form.contacts.push({ full_name: '', position: '', phone: '', mobile: '', email: '' })
+}
+
+// Baris hasil prefill punya id -- backend hanya menghapus kontak yang id-nya ikut dikirim di remove_contact_ids.
+function removeContact(idx: number) {
+  const id = props.form.contacts[idx]?.id
+  if (id !== undefined) props.form.remove_contact_ids.push(id)
+  props.form.contacts.splice(idx, 1)
 }
 
 watch(npwpSameAsHeadOffice, (checked) => {
@@ -380,43 +382,82 @@ watch(npwpSameAsHeadOffice, (checked) => {
     <!-- PIC Invoice -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="font-section mb-1 border-b border-slate-100 pb-2">PIC INVOICE (KONTAK FINANCE)</div>
-      <p class="font-caption mb-3">Kontak yang bisa dihubungi terkait proses invoice dan pembayaran.</p>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <FormLabel class="font-label !mb-1 block">Name
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormInput v-model="form.invoice_contact.name" type="text" placeholder="Nama lengkap PIC Finance"
-            :class="errors['invoice_contact.name'] ? 'input-error' : ''" />
-          <small v-if="errors['invoice_contact.name']" class="block input-error-text">{{ errors['invoice_contact.name']
-          }}</small>
-        </div>
-        <div>
-          <FormLabel class="font-label !mb-1 block">Division/Bagian</FormLabel>
-          <FormInput v-model="form.invoice_contact.position" type="text" placeholder="e.g. Finance Manager" />
-        </div>
-        <div>
-          <FormLabel class="font-label !mb-1 block">Phone
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormInput v-model="form.invoice_contact.phone" type="text" placeholder="e.g. 021-1234567"
-            :class="errors['invoice_contact.phone'] ? 'input-error' : ''" />
-          <small v-if="errors['invoice_contact.phone']" class="block input-error-text">{{
-            errors['invoice_contact.phone'] }}</small>
-        </div>
-        <div>
-          <FormLabel class="font-label !mb-1 block">Mobile
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormInput v-model="form.invoice_contact.mobile" type="text" placeholder="e.g. 08123456789"
-            :class="errors['invoice_contact.mobile'] ? 'input-error' : ''" />
-          <small v-if="errors['invoice_contact.mobile']" class="block input-error-text">{{
-            errors['invoice_contact.mobile'] }}</small>
-        </div>
-        <div class="md:col-span-2">
-          <FormLabel class="font-label !mb-1 block">Email</FormLabel>
-          <FormInput v-model="form.invoice_contact.email" type="email" placeholder="e.g. finance.pic@company.com" />
-        </div>
+      <div class="mb-3 mt-3 flex items-center justify-between gap-4">
+        <p class="font-caption">Kontak yang bisa dihubungi terkait proses invoice dan pembayaran.</p>
+        <Button type="button" size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
+          @click="addContact">
+          <Lucide icon="Plus" class="h-4 w-4" />
+          Tambah
+        </Button>
+      </div>
+      <p class="font-caption mt-1">Isi minimal salah satu dari Telepon, Mobile, atau Email.</p>
+      <small v-if="errors['contacts']" class="mb-2 block input-error-text">{{ errors['contacts'] }}</small>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full min-w-[880px] divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="w-12 px-3 py-2 font-label text-center">No</th>
+              <th class="px-3 py-2 font-label text-left">Name
+                <RequiredAsterisk />
+              </th>
+              <th class="px-3 py-2 font-label text-left">Division/Bagian
+                <RequiredAsterisk />
+              </th>
+              <th class="px-3 py-2 font-label text-left">Phone</th>
+              <th class="px-3 py-2 font-label text-left">Mobile</th>
+              <th class="px-3 py-2 font-label text-left">Email</th>
+              <th class="w-16 px-3 py-2 font-label text-center">Aksi</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-200 bg-white">
+            <tr v-for="(contact, idx) in form.contacts" :key="idx" class="transition hover:bg-slate-50">
+              <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+              <td class="px-3 py-2">
+                <FormInput v-model="contact.full_name" type="text" placeholder="Nama lengkap PIC Finance"
+                  :class="errors[`contacts.${idx}.full_name`] ? 'input-error' : ''" />
+                <small v-if="errors[`contacts.${idx}.full_name`]" class="block input-error-text">
+                  {{ errors[`contacts.${idx}.full_name`] }}
+                </small>
+              </td>
+              <td class="px-3 py-2">
+                <FormInput v-model="contact.position" type="text" placeholder="e.g. Finance Manager"
+                  :class="errors[`contacts.${idx}.position`] ? 'input-error' : ''" />
+                <small v-if="errors[`contacts.${idx}.position`]" class="block input-error-text">
+                  {{ errors[`contacts.${idx}.position`] }}
+                </small>
+              </td>
+              <td class="px-3 py-2">
+                <FormInput v-model="contact.phone" type="text" placeholder="e.g. 021-1234567"
+                  :class="errors[`contacts.${idx}.phone`] ? 'input-error' : ''" />
+                <small v-if="errors[`contacts.${idx}.phone`]" class="block input-error-text">
+                  {{ errors[`contacts.${idx}.phone`] }}
+                </small>
+              </td>
+              <td class="px-3 py-2">
+                <FormInput v-model="contact.mobile" type="text" placeholder="e.g. 08123456789"
+                  :class="errors[`contacts.${idx}.mobile`] ? 'input-error' : ''" />
+                <small v-if="errors[`contacts.${idx}.mobile`]" class="block input-error-text">
+                  {{ errors[`contacts.${idx}.mobile`] }}
+                </small>
+              </td>
+              <td class="px-3 py-2">
+                <FormInput v-model="contact.email" type="email" placeholder="e.g. finance.pic@company.com"
+                  :class="errors[`contacts.${idx}.email`] ? 'input-error' : ''" />
+                <small v-if="errors[`contacts.${idx}.email`]" class="block input-error-text">
+                  {{ errors[`contacts.${idx}.email`] }}
+                </small>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <Button type="button" variant="soft-danger" rounded class="!h-9 !w-9 !p-0 !shadow-none" title="Hapus"
+                  :disabled="form.contacts.length === 1" @click="removeContact(idx)">
+                  <Lucide icon="Trash2" class="h-4 w-4" />
+                </Button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

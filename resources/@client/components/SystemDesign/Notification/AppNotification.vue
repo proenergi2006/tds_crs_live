@@ -65,7 +65,7 @@ onMounted(() => {
 
 <template>
   <div ref="templateRef"
-    class="hidden flex py-5 pl-5 pr-14 bg-white border rounded-lg shadow-xl border-slate-200/60 dark:bg-darkmode-600 dark:text-slate-300 dark:border-darkmode-600">
+    class="hidden flex min-w-[340px] max-w-[420px] py-5 pl-5 pr-5 bg-white border rounded-lg shadow-xl border-slate-200/60 dark:bg-darkmode-600 dark:text-slate-300 dark:border-darkmode-600">
     <Lucide :icon="notificationPayload.type === 'success'
       ? 'CheckCircle'
       : notificationPayload.type === 'error'

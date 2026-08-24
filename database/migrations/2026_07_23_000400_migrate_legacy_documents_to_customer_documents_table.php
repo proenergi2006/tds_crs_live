@@ -7,14 +7,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $documentTypeIds = DB::table('customer_document_types')->pluck('id', 'code');
-
         $columnMap = [
             'nib' => 'nib_file',
             'npwp' => 'nomor_npwp_file',
             'sertifikat' => 'nomor_sertifikat_file',
             'dokumen_lainnya' => 'dokumen_lainnya_file',
         ];
+
+        $customers = DB::table('customers')
+            ->select(array_merge(['id_customer', 'lastupdate_time', 'created_time'], array_values($columnMap)))
+            ->get();
+
+        // customers kosong (DB fresh, dev/test) = gak ada apapun buat dipindah -- skip guard
+        // seeder di bawah, biar migrate:fresh gak selalu butuh CustomerDocumentTypeSeeder duluan.
+        if ($customers->isEmpty()) {
+            return;
+        }
+
+        $documentTypeIds = DB::table('customer_document_types')->pluck('id', 'code');
 
         foreach (array_keys($columnMap) as $code) {
             if (!isset($documentTypeIds[$code])) {
@@ -24,10 +34,6 @@ return new class extends Migration
                 );
             }
         }
-
-        $customers = DB::table('customers')
-            ->select(array_merge(['id_customer', 'lastupdate_time', 'created_time'], array_values($columnMap)))
-            ->get();
 
         $now = now();
         $rows = [];

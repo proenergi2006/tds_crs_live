@@ -221,6 +221,7 @@
   $defaultTolerance = '1% dari total jumlah pengiriman';
 
   $hasTerms = !empty(trim($penawaran->syarat_ketentuan ?? ''));
+  $hasLampiranTambahan = !empty(trim($penawaran->lampiran_tambahan ?? ''));
 
   $acuanPembayaranMap = [
     'After loading'          => 'After loading',
@@ -271,8 +272,8 @@
           {{ $cust->company_name ?? '-' }}<br>
           {{ $cust->headOfficeAddress?->address_line ?: 'Alamat belum diisi' }}<br><br>
 
-          <strong>UP. <u>{{ $penawaran->nama ?? '-' }}</u></strong><br>
-          {{ $penawaran->jabatan ?? '-' }}
+          <strong>UP. <u>{{ $penawaran->customerContact->full_name ?? '-' }}</u></strong><br>
+          {{ $penawaran->customerContact->position ?? '-' }}
         </div>
       </td>
     </tr>
@@ -532,8 +533,8 @@
           <div class="sig-role">Chief Executive Officer</div>
         </td>
         <td class="sig-name t-right">
-          {{ $penawaran->nama ?? 'Customer' }}
-          <div class="sig-role">{{ $penawaran->jabatan ?? '' }}</div>
+          {{ $penawaran->customerContact->full_name ?? 'Customer' }}
+          <div class="sig-role">{{ $penawaran->customerContact->position ?? '' }}</div>
         </td>
       </tr>
     </table>
@@ -541,6 +542,44 @@
     <div class="tiny-note">
       (This form is valid with sign by computerized system)<br>
       Printed by {{ auth()->user()->name ?? 'system' }} {{ now()->format('d/m/Y H:i:s') }} WIB
+    </div>
+  </div>
+@endif
+
+{{-- Section: halaman lampiran tambahan --}}
+@if($hasLampiranTambahan)
+  <div class="page-break"></div>
+
+  <div class="terms-wrap">
+    <table class="hdr">
+      <tr>
+        <td class="logo left" style="width:50%">
+          @if($logoLeft)
+            <img src="{{ $logoLeft }}" alt="Logo Kiri">
+          @endif
+        </td>
+        <td class="logo right" style="width:50%">
+          @if($logoRight)
+            <img src="{{ $logoRight }}" alt="Logo Kanan">
+          @endif
+        </td>
+      </tr>
+    </table>
+
+    <div class="terms-title">Lampiran Tambahan</div>
+
+    <div class="terms">
+      @php
+        $attachmentLines = preg_split("/\r\n|\n|\r/", trim($penawaran->lampiran_tambahan ?? ''));
+      @endphp
+
+      @foreach($attachmentLines as $line)
+        @if(trim($line) !== '')
+          <div class="terms-line">
+            {{ ltrim($line) }}
+          </div>
+        @endif
+      @endforeach
     </div>
   </div>
 @endif

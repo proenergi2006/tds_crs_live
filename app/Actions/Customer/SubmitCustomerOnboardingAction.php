@@ -3,18 +3,18 @@
 namespace App\Actions\Customer;
 
 use App\Enums\CustomerAddressType;
+use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\CustomerContact;
-use App\Models\CustomerContactType;
 use App\Models\CustomerDocument;
 use App\Models\CustomerDocumentType;
 use App\Models\CustomerLogistik;
-use App\Models\CustomerVerification;
 use App\Services\CustomerCodeGenerator;
 use App\Services\CustomerFileNamingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 // head office address ditulis lewat jalur yang sama dengan create/update customer manual, bukan kolom identitas customers
 class SubmitCustomerOnboardingAction
@@ -26,32 +26,27 @@ class SubmitCustomerOnboardingAction
         'inco_terms', 'inco_terms_other',
     ];
 
-    public function __construct(private readonly SyncCustomerHeadOfficeAddressAction $syncHeadOfficeAddress)
+    public function __construct(private readonly UpsertCustomerAddressAction $upsertAddress)
     {
     }
 
-    public function execute(CustomerVerification $cv, array $data, string $actorName, ?string $ip): void
+    public function execute(Customer $customer, array $data, string $actorName, ?string $ip): void
     {
-        DB::transaction(function () use ($cv, $data, $actorName) {
-            $this->assignCustomerCode($cv);
-            $this->updateCustomer($cv, $data['identity'] ?? [], $actorName);
-            $this->syncHeadOfficeAddress->execute($cv->id_customer, $data['identity'] ?? []);
-            $this->saveRegisteredAddress($cv, $data['identity'] ?? [], $data['registered_address'] ?? []);
-            $this->saveInvoiceContact($cv, $data['invoice_contact'] ?? []);
-            $this->savePayment($cv, $data['payment'] ?? []);
-            $this->saveLogistics($cv, $data['logistics'] ?? [], $actorName);
-
-            $cv->update(['is_submitted' => true]);
-
-            $this->saveDocuments($cv, $data['documents'] ?? []);
+        DB::transaction(function () use ($customer, $data, $actorName) {
+            $this->assignCustomerCode($customer);
+            $this->updateCustomer($customer, $data['identity'] ?? [], $actorName);
+            $this->syncHeadOfficeAddress($customer, $data['identity'] ?? []);
+            $this->saveRegisteredAddress($customer, $data['identity'] ?? [], $data['registered_address'] ?? []);
+            $this->saveContacts($customer, $data['contacts'] ?? [], $data['remove_contact_ids'] ?? []);
+            $this->savePayment($customer, $data['payment'] ?? []);
+            $this->saveLogistics($customer, $data['logistics'] ?? [], $actorName);
+            $this->saveDocuments($customer, $data['documents'] ?? []);
         });
     }
 
     // generate customer_code di sini (bukan pas create) biar gak perlu backfill data live yang udah ada tanpa onboarding; guard idempotent
-    private function assignCustomerCode(CustomerVerification $cv): void
+    private function assignCustomerCode(Customer $customer): void
     {
-        $customer = $cv->customer;
-
         if (!empty($customer->customer_code)) {
             return;
         }
@@ -60,7 +55,7 @@ class SubmitCustomerOnboardingAction
         $customer->save();
     }
 
-    private function updateCustomer(CustomerVerification $cv, array $identity, string $actorName): void
+    private function updateCustomer(Customer $customer, array $identity, string $actorName): void
     {
         $update = array_filter(
             array_intersect_key($identity, array_flip(self::CUSTOMERS_IDENTITY_COLUMNS)),
@@ -71,17 +66,25 @@ class SubmitCustomerOnboardingAction
         $update['updated_by'] = $actorName;
         $update['update_count'] = DB::raw('COALESCE(update_count,0)+1');
 
-        DB::table('customers')->where('id_customer', $cv->id_customer)->update($update);
+        DB::table('customers')->where('id_customer', $customer->id_customer)->update($update);
     }
 
-    private function saveRegisteredAddress(CustomerVerification $cv, array $identity, array $registeredAddress): void
+    private function syncHeadOfficeAddress(Customer $customer, array $identity): void
+    {
+        $address = $identity;
+        $address['address_line'] = $identity['company_address'] ?? null;
+
+        $this->upsertAddress->execute($customer->id_customer, CustomerAddressType::HeadOffice, $address);
+    }
+
+    private function saveRegisteredAddress(Customer $customer, array $identity, array $registeredAddress): void
     {
         if (empty($registeredAddress['address_line'])) {
             return;
         }
 
         CustomerAddress::updateOrCreate(
-            ['id_customer' => $cv->id_customer, 'address_type' => CustomerAddressType::RegisteredNpwp],
+            ['id_customer' => $customer->id_customer, 'address_type' => CustomerAddressType::RegisteredNpwp],
             [
                 'address_line' => $registeredAddress['address_line'],
                 'province_id'  => $registeredAddress['province_id'] ?? null,
@@ -94,34 +97,39 @@ class SubmitCustomerOnboardingAction
         );
     }
 
-    private function saveInvoiceContact(CustomerVerification $cv, array $invoiceContact): void
+    // Delete dulu baru upsert, dua-duanya di-scope id_customer -- payload onboarding datang dari token publik tanpa login.
+    private function saveContacts(Customer $customer, array $contacts, array $removeIds): void
     {
-        if (empty($invoiceContact['name'])) {
-            return;
+        if (!empty($removeIds)) {
+            CustomerContact::where('id_customer', $customer->id_customer)
+                ->whereIn('id_contact', $removeIds)
+                ->delete();
         }
 
-        $financeTypeId = CustomerContactType::where('code', 'finance')->value('id_contact_type');
+        foreach ($contacts as $item) {
+            $attributes = [
+                'full_name' => $item['full_name'],
+                'position'  => $item['position'] ?? null,
+                'phone'     => $item['phone'] ?? null,
+                'mobile'    => $item['mobile'] ?? null,
+                'email'     => $item['email'] ?? null,
+            ];
 
-        if (!$financeTypeId) {
-            return;
+            if (!empty($item['id'])) {
+                CustomerContact::where('id_contact', $item['id'])
+                    ->where('id_customer', $customer->id_customer)
+                    ->update($attributes);
+                continue;
+            }
+
+            CustomerContact::create([...$attributes, 'id_customer' => $customer->id_customer]);
         }
-
-        CustomerContact::updateOrCreate(
-            ['id_customer' => $cv->id_customer, 'id_contact_type' => $financeTypeId],
-            [
-                'full_name' => $invoiceContact['name'],
-                'position'  => $invoiceContact['position'] ?? null,
-                'phone'     => $invoiceContact['phone'] ?? null,
-                'mobile'    => $invoiceContact['mobile'] ?? null,
-                'email'     => $invoiceContact['email'] ?? null,
-            ]
-        );
     }
 
-    private function savePayment(CustomerVerification $cv, array $payment): void
+    private function savePayment(Customer $customer, array $payment): void
     {
         DB::table('customer_payment')->updateOrInsert(
-            ['id_customer' => $cv->id_customer],
+            ['id_customer' => $customer->id_customer],
             [
                 'payment_schedule'       => $payment['schedule'] ?? null,
                 'payment_schedule_other' => $payment['schedule_other'] ?? null,
@@ -143,9 +151,9 @@ class SubmitCustomerOnboardingAction
         );
     }
 
-    private function saveLogistics(CustomerVerification $cv, array $logistics, string $actorName): void
+    private function saveLogistics(Customer $customer, array $logistics, string $actorName): void
     {
-        $logistik = CustomerLogistik::firstOrNew(['id_customer' => $cv->id_customer]);
+        $logistik = CustomerLogistik::firstOrNew(['id_customer' => $customer->id_customer]);
         $logistik->fill($logistics);
 
         if (!$logistik->exists) {
@@ -158,26 +166,29 @@ class SubmitCustomerOnboardingAction
         $logistik->save();
     }
 
-    private function saveDocuments(CustomerVerification $cv, array $documents): void
+    private function saveDocuments(Customer $customer, array $documents): void
     {
-        foreach (['nib', 'npwp', 'sertifikat'] as $code) {
+        $this->removeDocuments($customer, $documents['remove_document_ids'] ?? []);
+
+        foreach (['nib', 'npwp'] as $code) {
             $file = $documents[$code]['file'] ?? null;
 
             if ($file instanceof UploadedFile) {
-                $this->storeDocument($cv, $code, $file, $documents[$code]['number'] ?? null);
+                $this->storeDocument($customer, $code, $file, $documents[$code]['number'] ?? null);
             }
         }
 
         foreach ($documents['dokumen_lainnya'] ?? [] as $item) {
             $file = $item['file'] ?? null;
+            $label = $item['label'] ?? null;
 
-            if ($file instanceof UploadedFile) {
-                $this->storeDocument($cv, 'dokumen_lainnya', $file, null);
+            if ($file instanceof UploadedFile && $label) {
+                $this->storeFreeFormDocument($customer, $label, $file);
             }
         }
     }
 
-    private function storeDocument(CustomerVerification $cv, string $code, UploadedFile $file, ?string $documentNumber): void
+    private function storeDocument(Customer $customer, string $code, UploadedFile $file, ?string $documentNumber): void
     {
         $type = CustomerDocumentType::where('code', $code)->first();
 
@@ -187,11 +198,17 @@ class SubmitCustomerOnboardingAction
             return;
         }
 
-        [$folder, $fileName] = CustomerFileNamingService::build($cv->customer, $type, null, $file->getClientOriginalExtension());
+        // ganti dokumen fixed = replace, bukan histori -- hapus row+file lama dulu
+        CustomerDocument::where('id_customer', $customer->id_customer)
+            ->where('id_document_type', $type->id_document_type)
+            ->get()
+            ->each(fn (CustomerDocument $old) => $this->deleteDocumentFile($old));
+
+        [$folder, $fileName] = CustomerFileNamingService::build($customer, $type, null, $file->getClientOriginalExtension());
         $path = $file->storeAs($folder, $fileName, 'public');
 
         CustomerDocument::create([
-            'id_customer'      => $cv->id_customer,
+            'id_customer'      => $customer->id_customer,
             'id_document_type' => $type->id_document_type,
             'document_number'  => $documentNumber,
             'file_path'        => $path,
@@ -199,5 +216,44 @@ class SubmitCustomerOnboardingAction
             'uploaded_at'      => now(),
             'uploaded_by'      => null,
         ]);
+    }
+
+    private function storeFreeFormDocument(Customer $customer, string $label, UploadedFile $file): void
+    {
+        [$folder, $fileName] = CustomerFileNamingService::buildFreeForm($customer, $label, $file->getClientOriginalExtension());
+        $path = $file->storeAs($folder, $fileName, 'public');
+
+        CustomerDocument::create([
+            'id_customer'      => $customer->id_customer,
+            'id_document_type' => null,
+            'document_name'    => $label,
+            'file_path'        => $path,
+            'file_name'        => $fileName,
+            'uploaded_at'      => now(),
+            'uploaded_by'      => null,
+        ]);
+    }
+
+    private function removeDocuments(Customer $customer, array $ids): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        // whereNull id_document_type -- cuma dokumen bebas yang boleh dihapus lewat jalur ini, defense in depth dari validasi
+        CustomerDocument::where('id_customer', $customer->id_customer)
+            ->whereNull('id_document_type')
+            ->whereIn('id_document', $ids)
+            ->get()
+            ->each(fn (CustomerDocument $document) => $this->deleteDocumentFile($document));
+    }
+
+    private function deleteDocumentFile(CustomerDocument $document): void
+    {
+        if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
     }
 }
