@@ -13,8 +13,9 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatDateTime } from '@/utils/format'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
+import TippyContent from '@/components/Base/TippyContent'
 
 const router = useRouter()
 const route = useRoute()
@@ -172,6 +173,27 @@ function disposisiClass(v: string | number) {
     'bg-rose-100 text-rose-700': val === '5' || val === '6',
   }
 }
+
+function getDisposisiTanggal(pen: any): string {
+  const d = String(pen.disposisi_penawaran)
+  if (d === '3' && pen.bm_tanggal) return `Approved BM: ${formatDateTime(pen.bm_tanggal)}`
+  if (d === '4' && pen.om_tanggal) return `Approved OM: ${formatDateTime(pen.om_tanggal)}`
+  if (d === '5' && pen.bm_tanggal) return `Rejected BM: ${formatDateTime(pen.bm_tanggal)}`
+  if (d === '6' && pen.om_tanggal) return `Rejected OM: ${formatDateTime(pen.om_tanggal)}`
+  return ''
+}
+
+/* split di koma+spasi doang, biar koma desimal kayak "0,5" gak ikut kepotong */
+function sizePills(item: any): string[] {
+  const nama = item?.produk?.ukuran?.nama_ukuran
+  if (!nama) return []
+  return String(nama).split(/,\s+/).map((s: string) => s.trim()).filter(Boolean)
+}
+
+function joinWithAmpersand(items: string[]): string {
+  if (items.length <= 1) return items[0] || ''
+  return `${items.slice(0, -1).join(', ')} & ${items[items.length - 1]}`
+}
 </script>
 
 <template>
@@ -217,7 +239,56 @@ function disposisiClass(v: string | number) {
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td class="font-num whitespace-nowrap">
-              {{ pen.nomor_penawaran }}
+              <span class="hover:underline cursor-pointer" :data-tooltip="`produk-tooltip-${pen.id_penawaran}`">
+                {{ pen.nomor_penawaran }}
+              </span>
+              <div class="tooltip-content">
+                <TippyContent :to="`produk-tooltip-${pen.id_penawaran}`"
+                  :options="{ placement: 'right', interactive: true }">
+                  <div class="w-80 max-w-[85vw]">
+                    <div class="flex justify-between items-center gap-2 mb-3">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span class="bg-primary rounded-full w-2 h-2 shrink-0"></span>
+                        <span class="font-label text-slate-500 truncate tracking-wide">Daftar Produk Penawaran</span>
+                      </div>
+                      <span class="bg-slate-100 px-2 py-0.5 rounded-full font-caption text-slate-600 shrink-0">
+                        {{ pen.items?.length || 0 }} Item{{ (pen.items?.length || 0) > 1 ? 's' : '' }}
+                      </span>
+                    </div>
+
+                    <div v-if="!pen.items || pen.items.length === 0" class="font-caption text-slate-500">
+                      Belum ada produk.
+                    </div>
+
+                    <div v-else class="flex flex-col gap-2 pr-1 max-h-72 overflow-y-auto">
+                      <div v-for="it in pen.items" :key="it.id_penawaran_item"
+                        class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
+                        <div class="flex justify-between items-start gap-2">
+                          <div class="min-w-0">
+                            <div class="font-strong truncate">{{ it.produk?.nama_produk || '-' }}</div>
+                            <div class="font-caption text-primary truncate">{{ it.produk?.jenis?.nama || '-' }}</div>
+                          </div>
+                          <span
+                            class="bg-primary/10 px-2 py-0.5 rounded-full font-num-sm text-primary whitespace-nowrap shrink-0">
+                            {{ Number(it.volume_order ?? 0).toLocaleString('id-ID') }} m³
+                          </span>
+                        </div>
+
+                        <div v-if="sizePills(it).length" class="mt-2 font-caption text-slate-600">
+                          <span class="font-strong text-slate-700 text-xs">Komposisi:</span>
+                          Ukuran {{ joinWithAmpersand(sizePills(it)) }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="pen.items && pen.items.length > 0"
+                      class="flex justify-between items-center mt-3 pt-1 border-slate-100 border-t">
+                      <span class="font-caption text-slate-500">Total Volume:</span>
+                      <span class="font-strong">{{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³</span>
+                    </div>
+                  </div>
+                </TippyContent>
+              </div>
             </Table.Td>
             <Table.Td class="whitespace-nowrap">
               {{ pen.customer?.company_name || '-' }}
@@ -236,6 +307,9 @@ function disposisiClass(v: string | number) {
                 <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
                   :class="disposisiClass(pen.disposisi_penawaran)">
                   {{ getDisposisiLabel(pen.disposisi_penawaran) }}
+                </span>
+                <span v-if="getDisposisiTanggal(pen)" class="font-caption italic">
+                  {{ getDisposisiTanggal(pen) }}
                 </span>
               </div>
             </Table.Td>

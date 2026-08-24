@@ -93,7 +93,6 @@
   }
 @endphp
 
-<!-- ======================== HALAMAN 1 ======================== -->
 <div class="content">
   <table class="hdr">
     <tr>
@@ -185,8 +184,21 @@
         @endphp
         <tr>
           <td>
-            <strong>{{ $produk->merk_dagang ?? '-' }}</strong><br>
-            {{ $produk->nama_produk ?? '-' }}{{ optional($produk->ukuran)->nama_ukuran ? ' | ' . $produk->ukuran->nama_ukuran : '' }}
+            @php
+              $subParts = [];
+              if (optional($produk->jenis)->nama) {
+                $subParts[] = $produk->jenis->nama;
+              }
+              if (optional($produk->ukuran)->nama_ukuran) {
+                $ukuranText = $produk->ukuran->nama_ukuran;
+                if (optional($produk->ukuran->satuan)->nama_satuan) {
+                  $ukuranText .= ' ' . $produk->ukuran->satuan->nama_satuan;
+                }
+                $subParts[] = $ukuranText;
+              }
+            @endphp
+            <strong>{{ $produk->nama_produk ?? '-' }}</strong><br>
+            {{ $subParts ? implode(' · ', $subParts) : '-' }}
           </td>
           <td class="t-right">{{ number_format($volume, 2, ',', '.') }}</td>
           <td class="t-right">{{ $rp0($harga) }}</td>
@@ -249,7 +261,6 @@
   @endif
 </div>
 
-<!-- ======================== HALAMAN 2 (TERMS) ======================== -->
 @if($hasTerms)
 <div class="page-break"></div>
 
