@@ -20,10 +20,9 @@ const auth = useAuthStore()
 
 const { userName, userEmail, onLogout } = useAccount()
 
-const agenRoles = [13, 14, 15, 16]
-
+// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() => {
-  return agenRoles.includes(Number(auth.user?.id_role))
+  return auth.user?.brand === 'proenergi'
 })
 
 const currentLogo = computed(() => {

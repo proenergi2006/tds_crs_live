@@ -31,10 +31,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const menuStore = useMenuStore()
 
-const agenRoles = [13, 14, 15, 16]
-
+// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() => {
-  return agenRoles.includes(Number(auth.user?.id_role))
+  return auth.user?.brand === 'proenergi'
 })
 
 const brandName = computed(() => {
@@ -143,84 +142,21 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
       <Lucide :icon="isSidebarCollapsed ? 'PanelRightOpen' : 'PanelLeftClose'" class="h-5 w-5" />
     </button>
 
-    <!-- BEGIN: Breadcrumb -->
     <Breadcrumb class="hidden mr-auto -intro-x sm:flex">
       <Breadcrumb.Link v-for="(item, index) in breadcrumbs" :key="`${item.title}-${index}`" :to="item.to"
         :active="item.active" :disabled="item.disabled">
         {{ item.title }}
       </Breadcrumb.Link>
     </Breadcrumb>
-    <!-- END: Breadcrumb -->
 
     <div class="ml-auto flex items-center gap-3">
       <div class="flex items-center gap-2 intro-x">
-        <!-- BEGIN: Search -->
-        <!-- <div class="relative hidden sm:block">
-          <input type="text" placeholder="Search..."
-            class="w-48 rounded-full border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-600 placeholder-slate-400 transition focus:w-64 focus:border-primary focus:outline-none focus:ring-0 dark:border-darkmode-400 dark:bg-darkmode-400 dark:text-slate-300 dark:placeholder-slate-500" />
-          <Lucide icon="Search" class="absolute inset-y-0 left-3 my-auto h-4 w-4 text-slate-400" />
-        </div> -->
-        <!-- END: Search -->
-
-        <!-- BEGIN: Notification -->
-        <!-- <Menu>
-          <Menu.Button
-            class="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-darkmode-400">
-            <Lucide icon="Bell" class="h-5 w-5" />
-            <span class="absolute right-1.5 top-1.5 flex h-2 w-2 items-center justify-center rounded-full bg-danger">
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
-            </span>
-          </Menu.Button>
-
-          <Menu.Items class="mt-px w-72">
-            <Menu.Header class="font-normal flex items-center justify-between">
-              <span class="font-medium">Notifications</span>
-              <span class="text-xs">3 unread</span>
-            </Menu.Header>
-
-            <Menu.Divider />
-
-            <Menu.Item as="button" class="hover:bg-dark/5 flex flex-col items-start gap-0.5 py-3 w-full">
-              <div class="flex w-full items-start gap-2">
-                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark/5">
-                  <Lucide icon="ShoppingCart" class="h-3.5 w-3.5" />
-                </div>
-                <div class="flex-1 text-left">
-                  <div class="text-sm font-medium leading-snug">PO-2024-0042 disetujui</div>
-                  <div class="mt-0.5 text-xs">Purchase Order · 2 menit lalu</div>
-                </div>
-                <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-danger" />
-              </div>
-            </Menu.Item>
-
-            <Menu.Item as="button" class="hover:bg-dark/5 flex flex-col items-start gap-0.5 py-3">
-              <div class="flex w-full items-start gap-2">
-                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark/5">
-                  <Lucide icon="ClipboardList" class="h-3.5 w-3.5" />
-                </div>
-                <div class="flex-1 text-left">
-                  <div class="text-sm font-medium leading-snug">PR-2024-0018 menunggu approval</div>
-                  <div class="mt-0.5 text-xs">Purchase Request · 3 jam lalu</div>
-                </div>
-              </div>
-            </Menu.Item>
-
-            <Menu.Divider />
-
-            <Menu.Item as="button" class="hover:bg-dark/5 w-full justify-center text-center text-xs py-2">
-              Lihat semua notifikasi
-            </Menu.Item>
-          </Menu.Items>
-        </Menu> -->
-        <!-- END: Notification -->
       </div>
 
       <!-- Divider Vertikal -->
       <div class="hidden h-8 w-px bg-slate-200 dark:bg-darkmode-400 sm:block" />
 
-      <!-- BEGIN: Account Menu -->
       <AccountMenu />
-      <!-- END: Account Menu -->
     </div>
   </div>
 </template>

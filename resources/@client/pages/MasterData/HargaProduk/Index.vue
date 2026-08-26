@@ -474,7 +474,7 @@ function produkText(row: HargaRow) {
                         <Lucide icon="Eye" class="h-4 w-4" />
                       </Button>
 
-                      <Button :as="RouterLink"
+                      <Button v-if="canManageHarga" :as="RouterLink"
                         :to="{ name: 'produk-hargas-edit', params: { id: item.id_produk_harga } }"
                         variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit">
                         <Lucide icon="Edit" class="h-4 w-4" />

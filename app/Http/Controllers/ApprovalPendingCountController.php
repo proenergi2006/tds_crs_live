@@ -7,10 +7,10 @@ use Illuminate\Http\Request;
 
 class ApprovalPendingCountController extends Controller
 {
-    // role tanpa stage di provider manapun tetap 200 + breakdown kosong, bukan 403 -- biar endpoint ini generik
+    // union lintas semua role user; role yang gak punya stage tetep 200 breakdown kosong, biar endpoint ini generik
     public function __invoke(Request $request): JsonResponse
     {
-        $roleId = $request->user()->id_role;
+        $roleIds = $request->user()->roles->pluck('id')->all();
 
         $breakdown = [];
         $total     = 0;
@@ -18,11 +18,13 @@ class ApprovalPendingCountController extends Controller
         foreach (config('approvals.providers') as $providerClass) {
             $provider = app($providerClass);
 
-            if (! in_array($roleId, $provider->stageRoleIds(), true)) {
+            $matchingRoles = array_intersect($roleIds, $provider->stageRoleIds());
+
+            if (empty($matchingRoles)) {
                 continue;
             }
 
-            $count = $provider->pendingCountFor($roleId);
+            $count = array_sum(array_map(fn ($rid) => $provider->pendingCountFor($rid), $matchingRoles));
 
             $breakdown[$provider->label()] = $count;
             $total += $count;

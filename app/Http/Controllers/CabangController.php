@@ -11,7 +11,7 @@ class CabangController extends Controller
     {
         $query = Cabang::query();
 
-        if ($request->as_list === true) {
+        if ($request->boolean('as_list')) {
             return response()->json(
                 $query->select('id_cabang', 'nama_cabang')
                     ->orderBy('nama_cabang')
@@ -56,9 +56,9 @@ class CabangController extends Controller
             'nama_cabang'     => 'required|string|max:150|unique:cabangs,nama_cabang',
             'is_active'       => 'boolean',
             'created_by'      => 'nullable|string',
-            'inisial_cabang'  => 'nullable|string|max:10',   // Validasi untuk inisial cabang
-            'inisial_segel'   => 'nullable|string|max:10',   // Validasi untuk inisial segel
-            'catatan_cabang'  => 'nullable|string|max:500',  // Validasi untuk catatan cabang
+            'inisial_cabang'  => 'nullable|string|max:10',
+            'inisial_segel'   => 'nullable|string|max:10',
+            'catatan_cabang'  => 'nullable|string|max:500',
         ]);
 
         $data['created_time'] = now();
@@ -81,9 +81,9 @@ class CabangController extends Controller
             'nama_cabang'     => "required|string|max:150|unique:cabangs,nama_cabang,{$id},id_cabang",
             'is_active'       => 'boolean',
             'lastupdate_by'   => 'nullable|string',
-            'inisial_cabang'  => 'nullable|string|max:10',   // Validasi untuk inisial cabang
-            'inisial_segel'   => 'nullable|string|max:10',   // Validasi untuk inisial segel
-            'catatan_cabang'  => 'nullable|string|max:500',  // Validasi untuk catatan cabang
+            'inisial_cabang'  => 'nullable|string|max:10',
+            'inisial_segel'   => 'nullable|string|max:10',
+            'catatan_cabang'  => 'nullable|string|max:500',
         ]);
 
         $data['lastupdate_time'] = now();

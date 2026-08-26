@@ -15,9 +15,9 @@ class AuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Administrator (id_role=1) bypass semua permission check — lapisan kedua di luar bypass di User::hasPermissionTo()
+        // Administrator auto-lolos semua permission check, override hasPermissionTo() lama udah dihapus.
         Gate::before(function (\App\Models\User $user, string $ability) {
-            if ($user->id_role === 1) {
+            if ($user->hasRole('Administrator')) {
                 return true;
             }
         });

@@ -9,7 +9,7 @@ declare module "vue-router" {
     breadcrumbTitle?: string;
     brand?: string;
     role?: string;
-    permission?: string;
+    permission?: string | string[];
     guestOnly?: boolean;
   }
 }
@@ -150,7 +150,7 @@ const routes = [
         name: "produk-hargas-edit",
         component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
         meta: {
-          permission: "harga-produk.view",
+          permission: "harga-produk.manage",
           breadcrumbTitle: "Edit Harga Produk",
         },
       },
@@ -320,6 +320,7 @@ const routes = [
         path: "/po-verification/:id",
         name: "po-verification-detail",
         component: () => import("@/pages/Verification/PoSupplier/Detail.vue"),
+        meta: { permission: "verification.po-supplier" },
         props: true,
       },
 
@@ -551,7 +552,7 @@ const routes = [
         meta: {
           role: "bm",
           brand: "reguler",
-          permission: "verification.quotation",
+          permission: ["verification.quotation", "penawaran.verify-bm"],
         },
       },
       {
@@ -571,7 +572,7 @@ const routes = [
         meta: {
           role: "om",
           brand: "reguler",
-          permission: "verification.quotation",
+          permission: ["verification.quotation", "penawaran.verify-om"],
         },
       },
       {
@@ -811,9 +812,12 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "dashboard-overview-1" });
   }
 
-  // Cek permission
+  // cek permission, array = AND (backend kadang gate 2 permission sekaligus, mis. Penawaran TDS reguler)
   const requiredPermission = to.meta.permission;
-  if (requiredPermission && !auth.can(requiredPermission)) {
+  const required = Array.isArray(requiredPermission)
+    ? requiredPermission
+    : [requiredPermission];
+  if (requiredPermission && !required.every((p) => auth.can(p))) {
     stopRouteLoading(150);
     return next({ name: "dashboard-overview-1" });
   }

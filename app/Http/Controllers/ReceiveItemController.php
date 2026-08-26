@@ -216,8 +216,7 @@ class ReceiveItemController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        $allowedRoles = [1, 5];
-        if (! in_array($request->user()->id_role, $allowedRoles)) {
+        if ($request->user()->cant('good-receipt.manage')) {
             return response()->json(['message' => 'Akses ditolak.'], 403);
         }
 

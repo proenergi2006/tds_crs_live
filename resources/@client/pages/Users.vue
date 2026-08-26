@@ -10,6 +10,7 @@ import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import { FormInput, FormSelect, FormCheck } from '@/components/Base/Form'
+import TomSelect from '@/components/Base/TomSelect'
 import { Dialog } from '@/components/Base/Headless'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
@@ -20,8 +21,8 @@ import { createResourceApi } from '@/utils/resourceApi.js'
 
 /* Section: Types */
 interface Role {
-  id_role: number
-  role_name: string
+  id: number
+  name: string
 }
 
 interface Cabang {
@@ -35,9 +36,9 @@ interface User {
   email: string
   no_telepon: string | null
   is_active: boolean
-  id_role: number | null
   id_cabang: number | null
-  role?: Role
+  primary_role?: Role
+  roles?: Role[]
   cabang?: Cabang
 }
 
@@ -66,7 +67,8 @@ const form = reactive({
   email: '',
   no_telepon: '',
   password: '',
-  id_role: null as number | null,
+  role_ids: [] as string[],
+  primary_role_id: null as string | null,
   id_cabang: null as number | null,
   is_active: true,
 })
@@ -86,8 +88,8 @@ const rules = {
   password: {
     required: helpers.withMessage('Password wajib diisi', requiredIf(() => !isEdit.value)),
   },
-  id_role: {
-    required: helpers.withMessage('Role wajib dipilih', required),
+  role_ids: {
+    required: helpers.withMessage('Minimal satu role wajib dipilih', (v: string[]) => v.length > 0),
   },
   id_cabang: {
     required: helpers.withMessage('Cabang wajib dipilih', required),
@@ -126,7 +128,7 @@ const filteredUsers = computed(() => {
       item.name,
       item.email,
       item.no_telepon,
-      item.role?.role_name,
+      item.primary_role?.name,
       item.cabang?.nama_cabang,
     ].some(value => String(value || '').toLowerCase().includes(query))
   })
@@ -147,6 +149,8 @@ const inactiveUsers = computed(() => allUsers.value.filter(u => !u.is_active).le
 
 const canImpersonate = computed((): boolean => auth.can('admin.users.impersonate'))
 
+const primaryRoleOptions = computed(() => rolesList.value.filter(r => form.role_ids.includes(String(r.id))))
+
 /* Section: Lifecycle & watch */
 onMounted(() => {
   fetchData()
@@ -156,6 +160,12 @@ onMounted(() => {
 
 watch(searchQuery, debounce(resetToFirstPage, 300))
 watch(perPage, resetToFirstPage)
+
+// role utama harus salah satu dari role_ids yang dipilih -- reset otomatis kalau yang lama sudah tidak dicentang
+watch(() => form.role_ids, (roleIds) => {
+  if (form.primary_role_id && roleIds.includes(form.primary_role_id)) return
+  form.primary_role_id = roleIds[0] ?? null
+})
 
 /* Section: Data fetching */
 async function fetchData() {
@@ -207,7 +217,8 @@ function openCreate() {
     email: '',
     no_telepon: '',
     password: '',
-    id_role: null,
+    role_ids: [],
+    primary_role_id: null,
     id_cabang: null,
     is_active: true,
   })
@@ -224,12 +235,20 @@ function openEdit(user: User) {
     email: user.email,
     no_telepon: user.no_telepon || '',
     password: '',
-    id_role: user.id_role,
+    role_ids: (user.roles ?? []).map(r => String(r.id)),
+    primary_role_id: user.primary_role ? String(user.primary_role.id) : null,
     id_cabang: user.id_cabang,
     is_active: user.is_active,
   })
   v$.value.$reset()
   createModal.value = true
+}
+
+function buildRolePayload() {
+  return {
+    role_ids: form.role_ids.map(Number),
+    primary_role_id: form.primary_role_id ? Number(form.primary_role_id) : null,
+  }
 }
 
 async function submitCreate() {
@@ -241,7 +260,7 @@ async function submitCreate() {
 
   formLoading.value = true
   try {
-    await userApi.store(form)
+    await userApi.store({ ...form, ...buildRolePayload() })
     await fetchData()
     createModal.value = false
     success('Berhasil', 'User berhasil dibuat')
@@ -261,7 +280,7 @@ async function submitEdit() {
 
   formLoading.value = true
   try {
-    await userApi.update(form.id, form)
+    await userApi.update(form.id, { ...form, ...buildRolePayload() })
     await fetchData()
     createModal.value = false
     success('Berhasil', 'User berhasil diperbarui')
@@ -467,7 +486,7 @@ function getInitials(name: string) {
 
             <Table.Td>{{ user.no_telepon || '-' }}</Table.Td>
             <Table.Td>{{ user.cabang?.nama_cabang || '-' }}</Table.Td>
-            <Table.Td>{{ user.role?.role_name || '-' }}</Table.Td>
+            <Table.Td>{{ user.primary_role?.name || '-' }}</Table.Td>
 
             <Table.Td class="text-center">
               <span class="font-label inline-flex rounded-full px-3 py-1"
@@ -491,7 +510,7 @@ function getInitials(name: string) {
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
                 <Button v-if="canImpersonate" variant="soft-info" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  :disabled="Number(user.id_role) === 1 || !user.is_active || Number(user.id) === Number(auth.user?.id)"
+                  :disabled="user.primary_role?.id === 1 || !user.is_active || Number(user.id) === Number(auth.user?.id)"
                   @click="openImpersonateConfirm(user)" title="Impersonate">
                   <Lucide icon="LogIn" class="h-4 w-4" />
                 </Button>
@@ -549,13 +568,25 @@ function getInitials(name: string) {
             </div>
 
             <div>
-              <FormSelect v-model="form.id_role" :class="getFieldError('id_role') ? 'border-rose-500' : ''">
-                <option disabled value="">— Select Role —</option>
-                <option v-for="r in rolesList" :key="r.id_role" :value="r.id_role">
-                  {{ r.role_name }}
+              <label class="font-label mb-1 block text-slate-700">Roles</label>
+              <TomSelect v-model="form.role_ids" multiple class="w-full"
+                :options="{ placeholder: 'Pilih satu atau lebih role...', dropdownParent: 'body', onDelete: () => true }"
+                :class="getFieldError('role_ids') ? 'border-rose-500' : ''">
+                <option v-for="r in rolesList" :key="r.id" :value="String(r.id)">
+                  {{ r.name }}
+                </option>
+              </TomSelect>
+              <small v-if="getFieldError('role_ids')" class="font-caption !text-rose-600">{{ getFieldError('role_ids') }}</small>
+            </div>
+
+            <div v-if="form.role_ids.length > 1">
+              <label class="font-label mb-1 block text-slate-700">Role Utama</label>
+              <FormSelect v-model="form.primary_role_id">
+                <option v-for="r in primaryRoleOptions" :key="r.id" :value="String(r.id)">
+                  {{ r.name }}
                 </option>
               </FormSelect>
-              <small v-if="getFieldError('id_role')" class="font-caption !text-rose-600">{{ getFieldError('id_role') }}</small>
+              <small class="font-caption block text-slate-400">Menentukan brand & tab dashboard default untuk user ini.</small>
             </div>
 
             <label class="flex items-center rounded-lg border border-slate-200 px-3 py-3">

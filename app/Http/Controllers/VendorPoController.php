@@ -245,7 +245,12 @@ class VendorPoController extends Controller
 
     public function approve(Request $request, $id)
     {
+        if ($request->user()->cant('po-supplier.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $po = VendorPo::findOrFail($id);
+        // cfo_result auto keisi 1: posisi CFO masih kosong, approval langsung ke CEO buat sementara
         $po->disposisi_po      = 2;
         $po->cfo_result        = 1;
         $po->cfo_tgl           = now();
@@ -297,7 +302,7 @@ class VendorPoController extends Controller
             ->stream($filename);
     }
 
-    // Fungsi untuk mengubah bulan angka menjadi bulan Romawi
+    // bulan angka ke romawi
     private function getBulanRomawi($month)
     {
         $months = [
@@ -314,10 +319,10 @@ class VendorPoController extends Controller
             '11' => 'XI',
             '12' => 'XII'
         ];
-        return $months[$month] ?? 'I'; // Default to 'I' if not found
+        return $months[$month] ?? 'I'; // fallback 'I' kalau ga ketemu
     }
 
-    // Endpoint publik untuk menampilkan data PO (JSON).
+    // endpoint publik nampilin data PO (json)
     public function publicShow($id)
     {
         $po = VendorPo::with(['vendor', 'terminal', 'produks.produk'])

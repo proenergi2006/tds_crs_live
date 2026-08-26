@@ -19,7 +19,7 @@ class StartImpersonationAction
             abort(422, 'Tidak bisa impersonate diri sendiri');
         }
 
-        if ($target->id_role === 1) {
+        if ($target->hasRole('Administrator')) {
             abort(403, 'Tidak bisa impersonate sesama admin');
         }
 

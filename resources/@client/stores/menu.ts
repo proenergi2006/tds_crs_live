@@ -15,9 +15,9 @@ export interface Menu {
   ignore?: boolean;
   permission?: string;
   badgeKey?: string;
-  // roles/excludeRoles cuma soal DI MANA item muncul per role, permission tetap yang nentuin KEWENANGAN
-  roles?: number[]; // kalau diisi, item CUMA tampil untuk id_role di list ini
-  excludeRoles?: number[]; // kalau diisi, item disembunyikan untuk id_role di list ini
+  // roles/excludeRoles cuma soal DI MANA item muncul per role (union assignment, bukan primary_role tunggal), permission tetap yang nentuin KEWENANGAN
+  roles?: number[]; // kalau diisi, item CUMA tampil untuk user yang punya salah satu role id di list ini
+  excludeRoles?: number[]; // kalau diisi, item disembunyikan untuk user yang punya salah satu role id di list ini
 }
 
 export interface MenuState {
@@ -28,17 +28,17 @@ export interface MenuState {
 const filterMenuItem = (
   item: Menu,
   canFn: (permission: string) => boolean,
-  currentRoleId?: number,
+  hasRoleFn: (roleId: number) => boolean,
 ): Menu | null => {
   const roleAllowed =
-    (!item.roles || (currentRoleId !== undefined && item.roles.includes(currentRoleId))) &&
-    (!item.excludeRoles || currentRoleId === undefined || !item.excludeRoles.includes(currentRoleId));
+    (!item.roles || item.roles.some(hasRoleFn)) &&
+    (!item.excludeRoles || !item.excludeRoles.some(hasRoleFn));
 
   if (!roleAllowed) return null;
 
   if (item.subMenu?.length) {
     const filteredSub = item.subMenu
-      .map((sub) => filterMenuItem(sub, canFn, currentRoleId))
+      .map((sub) => filterMenuItem(sub, canFn, hasRoleFn))
       .filter((sub): sub is Menu => sub !== null);
 
     if (!filteredSub.length) return null;
@@ -63,13 +63,12 @@ export const useMenuStore = defineStore("menu", {
   getters: {
     menu: (state) => (layout: Themes["layout"]) => {
       const auth = useAuthStore();
-      const currentRoleId = auth.user?.id_role !== undefined ? Number(auth.user.id_role) : undefined;
 
       if (layout === "top-menu") return topMenu;
       if (layout === "simple-menu") return simpleMenu;
 
       return (navigation as Menu[])
-        .map((item) => filterMenuItem(item, (p) => auth.can(p), currentRoleId))
+        .map((item) => filterMenuItem(item, auth.can, auth.hasRole))
         .filter((item): item is Menu => item !== null);
     },
   },

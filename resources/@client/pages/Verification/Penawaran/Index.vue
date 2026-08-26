@@ -30,16 +30,12 @@ const auth = useAuthStore()
 // computed, bukan const: route ini di-share TDS/Proenergi tanpa remount antar navigasi
 const brand = computed(() => route.meta.brand as VerifikasiBrand)
 
-// TDS pakai permission bareng jadi dibedain dari id_role, Proenergi udah punya permission verify-bm/verify-om sendiri
-const TDS_OM_ID_ROLES = [10]
+// permission granular seragam kedua brand -- TDS reguler menyusul pola Proenergi yang sudah benar
+const bmPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-bm' : 'penawaran.verify-bm')
+const omPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-om' : 'penawaran.verify-om')
 
-const idRole = computed(() => Number(auth.user?.id_role))
-const canSeeBm = computed(() => brand.value === 'proenergi'
-  ? auth.can('penawaran.proenergi.verify-bm')
-  : idRole.value === 8)
-const canSeeOm = computed(() => brand.value === 'proenergi'
-  ? auth.can('penawaran.proenergi.verify-om')
-  : TDS_OM_ID_ROLES.includes(idRole.value))
+const canSeeBm = computed(() => auth.can(bmPermission.value))
+const canSeeOm = computed(() => auth.can(omPermission.value))
 
 // true kalau user tidak match spesifik salah satu (mis. Administrator) — butuh toggle manual
 const isAmbiguousRole = computed(() => canSeeBm.value === canSeeOm.value)

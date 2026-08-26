@@ -481,7 +481,7 @@ class CustomerVerificationController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ((int) $request->user()->id_role !== self::ROLE_ADMIN_FINANCE) {
+        if ((int) $request->user()->primary_role_id !== self::ROLE_ADMIN_FINANCE) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

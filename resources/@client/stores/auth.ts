@@ -1,4 +1,3 @@
-// resources/@client/stores/auth.ts
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import router from '@/router'
@@ -9,10 +8,10 @@ export const useAuthStore = defineStore('auth', {
       id: string
       name: string
       email: string
-      no_telepon: string | null
-      id_role: number
-      two_factor_secret: string | null
       permissions: string[]
+      roles: { id: number; name: string }[]
+      primary_role: { id: number; name: string } | null
+      brand: 'tds' | 'proenergi'
       impersonation: { admin: { id: number; name: string } | null; expires_at: string } | null
     } | null,
 
@@ -25,9 +24,14 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    // return false (bukan error) kalau user null/permissions belum load; admin udah dapet semua permission dari backend
+    // admin bypass semua permission check -- cermin Gate::before backend (roles, bukan permissions[] yang bisa kosong)
     can: (state) => (permission: string): boolean =>
-      state.user?.permissions?.includes(permission) ?? false,
+      state.user?.roles?.some(r => r.name === 'Administrator')
+        ? true
+        : state.user?.permissions?.includes(permission) ?? false,
+
+    hasRole: (state) => (roleId: number): boolean =>
+      state.user?.roles?.some(r => r.id === roleId) ?? false,
 
     // dipakai router guard buat cek forceLogout udah/lagi jalan, cegah double-redirect
     isForceLoggingOut: (state) => state.isLoggingOut,

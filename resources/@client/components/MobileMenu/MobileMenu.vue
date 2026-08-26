@@ -38,10 +38,9 @@ const menu = computed(() =>
 // Account (user info + logout) — shared with desktop AccountMenu
 const { userName, userEmail, onLogout } = useAccount();
 
-// Brand agen vs TDS (pola sama seperti SideMenu.vue)
-const agenRoles = [13, 14, 15, 16];
+// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() =>
-  agenRoles.includes(Number(authStore.user?.id_role))
+  authStore.user?.brand === 'proenergi'
 );
 const appName = computed(() =>
   isAgenRole.value ? "Agen TDS" : "Tri Daya Selaras"
@@ -71,7 +70,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- BEGIN: Mobile Menu -->
   <div
     :class="[
       'mobile-menu group top-0 inset-x-0 fixed bg-theme-1/90 z-[60] border-b border-white/[0.08] dark:bg-darkmode-800/90 md:hidden',
@@ -150,7 +148,6 @@ onMounted(() => {
         />
       </a>
       <ul class="py-2">
-        <!-- BEGIN: First Child -->
         <template v-for="(menu, menuKey) in formattedMenu">
           <li v-if="menu == 'divider'" class="my-6 menu__divider"></li>
           <li v-else>
@@ -288,10 +285,9 @@ onMounted(() => {
             </Transition>
           </li>
         </template>
-        <!-- END: First Child -->
       </ul>
       </div>
-      <!-- BEGIN: Account Footer (di luar SimpleBar, selalu terlihat) -->
+      <!-- Account footer: di luar SimpleBar biar selalu keliatan -->
       <div class="shrink-0 border-t border-white/[0.08] px-6 py-4">
         <div class="min-w-0">
           <div class="text-sm font-medium text-white leading-tight truncate">
@@ -310,8 +306,6 @@ onMounted(() => {
           Logout
         </button>
       </div>
-      <!-- END: Account Footer -->
     </div>
   </div>
-  <!-- END: Mobile Menu -->
 </template>

@@ -41,4 +41,13 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    // primary_role_id + model_has_roles (Spatie) sekaligus -- users udah gak punya kolom id_role, jadi test butuh state eksplisit buat assign role.
+    public function withRole(int $roleId): static
+    {
+        return $this->afterCreating(function (\App\Models\User $user) use ($roleId) {
+            $user->update(['primary_role_id' => $roleId]);
+            $user->syncRoles([$roleId]);
+        });
+    }
 }

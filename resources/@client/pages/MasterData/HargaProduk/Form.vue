@@ -80,10 +80,9 @@ const rows = ref<PriceRow[]>([makeEmptyRow()])
 
 const currentUser = computed(() => auth.user)
 const currentUserName = computed(() => currentUser.value?.name || '')
-const isRole2 = computed(() => Number(currentUser.value?.id_role) === 2)
-const isRole5 = computed(() => Number(currentUser.value?.id_role) === 5)
-const isRole8 = computed(() => Number(currentUser.value?.id_role) === 8)
-const isRole10 = computed(() => Number(currentUser.value?.id_role) === 10)
+// field-ownership: cogs = Procurement (set-cogs), sisanya = CEO (set-price-list) -- BM/OM tidak pernah sampai form ini (route guard harga-produk.manage)
+const canSetCogs = computed(() => auth.can('harga-produk.set-cogs'))
+const canSetPriceList = computed(() => auth.can('harga-produk.set-price-list'))
 
 const pageTitle = computed(() => mode.value === 'create' ? 'Tambah Harga Produk' : 'Edit Harga Produk')
 const pageDescription = computed(() =>
@@ -95,9 +94,7 @@ const submitText = computed(() => mode.value === 'create' ? 'Simpan Harga' : 'Si
 const canAddRows = computed(() => mode.value === 'create')
 
 const visibleMoneyFields = computed<MoneyField[]>(() => {
-  if (isRole5.value) return ['harga_cogs']
-  if (isRole8.value) return ['harga_cogs', 'harga_bm']
-  if (isRole10.value) return ['harga_cogs', 'harga_om']
+  if (canSetCogs.value && !canSetPriceList.value) return ['harga_cogs']
 
   return [
     'harga_cogs',
@@ -163,37 +160,37 @@ const rules = computed(() => ({
       harga_margin: {
         required: helpers.withMessage(
           'Margin wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
       harga_price_list_pe: {
         required: helpers.withMessage(
           'Price List PE wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
       harga_price_list: {
         required: helpers.withMessage(
           'Price List TDS wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
       harga_bm: {
         required: helpers.withMessage(
           'Approval BM wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
       harga_om: {
         required: helpers.withMessage(
           'Approval OM wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
       harga_ceo: {
         required: helpers.withMessage(
           'Approval CEO wajib diisi',
-          (value: number) => !isRole2.value || toIntMoney(value) > 0,
+          (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
         ),
       },
     }),
@@ -299,12 +296,11 @@ function removeRow(index: number) {
 }
 
 function isReadonly(field: MoneyField) {
-  if (isRole5.value && field !== 'harga_cogs') return true
-  if (isRole8.value && field !== 'harga_bm') return true
-  if (isRole10.value && field !== 'harga_om') return true
-  if (isRole2.value && (field === 'harga_cogs' || field === 'harga_price_list')) return true
+  if (field === 'harga_price_list') return true
+  if (canSetCogs.value && !canSetPriceList.value) return field !== 'harga_cogs'
+  if (canSetPriceList.value) return field === 'harga_cogs'
 
-  return false
+  return true
 }
 
 function toIntMoney(value: unknown): number {
@@ -360,25 +356,33 @@ function getRowFieldError(index: number, field: 'id_cabang' | 'id_produk' | 'cog
   return errors?.[0]?.$message?.toString() ?? ''
 }
 
-function buildPayload(row: PriceRow) {
-  return {
+function buildPayload(row: PriceRow): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
     periode_awal: period.periode_awal,
     periode_akhir: period.periode_akhir,
     id_cabang: Number(row.id_cabang),
     id_produk: Number(row.id_produk),
-    harga_price_list: toIntMoney(row.harga_price_list),
-    harga_price_list_pe: toIntMoney(row.harga_price_list_pe),
-    harga_bm: toIntMoney(row.harga_bm),
-    harga_cogs: toIntMoney(row.harga_cogs),
-    harga_margin: toIntMoney(row.harga_margin),
-    harga_om: toIntMoney(row.harga_om),
-    harga_ceo: toIntMoney(row.harga_ceo),
     cogs_basis: row.cogs_basis || null,
     catatan: row.catatan,
     ...(mode.value === 'create'
       ? { created_by: currentUserName.value }
       : { lastupdate_by: currentUserName.value }),
   }
+
+  if (canSetCogs.value) {
+    payload.harga_cogs = toIntMoney(row.harga_cogs)
+  }
+
+  if (canSetPriceList.value) {
+    payload.harga_price_list = toIntMoney(row.harga_price_list)
+    payload.harga_price_list_pe = toIntMoney(row.harga_price_list_pe)
+    payload.harga_margin = toIntMoney(row.harga_margin)
+    payload.harga_bm = toIntMoney(row.harga_bm)
+    payload.harga_om = toIntMoney(row.harga_om)
+    payload.harga_ceo = toIntMoney(row.harga_ceo)
+  }
+
+  return payload
 }
 
 async function submitForm() {
@@ -451,7 +455,7 @@ function cancel() {
       <div class="grid grid-cols-12">
         <div class="col-span-4">
           <DateRangeInline v-model="periodRange" label="Periode Harga" required :error="periodRangeError"
-            :auto-default="false" :disabled="!isRole5" />
+            :auto-default="false" :disabled="!canSetCogs" />
         </div>
       </div>
     </template>
@@ -526,7 +530,7 @@ function cancel() {
 
               <td class="px-4 py-3 align-top">
                 <FormSelect :id="`cabang-${index}`" v-model="row.id_cabang" class="min-w-[180px]"
-                  :class="getRowFieldError(index, 'id_cabang') ? 'border-rose-500' : ''" :disabled="!isRole5">
+                  :class="getRowFieldError(index, 'id_cabang') ? 'border-rose-500' : ''" :disabled="!canSetCogs">
                   <option disabled value="">-- Pilih Cabang --</option>
                   <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="cabang.id_cabang">
                     {{ cabang.nama_cabang }}
@@ -539,7 +543,7 @@ function cancel() {
 
               <td class="px-4 py-3 align-top">
                 <FormSelect :id="`produk-${index}`" v-model="row.id_produk" class="min-w-[280px]"
-                  :class="getRowFieldError(index, 'id_produk') ? 'border-rose-500' : ''" :disabled="!isRole5">
+                  :class="getRowFieldError(index, 'id_produk') ? 'border-rose-500' : ''" :disabled="!canSetCogs">
                   <option disabled value="">-- Pilih Produk --</option>
                   <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
                     {{ produk.nama_produk }} ({{ produk.ukuran?.nama_ukuran }} {{ produk.ukuran?.satuan?.nama_satuan }})
@@ -595,7 +599,7 @@ function cancel() {
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
                     <span class="font-section">
                       PE
-                      <RequiredAsterisk v-if="isRole2" />
+                      <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
                     <div>
                       <CurrencyField :model-value="row.harga_price_list_pe" placeholder="0"
@@ -613,7 +617,7 @@ function cancel() {
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
                     <span class="font-section">
                       BM
-                      <RequiredAsterisk v-if="isRole2" />
+                      <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
                     <div>
                       <CurrencyField :model-value="row.harga_bm" placeholder="0" :readonly="isReadonly('harga_bm')"
@@ -626,7 +630,7 @@ function cancel() {
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
                     <span class="font-section">
                       OM
-                      <RequiredAsterisk v-if="isRole2" />
+                      <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
                     <div>
                       <CurrencyField :model-value="row.harga_om" placeholder="0" :readonly="isReadonly('harga_om')"
@@ -639,7 +643,7 @@ function cancel() {
                     class="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2">
                     <span class="font-section">
                       CEO
-                      <RequiredAsterisk v-if="isRole2" />
+                      <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
                     <div>
                       <CurrencyField :model-value="row.harga_ceo" placeholder="0" :readonly="isReadonly('harga_ceo')"

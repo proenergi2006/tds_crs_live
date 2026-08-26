@@ -19,8 +19,8 @@ const props = withDefaults(
     open: boolean
     mode: 'create' | 'edit'
     item?: {
-      id_role?: number
-      role_name: string
+      id?: number
+      name: string
       role_desc?: string
       is_active: boolean
       created_by?: string
@@ -41,8 +41,8 @@ const loading = ref(false)
 const formError = ref<string | null>(null)
 
 const form = reactive({
-  id_role: 0,
-  role_name: '',
+  id: 0,
+  name: '',
   role_desc: '',
   is_active: true,
   created_by: '',
@@ -50,7 +50,7 @@ const form = reactive({
 })
 
 const rules = {
-  role_name: {
+  name: {
     required: helpers.withMessage('Nama Role wajib diisi', required),
   },
   role_desc: {
@@ -103,8 +103,8 @@ function resetForm() {
 
   if (props.mode === 'edit' && props.item) {
     Object.assign(form, {
-      id_role: props.item.id_role ?? 0,
-      role_name: props.item.role_name ?? '',
+      id: props.item.id ?? 0,
+      name: props.item.name ?? '',
       role_desc: props.item.role_desc ?? '',
       is_active: props.item.is_active,
       created_by: props.item.created_by ?? '',
@@ -114,8 +114,8 @@ function resetForm() {
   }
 
   Object.assign(form, {
-    id_role: 0,
-    role_name: '',
+    id: 0,
+    name: '',
     role_desc: '',
     is_active: true,
     created_by: currentUserName.value,
@@ -128,13 +128,13 @@ function resetFormErrors() {
   v$.value.$reset()
 }
 
-function getFieldError(field: 'role_name' | 'role_desc') {
+function getFieldError(field: 'name' | 'role_desc') {
   return v$.value[field].$errors[0]?.$message?.toString() ?? ''
 }
 
 function getFormPayload() {
   return {
-    role_name: form.role_name,
+    name: form.name,
     role_desc: form.role_desc,
     is_active: form.is_active,
     ...(props.mode === 'create'
@@ -157,7 +157,7 @@ async function submitForm() {
     const response =
       props.mode === 'create'
         ? await roleApi.store(getFormPayload())
-        : await roleApi.update(form.id_role, getFormPayload())
+        : await roleApi.update(form.id, getFormPayload())
 
     success(
       'Berhasil',
@@ -185,9 +185,9 @@ async function submitForm() {
         <FormLabel htmlFor="role-nama">Nama Role
           <RequiredAsterisk />
         </FormLabel>
-        <FormInput id="role-nama" v-model="form.role_name" placeholder="Nama Role"
-          :class="v$.role_name.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.role_name.$error" class="font-caption !text-rose-600">{{ getFieldError('role_name') }}</small>
+        <FormInput id="role-nama" v-model="form.name" placeholder="Nama Role"
+          :class="v$.name.$error ? 'border-rose-500' : ''" />
+        <small v-if="v$.name.$error" class="font-caption !text-rose-600">{{ getFieldError('name') }}</small>
       </div>
 
       <div>

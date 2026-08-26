@@ -20,10 +20,9 @@ class StoreApprovalTemplateRequest extends FormRequest
 
             'steps'              => 'required|array|min:1',
             'steps.*.step_name'  => 'required|string|max:255',
-            // 'distinct' dicek terhadap semua nilai steps.*.step_order yang di-flatten,
-            // jadi otomatis menolak duplikat step_order dalam 1 payload template.
+            // distinct dicek di semua step_order yang di-flatten, jadi otomatis nolak duplikat dalam 1 payload.
             'steps.*.step_order' => 'required|integer|min:1|distinct',
-            'steps.*.id_role'    => 'required|integer|exists:roles,id_role',
+            'steps.*.id_role'    => 'required|integer|exists:roles,id',
         ];
     }
 

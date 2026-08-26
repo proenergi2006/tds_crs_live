@@ -56,10 +56,9 @@ const getMenuBadge = (badgeKey?: string): number => {
   return badgeStore.breakdown[badgeKey] ?? 0;
 };
 
-const agenRoles = [13, 14, 15, 16];
-
+// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() => {
-  return agenRoles.includes(Number(user.value?.id_role));
+  return user.value?.brand === 'proenergi';
 });
 
 const appName = computed(() => {
@@ -146,7 +145,6 @@ onUnmounted(() => {
   ]">
     <MobileMenu />
     <div class="pt-[4.7rem] flex md:pt-0 h-full">
-      <!-- BEGIN: Side Menu -->
       <nav :class="[
         'side-nav hidden w-[80px] md:flex flex-col xl:w-[230px] h-full',
         isSidebarCollapsed ? 'side-nav--collapsed' : '',
@@ -337,8 +335,6 @@ onUnmounted(() => {
           </ul>
         </div>
       </nav>
-      <!-- END: Side Menu -->
-      <!-- BEGIN: Content -->
       <div
         class="md:max-w-auto min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 flex flex-col overflow-hidden">
         <!-- TopBar di LUAR area scroll: tetap diam di atas, hanya konten yang scroll. -->
@@ -349,7 +345,6 @@ onUnmounted(() => {
           <RouterView />
         </div>
       </div>
-      <!-- END: Content -->
     </div>
   </div>
 </template>

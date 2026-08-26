@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UserAuthResource;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PragmaRX\Google2FA\Google2FA;
@@ -21,7 +23,7 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        // Jika user sudah mengaktifkan 2FA
+        // kalo 2FA-nya udah aktif
         if ($user->two_factor_secret) {
             return response()->json([
                 'two_factor_required' => true,
@@ -40,7 +42,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user'         => $user,
+            'user'         => new UserAuthResource($user),
         ]);
     }
 
@@ -66,7 +68,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user'         => $user,
+            'user'         => new UserAuthResource($user),
         ]);
     }
 
