@@ -9,14 +9,11 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    /**
-     * Display a paginated listing of users, with optional search.
-     */
     public function index(Request $request)
     {
         $search = $request->query('search');
 
-        $query = User::with('role','cabang');
+        $query = User::with('roles', 'primaryRole', 'cabang');
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")
@@ -31,20 +28,28 @@ class UserController extends Controller
         return response()->json($query->paginate($perPage));
     }
 
-    /**
-     * Store a newly created user in storage.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'max:255'],
-            'email'     => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password'  => ['required', 'string', 'min:8'],
-            'is_active' => ['boolean'],
-            'id_role'   => ['nullable', 'exists:roles,id_role'],
-            'id_cabang'  => ['nullable', 'exists:cabangs,id_cabang'], // ✅
-            'no_telepon' => ['nullable', 'string', 'max:30'],
+            'name'             => ['required', 'string', 'max:255'],
+            'email'            => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password'         => ['required', 'string', 'min:8'],
+            'is_active'        => ['boolean'],
+            'role_ids'         => ['nullable', 'array'],
+            'role_ids.*'       => ['integer', 'exists:roles,id'],
+            'primary_role_id'  => ['nullable', 'integer', 'exists:roles,id'],
+            'id_cabang'        => ['nullable', 'exists:cabangs,id_cabang'],
+            'no_telepon'       => ['nullable', 'string', 'max:30'],
         ]);
+
+        $roleIds = $data['role_ids'] ?? [];
+        unset($data['role_ids']);
+
+        $primaryRoleId = $data['primary_role_id'] ?? null;
+        if ($primaryRoleId !== null && ! in_array($primaryRoleId, $roleIds, true)) {
+            return response()->json(['message' => 'primary_role_id harus salah satu dari role_ids yang dipilih.'], 422);
+        }
+        $data['primary_role_id'] = $this->resolvePrimaryRoleId($roleIds, $primaryRoleId);
 
         // hash password
         $data['password'] = Hash::make($data['password']);
@@ -54,32 +59,44 @@ class UserController extends Controller
         $data['created_at'] = now();
 
         $user = User::create($data);
+        $user->syncRoles($roleIds);
 
         return response()->json($user, 201);
     }
 
-    /**
-     * Display the specified user.
-     */
+    // multi-role: primary_role_id nentuin brand+tab default, default ke role pertama kalau ga dipilih eksplisit
+    private function resolvePrimaryRoleId(array $roleIds, ?int $primaryRoleId): ?int
+    {
+        return $primaryRoleId ?? ($roleIds[0] ?? null);
+    }
+
     public function show(User $user)
     {
         return response()->json($user);
     }
 
-    /**
-     * Update the specified user in storage.
-     */
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'max:255'],
-            'email'     => ['required', 'email', 'max:255', "unique:users,email,{$user->id}"],
-            'password'  => ['nullable', 'string', 'min:8'],
-            'is_active' => ['boolean'],
-            'id_role'   => ['nullable', 'exists:roles,id_role'],
-            'id_cabang'  => ['nullable', 'exists:cabangs,id_cabang'], // ✅
-            'no_telepon' => ['nullable', 'string', 'max:30'],
+            'name'             => ['required', 'string', 'max:255'],
+            'email'            => ['required', 'email', 'max:255', "unique:users,email,{$user->id}"],
+            'password'         => ['nullable', 'string', 'min:8'],
+            'is_active'        => ['boolean'],
+            'role_ids'         => ['nullable', 'array'],
+            'role_ids.*'       => ['integer', 'exists:roles,id'],
+            'primary_role_id'  => ['nullable', 'integer', 'exists:roles,id'],
+            'id_cabang'        => ['nullable', 'exists:cabangs,id_cabang'],
+            'no_telepon'       => ['nullable', 'string', 'max:30'],
         ]);
+
+        $roleIds = $data['role_ids'] ?? [];
+        unset($data['role_ids']);
+
+        $primaryRoleId = $data['primary_role_id'] ?? null;
+        if ($primaryRoleId !== null && ! in_array($primaryRoleId, $roleIds, true)) {
+            return response()->json(['message' => 'primary_role_id harus salah satu dari role_ids yang dipilih.'], 422);
+        }
+        $data['primary_role_id'] = $this->resolvePrimaryRoleId($roleIds, $primaryRoleId);
 
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
@@ -92,13 +109,11 @@ class UserController extends Controller
         $data['updated_at']    = now();
 
         $user->update($data);
+        $user->syncRoles($roleIds);
 
         return response()->json($user);
     }
 
-    /**
-     * Remove the specified user from storage.
-     */
     public function destroy(User $user)
     {
         $user->delete();

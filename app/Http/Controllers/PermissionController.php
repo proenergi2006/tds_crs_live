@@ -19,7 +19,7 @@ class PermissionController extends Controller
                 'permissions.guard_name',
                 'permissions.module',
                 'permissions.description',
-                DB::raw('COUNT(role_has_permissions.id_role) as roles_count')
+                DB::raw('COUNT(role_has_permissions.role_id) as roles_count')
             )
             ->groupBy(
                 'permissions.id',

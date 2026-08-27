@@ -19,8 +19,8 @@ type StepRow = {
 }
 
 type RoleOption = {
-  id_role: number
-  role_name: string
+  id: number
+  name: string
 }
 
 const route = useRoute()
@@ -117,14 +117,7 @@ async function fetchTemplate() {
   }
 }
 
-/* Step rows: step_order dianggap sebagai identitas "slot" yang tetap (dipetakan
- * langsung ke approval_template_steps.step_order, yang jadi kunci update-in-place
- * di backend -- lihat catatan ApprovalTemplateController). Tambah baris membuat
- * slot baru (step_order = max + 1). Naik/turun menukar ISI (step_name/id_role)
- * antar slot bersebelahan, bukan menukar step_order-nya -- supaya slot yang sudah
- * pernah dipakai di siklus historis tidak pernah "berpindah nomor" secara tak
- * terduga. Hapus baris menghilangkan slot itu apa adanya (bisa memicu 409 dari
- * backend kalau slot itu sudah dipakai historis -- ditangani saat submit). */
+// step_order slot tetap, gak pernah digeser -- naik/turun cuma tuker isi slot, hapus slot yang udah kepake historis bisa kena 409
 function nextStepOrder() {
   if (!rows.value.length) return 1
   return Math.max(...rows.value.map(r => r.step_order)) + 1
@@ -165,7 +158,7 @@ function swapStepContent(a: number, b: number) {
 
 function isRoleMissing(idRole: number | string) {
   if (!idRole) return false
-  return !roles.value.some(r => r.id_role === Number(idRole))
+  return !roles.value.some(r => r.id === Number(idRole))
 }
 
 function getFieldError(field: keyof typeof serverErrors) {
@@ -238,7 +231,6 @@ async function submitForm() {
         ? 'Approval template berhasil ditambahkan'
         : 'Approval template berhasil diperbarui',
     )
-    // router.push({ name: 'approval-templates' })
   } catch (e: any) {
     const status = e.response?.status
     const errors = e.response?.data?.errors
@@ -364,8 +356,8 @@ function cancel() {
               <td class="px-4 py-3 align-top">
                 <FormSelect v-model="row.id_role" class="min-w-[200px]">
                   <option disabled value="">-- Pilih Role --</option>
-                  <option v-for="role in roles" :key="role.id_role" :value="role.id_role">
-                    {{ role.role_name }}
+                  <option v-for="role in roles" :key="role.id" :value="role.id">
+                    {{ role.name }}
                   </option>
                 </FormSelect>
                 <small v-if="isRoleMissing(row.id_role)" class="font-caption !text-rose-600">

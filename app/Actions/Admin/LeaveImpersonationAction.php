@@ -19,7 +19,7 @@ class LeaveImpersonationAction
 
         $admin = User::find($adminId);
 
-        if (! $admin || $admin->id_role !== 1 || ! $admin->is_active) {
+        if (! $admin || ! $admin->hasRole('Administrator') || ! $admin->is_active) {
             abort(403, 'Sesi admin sudah tidak valid, silakan login ulang');
         }
 

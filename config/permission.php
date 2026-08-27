@@ -27,12 +27,7 @@ return [
          * `Spatie\Permission\Contracts\Role` contract.
          */
 
-        // WAJIB diisi meski HasRoles trait tidak dipakai.
-        // PermissionRegistrar selalu menjalankan Permission::with('roles')->get()
-        // saat warming cache (infrastruktur internal Spatie, bukan fitur HasRoles).
-        // Tanpa config ini, Spatie memakai Role modelnya sendiri (PK = 'id') dan
-        // JOIN ke roles.id yang tidak ada di tabel kita → SQLSTATE[42703].
-        // App\Models\Role punya $primaryKey = 'id_role' sehingga JOIN-nya benar.
+        // Override dipertahankan: Role model project ini punya kolom bisnis tambahan (role_desc, is_active).
         'role' => \App\Models\Role::class,
 
     ],
@@ -84,11 +79,7 @@ return [
         /*
          * Change this if you want to name the related pivots other than defaults
          */
-        // WAJIB diisi meski HasRoles trait tidak dipakai — alasan sama dengan models.role
-        // di atas: PermissionRegistrar eager-load relasi 'roles' saat cache warming,
-        // dan kolom pivot yang dicari Spatie default ke 'role_id'. Tabel kita pakai
-        // 'id_role' (FK ke roles.id_role), sehingga harus di-override di sini.
-        'role_pivot_key' => 'id_role',
+        'role_pivot_key' => null, // default 'role_id',
         'permission_pivot_key' => null, // default 'permission_id',
 
         /*

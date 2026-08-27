@@ -77,7 +77,7 @@ class DashboardController extends Controller
     // role gate eksplisit -- data di sini sensitif, beda dari marketingSummary/agentSummary yang gak ada cek role
     public function ceoSummary(Request $request)
     {
-        if ($request->user()->id_role !== 2) {
+        if ($request->user()->cant('dashboard.view-ceo')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -97,7 +97,7 @@ class DashboardController extends Controller
     // endpoint ringan sendiri biar ganti dropdown tahun gak perlu re-fetch seluruh dashboard
     public function ceoPoMonthlyTrend(Request $request)
     {
-        if ($request->user()->id_role !== 2) {
+        if ($request->user()->cant('dashboard.view-ceo')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -112,7 +112,7 @@ class DashboardController extends Controller
     // dropdown tahun-nya sengaja independen dari dropdown chart tren PO, dua card ini gak saling terikat
     public function ceoVendorValueSummary(Request $request)
     {
-        if ($request->user()->id_role !== 2) {
+        if ($request->user()->cant('dashboard.view-ceo')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -228,7 +228,7 @@ class DashboardController extends Controller
     // role gate eksplisit, sama kayak ceoSummary()
     public function omSummary(Request $request)
     {
-        if ($request->user()->id_role !== 10) {
+        if ($request->user()->cant('dashboard.view-om')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

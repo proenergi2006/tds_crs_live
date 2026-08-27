@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Admin\LeaveImpersonationAction;
 use App\Actions\Admin\StartImpersonationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserAuthResource;
 use App\Models\User;
 use App\Support\ImpersonationToken;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class ImpersonationController extends Controller
         return response()->json([
             'access_token' => $result['access_token'],
             'token_type'   => 'Bearer',
-            'user'         => $result['user'],
+            'user'         => new UserAuthResource($result['user']),
             'impersonation' => [
                 'admin'      => $result['admin'],
                 'started_at' => $result['started_at'],
@@ -49,7 +50,7 @@ class ImpersonationController extends Controller
         return response()->json([
             'access_token' => $result['access_token'],
             'token_type'   => 'Bearer',
-            'user'         => $result['admin'],
+            'user'         => new UserAuthResource($result['admin']),
         ]);
     }
 
@@ -70,6 +71,6 @@ class ImpersonationController extends Controller
         $user = $request->user();
         $user->setAttribute('impersonation', $impersonation);
 
-        return response()->json($user);
+        return response()->json(new UserAuthResource($user));
     }
 }

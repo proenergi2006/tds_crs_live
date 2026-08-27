@@ -16,6 +16,10 @@ class ProdukHargaController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->user()->cant('harga-produk.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $q = ProdukHarga::with(['cabang', 'produk.ukuran.satuan']);
 
         if ($cabangId = $request->query('id_cabang')) {
@@ -56,11 +60,19 @@ class ProdukHargaController extends Controller
 
     public function periode(Request $request)
     {
+        if ($request->user()->cant('harga-produk.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         return ProdukHargaPeriodeResource::collection(app(PricePeriodCompletenessQuery::class)->grouped());
     }
 
     public function check(Request $request)
     {
+        if ($request->user()->cant('harga-produk.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $produkId = $request->query('produk_id');
         $tanggal = $request->query('tanggal');
 
@@ -80,6 +92,10 @@ class ProdukHargaController extends Controller
     // map {id_produk: harga} yang ter-cover rentang periode pengiriman (ambil paling baru kalau >1); pe=1 pakai harga_price_list_pe, fallback ke harga_price_list kalau belum diisi.
     public function byDate(Request $request)
     {
+        if ($request->user()->cant('harga-produk.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $awal  = $request->query('periode_awal');
         $akhir = $request->query('periode_akhir') ?: $awal;
         $usePe = $request->boolean('pe');
@@ -120,6 +136,10 @@ class ProdukHargaController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->user()->cant('harga-produk.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $request->merge(array_map(fn($v) => $v === '' ? null : $v, $request->all()));
 
         $data = $request->validate([
@@ -138,6 +158,23 @@ class ProdukHargaController extends Controller
             'catatan'             => 'nullable|string',
         ]);
 
+        // field-ownership: cogs punya Procurement, sisanya (harga jual dll) punya CEO
+        $fieldPermissions = [
+            'harga_cogs'          => 'harga-produk.set-cogs',
+            'harga_price_list'    => 'harga-produk.set-price-list',
+            'harga_price_list_pe' => 'harga-produk.set-price-list',
+            'harga_margin'        => 'harga-produk.set-price-list',
+            'harga_bm'            => 'harga-produk.set-price-list',
+            'harga_om'            => 'harga-produk.set-price-list',
+            'harga_ceo'           => 'harga-produk.set-price-list',
+        ];
+
+        foreach ($fieldPermissions as $field => $permission) {
+            if ($request->filled($field) && $request->user()->cant($permission)) {
+                return response()->json(['message' => "Anda tidak berwenang mengisi kolom {$field}."], 403);
+            }
+        }
+
         foreach (['harga_price_list', 'harga_price_list_pe', 'harga_bm', 'harga_cogs', 'harga_margin', 'harga_om'] as $k) {
             $data[$k] = $data[$k] ?? 0;
         }
@@ -150,8 +187,12 @@ class ProdukHargaController extends Controller
         return new ProdukHargaResource($ph->load(['cabang', 'produk.ukuran.satuan']));
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        if ($request->user()->cant('harga-produk.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $ph = ProdukHarga::with(['cabang', 'produk.ukuran.satuan'])->findOrFail($id);
 
         return new ProdukHargaResource($ph);
@@ -159,6 +200,10 @@ class ProdukHargaController extends Controller
 
     public function update(Request $request, $id)
     {
+        if ($request->user()->cant('harga-produk.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $request->merge(array_map(fn($v) => $v === '' ? null : $v, $request->all()));
 
         $data = $request->validate([
@@ -177,6 +222,23 @@ class ProdukHargaController extends Controller
             'catatan'             => 'nullable|string',
         ]);
 
+        // field-ownership: cogs punya Procurement, sisanya (harga jual dll) punya CEO
+        $fieldPermissions = [
+            'harga_cogs'          => 'harga-produk.set-cogs',
+            'harga_price_list'    => 'harga-produk.set-price-list',
+            'harga_price_list_pe' => 'harga-produk.set-price-list',
+            'harga_margin'        => 'harga-produk.set-price-list',
+            'harga_bm'            => 'harga-produk.set-price-list',
+            'harga_om'            => 'harga-produk.set-price-list',
+            'harga_ceo'           => 'harga-produk.set-price-list',
+        ];
+
+        foreach ($fieldPermissions as $field => $permission) {
+            if ($request->filled($field) && $request->user()->cant($permission)) {
+                return response()->json(['message' => "Anda tidak berwenang mengisi kolom {$field}."], 403);
+            }
+        }
+
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()?->name ?? 'system';
 
@@ -186,8 +248,12 @@ class ProdukHargaController extends Controller
         return new ProdukHargaResource($ph->load(['cabang', 'produk.ukuran.satuan']));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($request->user()->cant('harga-produk.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         ProdukHarga::destroy($id);
 
         return response()->json(null, 204);
@@ -195,6 +261,10 @@ class ProdukHargaController extends Controller
 
     public function addMargin(Request $request)
     {
+        if ($request->user()->cant('harga-produk.set-price-list')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $validated = $request->validate([
             'id_cabang'     => 'required|exists:cabangs,id_cabang',
             'id_produk'     => 'required|exists:produks,id_produk',

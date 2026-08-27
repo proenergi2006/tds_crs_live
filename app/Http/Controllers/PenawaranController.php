@@ -394,7 +394,7 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if (!in_array((int) $request->user()->id_role, [8, 1], true)) {
+        if ($request->user()->cant('penawaran.verify-bm')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -419,7 +419,7 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if (!in_array((int) $request->user()->id_role, [8, 1], true)) {
+        if ($request->user()->cant('penawaran.verify-bm')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -457,7 +457,7 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if (!in_array((int) $request->user()->id_role, [10, 1], true)) {
+        if ($request->user()->cant('penawaran.verify-om')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -475,7 +475,7 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if (!in_array((int) $request->user()->id_role, [10, 1], true)) {
+        if ($request->user()->cant('penawaran.verify-om')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

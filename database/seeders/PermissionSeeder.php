@@ -71,13 +71,25 @@ class PermissionSeeder extends Seeder
             'name'        => 'harga-produk.view',
             'module'      => 'harga-produk',
             'description' => 'Lihat dan edit harga produk & attachment harga',
-            'roles'       => [2, 5, 8],
+            'roles'       => [2, 5, 8, 10],
         ],
         [
             'name'        => 'harga-produk.manage',
             'module'      => 'harga-produk',
             'description' => 'Tambah harga produk baru (create)',
+            'roles'       => [2, 5],
+        ],
+        [
+            'name'        => 'harga-produk.set-cogs',
+            'module'      => 'harga-produk',
+            'description' => 'Isi kolom COGS harga produk (Procurement)',
             'roles'       => [5],
+        ],
+        [
+            'name'        => 'harga-produk.set-price-list',
+            'module'      => 'harga-produk',
+            'description' => 'Lengkapi kolom harga (price list, margin, BM, OM, CEO) sebagai finalisasi periode harga',
+            'roles'       => [2],
         ],
 
         // PO Supplier / Procurement
@@ -92,6 +104,18 @@ class PermissionSeeder extends Seeder
             'module'      => 'verification',
             'description' => 'Verifikasi / approve PO Supplier (CFO & CEO)',
             'roles'       => [2, 3],
+        ],
+        [
+            'name'        => 'po-supplier.verify-cfo',
+            'module'      => 'po-supplier',
+            'description' => 'Verifikasi PO Supplier sebagai CFO',
+            'roles'       => [3],
+        ],
+        [
+            'name'        => 'po-supplier.verify-ceo',
+            'module'      => 'po-supplier',
+            'description' => 'Verifikasi PO Supplier sebagai CEO',
+            'roles'       => [2],
         ],
         [
             'name'        => 'good-receipt.manage',
@@ -169,6 +193,18 @@ class PermissionSeeder extends Seeder
             'description' => 'Akses modul approval penawaran (BM/CFO/OM)',
             'roles'       => [8, 3, 10],
         ],
+        [
+            'name'        => 'penawaran.verify-bm',
+            'module'      => 'penawaran',
+            'description' => 'Verifikasi Penawaran TDS sebagai Branch Manager',
+            'roles'       => [8],
+        ],
+        [
+            'name'        => 'penawaran.verify-om',
+            'module'      => 'penawaran',
+            'description' => 'Verifikasi Penawaran TDS sebagai Operation Manager',
+            'roles'       => [10],
+        ],
 
         // Penawaran Proenergi (Customer Proenergi kini pakai customer.viewOwn/customer.manage TDS)
         [
@@ -235,6 +271,20 @@ class PermissionSeeder extends Seeder
             'description' => 'Lihat dan kelola Delivery Plan (Logistik HO)',
             'roles'       => [7],
         ],
+
+        // Dashboard
+        [
+            'name'        => 'dashboard.view-ceo',
+            'module'      => 'dashboard',
+            'description' => 'Akses dashboard ringkasan CEO',
+            'roles'       => [2],
+        ],
+        [
+            'name'        => 'dashboard.view-om',
+            'module'      => 'dashboard',
+            'description' => 'Akses dashboard ringkasan Operation Manager',
+            'roles'       => [10],
+        ],
     ];
 
     public function run(): void
@@ -266,7 +316,7 @@ class PermissionSeeder extends Seeder
 
             foreach ($perm['roles'] as $roleId) {
                 DB::table('role_has_permissions')->updateOrInsert(
-                    ['permission_id' => $permissionId, 'id_role' => $roleId],
+                    ['permission_id' => $permissionId, 'role_id' => $roleId],
                     []
                 );
             }
@@ -281,7 +331,7 @@ class PermissionSeeder extends Seeder
     {
         $revoked = [
             // CEO gak berwenang approve Quotation, flow-nya cuma BM->OM
-            ['permission' => 'verification.quotation', 'id_role' => 2],
+            ['permission' => 'verification.quotation', 'role_id' => 2],
         ];
 
         foreach ($revoked as $entry) {
@@ -293,7 +343,7 @@ class PermissionSeeder extends Seeder
             if ($permissionId) {
                 DB::table('role_has_permissions')
                     ->where('permission_id', $permissionId)
-                    ->where('id_role', $entry['id_role'])
+                    ->where('role_id', $entry['role_id'])
                     ->delete();
             }
         }
@@ -303,8 +353,6 @@ class PermissionSeeder extends Seeder
     {
         $retiredNames = [
             'penawaran.tds.manage',
-            'penawaran.verify-bm',
-            'penawaran.verify-om',
             'customer.verify',
             'penawaran.verify',
             'po-supplier.verify',

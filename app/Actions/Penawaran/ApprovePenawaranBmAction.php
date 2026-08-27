@@ -76,8 +76,7 @@ class ApprovePenawaranBmAction
 
             $omRoleId = $template?->steps->firstWhere('step_order', 2)?->id_role;
 
-            $approverRecipients = User::query()
-                ->where('id_role', $omRoleId)
+            $approverRecipients = User::role($omRoleId)
                 ->whereNotNull('email')
                 ->pluck('email')
                 ->map(fn ($e) => trim((string) $e))

@@ -49,7 +49,7 @@ const filteredRoles = computed(() => {
 
   return allRoles.value.filter(item => {
     return [
-      item.role_name,
+      item.name,
       item.role_desc,
       item.is_active ? 'active' : 'inactive',
     ].some(value => String(value || '').toLowerCase().includes(query))
@@ -120,7 +120,7 @@ function syncRole(data: any, mode: 'create' | 'edit') {
   }
 
   const index = allRoles.value.findIndex(
-    item => item.id_role === data.id_role,
+    item => item.id === data.id,
   )
 
   if (index !== -1) {
@@ -143,7 +143,7 @@ async function submitDelete() {
     await roleApi.destroy(deleteTarget.value)
 
     const index = allRoles.value.findIndex(
-      item => item.id_role === deleteTarget.value,
+      item => item.id === deleteTarget.value,
     )
 
     if (index !== -1) {
@@ -200,12 +200,12 @@ async function submitDelete() {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(item, idx) in roles" :key="item.id_role" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(item, idx) in roles" :key="item.id" class="transition hover:bg-slate-50">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              {{ item.role_name }}
+              {{ item.name }}
             </Table.Td>
             <Table.Td class="text-slate-600">
               {{ item.role_desc || '-' }}
@@ -223,7 +223,7 @@ async function submitDelete() {
                   <Lucide icon="Edit" class="h-4 w-4" />
                 </Button>
                 <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  @click="confirmDelete(item.id_role)" title="Nonaktifkan">
+                  @click="confirmDelete(item.id)" title="Nonaktifkan">
                   <Lucide icon="Trash2" class="h-4 w-4" />
                 </Button>
               </div>

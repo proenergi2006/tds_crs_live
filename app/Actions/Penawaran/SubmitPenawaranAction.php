@@ -43,8 +43,7 @@ class SubmitPenawaranAction
             $template = $service->activeTemplate($templateCode);
             $bmRoleId = $template?->steps->firstWhere('step_order', 1)?->id_role;
 
-            $recipients = User::query()
-                ->where('id_role', $bmRoleId)
+            $recipients = User::role($bmRoleId)
                 ->whereNotNull('email')
                 ->pluck('email')
                 ->map(fn ($e) => trim((string) $e))

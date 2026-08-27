@@ -30,7 +30,7 @@ class ApprovalTemplateStep extends Model
 
     public function role(): BelongsTo
     {
-        return $this->belongsTo(Role::class, 'id_role', 'id_role');
+        return $this->belongsTo(Role::class, 'id_role', 'id');
     }
 
     public function documentApprovalSteps(): HasMany

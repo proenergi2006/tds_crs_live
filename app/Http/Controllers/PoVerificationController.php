@@ -12,14 +12,17 @@ class PoVerificationController extends Controller
     {
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
-        $roleId  = $request->user()->id_role;
+
+        if ($request->user()->cant('verification.po-supplier')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $q = VendorPo::with(['vendor', 'terminal', 'produks.produk']);
 
-        if ($roleId === 2) {
+        if ($request->user()->can('po-supplier.verify-ceo')) {
             $q->where('disposisi_po', '>=', 2)
                 ->orderByRaw("CASE WHEN disposisi_po = 2 THEN 0 ELSE 1 END ASC");
-        } elseif ($roleId === 3) {
+        } elseif ($request->user()->can('po-supplier.verify-cfo')) {
             $q->where('disposisi_po', '>=', 1);
         }
 
@@ -54,8 +57,11 @@ class PoVerificationController extends Controller
 
     public function verify(Request $request, $id)
     {
-        $po     = VendorPo::findOrFail($id);
-        $roleId = $request->user()->id_role;
+        $po = VendorPo::findOrFail($id);
+
+        if ($request->user()->cant('verification.po-supplier')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $validator = Validator::make($request->all(), [
             'action'  => 'required|in:approve,reject',
@@ -69,13 +75,13 @@ class PoVerificationController extends Controller
         $data   = $validator->validated();
         $result = $data['action'] === 'approve' ? 1 : 2;
 
-        if ($roleId === 3) {
+        if ($request->user()->can('po-supplier.verify-cfo')) {
             // Verifikasi CFO
             $po->cfo_result     = $result;
             $po->cfo_summary    = $data['summary'] ?? null;
             $po->cfo_tgl        = now();
             $po->disposisi_po   = $result === 1 ? 2 : 0;
-        } elseif ($roleId === 2) {
+        } elseif ($request->user()->can('po-supplier.verify-ceo')) {
             // Verifikasi CEO
             if ($po->disposisi_po !== 2) {
                 return response()->json(['message' => 'PO harus disetujui CFO terlebih dahulu'], 403);

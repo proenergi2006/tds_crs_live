@@ -19,10 +19,10 @@
                     <template #icon><Lucide icon="Search" class="h-3.5 w-3.5" /></template>
                   </FormInput>
                 </th>
-                <th v-for="role in roles" :key="role.id_role"
+                <th v-for="role in roles" :key="role.id"
                   class="w-10 border border-slate-200 px-1 py-3 text-center align-bottom text-xs font-semibold uppercase tracking-wider text-slate-500">
                   <span class="mx-auto block w-fit [writing-mode:vertical-rl] rotate-180 whitespace-nowrap leading-tight"
-                    :title="role.role_name">{{ role.role_name }}</span>
+                    :title="role.name">{{ role.name }}</span>
                 </th>
               </tr>
             </thead>
@@ -44,10 +44,10 @@
                   <td class="border border-slate-200 px-3 py-3">
                     <div class="text-sm font-medium text-slate-800">{{ perm.name }}</div>
                   </td>
-                  <td v-for="role in roles" :key="role.id_role" class="border border-slate-200 px-3 py-3 text-center">
+                  <td v-for="role in roles" :key="role.id" class="border border-slate-200 px-3 py-3 text-center">
                     <input type="checkbox" class="h-4 w-4 cursor-pointer rounded border-slate-300"
-                      :checked="matrix[perm.id]?.[role.id_role] ?? false"
-                      @change="toggle(perm.id, role.id_role, ($event.target as HTMLInputElement).checked)" />
+                      :checked="matrix[perm.id]?.[role.id] ?? false"
+                      @change="toggle(perm.id, role.id, ($event.target as HTMLInputElement).checked)" />
                   </td>
                 </tr>
               </template>
@@ -108,8 +108,8 @@ interface PermissionGroup {
 }
 
 interface RoleItem {
-  id_role: number
-  role_name: string
+  id: number
+  name: string
   is_active: boolean
 }
 
@@ -150,7 +150,7 @@ const isDirty = computed(() =>
 
 const changedRoleCount = computed(() =>
   roles.value.filter(role => {
-    const roleId = role.id_role
+    const roleId = role.id
     return allPermIds.value.some(
       permId =>
         (matrix.value[permId]?.[roleId] ?? false) !==
@@ -186,14 +186,14 @@ async function loadData() {
     ])
 
     permissionGroups.value = permRes.data.data as PermissionGroup[]
-    roles.value = (roleRes.data as RoleItem[]).filter(r => r.id_role !== 1)
+    roles.value = (roleRes.data as RoleItem[]).filter(r => r.id !== 1)
 
-    // Inisialisasi matrix dengan false untuk setiap pasangan (permId, roleId)
+    // set matrix awal semua false dulu per (permId, roleId)
     permissionGroups.value.forEach(group => {
       group.permissions.forEach(perm => {
         matrix.value[perm.id] = {}
         roles.value.forEach(role => {
-          matrix.value[perm.id][role.id_role] = false
+          matrix.value[perm.id][role.id] = false
         })
       })
     })
@@ -201,10 +201,10 @@ async function loadData() {
     // Fetch permissions tiap role secara paralel
     await Promise.all(
       roles.value.map(async role => {
-        const { data } = await axios.get(`/api/roles/${role.id_role}/permissions`)
+        const { data } = await axios.get(`/api/roles/${role.id}/permissions`)
           ; (data.data as number[]).forEach(permId => {
             if (matrix.value[permId]) {
-              matrix.value[permId][role.id_role] = true
+              matrix.value[permId][role.id] = true
             }
           })
       }),
@@ -223,7 +223,7 @@ async function saveChanges() {
   if (!isDirty.value || isSaving.value) return
 
   const changedRoles = roles.value.filter(role => {
-    const roleId = role.id_role
+    const roleId = role.id
     return allPermIds.value.some(
       permId =>
         (matrix.value[permId]?.[roleId] ?? false) !==
@@ -235,8 +235,8 @@ async function saveChanges() {
   try {
     await Promise.all(
       changedRoles.map(role =>
-        axios.put(`/api/roles/${role.id_role}/permissions`, {
-          permission_ids: getPermissionIdsForRole(role.id_role, matrix.value),
+        axios.put(`/api/roles/${role.id}/permissions`, {
+          permission_ids: getPermissionIdsForRole(role.id, matrix.value),
         }),
       ),
     )

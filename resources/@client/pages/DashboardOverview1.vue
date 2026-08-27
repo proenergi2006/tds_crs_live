@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, type Component } from "vue";
 import axios from "axios";
-import Lucide from "@/components/Base/Lucide";
+import Lucide, { type Icon } from "@/components/Base/Lucide/Lucide.vue";
 import Button from "@/components/Base/Button";
+import { Tab } from "@/components/Base/Headless";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import Marketing from "@/pages/Dashboard/Marketing.vue";
@@ -21,18 +22,80 @@ const summary = ref({
   approvedPenawaran: 0,
 });
 
-const agenRoles = [13, 14, 15, 16];
-const marketingRoles = [12, 4];
-
 const currentUser = computed(() => auth.user || {});
-const isAgenRole = computed(() =>
-  agenRoles.includes(Number(currentUser.value?.id_role)),
+const isAgenRole = computed(() => currentUser.value?.brand === "proenergi");
+const isAdministrator = computed(() => auth.hasRole(1));
+const isMarketingRole = computed(
+  () => currentUser.value?.roles?.some((r) => [4, 12].includes(r.id)) ?? false,
 );
-const isMarketingRole = computed(() =>
-  marketingRoles.includes(Number(currentUser.value?.id_role)),
+
+// akses cepat modul admin -- secukupnya, bukan analytics/KPI baru
+const adminQuickLinks: {
+  routeName: string;
+  icon: Icon;
+  label: string;
+  description: string;
+}[] = [
+  {
+    routeName: "users",
+    icon: "Users",
+    label: "Pengguna",
+    description: "Kelola user, role, dan cabang.",
+  },
+  {
+    routeName: "role-overview",
+    icon: "ShieldCheck",
+    label: "Role",
+    description: "Atur role dan permission per role.",
+  },
+  {
+    routeName: "permission-overview",
+    icon: "Key",
+    label: "Permission",
+    description: "Kelola daftar permission sistem.",
+  },
+  {
+    routeName: "approval-templates",
+    icon: "ListChecks",
+    label: "Approval Template",
+    description: "Konfigurasi alur approval per modul.",
+  },
+  {
+    routeName: "monitoring-app-logs",
+    icon: "FileSearch",
+    label: "Application Logs",
+    description: "Pantau log aplikasi untuk troubleshooting.",
+  },
+];
+
+// tab per role (bukan switcher) -- user dengan >1 permission dashboard lihat semua tab sekaligus, bukan cabang pertama-match saja
+const availableDashboardTabs = computed<
+  { key: "ceo" | "om"; label: string; component: Component }[]
+>(() => {
+  const tabs: { key: "ceo" | "om"; label: string; component: Component }[] = [];
+  if (auth.can("dashboard.view-ceo")) {
+    tabs.push({ key: "ceo", label: "CEO", component: Ceo });
+  }
+  if (auth.can("dashboard.view-om")) {
+    tabs.push({ key: "om", label: "Operation Manager", component: Om });
+  }
+  return tabs;
+});
+
+const defaultTabIndex = computed<number>(() =>
+  Math.max(
+    0,
+    availableDashboardTabs.value.findIndex(
+      (t) =>
+        t.key ===
+        (currentUser.value?.primary_role?.id === 2
+          ? "ceo"
+          : currentUser.value?.primary_role?.id === 10
+            ? "om"
+            : null),
+    ),
+  ),
 );
-const isCeoRole = computed(() => Number(currentUser.value?.id_role) === 2);
-const isOmRole = computed(() => Number(currentUser.value?.id_role) === 10);
 
 const displayName = computed(() => currentUser.value?.name || "User");
 
@@ -85,19 +148,74 @@ onMounted(async () => {
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
+      <!-- DASHBOARD KHUSUS ADMINISTRATOR -->
+      <template v-if="isAdministrator">
+        <div class="box rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lucide icon="ShieldCheck" class="h-6 w-6" />
+            </div>
+            <div>
+              <h2 class="text-2xl font-semibold">Dashboard Administrator</h2>
+              <p class="mt-1 text-slate-500">
+                Halo {{ displayName }}, kelola akses dan konfigurasi sistem dari sini.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-6">
+          <div
+            v-for="item in adminQuickLinks"
+            :key="item.routeName"
+            class="col-span-12 sm:col-span-6 xl:col-span-4"
+          >
+            <button
+              type="button"
+              class="box flex w-full items-center gap-4 rounded-2xl p-5 text-left shadow-sm transition-colors hover:border-primary/40"
+              @click="router.push({ name: item.routeName })"
+            >
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Lucide :icon="item.icon" class="h-6 w-6" />
+              </div>
+              <div>
+                <div class="font-medium text-slate-700">{{ item.label }}</div>
+                <p class="mt-1 text-sm text-slate-500">{{ item.description }}</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </template>
+
       <!-- DASHBOARD KHUSUS MARKETING / KEY ACCOUNT -->
-      <template v-if="isMarketingRole">
+      <template v-else-if="isMarketingRole">
         <Marketing />
       </template>
 
-      <!-- DASHBOARD KHUSUS CEO -->
-      <template v-else-if="isCeoRole">
-        <Ceo />
+      <!-- DASHBOARD SATU TAB (CEO ATAU OM SAJA) -->
+      <template v-else-if="availableDashboardTabs.length === 1">
+        <component :is="availableDashboardTabs[0].component" />
       </template>
 
-      <!-- DASHBOARD KHUSUS OM -->
-      <template v-else-if="isOmRole">
-        <Om />
+      <!-- DASHBOARD MULTI TAB (CEO + OM SEKALIGUS) -->
+      <template v-else-if="availableDashboardTabs.length > 1">
+        <Tab.Group :default-index="defaultTabIndex">
+          <Tab.List variant="link-tabs" class="gap-1 border-b border-slate-200">
+            <Tab v-for="t in availableDashboardTabs" :key="t.key" :full-width="false" v-slot="{ selected }">
+              <Tab.Button class="flex items-center gap-2 px-4 py-2.5 text-sm" :class="selected
+                ? 'text-primary border-b-primary font-medium'
+                : 'text-slate-500 border-b-transparent hover:text-slate-700 hover:border-b-slate-300'">
+                <span>{{ t.label }}</span>
+              </Tab.Button>
+            </Tab>
+          </Tab.List>
+
+          <Tab.Panels class="mt-4">
+            <Tab.Panel v-for="t in availableDashboardTabs" :key="t.key">
+              <component :is="t.component" />
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
       </template>
 
       <!-- DASHBOARD KHUSUS AGENT -->

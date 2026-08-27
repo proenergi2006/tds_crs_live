@@ -16,7 +16,7 @@ class LogViewerController extends Controller
 
     public function index(Request $request)
     {
-        if ($request->user()->id_role !== 1) {
+        if ($request->user()->cant('admin.monitoring.view')) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -46,7 +46,7 @@ class LogViewerController extends Controller
 
     public function files(Request $request)
     {
-        if ($request->user()->id_role !== 1) {
+        if ($request->user()->cant('admin.monitoring.view')) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

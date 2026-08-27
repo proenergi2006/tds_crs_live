@@ -14,9 +14,7 @@ class UpdateApprovalTemplateRequest extends FormRequest
 
     public function rules(): array
     {
-        // Route::apiResource('approval-templates', ...) -> nama parameter route
-        // default Laravel = singular('approval-templates') dengan '-' -> '_'
-        // = 'approval_template' (diverifikasi via route:list saat wiring routes).
+        // param route default Laravel buat apiResource('approval-templates', ...) = 'approval_template' (singular, '-' jadi '_').
         $templateId = $this->route('approval_template');
 
         return [
@@ -30,7 +28,7 @@ class UpdateApprovalTemplateRequest extends FormRequest
             'steps'              => 'required|array|min:1',
             'steps.*.step_name'  => 'required|string|max:255',
             'steps.*.step_order' => 'required|integer|min:1|distinct',
-            'steps.*.id_role'    => 'required|integer|exists:roles,id_role',
+            'steps.*.id_role'    => 'required|integer|exists:roles,id',
         ];
     }
 
