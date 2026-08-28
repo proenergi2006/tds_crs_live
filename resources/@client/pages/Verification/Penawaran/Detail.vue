@@ -26,7 +26,7 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-// computed, bukan const: route bm/om/reguler/proenergi berbagi komponen ini tanpa remount
+// computed, bukan const: route bm/om/tds/proenergi berbagi komponen ini tanpa remount
 const role = computed(() => route.meta.role as VerifikasiRole)
 const brand = computed(() => route.meta.brand as VerifikasiBrand)
 const config = computed(() => getVerifikasiDetailConfig(role.value, brand.value))
@@ -64,14 +64,12 @@ const subTotalFinal = computed(() => dppHargaDasar.value * totalVolume.value || 
 const ppnFinal = computed(() => (Number(penawaran.value.ppn_harga_dasar) || 0) * totalVolume.value || 0)
 const totalFinal = computed(() => subTotalFinal.value + ppnFinal.value || 0)
 
-// Weighted-average COGS antar item berdasarkan Persen (bukan cuma item pertama — lihat items[].harga_cogs dari backend)
 const cogs = computed<number>(() => {
   const totalPersen = items.value.reduce((s, it) => s + (Number(it.persen) || 0), 0)
   if (totalPersen <= 0) return 0
   const weighted = items.value.reduce((s, it) => s + (Number(it.persen) || 0) * (Number(it.harga_cogs) || 0), 0)
   return weighted / totalPersen
 })
-// Margin murni harga_dasar - COGS, tanpa refund/other_cost/PPN (beda dari produk_hargas.harga_margin)
 const margin = computed<number>(() => (Number(penawaran.value.harga_dasar) || 0) - cogs.value)
 const marginPercent = computed<number>(() => {
   const dasar = Number(penawaran.value.harga_dasar) || 0
@@ -79,7 +77,6 @@ const marginPercent = computed<number>(() => {
 })
 const totalGrossProfit = computed<number>(() => margin.value * totalVolume.value)
 
-// Basis COGS cuma relevan ditampilkan untuk 1 produk — multi-produk sudah terwakili label Weighted-Average
 const cogsBasisNote = computed<string>(() => {
   if (isMultiProduct.value) return ''
   const basis = items.value[0]?.cogs_basis
@@ -108,7 +105,6 @@ function wilayahLabel(w: any) {
   return parts.length ? parts.join(' - ') : null
 }
 
-// backend (PenawaranApprovalStepsBuilder) yang nentuin title/status/label, frontend cuma format timestamp-nya
 const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>(() =>
   (penawaran.value.approval_attempts ?? []).map((attempt: any) => ({
     label: attempt.label,

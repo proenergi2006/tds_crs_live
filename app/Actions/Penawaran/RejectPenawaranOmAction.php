@@ -12,22 +12,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
-// resolve creator pakai created_by-only sama kayak RejectPenawaranBmAction
 class RejectPenawaranOmAction
 {
     use ResolvesApprovalTemplate;
 
     public function execute(Model $penawaran, ?int $actorId, ?string $catatan, string $detailUrl): array
     {
-        // dual-write: bungkus update kolom lama + decideStep dalam satu transaction (file ini sebelumnya tidak transactional)
         DB::beginTransaction();
 
         try {
             $penawaran->update([
                 'status'              => 'rejected_om',
-                'catatan_om'          => $catatan,
-                'om_result'           => '1',
-                'om_tanggal'          => now(),
                 'disposisi_penawaran' => 6,
             ]);
 

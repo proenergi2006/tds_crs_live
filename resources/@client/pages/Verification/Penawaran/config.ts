@@ -1,5 +1,5 @@
 export type VerifikasiRole = "bm" | "om";
-export type VerifikasiBrand = "reguler" | "proenergi";
+export type VerifikasiBrand = "tds" | "proenergi";
 
 export interface VerifikasiConfig {
   title: string;
@@ -20,7 +20,7 @@ export interface VerifikasiDetailConfig {
 }
 
 const ENDPOINT_BASE: Record<VerifikasiBrand, string> = {
-  reguler: "/penawarans",
+  tds: "/penawarans",
   proenergi: "/penawarans-proenergi",
 };
 
@@ -94,16 +94,16 @@ export function disposisiBadgeClass(
 ): string {
   switch (String(value)) {
     case "1":
-      return "bg-slate-100 text-slate-700"; // draft
+      return "bg-slate-100 text-slate-700";
     case "2":
-      return "bg-amber-100 text-amber-700"; // menunggu BM
+      return "bg-amber-100 text-amber-700";
     case "3":
-      return "bg-blue-100 text-blue-700"; // menunggu OM
+      return "bg-blue-100 text-blue-700";
     case "4":
-      return "bg-emerald-100 text-emerald-700"; // disetujui OM
+      return "bg-emerald-100 text-emerald-700";
     case "5":
     case "6":
-      return "bg-rose-100 text-rose-700"; // ditolak
+      return "bg-rose-100 text-rose-700";
     default:
       return "bg-slate-100 text-slate-700";
   }

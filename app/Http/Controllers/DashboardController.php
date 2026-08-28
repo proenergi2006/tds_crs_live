@@ -11,7 +11,6 @@ use App\Models\VendorPo;
 use App\Support\Dashboard\StalePenawaranPriceQuery;
 use App\Support\ProdukHarga\PricePeriodCompletenessQuery;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -22,7 +21,6 @@ class DashboardController extends Controller
         $customerBase = Customer::where('id_user', $userId);
         $customerTotal = (clone $customerBase)->count();
 
-        // kondisi "verified" harus sama persis kayak CustomerController::applyStatusFilter() (case 'verified') -- duplikasi disengaja, beda controller.
         $customerVerified = (clone $customerBase)
             ->whereHas('latestVerification', fn($vq) => $vq->whereHas('latestDocumentApproval', fn($aq) => $aq->where('status', DocumentApprovalStatus::Approved)))
             ->count();
@@ -50,7 +48,7 @@ class DashboardController extends Controller
 
     public function agentSummary(Request $request)
     {
-        $query = DB::table('penawarans_proenergi');
+        $query = Penawaran::where('brand', 'proenergi');
 
         $total = (clone $query)->count();
 
@@ -59,7 +57,7 @@ class DashboardController extends Controller
             ->count();
 
         $pending = (clone $query)
-            ->whereIn('disposisi_penawaran', [2, 3]) // BM & OM
+            ->whereIn('disposisi_penawaran', [2, 3])
             ->count();
 
         $approved = (clone $query)
@@ -74,7 +72,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    // role gate eksplisit -- data di sini sensitif, beda dari marketingSummary/agentSummary yang gak ada cek role
     public function ceoSummary(Request $request)
     {
         if ($request->user()->cant('dashboard.view-ceo')) {
@@ -94,7 +91,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    // endpoint ringan sendiri biar ganti dropdown tahun gak perlu re-fetch seluruh dashboard
     public function ceoPoMonthlyTrend(Request $request)
     {
         if ($request->user()->cant('dashboard.view-ceo')) {
@@ -109,7 +105,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    // dropdown tahun-nya sengaja independen dari dropdown chart tren PO, dua card ini gak saling terikat
     public function ceoVendorValueSummary(Request $request)
     {
         if ($request->user()->cant('dashboard.view-ceo')) {
@@ -144,7 +139,6 @@ class DashboardController extends Controller
         return ['total' => (clone $query)->count(), 'items' => $items->all()];
     }
 
-    // dibatasi ke $year biar KPI "Valuasi Stok Procurement" gak terus membesar all-time -- fixed ke tahun berjalan, gak ada dropdown
     private function vendorPoStatusSummary(int $year): array
     {
         $start = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
@@ -161,7 +155,6 @@ class DashboardController extends Controller
         return $byStatus->all();
     }
 
-    // sengaja cuma status Approved (bukan outstanding), biar konsisten sama vendorPoStatusSummary di atas
     private function vendorPoVendorSummary(int $year): array
     {
         $start = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
@@ -181,7 +174,6 @@ class DashboardController extends Controller
         return $byVendor->all();
     }
 
-    // pake tanggal_inven bukan created_time -- created_time NULL di semua row existing
     private function vendorPoMonthlyTrend(int $year): array
     {
         $start = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
@@ -208,7 +200,6 @@ class DashboardController extends Controller
         return $result;
     }
 
-    // dihitung per PERIODE bukan per baris produk, pake query yang sama kayak ProdukHargaController::periode() biar definisinya gak beda-beda
     private function pendingCeoPricePeriod(): array
     {
         $pending = app(PricePeriodCompletenessQuery::class)->grouped()
@@ -225,7 +216,6 @@ class DashboardController extends Controller
         return ['total' => $pending->count(), 'items' => $items->values()->all()];
     }
 
-    // role gate eksplisit, sama kayak ceoSummary()
     public function omSummary(Request $request)
     {
         if ($request->user()->cant('dashboard.view-om')) {
@@ -242,21 +232,23 @@ class DashboardController extends Controller
 
     private function penawaranApprovalQueue(): array
     {
-        $query = Penawaran::where('disposisi_penawaran', 3)->with('customer');
+        $total = Penawaran::where('disposisi_penawaran', 3)->count();
 
-        $items = (clone $query)
-            ->orderBy('bm_tanggal', 'asc')
-            ->limit(10)
+        $items = Penawaran::where('disposisi_penawaran', 3)
+            ->with(['customer', 'latestDocumentApproval.steps'])
             ->get()
             ->map(fn ($p) => [
                 'id_penawaran'    => $p->id_penawaran,
                 'nomor_penawaran' => $p->nomor_penawaran,
                 'customer_name'   => optional($p->customer)->company_name,
-                'waiting_since'   => $p->bm_tanggal,
-                'aging_days'      => now()->diffInDays($p->bm_tanggal),
-            ]);
+                'waiting_since'   => $p->actedAtForStep(1),
+                'aging_days'      => $p->actedAtForStep(1) ? now()->diffInDays($p->actedAtForStep(1)) : null,
+            ])
+            ->sortBy('waiting_since')
+            ->take(10)
+            ->values();
 
-        return ['total' => (clone $query)->count(), 'items' => $items->all()];
+        return ['total' => $total, 'items' => $items->all()];
     }
 
     private function bmQueueContext(): array
@@ -270,7 +262,6 @@ class DashboardController extends Controller
             ->groupBy('disposisi_penawaran')
             ->pluck('total', 'disposisi_penawaran');
 
-        // disposisi=0 itu default kolom lama (belum keisi eksplisit), tetep digabung ke draft kayak nilai 1
         return [
             'draft'       => (int) ($counts->get(0, 0) + $counts->get(1, 0)),
             'waiting_bm'  => (int) $counts->get(2, 0),

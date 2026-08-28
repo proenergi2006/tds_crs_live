@@ -9,26 +9,27 @@ class StorePenawaranRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('penawaran.manage');
+        $brand = $this->route('brand');
+        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.manage' : 'penawaran.manage';
+
+        return $this->user()->can($permission);
     }
 
     public function rules(): array
     {
         return [
             'id_customer'          => 'required|exists:customers,id_customer',
-            // Ownership: kontak tujuan wajib milik id_customer di payload yang sama -- FK sendiri cuma menjamin barisnya ada.
             'customer_contact_id' => [
                 'required',
                 'integer',
                 Rule::exists('customer_contacts', 'id_contact')->where(
-                    fn ($query) => $query->where('id_customer', $this->input('id_customer'))
+                    fn($query) => $query->where('id_customer', $this->input('id_customer'))
                 ),
             ],
             'id_cabang'            => 'required|exists:cabangs,id_cabang',
             'masa_berlaku'         => 'required|date',
             'sampai_dengan'        => 'required|date|after_or_equal:masa_berlaku',
 
-            /* Section: ongkos */
             'ongkos'                     => 'nullable|array',
             'ongkos.*.jenis'             => 'required|in:KAPAL,TRUCK',
             'ongkos.*.id_angkut_wilayah' => 'required|exists:wilayah_angkuts,id',
@@ -43,6 +44,7 @@ class StorePenawaranRequest extends FormRequest
             'items.*.harga_tebus'  => 'required|numeric|min:0',
             'type_pengiriman'      => 'nullable|in:PROJECT,RETAIL',
             'tipe_pembayaran'      => 'nullable|string|max:100',
+            'acuan_pembayaran'     => 'nullable|in:After loading,Before loading,After unloading,Before unloading,After invoice received',
             'dp_persen'            => 'nullable|numeric|min:0|max:100',
             'dp_keterangan'        => 'nullable|string|max:100',
             'repayment_persen'     => 'nullable|numeric|min:0|max:100',

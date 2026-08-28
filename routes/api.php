@@ -59,7 +59,6 @@ use App\Http\Controllers\DeliveryRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ApprovalPendingCountController;
 use App\Http\Controllers\Monitoring\LogViewerController;
-use App\Http\Controllers\PenawaranProenergiController;
 
 Route::post('login', [AuthController::class, 'login']);
 
@@ -191,7 +190,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customers/{customer}/review-attachment', [CustomerReviewController::class, 'uploadReviewAttachment']);
     Route::delete('customers/{customer}/review-attachment/{no}', [CustomerReviewController::class, 'deleteReviewAttachment']);
 
-    // Daftar Penawaran milik customer -- bukti pendukung Admin Finance saat menilai pengajuan credit.
     Route::get('customers/{customer}/penawarans', [PenawaranController::class, 'lookupForCustomer']);
 
     Route::apiResource('vendors', VendorController::class);
@@ -227,19 +225,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('stocks', [StockController::class, 'index']);
 
-    Route::get('penawarans', [PenawaranController::class, 'index']);
-    Route::get('penawarans/bm', [PenawaranController::class, 'indexForBranchManager']);
-    Route::patch('penawarans/{id}/verifikasi',   [PenawaranController::class, 'verifikasi']);
-    Route::patch('penawarans/{id}/tolak-bm',     [PenawaranController::class, 'tolakbm']);
-    Route::get('penawarans/om',                  [PenawaranController::class, 'indexForOperationalManager']);
-    Route::patch('penawarans/{id}/verifikasi-om', [PenawaranController::class, 'verifikasiOm']);
-    Route::patch('penawarans/{id}/tolak-om',     [PenawaranController::class, 'tolakom']);
-    Route::get('penawarans/{id}',                [PenawaranController::class, 'show']);
-    Route::post('penawarans',                    [PenawaranController::class, 'store']);
-    Route::put('penawarans/{id}',                [PenawaranController::class, 'update']);
-    Route::delete('penawarans/{id}',             [PenawaranController::class, 'destroy']);
-    Route::get('/penawarans/{id}/preview', [\App\Http\Controllers\PenawaranController::class, 'previewPdfMultiLang']);
-
+    Route::get('penawarans', [PenawaranController::class, 'index'])->defaults('brand', 'tds');
+    Route::get('penawarans/bm', [PenawaranController::class, 'bmVerificationIndex'])->defaults('brand', 'tds');
+    Route::patch('penawarans/{id}/verifikasi',   [PenawaranController::class, 'verifikasi'])->defaults('brand', 'tds');
+    Route::patch('penawarans/{id}/tolak-bm',     [PenawaranController::class, 'tolakbm'])->defaults('brand', 'tds');
+    Route::get('penawarans/om',                  [PenawaranController::class, 'omVerificationIndex'])->defaults('brand', 'tds');
+    Route::patch('penawarans/{id}/verifikasi-om', [PenawaranController::class, 'verifikasiOm'])->defaults('brand', 'tds');
+    Route::patch('penawarans/{id}/tolak-om',     [PenawaranController::class, 'tolakom'])->defaults('brand', 'tds');
+    Route::get('penawarans/{id}',                [PenawaranController::class, 'show'])->defaults('brand', 'tds');
+    Route::post('penawarans',                    [PenawaranController::class, 'store'])->defaults('brand', 'tds');
+    Route::put('penawarans/{id}',                [PenawaranController::class, 'update'])->defaults('brand', 'tds');
+    Route::delete('penawarans/{id}',             [PenawaranController::class, 'destroy'])->defaults('brand', 'tds');
+    Route::get('/penawarans/{id}/preview', [PenawaranController::class, 'previewPdfMultiLang'])->defaults('brand', 'tds');
 
     Route::apiResource('jenis-produks', JenisProdukController::class);
     Route::apiResource('transportirs', TransportirController::class);
@@ -252,7 +249,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('master-trucks', MasterTruckController::class);
     Route::get('ongkos-trucks/check', [OngkosTruckController::class, 'checkOA']);
     Route::apiResource('ongkos-trucks', OngkosTruckController::class);
-    Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan']);
+    Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan'])->defaults('brand', 'tds');
     Route::apiResource('customer-pos', PoCustomerController::class);
 
     // Antrean review Logistik lintas-customer buat site LCR (role 6, permission logistik.lcr.verify) -- gantiin flag_disposisi/flag_approval mentah lama.
@@ -323,20 +320,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stocks', [StockController::class, 'index']);
     });
 
-    /* Section: Proenergi */
-    Route::get('penawarans-proenergi', [PenawaranProenergiController::class, 'index']);
-    Route::get('penawarans-proenergi/bm', [PenawaranProenergiController::class, 'indexForBranchManager']);
-    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranProenergiController::class, 'verifikasi']);
-    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranProenergiController::class, 'tolakbm']);
-    Route::get('penawarans-proenergi/om',                  [PenawaranProenergiController::class, 'indexForOperationalManager']);
-    Route::patch('penawarans-proenergi/{id}/verifikasi-om', [PenawaranProenergiController::class, 'verifikasiOm']);
-    Route::patch('penawarans-proenergi/{id}/tolak-om',     [PenawaranProenergiController::class, 'tolakom']);
-    Route::get('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'show']);
-    Route::post('penawarans-proenergi',                    [PenawaranProenergiController::class, 'store']);
-    Route::put('penawarans-proenergi/{id}',                [PenawaranProenergiController::class, 'update']);
-    Route::delete('penawarans-proenergi/{id}',             [PenawaranProenergiController::class, 'destroy']);
-    Route::get('/penawarans-proenergi/{id}/preview', [\App\Http\Controllers\PenawaranProenergiController::class, 'previewPdfMultiLang']);
-    Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranProenergiController::class, 'ajukan']);
+    Route::get('penawarans-proenergi', [PenawaranController::class, 'index'])->defaults('brand', 'proenergi');
+    Route::get('penawarans-proenergi/bm', [PenawaranController::class, 'bmVerificationIndex'])->defaults('brand', 'proenergi');
+    Route::patch('penawarans-proenergi/{id}/verifikasi',   [PenawaranController::class, 'verifikasi'])->defaults('brand', 'proenergi');
+    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [PenawaranController::class, 'tolakbm'])->defaults('brand', 'proenergi');
+    Route::get('penawarans-proenergi/om',                  [PenawaranController::class, 'omVerificationIndex'])->defaults('brand', 'proenergi');
+    Route::patch('penawarans-proenergi/{id}/verifikasi-om', [PenawaranController::class, 'verifikasiOm'])->defaults('brand', 'proenergi');
+    Route::patch('penawarans-proenergi/{id}/tolak-om',     [PenawaranController::class, 'tolakom'])->defaults('brand', 'proenergi');
+    Route::get('penawarans-proenergi/{id}',                [PenawaranController::class, 'show'])->defaults('brand', 'proenergi');
+    Route::post('penawarans-proenergi',                    [PenawaranController::class, 'store'])->defaults('brand', 'proenergi');
+    Route::put('penawarans-proenergi/{id}',                [PenawaranController::class, 'update'])->defaults('brand', 'proenergi');
+    Route::delete('penawarans-proenergi/{id}',             [PenawaranController::class, 'destroy'])->defaults('brand', 'proenergi');
+    Route::get('/penawarans-proenergi/{id}/preview', [PenawaranController::class, 'previewPdfMultiLang'])->defaults('brand', 'proenergi');
+    Route::patch('penawarans-proenergi/{id}/ajukan', [PenawaranController::class, 'ajukan'])->defaults('brand', 'proenergi');
 
     // Monitoring — hanya Administrator (id_role=1)
     Route::get('/logs/files', [LogViewerController::class, 'files'])->middleware('throttle:30,1');

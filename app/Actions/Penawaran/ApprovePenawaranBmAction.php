@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
-// resolve creator: coba user_id dulu baru created_by -- beda dari RejectPenawaranBmAction, jangan disatukan
 class ApprovePenawaranBmAction
 {
     use ResolvesApprovalTemplate;
@@ -24,15 +23,9 @@ class ApprovePenawaranBmAction
         try {
             $penawaran->update([
                 'status'              => 'approved_bm',
-                'catatan_verifikasi'  => $catatan,
-                'bm_result'           => '1',
-                'bm_tanggal'          => now(),
-                'approved_at'         => now(),
-                'approved_by'         => $actorName,
                 'disposisi_penawaran' => 3,
             ]);
 
-            // dual-write: putuskan step 1 (BM) di cycle DocumentApproval bersamaan dengan update kolom lama di atas
             $service = new DocumentApprovalService();
             $templateCode = $this->templateCodeFor($penawaran);
             $service->decideStep($penawaran, 1, DocumentApprovalStepStatus::Approved, $actorId, $catatan);
