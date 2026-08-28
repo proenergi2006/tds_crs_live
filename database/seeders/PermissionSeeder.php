@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 class PermissionSeeder extends Seeder
 {
     private array $permissions = [
-        // Tata Kelola
         [
             'name'        => 'admin.users.manage',
             'module'      => 'admin',
@@ -28,7 +27,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [1],
         ],
 
-        // Master Data
         [
             'name'        => 'master-data.view',
             'module'      => 'master-data',
@@ -66,7 +64,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [1],
         ],
 
-        // Harga Produk
         [
             'name'        => 'harga-produk.view',
             'module'      => 'harga-produk',
@@ -92,7 +89,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [2],
         ],
 
-        // PO Supplier / Procurement
         [
             'name'        => 'po-supplier.manage',
             'module'      => 'po-supplier',
@@ -136,7 +132,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [5],
         ],
 
-        // Customer TDS
         [
             'name'        => 'customer.viewOwn',
             'module'      => 'customer',
@@ -168,7 +163,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [1],
         ],
 
-        // Penawaran TDS
         [
             'name'        => 'penawaran.viewOwn',
             'module'      => 'penawaran',
@@ -188,8 +182,8 @@ class PermissionSeeder extends Seeder
             'roles'       => [4, 12],
         ],
         [
-            'name'        => 'verification.quotation',
-            'module'      => 'verification',
+            'name'        => 'penawaran.verify',
+            'module'      => 'penawaran',
             'description' => 'Akses modul approval penawaran (BM/CFO/OM)',
             'roles'       => [8, 3, 10],
         ],
@@ -206,7 +200,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [10],
         ],
 
-        // Penawaran Proenergi (Customer Proenergi kini pakai customer.viewOwn/customer.manage TDS)
         [
             'name'        => 'penawaran.proenergi.viewOwn',
             'module'      => 'penawaran',
@@ -244,7 +237,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [15, 16],
         ],
 
-        // Sales Confirmation
         [
             'name'        => 'sales-confirmation.manage',
             'module'      => 'sales-confirmation',
@@ -252,7 +244,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [9],
         ],
 
-        // Logistik
         [
             'name'        => 'logistik.lcr.verify',
             'module'      => 'logistik',
@@ -272,7 +263,6 @@ class PermissionSeeder extends Seeder
             'roles'       => [7],
         ],
 
-        // Dashboard
         [
             'name'        => 'dashboard.view-ceo',
             'module'      => 'dashboard',
@@ -290,6 +280,8 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         $now = now();
+
+        $this->renameLegacyPermissionNames();
 
         foreach ($this->permissions as $perm) {
             $permissionId = DB::table('permissions')
@@ -326,12 +318,24 @@ class PermissionSeeder extends Seeder
         $this->cleanupRevokedRolePermissions();
     }
 
-    // loop upsert di atas cuma NAMBAH grant, gak pernah nyabut -- role yang ilang dari array 'roles' harus dibersihin manual di sini
+    private function renameLegacyPermissionNames(): void
+    {
+        $renames = [
+            'verification.quotation' => 'penawaran.verify',
+        ];
+
+        foreach ($renames as $from => $to) {
+            DB::table('permissions')
+                ->where('name', $from)
+                ->where('guard_name', 'web')
+                ->update(['name' => $to, 'updated_at' => now()]);
+        }
+    }
+
     private function cleanupRevokedRolePermissions(): void
     {
         $revoked = [
-            // CEO gak berwenang approve Quotation, flow-nya cuma BM->OM
-            ['permission' => 'verification.quotation', 'role_id' => 2],
+            ['permission' => 'penawaran.verify', 'role_id' => 2],
         ];
 
         foreach ($revoked as $entry) {
@@ -354,7 +358,6 @@ class PermissionSeeder extends Seeder
         $retiredNames = [
             'penawaran.tds.manage',
             'customer.verify',
-            'penawaran.verify',
             'po-supplier.verify',
             'master-data.wilayah.manage',
         ];

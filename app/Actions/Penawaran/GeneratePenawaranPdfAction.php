@@ -2,6 +2,7 @@
 
 namespace App\Actions\Penawaran;
 
+use App\Models\Penawaran;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
@@ -10,25 +11,24 @@ use Endroid\QrCode\ErrorCorrectionLevel;
 class GeneratePenawaranPdfAction
 {
     public function execute(
-        string $modelClass,
+        string $brand,
         int $id,
         string $lang,
         bool $priceDetail,
         string $viewPrefix,
         string $logoLeftPath
     ) {
-        // alamat & kontak tujuan surat penawaran diambil dari relasi customer, bukan kolom di tabel penawarans
-        $with = ['customer.headOfficeAddress', 'customerContact', 'cabang', 'items.produk.ukuran', 'user.role'];
-        $penawaran = $modelClass::with($with)->findOrFail($id);
+        $with = ['customer.headOfficeAddress', 'customerContact', 'cabang', 'items.produk.ukuran', 'user.primaryRole'];
+        $penawaran = Penawaran::where('brand', $brand)->with($with)->findOrFail($id);
 
         $u = $penawaran->user;
         if (!$u && !empty($penawaran->created_by)) {
-            $u = \App\Models\User::with('role')->where('name', $penawaran->created_by)->first();
+            $u = \App\Models\User::with('primaryRole')->where('name', $penawaran->created_by)->first();
         }
 
         $contact = [
             'name'  => $u?->name ?? ($penawaran->kontak_nama ?? 'Robby Pratama Putra'),
-            'role'  => $u?->role?->role_name ?? 'Project Manager',
+            'role'  => $u?->primaryRole?->name ?? 'Project Manager',
             'phone' => $u?->no_telepon ?? ($penawaran->kontak_telepon ?? '-'),
             'email' => $u?->email ?? ($penawaran->kontak_email ?? '-'),
         ];

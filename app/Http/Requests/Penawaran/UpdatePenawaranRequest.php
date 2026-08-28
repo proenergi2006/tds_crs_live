@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Penawaran;
 
+use App\Models\Penawaran;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,10 +10,12 @@ class UpdatePenawaranRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $penawaran = \App\Models\Penawaran::findOrFail($this->route('id'));
+        $brand = $this->route('brand');
+        $penawaran = Penawaran::where('brand', $brand)->findOrFail($this->route('id'));
         $user = $this->user();
+        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.manage' : 'penawaran.manage';
 
-        return $user->can('penawaran.manage')
+        return $user->can($permission)
             && (int) $penawaran->user_id === (int) $user->id;
     }
 
@@ -20,12 +23,11 @@ class UpdatePenawaranRequest extends FormRequest
     {
         return [
             'id_customer'          => 'required|exists:customers,id_customer',
-            // Ownership: kontak tujuan wajib milik id_customer di payload yang sama -- FK sendiri cuma menjamin barisnya ada.
             'customer_contact_id' => [
                 'required',
                 'integer',
                 Rule::exists('customer_contacts', 'id_contact')->where(
-                    fn ($query) => $query->where('id_customer', $this->input('id_customer'))
+                    fn($query) => $query->where('id_customer', $this->input('id_customer'))
                 ),
             ],
             'id_cabang'            => 'required|exists:cabangs,id_cabang',
@@ -45,6 +47,7 @@ class UpdatePenawaranRequest extends FormRequest
             'items.*.volume_order' => 'required|numeric|min:0',
             'items.*.harga_tebus'  => 'required|numeric|min:0',
             'tipe_pembayaran'      => 'nullable|string|max:100',
+            'acuan_pembayaran'     => 'nullable|in:After loading,Before loading,After unloading,Before unloading,After invoice received',
             'dp_persen'            => 'nullable|numeric|min:0|max:100',
             'dp_keterangan'        => 'nullable|string|max:100',
             'repayment_persen'     => 'nullable|numeric|min:0|max:100',
@@ -67,6 +70,7 @@ class UpdatePenawaranRequest extends FormRequest
             'jenis_penawaran'      => 'nullable|string|max:100',
             'abrasi'   => 'nullable|string|max:100',
 
+            'user_id'                 => 'nullable|exists:users,id',
             'harga_dasar'             => 'nullable|numeric|min:0',
             'ppn_harga_dasar'         => 'nullable|numeric|min:0',
             'grand_total_harga_dasar' => 'nullable|numeric|min:0',

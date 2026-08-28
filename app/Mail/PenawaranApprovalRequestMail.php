@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Models\Penawaran;
-use App\Models\PenawaranProenergi;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -12,12 +11,11 @@ class PenawaranApprovalRequestMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public Penawaran|PenawaranProenergi $penawaran;
+    public Penawaran $penawaran;
     public string $verificationUrl;
-    // $stage menentukan approver yang sedang diminta approve: 'bm' atau 'om'.
     public string $stage;
 
-    public function __construct(Penawaran|PenawaranProenergi $penawaran, string $verificationUrl, string $stage)
+    public function __construct(Penawaran $penawaran, string $verificationUrl, string $stage)
     {
         $this->penawaran = $penawaran;
         $this->verificationUrl = $verificationUrl;

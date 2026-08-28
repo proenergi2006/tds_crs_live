@@ -23,7 +23,6 @@ export const verificationNavigation: NavItem[] = [
           "produk-hargas-detail",
         ],
         permission: "harga-produk.view",
-        // item yang sama juga ada di Master Data > Harga buat role lain, ini khusus CEO
         roles: [2],
         badgeKey: "price_period",
       },
@@ -38,7 +37,7 @@ export const verificationNavigation: NavItem[] = [
         icon: "File",
         pageName: "penawarans-verifikasi",
         title: "Quotation",
-        permission: "verification.quotation",
+        permission: "penawaran.verify",
         activePageNames: ["penawarans-verifikasi-detail"],
         badgeKey: "penawaran",
       },

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PenawaranBrand;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -9,7 +10,7 @@ class Penawaran extends Model
 {
     protected $table      = 'penawarans';
     protected $primaryKey = 'id_penawaran';
-    public $timestamps    = false; // gunakan manual timestamp
+    public $timestamps    = false;
 
     protected $fillable = [
         'id_customer',
@@ -54,27 +55,22 @@ class Penawaran extends Model
         'jenis_penawaran',
         'status',
         'disposisi_penawaran',
-        'bm_result',
-        'bm_tanggal',
-        'om_result',
-        'om_tanggal',
-        'approved_at',
-        'approved_by',
         'token_verifikasi',
-        'catatan_verifikasi',
-        'catatan_om',
         'abrasi',
         'user_id',
+        'brand',
+        'acuan_pembayaran',
     ];
 
-    /* Section: relasi */
+    protected $casts = [
+        'brand' => PenawaranBrand::class,
+    ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
-    // Kontak tujuan surat penawaran -- nama/jabatan/telepon dibaca live dari kontak customer, tidak di-snapshot.
     public function customerContact(): BelongsTo
     {
         return $this->belongsTo(CustomerContact::class, 'customer_contact_id', 'id_contact');
@@ -100,7 +96,6 @@ class Penawaran extends Model
         return $this->hasMany(PenawaranOngkos::class, 'penawaran_id', 'id_penawaran');
     }
 
-    // morphMany, bukan morphOne -- riwayat siklus approval sebelumnya tetap tersimpan walau ada re-submit setelah reject
     public function documentApprovals(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
         return $this->morphMany(\App\Models\DocumentApproval::class, 'approvable', 'approvable_type', 'approvable_id', 'id_penawaran');
@@ -109,5 +104,10 @@ class Penawaran extends Model
     public function latestDocumentApproval(): \Illuminate\Database\Eloquent\Relations\MorphOne
     {
         return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
+
+    public function actedAtForStep(int $stepOrder): ?\Illuminate\Support\Carbon
+    {
+        return $this->latestDocumentApproval?->steps->firstWhere('step_order', $stepOrder)?->acted_at;
     }
 }

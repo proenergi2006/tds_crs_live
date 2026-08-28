@@ -4,169 +4,74 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Penawaran;
-use App\Models\PenawaranItem;
-use App\Models\Cabang;
 use App\Http\Requests\Penawaran\StorePenawaranRequest;
 use App\Http\Requests\Penawaran\UpdatePenawaranRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Facades\Storage;
+use App\Services\QrCodeService;
+use App\Actions\Penawaran\CreatePenawaranAction;
+use App\Actions\Penawaran\UpdatePenawaranAction;
 use App\Actions\Penawaran\SubmitPenawaranAction;
 use App\Actions\Penawaran\ApprovePenawaranBmAction;
 use App\Actions\Penawaran\RejectPenawaranBmAction;
 use App\Actions\Penawaran\ApprovePenawaranOmAction;
 use App\Actions\Penawaran\RejectPenawaranOmAction;
-use App\Actions\Penawaran\ResolvePenawaranBmQueueAction;
-use App\Actions\Penawaran\ResolvePenawaranOmQueueAction;
+use App\Actions\Penawaran\ResolvePenawaranQueueAction;
 use App\Actions\Penawaran\GeneratePenawaranPdfAction;
 use App\Enums\ProdukHargaCogsBasis;
-use App\Models\ProdukHarga;
+use App\Support\ProdukHarga\ActivePriceForPeriodQuery;
 use App\Support\Approval\PenawaranApprovalStepsBuilder;
 
 class PenawaranController extends Controller
 {
-    public function index(Request $request)
+    private function resolvePenawaran(string $brand, int $id, array $with = []): Penawaran
+    {
+        return Penawaran::where('brand', $brand)->with($with)->findOrFail($id);
+    }
+
+    private function verificationGatePermissions(string $brand, string $step): array
+    {
+        return $brand === 'proenergi'
+            ? ['penawaran.proenergi.verify', "penawaran.proenergi.verify-{$step}"]
+            : ['penawaran.verify', "penawaran.verify-{$step}"];
+    }
+
+    public function index(Request $request, string $brand)
     {
         $user = $request->user();
+        $permissionAny = $brand === 'proenergi' ? 'penawaran.proenergi.viewAny' : 'penawaran.viewAny';
+        $permissionOwn = $brand === 'proenergi' ? 'penawaran.proenergi.viewOwn' : 'penawaran.viewOwn';
 
-        if ($user->cant('penawaran.viewAny') && $user->cant('penawaran.viewOwn')) {
+        if ($user->cant($permissionAny) && $user->cant($permissionOwn)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $perPage = $request->query('per_page', 10);
         $search  = $request->query('search');
 
-        $query = Penawaran::with(['customer', 'cabang', 'items.produk.jenis', 'items.produk.ukuran.satuan'])
+        $query = Penawaran::where('brand', $brand)
+            ->with(['customer', 'cabang', 'items.produk.jenis', 'items.produk.ukuran.satuan'])
             ->withSum('items as total_volume', 'volume_order');
 
-        if ($user->cant('penawaran.viewAny')) {
+        if ($user->cant($permissionAny)) {
             $query->where('user_id', $user->id);
         }
 
         if ($search) {
-            // Kontak tujuan bukan kolom sendiri lagi; search menjangkau nama perusahaan customer + nama kontaknya.
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_penawaran', 'like', "%{$search}%")
-                    ->orWhereHas('customer', fn ($cq) => $cq->where('company_name', 'like', "%{$search}%"))
-                    ->orWhereHas('customerContact', fn ($cq) => $cq->where('full_name', 'like', "%{$search}%"));
+                    ->orWhereHas('customer', fn($cq) => $cq->where('company_name', 'like', "%{$search}%"))
+                    ->orWhereHas('customerContact', fn($cq) => $cq->where('full_name', 'like', "%{$search}%"));
             });
         }
 
         $data = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
         return response()->json($data);
     }
 
-    public function store(StorePenawaranRequest $request)
+    public function show(Request $request, $id, string $brand)
     {
-        $data = $request->validated();
-        $data['user_id'] = $request->user()->id ?? ($data['user_id'] ?? null);
-
-        $cabang = Cabang::findOrFail($data['id_cabang']);
-        $urut  = (int) $cabang->urut_penawaran + 1;
-        $nomor = str_pad($urut, 5, '0', STR_PAD_LEFT)
-            . '/TDS-PN/' . $cabang->inisial_cabang . '/' . $this->getRomanMonth(date('m')) . '/' . substr(date('Y'), -2);
-        $cabang->urut_penawaran = $urut;
-        $cabang->save();
-
-        $subtotal = 0.0;
-        foreach ($data['items'] as $it) {
-            $subtotal += ((float)$it['volume_order']) * ((float)$it['harga_tebus']);
-        }
-        $diskon = $this->toFloat($data['discount'] ?? 0);
-        $diskon = max(0.0, min($diskon, $subtotal));
-        $setelahDiskon = $subtotal - $diskon;
-
-        $oatPerVol   = $this->toFloat($data['oat'] ?? 0);
-        $totalVolume = array_sum(array_column($data['items'], 'volume_order'));
-        $totalOat    = $oatPerVol * (float)$totalVolume;
-
-        $ppn11 = round($setelahDiskon * 0.11, 2);
-        $total = $setelahDiskon + $ppn11;
-        $totalWithOat = $total + $totalOat;
-
-        $data = array_merge($data, [
-            'nomor_penawaran'            => $nomor,
-            'subtotal'                   => $subtotal,
-            'harga_tebus_setelah_diskon' => $setelahDiskon,
-            'ppn11'                      => $ppn11,
-            'total'                      => $total,
-            'total_with_oat'             => $totalWithOat,
-            'discount'                   => $diskon,
-            'status'                     => 'draft',
-            'disposisi_penawaran'        => '1',
-            'type_pengiriman'            => $data['type_pengiriman'] ?? null,
-            'created_at'                 => now(),
-            'created_by'                 => optional($request->user())->name,
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $penawaran = Penawaran::create($data);
-
-            if (!empty($data['ongkos'])) {
-                foreach ($data['ongkos'] as $o) {
-                    $penawaran->ongkos()->create([
-                        'penawaran_id'   => $penawaran->id_penawaran,
-                        'wilayah_id'     => $o['id_angkut_wilayah'],
-                        'transportir_id' => $o['id_transportir'],
-                        'jenis'          => $o['jenis'],
-                        'volume_id' => $o['id_volume'],
-                        'ongkos'         => $o['ongkos'],
-
-                    ]);
-                }
-            }
-
-            foreach ($data['items'] as $it) {
-                PenawaranItem::create([
-                    'id_penawaran' => $penawaran->id_penawaran,
-                    'id_produk'    => $it['id_produk'],
-                    'volume_order' => $it['volume_order'],
-                    'persen'       => $it['persen'],
-                    'harga_tebus'  => $it['harga_tebus'],
-                    'jumlah_harga' => $it['volume_order'] * $it['harga_tebus'],
-                ]);
-            }
-
-            // token QR sengaja gak disimpan ke DB
-            $penawaran->refresh();
-            $payloadNumber = $this->generateNumericCode(8);
-
-            try {
-                $saved = $this->saveQrPngToStorage($payloadNumber, $penawaran->id_penawaran);
-            } catch (\Throwable $e) {
-                report($e);
-                $saved = $this->saveQrSvgToStorage($payloadNumber, $penawaran->id_penawaran);
-            }
-
-            $penawaran->forceFill(['qr_code' => $saved['url']])->save();
-
-            DB::table('customers')
-                ->where('id_customer', $data['id_customer'])
-                ->update([
-                    'id_cabang'  => $data['id_cabang'],
-                    'updated_at' => now(),
-                    'updated_by' => optional($request->user())->name,
-                ]);
-
-            DB::commit();
-
-            $penawaran->load(['customer', 'cabang', 'items.produk']);
-            return response()->json($penawaran, 201);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            report($e);
-            return response()->json([
-                'message' => 'Gagal menyimpan penawaran',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function show(Request $request, $id)
-    {
-        $penawaran = Penawaran::with([
+        $penawaran = $this->resolvePenawaran($brand, (int) $id, [
             'customer',
             'customer.headOfficeAddress',
             'customerContact',
@@ -181,44 +86,28 @@ class PenawaranController extends Controller
             'ongkos.wilayah.regency',
             'documentApprovals.steps.templateStep',
             'documentApprovals.steps.actor',
-        ])->findOrFail($id);
+        ]);
 
         $user = $request->user();
-        $allowed = $user->can('penawaran.viewAny')
-            || ($user->can('penawaran.viewOwn') && (int) $penawaran->user_id === (int) $user->id);
+        $permissionAny = $brand === 'proenergi' ? 'penawaran.proenergi.viewAny' : 'penawaran.viewAny';
+        $permissionOwn = $brand === 'proenergi' ? 'penawaran.proenergi.viewOwn' : 'penawaran.viewOwn';
+        $allowed = $user->can($permissionAny)
+            || ($user->can($permissionOwn) && (int) $penawaran->user_id === (int) $user->id);
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($penawaran->items->isNotEmpty()) {
-            $firstProdukId = $penawaran->items->first()->id_produk;
+        $hargaByProduk = (new ActivePriceForPeriodQuery())->forProduks(
+            $penawaran->items->pluck('id_produk')->unique()->values()->all(),
+            $penawaran->id_cabang,
+            $penawaran->masa_berlaku
+        );
 
-            $harga = ProdukHarga::query()
-                ->where('id_produk', $firstProdukId)
-                ->where('id_cabang', $penawaran->id_cabang)
-                ->whereDate('periode_awal', '<=', $penawaran->masa_berlaku)
-                ->whereDate('periode_akhir', '>=', $penawaran->masa_berlaku)
-                ->orderByDesc('periode_akhir')
-                ->first();
-            if ($harga) {
-                $penawaran->setRelation('produk_harga', $harga);
-            } else {
-                $penawaran->setRelation('produk_harga', null);
-            }
-        } else {
-            $penawaran->setRelation('produk_harga', null);
-        }
+        $penawaran->setRelation('produk_harga', $hargaByProduk->get($penawaran->items->first()?->id_produk));
 
-        // COGS per item ini buat weighted-average margin di FE
         foreach ($penawaran->items as $item) {
-            $itemHarga = ProdukHarga::query()
-                ->where('id_produk', $item->id_produk)
-                ->where('id_cabang', $penawaran->id_cabang)
-                ->whereDate('periode_awal', '<=', $penawaran->masa_berlaku)
-                ->whereDate('periode_akhir', '>=', $penawaran->masa_berlaku)
-                ->orderByDesc('periode_akhir')
-                ->first();
+            $itemHarga = $hargaByProduk->get($item->id_produk);
             $item->harga_cogs = $itemHarga->harga_cogs ?? null;
             $item->cogs_basis = $itemHarga->cogs_basis ?? null;
             $item->cogs_basis_label = $itemHarga && $itemHarga->cogs_basis
@@ -232,121 +121,47 @@ class PenawaranController extends Controller
         return response()->json($payload);
     }
 
-    public function update(UpdatePenawaranRequest $request, $id)
+    public function store(StorePenawaranRequest $request, string $brand)
     {
-        $penawaran = Penawaran::findOrFail($id);
+        $result = (new CreatePenawaranAction())->execute($request->validated(), $brand, $request->user());
 
-        $user = $request->user();
-        if (!($user->can('penawaran.manage') && (int) $penawaran->user_id === (int) $user->id)) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if (array_key_exists('error', $result)) {
+            return response()->json(['message' => $result['message'], 'error' => $result['error']], $result['status']);
         }
 
-        $data = $request->validated();
-
-        $subtotal = 0.0;
-        foreach ($data['items'] as $it) {
-            $subtotal += ((float)$it['volume_order']) * ((float)$it['harga_tebus']);
-        }
-
-        $diskon = $this->toFloat($data['discount'] ?? 0);
-        if ($diskon < 0) $diskon = 0.0;
-        if ($diskon > $subtotal) $diskon = $subtotal;
-
-        $setelahDiskon = $subtotal - $diskon;
-
-        $oatPerVolume = $this->toFloat($data['oat'] ?? 0);
-        $totalVolume  = array_sum(array_column($data['items'], 'volume_order'));
-        $totalOat     = $oatPerVolume * (float)$totalVolume;
-
-        $ppn11 = round($setelahDiskon * 0.11, 2);
-        $total = $setelahDiskon + $ppn11;
-        $totalWithOat = $total + $totalOat;
-
-        $data['subtotal']                   = $subtotal;
-        $data['harga_tebus_setelah_diskon'] = $setelahDiskon;
-        $data['ppn11']                      = $ppn11;
-        $data['total']                      = $total;
-        $data['total_with_oat']             = $totalWithOat;
-        $data['type_pengiriman'] = $data['type_pengiriman'] ?? $penawaran->type_pengiriman;
-        $data['discount']                   = $diskon;
-        $data['updated_at']                 = now();
-        $data['updated_by']                 = $request->user()->name ?? null;
-
-        DB::beginTransaction();
-        try {
-            $penawaran->update($data);
-
-            if ($penawaran->status !== 'draft') {
-                (new \App\Services\Approval\DocumentApprovalService())->cancelActiveCycle($penawaran);
-            }
-
-            $penawaran->forceFill([
-                'status'             => 'draft',
-                'disposisi_penawaran' => '1',
-                'bm_result'          => 0,
-                'bm_tanggal'         => now(),
-                'catatan_verifikasi' => null,
-                'om_result'          => 0,
-                'om_tanggal'         => now(),
-                'catatan_om'         => null,
-            ])->save();
-
-            $penawaran->ongkos()->delete();
-
-            if ($request->has('ongkos')) {
-                foreach ($request->ongkos as $o) {
-                    $penawaran->ongkos()->create([
-                        'penawaran_id'   => $penawaran->id_penawaran,
-                        'wilayah_id'     => $o['id_angkut_wilayah'],
-                        'transportir_id' => $o['id_transportir'],
-                        'jenis'          => $o['jenis'],
-                        'volume_id' => $o['id_volume'],
-                        'ongkos'         => $o['ongkos'],
-                    ]);
-                }
-            }
-
-            PenawaranItem::where('id_penawaran', $penawaran->id_penawaran)->delete();
-            foreach ($data['items'] as $it) {
-                PenawaranItem::create([
-                    'id_penawaran' => $penawaran->id_penawaran,
-                    'id_produk'    => $it['id_produk'],
-                    'volume_order' => $it['volume_order'],
-                    'persen' => $it['persen'],
-                    'harga_tebus'  => $it['harga_tebus'],
-                    'jumlah_harga' => $it['volume_order'] * $it['harga_tebus'],
-                ]);
-            }
-
-            DB::commit();
-            $penawaran->load(['customer', 'cabang', 'items.produk']);
-            return response()->json($penawaran);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Gagal update penawaran',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json($result['penawaran'], $result['status']);
     }
 
-    public function destroy(Request $request, $id)
+    public function update(UpdatePenawaranRequest $request, $id, string $brand)
     {
-        $penawaran = Penawaran::findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id);
+
+        $result = (new UpdatePenawaranAction())->execute($penawaran, $request->validated(), $request->user());
+
+        if (array_key_exists('error', $result)) {
+            return response()->json(['message' => $result['message'], 'error' => $result['error']], $result['status']);
+        }
+
+        return response()->json($result['penawaran']);
+    }
+
+    public function destroy(Request $request, $id, string $brand)
+    {
+        $penawaran = $this->resolvePenawaran($brand, (int) $id);
 
         $user = $request->user();
-        $allowed = $user->can('penawaran.manage')
-            && (int) $penawaran->user_id === (int) $user->id;
+        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.manage' : 'penawaran.manage';
+        $allowed = $user->can($permission) && (int) $penawaran->user_id === (int) $user->id;
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $idPenawaran = (int)($penawaran->id_penawaran ?? $penawaran->id);
+        $idPenawaran = (int) $penawaran->id_penawaran;
         $qrUrl = $penawaran->qr_code;
 
         try {
-            $this->deleteQrFiles($idPenawaran, $qrUrl);
+            (new QrCodeService())->deleteFiles($idPenawaran, $qrUrl);
         } catch (\Throwable $e) {
             report($e);
         }
@@ -356,13 +171,13 @@ class PenawaranController extends Controller
         return response()->json(null, 204);
     }
 
-    public function ajukan($id)
+    public function ajukan($id, string $brand)
     {
-        $penawaran = Penawaran::with(['customer', 'cabang'])->findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
 
         $result = (new SubmitPenawaranAction())->execute(
             $penawaran,
-            $this->bmVerificationUrl($penawaran->id_penawaran)
+            $this->bmVerificationUrl($brand, $penawaran->id_penawaran)
         );
 
         $response = ['message' => $result['message']];
@@ -373,14 +188,16 @@ class PenawaranController extends Controller
         return response()->json($response, $result['status'] ?? 200);
     }
 
-    public function indexForBranchManager(Request $request)
+    public function bmVerificationIndex(Request $request, string $brand)
     {
-        if ($request->user()->cant('penawaran.viewAny')) {
+        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.viewAny' : 'penawaran.viewAny';
+        if ($request->user()->cant($permission)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $data = (new ResolvePenawaranBmQueueAction())->execute(
-            Penawaran::class,
+        $data = (new ResolvePenawaranQueueAction())->execute(
+            $brand,
+            'bm',
             $request->query('search'),
             (int) $request->query('per_page', 10)
         );
@@ -388,17 +205,15 @@ class PenawaranController extends Controller
         return response()->json($data);
     }
 
-    public function verifikasi(Request $request, $id)
+    public function verifikasi(Request $request, $id, string $brand)
     {
-        if ($request->user()->cant('verification.quotation')) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        foreach ($this->verificationGatePermissions($brand, 'bm') as $permission) {
+            if ($request->user()->cant($permission)) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
-        if ($request->user()->cant('penawaran.verify-bm')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $penawaran = Penawaran::with(['customer', 'cabang'])->findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
         $request->validate(['catatan' => 'nullable|string']);
 
         $result = (new ApprovePenawaranBmAction())->execute(
@@ -406,44 +221,44 @@ class PenawaranController extends Controller
             $request->user()->id,
             $request->catatan,
             $request->user()->name ?? 'BM',
-            $this->detailUrl($penawaran->id_penawaran),
-            $this->omVerificationUrl($penawaran->id_penawaran)
+            $this->detailUrl($brand, $penawaran->id_penawaran),
+            $this->omVerificationUrl($brand, $penawaran->id_penawaran)
         );
 
         return response()->json(['message' => $result['message']], $result['status'] ?? 200);
     }
 
-    public function tolakbm(Request $request, $id)
+    public function tolakbm(Request $request, $id, string $brand)
     {
-        if ($request->user()->cant('verification.quotation')) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        foreach ($this->verificationGatePermissions($brand, 'bm') as $permission) {
+            if ($request->user()->cant($permission)) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
-        if ($request->user()->cant('penawaran.verify-bm')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $penawaran = Penawaran::with(['customer', 'cabang'])->findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
         $request->validate(['catatan' => 'required|string']);
 
         $result = (new RejectPenawaranBmAction())->execute(
             $penawaran,
             $request->user()->id,
             $request->catatan,
-            $this->detailUrl($penawaran->id_penawaran)
+            $this->detailUrl($brand, $penawaran->id_penawaran)
         );
 
         return response()->json(['message' => $result['message']]);
     }
 
-    public function indexForOperationalManager(Request $request)
+    public function omVerificationIndex(Request $request, string $brand)
     {
-        if ($request->user()->cant('penawaran.viewAny')) {
+        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.viewAny' : 'penawaran.viewAny';
+        if ($request->user()->cant($permission)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $data = (new ResolvePenawaranOmQueueAction())->execute(
-            Penawaran::class,
+        $data = (new ResolvePenawaranQueueAction())->execute(
+            $brand,
+            'om',
             $request->query('search'),
             (int) $request->query('per_page', 10)
         );
@@ -451,59 +266,60 @@ class PenawaranController extends Controller
         return response()->json($data);
     }
 
-    public function verifikasiOm(Request $request, $id)
+    public function verifikasiOm(Request $request, $id, string $brand)
     {
-        if ($request->user()->cant('verification.quotation')) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        foreach ($this->verificationGatePermissions($brand, 'om') as $permission) {
+            if ($request->user()->cant($permission)) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
-        if ($request->user()->cant('penawaran.verify-om')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $penawaran = Penawaran::findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id);
         $request->validate(['catatan' => 'nullable|string']);
 
-        $result = (new ApprovePenawaranOmAction())->execute($penawaran, $request->user()->id, $request->catatan, $this->detailUrl($penawaran->id_penawaran));
+        $result = (new ApprovePenawaranOmAction())->execute($penawaran, $request->user()->id, $request->catatan, $this->detailUrl($brand, $penawaran->id_penawaran));
 
         return response()->json(['message' => $result['message']]);
     }
 
-    public function tolakom(Request $request, $id)
+    public function tolakom(Request $request, $id, string $brand)
     {
-        if ($request->user()->cant('verification.quotation')) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        foreach ($this->verificationGatePermissions($brand, 'om') as $permission) {
+            if ($request->user()->cant($permission)) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
-        if ($request->user()->cant('penawaran.verify-om')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $penawaran = Penawaran::with(['customer', 'cabang'])->findOrFail($id);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
         $request->validate(['catatan' => 'required|string']);
 
         $result = (new RejectPenawaranOmAction())->execute(
             $penawaran,
             $request->user()->id,
             $request->catatan,
-            $this->detailUrl($penawaran->id_penawaran)
+            $this->detailUrl($brand, $penawaran->id_penawaran)
         );
 
         return response()->json(['message' => $result['message']]);
     }
 
-    public function previewPdfMultiLang(Request $request, $id)
+    public function previewPdfMultiLang(Request $request, $id, string $brand)
     {
         $lang = strtolower($request->query('lang', 'id'));
         $priceDetail = $request->query('price_format') === 'detail';
 
+        $viewPrefix = $brand === 'proenergi' ? 'penawaran.pdf_proenergi' : 'penawaran.pdf';
+        $logoLeftPath = $brand === 'proenergi'
+            ? public_path('images/logo-proenergi.png')
+            : public_path('images/logo-new.png');
+
         return (new GeneratePenawaranPdfAction())->execute(
-            Penawaran::class,
+            $brand,
             (int) $id,
             $lang,
             $priceDetail,
-            'penawaran.pdf',
-            public_path('images/logo-new.png')
+            $viewPrefix,
+            $logoLeftPath
         );
     }
 
@@ -533,136 +349,21 @@ class PenawaranController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function getRomanMonth($month)
+    private function detailUrl(string $brand, int $idPenawaran): string
     {
-        $months = [
-            '01' => 'I',
-            '02' => 'II',
-            '03' => 'III',
-            '04' => 'IV',
-            '05' => 'V',
-            '06' => 'VI',
-            '07' => 'VII',
-            '08' => 'VIII',
-            '09' => 'IX',
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII',
-        ];
-        return $months[$month] ?? '';
+        $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
+        return url("/{$prefix}/{$idPenawaran}");
     }
 
-    private function toFloat($v): float
+    private function bmVerificationUrl(string $brand, int $idPenawaran): string
     {
-        if ($v === null || $v === '') return 0.0;
-        if (is_numeric($v)) return (float)$v;
-
-        $s = trim((string)$v);
-        if (strpos($s, ',') !== false && strpos($s, '.') !== false) {
-            $s = str_replace('.', '', $s);
-            $s = str_replace(',', '.', $s);
-            return (float)$s;
-        }
-        if (strpos($s, ',') !== false) {
-            $s = str_replace(',', '.', $s);
-        }
-        return (float)$s;
+        $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
+        return url("/{$prefix}/{$idPenawaran}/verifikasi");
     }
 
-    private function generateNumericCode(int $length = 8): string
+    private function omVerificationUrl(string $brand, int $idPenawaran): string
     {
-        $min = (int) str_pad('1', $length, '0');
-        $max = (int) str_pad('',  $length, '9');
-        return (string) random_int($min, $max);
-    }
-
-    private function saveQrPngToStorage(string|array $payload, int $idPenawaran): array
-    {
-        // pastikan simple-qrcode pakai GD, bukan Imagick
-        config(['qrcode.image_backend' => 'gd']);
-
-        $data = is_array($payload)
-            ? json_encode($payload, JSON_UNESCAPED_SLASHES)
-            : (string) $payload;
-
-        $pngBinary = QrCode::format('png')
-            ->size(512)
-            ->margin(1)
-            ->errorCorrection('M')
-            ->generate($data);
-
-        $dir  = 'qrcodes/' . now()->format('Y/m');
-        $safe = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}");
-        $name = "{$safe}_" . now()->format('YmdHis') . ".png";
-
-        Storage::disk('public')->put("$dir/$name", $pngBinary);
-
-        $abs = public_path("storage/$dir/$name");
-        return [
-            'abs_for_pdf' => 'file://' . $abs,
-            'url'         => asset("storage/$dir/$name"),
-            'rel'         => "$dir/$name",
-        ];
-    }
-
-    private function saveQrSvgToStorage(string|array $payload, int $idPenawaran): array
-    {
-        $data = is_array($payload)
-            ? json_encode($payload, JSON_UNESCAPED_SLASHES)
-            : (string) $payload;
-
-        $svg = QrCode::format('svg')
-            ->size(512)->margin(1)->errorCorrection('M')
-            ->generate($data);
-
-        $dir  = 'qrcodes/' . now()->format('Y/m');
-        $safe = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}");
-        $name = "{$safe}_" . now()->format('YmdHis') . ".svg";
-
-        Storage::disk('public')->put("$dir/$name", $svg);
-
-        $abs = public_path("storage/$dir/$name");
-        return [
-            'abs_for_pdf' => 'file://' . $abs,
-            'url'         => asset("storage/$dir/$name"),
-            'rel'         => "$dir/$name",
-            'svg'         => $svg,
-        ];
-    }
-
-    private function deleteQrFiles(int $idPenawaran, ?string $qrUrl = null): void
-    {
-        if (!empty($qrUrl)) {
-            $path = parse_url($qrUrl, PHP_URL_PATH);
-            if ($path && str_starts_with($path, '/storage/')) {
-                $rel = ltrim(substr($path, strlen('/storage/')), '/');
-                Storage::disk('public')->delete($rel);
-            }
-        }
-
-        $prefix = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}");
-        $all = Storage::disk('public')->allFiles('qrcodes');
-        foreach ($all as $file) {
-            $base = basename($file);
-            if (str_starts_with($base, $prefix) && (str_ends_with($base, '.png') || str_ends_with($base, '.svg'))) {
-                Storage::disk('public')->delete($file);
-            }
-        }
-    }
-
-    /* Section: Email helpers */
-    private function detailUrl(int $idPenawaran): string
-    {
-        return url("/penawarans/{$idPenawaran}");
-    }
-
-    private function bmVerificationUrl(int $idPenawaran): string
-    {
-        return url("/penawarans/{$idPenawaran}/verifikasi");
-    }
-
-    private function omVerificationUrl(int $idPenawaran): string
-    {
-        return url("/penawarans/verifikasi/om/{$idPenawaran}");
+        $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
+        return url("/{$prefix}/verifikasi/om/{$idPenawaran}");
     }
 }

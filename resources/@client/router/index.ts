@@ -532,8 +532,8 @@ const routes = [
         name: "penawarans-verifikasi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
         meta: {
-          brand: "reguler",
-          permission: "verification.quotation",
+          brand: "tds",
+          permission: "penawaran.verify",
         },
       },
       {
@@ -551,8 +551,8 @@ const routes = [
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
         meta: {
           role: "bm",
-          brand: "reguler",
-          permission: ["verification.quotation", "penawaran.verify-bm"],
+          brand: "tds",
+          permission: ["penawaran.verify", "penawaran.verify-bm"],
         },
       },
       {
@@ -571,8 +571,8 @@ const routes = [
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
         meta: {
           role: "om",
-          brand: "reguler",
-          permission: ["verification.quotation", "penawaran.verify-om"],
+          brand: "tds",
+          permission: ["penawaran.verify", "penawaran.verify-om"],
         },
       },
       {

@@ -11,7 +11,6 @@ use App\Models\DocumentApprovalStep;
 use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Database\Eloquent\Model;
 
-// tiap submit bikin cycle DocumentApproval baru (gak reuse) -- kalo gak ada cycle sama sekali, fallback ke kolom legacy
 class PenawaranApprovalStepsBuilder
 {
     use ResolvesApprovalTemplate;
@@ -70,7 +69,6 @@ class PenawaranApprovalStepsBuilder
             ];
         })->all();
 
-        // marker terpisah dari status cycle -- cycle approved/rejected/cancelled tetap akurat, ini cuma nunjukin dokumen sempat dibuka lagi setelahnya
         if ($wasReopened) {
             $steps[] = [
                 'title'       => 'Dikembalikan ke Draft',
@@ -102,14 +100,13 @@ class PenawaranApprovalStepsBuilder
 
     private function fromLegacyStatus(Model $penawaran): array
     {
-        // draft belum punya cycle DocumentApproval -- preview dari template aktif langsung, biar selalu sinkron kalau template berubah
         if ($penawaran->status === 'draft') {
             return $this->fromTemplatePreview($penawaran);
         }
 
         $draft = ['title' => 'Draft', 'description' => 'Penawaran dibuat dan masih dapat diubah.', 'timestamp' => $penawaran->created_at];
         $waitingBm = ['title' => 'Waiting BM', 'description' => 'Menunggu verifikasi dari Branch Manager.', 'timestamp' => null];
-        $approvedBm = ['title' => 'Approved BM', 'description' => 'Disetujui Branch Manager, diteruskan ke Operations Manager.', 'timestamp' => $penawaran->bm_tanggal];
+        $approvedBm = ['title' => 'Approved BM', 'description' => 'Disetujui Branch Manager, diteruskan ke Operations Manager.', 'timestamp' => null];
         $approvedOm = ['title' => 'Approved OM', 'description' => 'Disetujui Operations Manager. Penawaran final.', 'timestamp' => null];
 
         return match ($penawaran->status) {

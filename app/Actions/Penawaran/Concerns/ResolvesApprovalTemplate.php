@@ -2,13 +2,13 @@
 
 namespace App\Actions\Penawaran\Concerns;
 
-use App\Models\PenawaranProenergi;
+use App\Enums\PenawaranBrand;
 use Illuminate\Database\Eloquent\Model;
 
 trait ResolvesApprovalTemplate
 {
     private function templateCodeFor(Model $penawaran): string
     {
-        return $penawaran instanceof PenawaranProenergi ? 'penawaran_proenergi' : 'penawaran_tds';
+        return $penawaran->brand === PenawaranBrand::Proenergi ? 'penawaran_proenergi' : 'penawaran_tds';
     }
 }

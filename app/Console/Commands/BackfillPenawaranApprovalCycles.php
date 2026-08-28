@@ -6,20 +6,10 @@ use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Models\ApprovalTemplate;
 use App\Models\Penawaran;
-use App\Models\PenawaranProenergi;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Backfill one-time: bikin DocumentApproval + DocumentApprovalStep untuk
- * record Penawaran/PenawaranProenergi existing yang statusnya sudah
- * berjalan (bukan draft), berdasarkan kolom lama (status, bm_tanggal,
- * om_tanggal, catatan_verifikasi, catatan_om). PURELY additive -- tidak
- * pernah mengubah tabel penawarans/penawarans_proenergi. Idempotent:
- * skip record yang sudah punya documentApprovals(). Jalankan manual,
- * bukan dipanggil otomatis dari migration/seeder.
- */
 class BackfillPenawaranApprovalCycles extends Command
 {
     protected $signature = 'penawaran:backfill-approval-cycles';
@@ -28,22 +18,22 @@ class BackfillPenawaranApprovalCycles extends Command
 
     public function handle(): int
     {
-        $resultTds = $this->backfillBrand(Penawaran::class, 'penawaran_tds');
+        $resultTds = $this->backfillBrand('tds', 'penawaran_tds');
         $this->info("[penawaran_tds] processed: {$resultTds['created']}, skipped (existing cycle): {$resultTds['skipped_existing']}, skipped (unknown status): {$resultTds['skipped_unknown']}");
 
-        $resultProenergi = $this->backfillBrand(PenawaranProenergi::class, 'penawaran_proenergi');
+        $resultProenergi = $this->backfillBrand('proenergi', 'penawaran_proenergi');
         $this->info("[penawaran_proenergi] processed: {$resultProenergi['created']}, skipped (existing cycle): {$resultProenergi['skipped_existing']}, skipped (unknown status): {$resultProenergi['skipped_unknown']}");
 
         return self::SUCCESS;
     }
 
-    private function backfillBrand(string $modelClass, string $templateCode): array
+    private function backfillBrand(string $brand, string $templateCode): array
     {
         $template = ApprovalTemplate::where('code', $templateCode)->with('steps')->firstOrFail();
 
         $counts = ['created' => 0, 'skipped_existing' => 0, 'skipped_unknown' => 0];
 
-        $penawarans = $modelClass::where('status', '!=', 'draft')->get();
+        $penawarans = Penawaran::where('brand', $brand)->where('status', '!=', 'draft')->get();
 
         foreach ($penawarans as $penawaran) {
             DB::transaction(function () use ($penawaran, $template, &$counts) {
@@ -105,7 +95,7 @@ class BackfillPenawaranApprovalCycles extends Command
                     'step_order' => $stepBm->step_order,
                     'status' => DocumentApprovalStepStatus::Approved,
                     'acted_at' => $penawaran->bm_tanggal ?? $penawaran->created_at,
-                    'decision_note' => '[migrasi] '.trim((string) ($penawaran->catatan_verifikasi ?? '')),
+                    'decision_note' => '[migrasi] ' . trim((string) ($penawaran->catatan_verifikasi ?? '')),
                 ]);
 
                 $approval->steps()->create([
@@ -113,7 +103,7 @@ class BackfillPenawaranApprovalCycles extends Command
                     'step_order' => $stepOm->step_order,
                     'status' => DocumentApprovalStepStatus::Approved,
                     'acted_at' => $omActedAt,
-                    'decision_note' => '[migrasi] '.trim((string) ($penawaran->catatan_om ?? '')),
+                    'decision_note' => '[migrasi] ' . trim((string) ($penawaran->catatan_om ?? '')),
                 ]);
 
                 return 'created';
@@ -132,7 +122,7 @@ class BackfillPenawaranApprovalCycles extends Command
                     'step_order' => $stepBm->step_order,
                     'status' => DocumentApprovalStepStatus::Rejected,
                     'acted_at' => $penawaran->bm_tanggal ?? $penawaran->created_at,
-                    'decision_note' => '[migrasi] '.trim((string) ($penawaran->catatan_verifikasi ?? '')),
+                    'decision_note' => '[migrasi] ' . trim((string) ($penawaran->catatan_verifikasi ?? '')),
                 ]);
 
                 return 'created';
@@ -151,7 +141,7 @@ class BackfillPenawaranApprovalCycles extends Command
                     'step_order' => $stepBm->step_order,
                     'status' => DocumentApprovalStepStatus::Approved,
                     'acted_at' => $penawaran->bm_tanggal ?? $penawaran->created_at,
-                    'decision_note' => '[migrasi] '.trim((string) ($penawaran->catatan_verifikasi ?? '')),
+                    'decision_note' => '[migrasi] ' . trim((string) ($penawaran->catatan_verifikasi ?? '')),
                 ]);
 
                 $approval->steps()->create([
@@ -159,7 +149,7 @@ class BackfillPenawaranApprovalCycles extends Command
                     'step_order' => $stepOm->step_order,
                     'status' => DocumentApprovalStepStatus::Rejected,
                     'acted_at' => $penawaran->om_tanggal ?? $penawaran->created_at,
-                    'decision_note' => '[migrasi] '.trim((string) ($penawaran->catatan_om ?? '')),
+                    'decision_note' => '[migrasi] ' . trim((string) ($penawaran->catatan_om ?? '')),
                 ]);
 
                 return 'created';

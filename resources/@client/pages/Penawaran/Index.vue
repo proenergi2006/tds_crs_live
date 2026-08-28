@@ -13,7 +13,7 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 import TippyContent from '@/components/Base/TippyContent'
 
@@ -47,7 +47,6 @@ const BRAND_CONFIG = {
 const brand = computed<Brand>(() => (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds')
 const cfg = computed(() => BRAND_CONFIG[brand.value])
 
-/* State: data & pagination */
 const penawarans = ref<any[]>([])
 const cabangs = ref<any[]>([])
 const searchQuery = ref('')
@@ -58,7 +57,6 @@ const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
@@ -112,7 +110,6 @@ function goToPage(page: number) {
   fetchData(page)
 }
 
-/* Actions */
 function openCreate() {
   router.push({ name: cfg.value.createRoute })
 }
@@ -150,7 +147,6 @@ async function submitDelete() {
   }
 }
 
-/* Helpers */
 function getDisposisiLabel(value: string | number): string {
   switch (String(value)) {
     case '1': return 'Draft'
@@ -174,16 +170,6 @@ function disposisiClass(v: string | number) {
   }
 }
 
-function getDisposisiTanggal(pen: any): string {
-  const d = String(pen.disposisi_penawaran)
-  if (d === '3' && pen.bm_tanggal) return `Approved BM: ${formatDateTime(pen.bm_tanggal)}`
-  if (d === '4' && pen.om_tanggal) return `Approved OM: ${formatDateTime(pen.om_tanggal)}`
-  if (d === '5' && pen.bm_tanggal) return `Rejected BM: ${formatDateTime(pen.bm_tanggal)}`
-  if (d === '6' && pen.om_tanggal) return `Rejected OM: ${formatDateTime(pen.om_tanggal)}`
-  return ''
-}
-
-/* split di koma+spasi doang, biar koma desimal kayak "0,5" gak ikut kepotong */
 function sizePills(item: any): string[] {
   const nama = item?.produk?.ukuran?.nama_ukuran
   if (!nama) return []
@@ -303,15 +289,10 @@ function joinWithAmpersand(items: string[]): string {
               {{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³
             </Table.Td>
             <Table.Td class="text-center">
-              <div class="flex flex-col items-center gap-1">
-                <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
-                  :class="disposisiClass(pen.disposisi_penawaran)">
-                  {{ getDisposisiLabel(pen.disposisi_penawaran) }}
-                </span>
-                <span v-if="getDisposisiTanggal(pen)" class="font-caption italic">
-                  {{ getDisposisiTanggal(pen) }}
-                </span>
-              </div>
+              <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
+                :class="disposisiClass(pen.disposisi_penawaran)">
+                {{ getDisposisiLabel(pen.disposisi_penawaran) }}
+              </span>
             </Table.Td>
             <Table.Td class="w-[260px] text-center">
               <div class="inline-flex justify-center items-center gap-1">

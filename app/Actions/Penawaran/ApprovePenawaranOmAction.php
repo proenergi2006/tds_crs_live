@@ -18,17 +18,12 @@ class ApprovePenawaranOmAction
 
     public function execute(Model $penawaran, ?int $actorId, ?string $catatan, string $detailUrl): array
     {
-        // dual-write: bungkus update kolom lama + decideStep dalam satu transaction (file ini sebelumnya tidak transactional)
         DB::beginTransaction();
 
         try {
-            // token_verifikasi digenerate bareng di query yang sama, baru ada pas status jadi approved_om
             $penawaran->update([
                 'status'              => 'approved_om',
-                'om_result'           => '1',
-                'om_tanggal'          => now(),
                 'disposisi_penawaran' => 4,
-                'catatan_om'          => $catatan,
                 'token_verifikasi'    => strtoupper(Str::random(17)),
             ]);
 
@@ -44,7 +39,6 @@ class ApprovePenawaranOmAction
             return ['success' => false, 'status' => 500, 'message' => 'Gagal menyetujui penawaran', 'error' => $e->getMessage()];
         }
 
-        // resolve creator sama pola ApprovePenawaranBmAction, notifikasi final ini best-effort aja
         $creatorEmail = null;
 
         if (!empty($penawaran->user_id)) {
