@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum ProdukHargaCogsBasis: string
+enum ProductPriceCogsBasis: string
 {
     case Loco   = 'loco';
     case Franco = 'franco';

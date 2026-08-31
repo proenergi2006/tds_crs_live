@@ -122,55 +122,28 @@ const routes = [
         meta: { permission: "master-data.view" },
       },
       {
-        path: "produk-hargas",
-        name: "produk-hargas",
-        component: () => import("@/pages/MasterData/HargaProduk/Index.vue"),
-        meta: { permission: "harga-produk.view" },
+        path: "product-prices",
+        name: "product-prices",
+        component: () => import("@/pages/MasterData/ProductPrice/Index.vue"),
+        meta: { permission: "price-period.view" },
       },
       {
-        path: "produk-hargas/:id/detail",
-        name: "produk-hargas-detail",
-        component: () => import("@/pages/MasterData/HargaProduk/Detail.vue"),
+        path: "product-prices/create",
+        name: "product-prices-create",
+        component: () => import("@/pages/MasterData/ProductPrice/Form.vue"),
         meta: {
-          breadcrumbTitle: "Detail Harga Produk",
-          permission: "harga-produk.view",
-        },
-      },
-      {
-        path: "produk-hargas/create",
-        name: "produk-hargas-create",
-        component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
-        meta: {
-          permission: "harga-produk.manage",
+          permission: "price-period.manage",
           breadcrumbTitle: "Tambah Harga Produk",
         },
       },
       {
-        path: "produk-hargas/:id/edit",
-        name: "produk-hargas-edit",
-        component: () => import("@/pages/MasterData/HargaProduk/Form.vue"),
+        path: "product-prices/:id/edit",
+        name: "product-prices-edit",
+        component: () => import("@/pages/MasterData/ProductPrice/Form.vue"),
         meta: {
-          permission: "harga-produk.manage",
+          permission: "price-period.manage",
           breadcrumbTitle: "Edit Harga Produk",
         },
-      },
-      {
-        path: "attachment-harga-dasar",
-        name: "attachment-harga-dasar-list",
-        component: () => import("@/pages/AttachmentHargaDasarList.vue"),
-        meta: { permission: "harga-produk.view" },
-      },
-      {
-        path: "attachment-harga-dasar/create",
-        name: "attachment-harga-dasar-create",
-        component: () => import("@/pages/AttachmentHargaDasarCreate.vue"),
-        meta: { permission: "harga-produk.view" },
-      },
-      {
-        path: "attachment-harga-dasar/:id/edit",
-        name: "attachment-harga-dasar-edit",
-        component: () => import("@/pages/AttachmentHargaDasarEdit.vue"),
-        meta: { permission: "harga-produk.view" },
       },
       {
         path: "calendar",
@@ -768,16 +741,14 @@ router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem("access_token");
   const auth = useAuthStore();
 
-  // Isi user kalau ada token tapi state kosong
   if (token && !auth.user) {
     try {
       await auth.fetchUser();
     } catch (e) {
-      /* optional: handle */
+      // noop
     }
   }
 
-  // Belum login → redirect ke login
   if (
     !token &&
     to.name !== "login" &&
@@ -786,12 +757,10 @@ router.beforeEach(async (to, from, next) => {
     to.name !== "penawaran-verification" &&
     to.name !== "forgot-password"
   ) {
-    // stop lebih cepat saat redirect agar tidak menggantung
     stopRouteLoading(150);
     return next({ name: "login", query: { logged_out: "1" } });
   }
 
-  // fetchUser() gagal, user tetap null -- jangan biarkan navigasi lolos, kecuali forceLogout udah nangani
   if (
     !auth.user &&
     to.name !== "login" &&
@@ -806,13 +775,11 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "login", query: { logged_out: "1" } });
   }
 
-  // Sudah login tapi mencoba akses halaman guest-only → redirect ke dashboard
   if (token && to.meta.guestOnly) {
     stopRouteLoading(150);
     return next({ name: "dashboard-overview-1" });
   }
 
-  // cek permission, array = AND (backend kadang gate 2 permission sekaligus, mis. Penawaran TDS reguler)
   const requiredPermission = to.meta.permission;
   const required = Array.isArray(requiredPermission)
     ? requiredPermission
@@ -825,7 +792,6 @@ router.beforeEach(async (to, from, next) => {
   next();
 });
 
-// Route selesai → matikan dengan min visible 250ms
 router.afterEach(() => {
   if (shouldShowRouteLoading) {
     stopRouteLoading(250);

@@ -8,8 +8,7 @@ use App\Enums\VendorPoApprovalState;
 use App\Models\Customer;
 use App\Models\Penawaran;
 use App\Models\VendorPo;
-use App\Support\Dashboard\StalePenawaranPriceQuery;
-use App\Support\ProdukHarga\PricePeriodCompletenessQuery;
+use App\Support\ProductPrice\PricePeriodCompletenessQuery;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -202,13 +201,13 @@ class DashboardController extends Controller
 
     private function pendingCeoPricePeriod(): array
     {
-        $pending = app(PricePeriodCompletenessQuery::class)->grouped()
+        $pending = app(PricePeriodCompletenessQuery::class)->groupedCurrentAndUpcoming()
             ->filter(fn ($row) => (int) $row->jumlah_belum_lengkap > 0)
             ->values();
 
         $items = $pending->take(10)->map(fn ($row) => [
-            'periode_awal'         => $row->periode_awal,
-            'periode_akhir'        => $row->periode_akhir,
+            'start_date'           => $row->start_date,
+            'end_date'             => $row->end_date,
             'jumlah_data'          => (int) $row->jumlah_data,
             'jumlah_belum_lengkap' => (int) $row->jumlah_belum_lengkap,
         ]);
@@ -226,7 +225,6 @@ class DashboardController extends Controller
             'penawaran_approval_queue' => $this->penawaranApprovalQueue(),
             'bm_queue_context'         => $this->bmQueueContext(),
             'penawaran_funnel'         => $this->penawaranFunnel(),
-            'stale_price_in_penawaran' => app(StalePenawaranPriceQuery::class)->summarize(),
         ]);
     }
 

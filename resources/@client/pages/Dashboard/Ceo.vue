@@ -12,7 +12,6 @@ import { useAuthStore } from '@/stores/auth'
 import { getColor, getDonutColors } from '@/utils/colors'
 import { formatCurrency } from '@/utils/format'
 
-/* Types */
 interface VendorPoQueueItem {
   id_po: number
   nomor_po: string
@@ -34,8 +33,8 @@ interface VendorPoVendorBucket {
 }
 
 interface PendingCeoPricePeriodItem {
-  periode_awal: string
-  periode_akhir: string
+  start_date: string
+  end_date: string
   jumlah_data: number
   jumlah_belum_lengkap: number
 }
@@ -58,12 +57,10 @@ interface CeoSummary {
 
 const auth = useAuthStore()
 
-/* State: summary dari API */
 const summary = ref<CeoSummary | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-/* State + fetch: donut valuasi per vendor, tahun independen dari chart tren PO */
 const vendorByVendor = ref<Record<string, VendorPoVendorBucket>>({})
 const vendorValueLoading = ref(false)
 
@@ -95,16 +92,13 @@ const greeting = computed(() => {
   if (hour < 18) return 'Selamat Sore'
   return 'Selamat Malam'
 })
-/* Computed: KPI stat strip */
 const kpiApprovalQueueTotal = computed(() => summary.value?.vendor_po_approval_queue.total ?? 0)
-// fixed ke tahun berjalan, gak ada dropdown -- beda dari donut per-vendor di bawah
 const kpiStockValuation = computed(() => {
   const byStatus = summary.value?.vendor_po_value_summary.by_status
   return formatCurrency(byStatus?.Approved?.total_order ?? 0)
 })
 const kpiPendingCeoPriceTotal = computed(() => summary.value?.pending_ceo_price_period.total ?? 0)
 
-/* State + fetch: chart line tren jumlah PO per bulan, per tahun (dropdown) */
 const currentYear = new Date().getFullYear()
 const selectedYear = ref(currentYear)
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
@@ -125,7 +119,7 @@ async function fetchMonthlyTrend(year: number) {
 
 watch(selectedYear, year => { fetchMonthlyTrend(year) })
 
-// Chart.js v4 gak punya opsi bawaan buat dash garis grid, jadi digambar manual di sini, di-scope via flag `plugins.dashedYGrid`
+// Chart.js v4 gak punya opsi dash buat garis grid, jadi digambar manual (flag plugins.dashedYGrid)
 const dashedYGridPlugin: Plugin<'line'> = {
   id: 'dashedYGrid',
   beforeDraw(chart) {
@@ -149,7 +143,7 @@ const dashedYGridPlugin: Plugin<'line'> = {
 }
 ChartJS.register(dashedYGridPlugin)
 
-// bulan depan di-null-kan (bukan dipotong) biar garisnya putus di situ, cuma buat tahun berjalan -- tahun lalu tetep tampil apa adanya
+// bulan depan sengaja di-null biar garis chart putus di situ (cuma tahun berjalan), bukan bug
 const currentMonthIndex = new Date().getMonth() + 1
 const relevantTotals = computed(() => {
   const points = monthlyTrendPoints.value
@@ -179,13 +173,12 @@ const monthlyTrendChartData = computed<ChartData<'line'>>(() => {
     ],
   }
 })
-// spare 1 baris di atas nilai max, step dipaksa 1 biar "spare 1 baris" selalu 1 tick beneran
 const monthlyTrendYMax = computed(() => Math.max(0, ...relevantTotals.value) + 1)
 const monthlyTrendChartOptions = computed<ChartOptions<'line'>>(() => ({
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    // bukan opsi resmi Chart.js, flag ini dibaca sendiri sama dashedYGridPlugin di atas
+    // custom flag, dibaca dashedYGridPlugin di atas — bukan opsi Chart.js resmi
     ...({ dashedYGrid: true } as Record<string, unknown>),
   },
   scales: {
@@ -199,18 +192,15 @@ const monthlyTrendChartOptions = computed<ChartOptions<'line'>>(() => ({
   },
 }))
 
-// dropdown tahun donut vendor, sengaja independen dari selectedYear chart tren PO
 const selectedVendorYear = ref(currentYear)
 watch(selectedVendorYear, year => { fetchVendorValueSummary(year) })
 
-/* Computed: chart donut valuasi PO Approved per vendor (by_vendor) */
 const hasVendorData = computed(() => byVendorList.value.length > 0)
 const vendorChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: byVendorList.value.map(vendor => vendor.vendor_name ?? '-'),
   datasets: [
     {
       data: byVendorList.value.map(vendor => vendor.total_order),
-      // warna diurutin berdasar RANK persentase (vendor terbesar dapet warna pertama), bukan urutan index
       backgroundColor: getDonutColors(byVendorList.value.map(vendor => vendor.total_order)),
       borderWidth: 2,
       borderColor: getColor('white'),
@@ -228,7 +218,7 @@ const vendorChartOptions = computed<ChartOptions<'doughnut'>>(() => ({
         color: getColor('slate.600'),
         boxWidth: 10,
         padding: 12,
-        // itung persentase dari dataset chart langsung, bukan byVendorList luar -- biar konsisten pas ada legend item ke-toggle
+        // persen dihitung dari dataset chart, bukan byVendorList — biar ikut ke-recalc pas legend item di-toggle
         generateLabels(chart) {
           const dataset = chart.data.datasets[0]
           const values = (dataset.data as number[]) ?? []
@@ -253,7 +243,6 @@ const vendorChartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   },
 }))
 
-// error-nya ditampilin, bukan disembunyiin
 onMounted(async () => {
   loading.value = true
   error.value = null
@@ -310,7 +299,7 @@ onMounted(async () => {
           :link-to="{ name: 'StockInventory' }" link-label="Lihat Stock Inventory" />
         <DashboardSummaryCard label="Periode Harga Menunggu CEO" :value="kpiPendingCeoPriceTotal" icon="FileClock"
           icon-class="bg-amber-100 text-amber-600" description="Margin/pricelist belum diisi"
-          :link-to="{ name: 'produk-hargas' }" link-label="Kelola harga" />
+          :link-to="{ name: 'product-prices' }" link-label="Kelola harga" />
       </div>
 
       <div class="gap-4 grid grid-cols-1 lg:grid-cols-2">

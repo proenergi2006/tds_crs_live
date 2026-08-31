@@ -65,27 +65,27 @@ class PermissionSeeder extends Seeder
         ],
 
         [
-            'name'        => 'harga-produk.view',
-            'module'      => 'harga-produk',
-            'description' => 'Lihat dan edit harga produk & attachment harga',
-            'roles'       => [2, 5, 8, 10],
-        ],
-        [
-            'name'        => 'harga-produk.manage',
-            'module'      => 'harga-produk',
-            'description' => 'Tambah harga produk baru (create)',
+            'name'        => 'price-period.view',
+            'module'      => 'price-period',
+            'description' => 'Lihat periode & harga produk (sekaligus gate akses halaman)',
             'roles'       => [2, 5],
         ],
         [
-            'name'        => 'harga-produk.set-cogs',
-            'module'      => 'harga-produk',
-            'description' => 'Isi kolom COGS harga produk (Procurement)',
+            'name'        => 'price-period.manage',
+            'module'      => 'price-period',
+            'description' => 'Tambah, ubah, hapus periode harga (Procurement)',
             'roles'       => [5],
         ],
         [
-            'name'        => 'harga-produk.set-price-list',
-            'module'      => 'harga-produk',
-            'description' => 'Lengkapi kolom harga (price list, margin, BM, OM, CEO) sebagai finalisasi periode harga',
+            'name'        => 'product-price.manage',
+            'module'      => 'product-price',
+            'description' => 'Tambah/hapus baris harga produk & isi kolom COGS ke dalam periode (Procurement)',
+            'roles'       => [5],
+        ],
+        [
+            'name'        => 'product-price.verify',
+            'module'      => 'product-price',
+            'description' => 'Isi margin, price list, dan harga tier/approval (BM/OM/CEO) sebagai verifikator harga (CEO)',
             'roles'       => [2],
         ],
 
@@ -321,7 +321,13 @@ class PermissionSeeder extends Seeder
     private function renameLegacyPermissionNames(): void
     {
         $renames = [
-            'verification.quotation' => 'penawaran.verify',
+            'verification.quotation'       => 'penawaran.verify',
+            'harga-produk.view'            => 'price-period.view',
+            'harga-produk.manage'          => 'product-price.manage',
+            'harga-produk.set-cogs'        => 'product-price.set-cogs',
+            'harga-produk.set-price-list'  => 'product-price.verify',
+            'product-price.view'           => 'price-period.view',
+            'product-price.set-price-list' => 'product-price.verify',
         ];
 
         foreach ($renames as $from => $to) {
@@ -336,6 +342,9 @@ class PermissionSeeder extends Seeder
     {
         $revoked = [
             ['permission' => 'penawaran.verify', 'role_id' => 2],
+            ['permission' => 'price-period.view', 'role_id' => 8],
+            ['permission' => 'price-period.view', 'role_id' => 10],
+            ['permission' => 'product-price.manage', 'role_id' => 2],
         ];
 
         foreach ($revoked as $entry) {
@@ -360,6 +369,7 @@ class PermissionSeeder extends Seeder
             'customer.verify',
             'po-supplier.verify',
             'master-data.wilayah.manage',
+            'product-price.set-cogs',
         ];
 
         $retiredIds = DB::table('permissions')

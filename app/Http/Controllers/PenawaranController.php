@@ -17,8 +17,8 @@ use App\Actions\Penawaran\ApprovePenawaranOmAction;
 use App\Actions\Penawaran\RejectPenawaranOmAction;
 use App\Actions\Penawaran\ResolvePenawaranQueueAction;
 use App\Actions\Penawaran\GeneratePenawaranPdfAction;
-use App\Enums\ProdukHargaCogsBasis;
-use App\Support\ProdukHarga\ActivePriceForPeriodQuery;
+use App\Enums\ProductPriceCogsBasis;
+use App\Support\ProductPrice\ActivePriceForPeriodQuery;
 use App\Support\Approval\PenawaranApprovalStepsBuilder;
 
 class PenawaranController extends Controller
@@ -98,21 +98,16 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $hargaByProduk = (new ActivePriceForPeriodQuery())->forProduks(
+        $hargaByProduk = (new ActivePriceForPeriodQuery())->forProducts(
             $penawaran->items->pluck('id_produk')->unique()->values()->all(),
             $penawaran->id_cabang,
             $penawaran->masa_berlaku
         );
 
-        $penawaran->setRelation('produk_harga', $hargaByProduk->get($penawaran->items->first()?->id_produk));
-
         foreach ($penawaran->items as $item) {
             $itemHarga = $hargaByProduk->get($item->id_produk);
-            $item->harga_cogs = $itemHarga->harga_cogs ?? null;
+            $item->cogs_price = $itemHarga->cogs_price ?? null;
             $item->cogs_basis = $itemHarga->cogs_basis ?? null;
-            $item->cogs_basis_label = $itemHarga && $itemHarga->cogs_basis
-                ? ProdukHargaCogsBasis::from($itemHarga->cogs_basis)->label()
-                : null;
         }
 
         $payload = $penawaran->makeHidden('documentApprovals')->toArray();

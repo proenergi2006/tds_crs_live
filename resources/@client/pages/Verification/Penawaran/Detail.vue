@@ -67,7 +67,7 @@ const totalFinal = computed(() => subTotalFinal.value + ppnFinal.value || 0)
 const cogs = computed<number>(() => {
   const totalPersen = items.value.reduce((s, it) => s + (Number(it.persen) || 0), 0)
   if (totalPersen <= 0) return 0
-  const weighted = items.value.reduce((s, it) => s + (Number(it.persen) || 0) * (Number(it.harga_cogs) || 0), 0)
+  const weighted = items.value.reduce((s, it) => s + (Number(it.persen) || 0) * (Number(it.cogs_price) || 0), 0)
   return weighted / totalPersen
 })
 const margin = computed<number>(() => (Number(penawaran.value.harga_dasar) || 0) - cogs.value)
@@ -94,7 +94,6 @@ const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penaw
 const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
 const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
 
-// province/regency (BPS baru) dipakai kalau tersedia, fallback ke provinsi/kabupaten lama untuk record yang belum termigrasi
 function wilayahLabel(w: any) {
   if (!w) return null
   const parts = [
@@ -206,7 +205,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
   <div class="page-content-wrapper">
     <div class="intro-x flex flex-col gap-4">
 
-      <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="font-display">{{ config.title }}</h2>
@@ -235,7 +233,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
       <div v-else class="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
-        <!-- KIRI -->
         <div class="space-y-6 xl:col-span-2">
 
           <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText">
@@ -317,7 +314,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                   </div>
 
-                  <!-- Ongkos Kapal (conditional) -->
                   <div v-if="showOngkosKapal" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div class="font-label mb-2">Ongkos Kapal</div>
                     <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
@@ -346,7 +342,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     </div>
                   </div>
 
-                  <!-- Ongkos Truck (conditional) -->
                   <div v-if="showOngkosTruck" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div class="font-label mb-2">Ongkos Truck</div>
                     <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
@@ -520,7 +515,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                         </div>
                       </div>
 
-                      <!-- Panel CUSTOM -->
                       <div v-if="penawaran.tipe_pembayaran === 'CUSTOM'"
                         class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <h4 class="font-section mb-3">Detail Pembayaran Custom</h4>
@@ -593,7 +587,6 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
         </div>
 
-        <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
           <div class="sticky top-6 space-y-4">
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"

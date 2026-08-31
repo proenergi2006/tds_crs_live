@@ -15,14 +15,13 @@ export const verificationNavigation: NavItem[] = [
       },
       {
         icon: "ShoppingBag",
-        pageName: "produk-hargas",
+        pageName: "product-prices",
         title: "Periode Harga",
         activePageNames: [
-          "produk-hargas-create",
-          "produk-hargas-edit",
-          "produk-hargas-detail",
+          "product-prices-create",
+          "product-prices-edit",
         ],
-        permission: "harga-produk.view",
+        permission: "price-period.view",
         roles: [2],
         badgeKey: "price_period",
       },
