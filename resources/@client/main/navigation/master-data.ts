@@ -49,31 +49,6 @@ export const masterDataNavigation: NavItem[] = [
         ],
       },
       {
-        icon: "Wallet",
-        title: "Harga",
-        subMenu: [
-          {
-            icon: "ShoppingBag",
-            pageName: "produk-hargas",
-            title: "Periode Harga",
-            activePageNames: [
-              "produk-hargas-create",
-              "produk-hargas-edit",
-              "produk-hargas-detail",
-            ],
-            permission: "harga-produk.view",
-            // CEO liatnya di grup Verifikasi (verification.ts), bukan di sini -- biar gak dobel
-            excludeRoles: [2],
-          },
-          {
-            icon: "Tag",
-            pageName: "attachment-harga-dasar-list",
-            title: "Attachment Harga",
-            permission: "harga-produk.view",
-          },
-        ],
-      },
-      {
         icon: "Building2",
         pageName: "cabang",
         title: "Cabang",

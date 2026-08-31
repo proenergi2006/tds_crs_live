@@ -34,7 +34,7 @@ const { variant = "gradient" } = defineProps<{
     </div>
 
     <div v-if="$slots.body" class="z-10 relative mt-4">
-      <slot name="body" class="z-10 relative mt-4" />
+      <slot name="body" />
     </div>
   </div>
 </template>

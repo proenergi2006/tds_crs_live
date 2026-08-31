@@ -24,9 +24,8 @@ class ProdukController extends Controller
             $q->where('nama_produk', 'ilike', "%{$s}%");
         }
 
-        // Ambil parameter urut (opsional), beri default newest first
-        $sortBy  = $request->query('sort_by', 'id_produk');     // atau 'created_time'
-        $sortDir = $request->query('sort_dir', 'desc');          // 'asc' / 'desc'
+        $sortBy  = $request->query('sort_by', 'id_produk');
+        $sortDir = $request->query('sort_dir', 'desc');
 
         $q->orderBy($sortBy, $sortDir);
 
@@ -40,8 +39,8 @@ class ProdukController extends Controller
             'nama_produk'  => 'required|string|max:255',
             'merk_dagang'  => 'nullable|string|max:255',
             'deskripsi'    => 'nullable|string',
-            'id_ukuran'    => 'required|exists:ukurans,id_ukuran',
-            'id_jenis'     => 'required|exists:jenis_produks,id_jenis',
+            'id_ukuran'    => 'nullable|exists:ukurans,id_ukuran',
+            'id_jenis'     => 'nullable|exists:jenis_produks,id_jenis',
             'is_active'    => 'sometimes|boolean',
         ]);
 
@@ -65,8 +64,8 @@ class ProdukController extends Controller
             'nama_produk'  => 'required|string|max:255',
             'merk_dagang'  => 'nullable|string|max:255',
             'deskripsi'    => 'nullable|string',
-            'id_ukuran'    => 'required|exists:ukurans,id_ukuran',
-            'id_jenis'     => 'required|exists:jenis_produks,id_jenis', // ✅ tambahkan ini
+            'id_ukuran'    => 'nullable|exists:ukurans,id_ukuran',
+            'id_jenis'     => 'nullable|exists:jenis_produks,id_jenis',
             'is_active'    => 'sometimes|boolean',
         ]);
 

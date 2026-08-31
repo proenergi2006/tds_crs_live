@@ -47,10 +47,12 @@ const jenisProduks = ref<any[]>([])
 const loading = ref(false)
 const formError = ref<string | null>(null)
 
+const DEFAULT_MERK_DAGANG = 'Crushed Stone'
+
 const form = reactive({
   id_produk: 0,
   nama_produk: '',
-  merk_dagang: '',
+  merk_dagang: DEFAULT_MERK_DAGANG,
   deskripsi: '',
   id_ukuran: '',
   id_jenis: '',
@@ -62,15 +64,6 @@ const form = reactive({
 const rules = {
   nama_produk: {
     required: helpers.withMessage('Nama Produk wajib diisi', required),
-  },
-  merk_dagang: {
-    required: helpers.withMessage('Merk Dagang wajib diisi', required),
-  },
-  id_ukuran: {
-    required: helpers.withMessage('Ukuran wajib dipilih', required),
-  },
-  id_jenis: {
-    required: helpers.withMessage('Jenis Produk wajib dipilih', required),
   },
 }
 
@@ -141,7 +134,7 @@ function resetForm() {
     Object.assign(form, {
       id_produk: props.item.id_produk ?? 0,
       nama_produk: props.item.nama_produk ?? '',
-      merk_dagang: props.item.merk_dagang ?? '',
+      merk_dagang: props.item.merk_dagang ?? DEFAULT_MERK_DAGANG,
       deskripsi: props.item.deskripsi ?? '',
       id_ukuran: props.item.id_ukuran ?? '',
       id_jenis: props.item.id_jenis ?? '',
@@ -155,7 +148,7 @@ function resetForm() {
   Object.assign(form, {
     id_produk: 0,
     nama_produk: '',
-    merk_dagang: '',
+    merk_dagang: DEFAULT_MERK_DAGANG,
     deskripsi: '',
     id_ukuran: '',
     id_jenis: '',
@@ -170,7 +163,7 @@ function resetFormErrors() {
   v$.value.$reset()
 }
 
-function getFieldError(field: 'nama_produk' | 'merk_dagang' | 'id_ukuran' | 'id_jenis') {
+function getFieldError(field: 'nama_produk') {
   return v$.value[field].$errors[0]?.$message?.toString() ?? ''
 }
 
@@ -179,8 +172,8 @@ function getFormPayload() {
     nama_produk: form.nama_produk,
     merk_dagang: form.merk_dagang,
     deskripsi: form.deskripsi,
-    id_ukuran: form.id_ukuran,
-    id_jenis: form.id_jenis,
+    id_ukuran: form.id_ukuran || null,
+    id_jenis: form.id_jenis || null,
     is_active: form.is_active,
     ...(props.mode === 'create'
       ? { created_by: form.created_by || currentUserName.value }
@@ -236,12 +229,8 @@ async function submitForm() {
       </div>
 
       <div>
-        <FormLabel htmlFor="edit-merk">Merk Dagang
-          <RequiredAsterisk />
-        </FormLabel>
-        <FormInput id="edit-merk" v-model="form.merk_dagang" placeholder="Merk Dagang"
-          :class="v$.merk_dagang.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.merk_dagang.$error" class="font-caption !text-rose-600">{{ getFieldError('merk_dagang') }}</small>
+        <FormLabel htmlFor="edit-merk">Merk Dagang</FormLabel>
+        <FormInput id="edit-merk" v-model="form.merk_dagang" placeholder="Merk Dagang" />
       </div>
 
       <div>
@@ -251,29 +240,23 @@ async function submitForm() {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <FormLabel htmlFor="edit-ukuran">Ukuran
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormSelect id="edit-ukuran" v-model="form.id_ukuran" :class="v$.id_ukuran.$error ? 'border-rose-500' : ''">
-            <option disabled value="">-- Pilih Ukuran --</option>
+          <FormLabel htmlFor="edit-ukuran">Ukuran</FormLabel>
+          <FormSelect id="edit-ukuran" v-model="form.id_ukuran">
+            <option value="">-- Pilih Ukuran --</option>
             <option v-for="u in ukurans" :key="u.id_ukuran" :value="u.id_ukuran">
               {{ u.nama_ukuran }} ({{ u.satuan?.nama_satuan || '-' }})
             </option>
           </FormSelect>
-          <small v-if="v$.id_ukuran.$error" class="font-caption !text-rose-600">{{ getFieldError('id_ukuran') }}</small>
         </div>
 
         <div>
-          <FormLabel htmlFor="edit-jenis">Jenis Produk
-            <RequiredAsterisk />
-          </FormLabel>
-          <FormSelect id="edit-jenis" v-model="form.id_jenis" :class="v$.id_jenis.$error ? 'border-rose-500' : ''">
-            <option disabled value="">-- Pilih Jenis Produk --</option>
+          <FormLabel htmlFor="edit-jenis">Jenis Produk</FormLabel>
+          <FormSelect id="edit-jenis" v-model="form.id_jenis">
+            <option value="">-- Pilih Jenis Produk --</option>
             <option v-for="j in jenisProduks" :key="j.id_jenis" :value="j.id_jenis">
               {{ j.nama }}
             </option>
           </FormSelect>
-          <small v-if="v$.id_jenis.$error" class="font-caption !text-rose-600">{{ getFieldError('id_jenis') }}</small>
         </div>
       </div>
 

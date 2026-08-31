@@ -37,21 +37,20 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
     detailRoute: 'penawarans-detail',
-    usePe: false,   // harga dari kolom harga_price_list
+    usePe: false,
     showAcuan: false,
   },
   proenergi: {
     apiBase: '/api/penawarans-proenergi',
     listRoute: 'penawarans-list-proenergi',
     detailRoute: 'penawarans-detail-proenergi',
-    usePe: true,    // harga_price_list_pe ?? harga_price_list (via param pe=1)
+    usePe: true,
     showAcuan: true,
   },
 }
 const cfg = BRAND_CONFIG[brand]
 const brandLabel = isProenergi ? 'Penawaran Proenergi' : 'Penawaran'
 
-/* State: lookups */
 const customers = ref<any[]>([])
 const cabangs = ref<any[]>([])
 const produks = ref<any[]>([])
@@ -59,7 +58,6 @@ const transportirs = ref<any[]>([])
 const wilayahs = ref<any[]>([])
 const volumes = ref<any[]>([])
 
-/* State: kontak tujuan */
 const customerContacts = ref<any[]>([])
 const customerContactsLoading = ref(false)
 const newContactOpen = ref(false)
@@ -73,14 +71,12 @@ const newContactForm = reactive({
   email: '',
 })
 
-/* State: ongkos angkut */
 const oaKapal = ref(0)
 const oaTruck = ref(0)
 const oaKapalInput = reactive({ id_transportir: '', id_angkut_wilayah: '', id_volume: '' })
 const oaTruckInput = reactive({ id_transportir: '', id_angkut_wilayah: '', id_volume: '' })
 const oaSelectKey = ref(0)
 
-/* State: misc */
 const loading = ref(false)
 const canSeeHarga = ref(false)
 const periodeRange = ref('')
@@ -88,7 +84,6 @@ const hargaMap = ref<Record<string, number | null>>({})
 const hargaLoading = ref(false)
 const hargaFetched = ref(false)
 
-/* State: slideover referensi harga */
 const priceRefOpen = ref(false)
 const priceRefSearch = ref('')
 
@@ -101,7 +96,6 @@ interface ItemLine {
 }
 
 const form = reactive({
-  /* Section 1: Informasi Penawaran */
   nomor_penawaran: '',
   id_customer: '',
   customer_contact_id: '',
@@ -109,7 +103,6 @@ const form = reactive({
   masa_berlaku: '',
   sampai_dengan: '',
 
-  /* Section 2: Detail Pengiriman & Daftar Produk */
   type_pengiriman: '',
   metode: '',
   ukuran_dasar: '',
@@ -117,7 +110,6 @@ const form = reactive({
   lokasi_pengiriman: '',
   keterangan: '',
 
-  /* Section 3: Pembayaran & Lainnya */
   tipe_pembayaran: '',
   acuan_pembayaran: '',
   dp_persen: '',
@@ -130,19 +122,15 @@ const form = reactive({
   refund: 0,
   other_cost: 0,
 
-  /* Section 4: Perhitungan Harga Dasar */
   harga_dasar: 0,
   oat: 0,
-  // discount field ada tapi input-nya sengaja disembunyikan dulu di UI
   discount: 0,
 
-  /* Sidebar: Catatan & Syarat */
   catatan: '',
   syarat_ketentuan: '',
   lampiran_tambahan: '',
 })
 
-/* Computed: totals */
 const hargaDasarNumber = computed(() => toNum(form.harga_dasar || 0))
 const oatPerVolume = computed(() => toNum(form.oat || 0))
 
@@ -182,7 +170,6 @@ const selectedCabangName = computed(() =>
   cabangs.value.find(c => String(c.id_cabang) === String(form.id_cabang))?.nama_cabang || '-'
 )
 
-// Kepada & alamat cerminan data Customer, bukan milik penawaran -- diubahnya di halaman Customer.
 const selectedCustomer = computed(() =>
   customers.value.find(c => String(c.id_customer) === String(form.id_customer)) ?? null
 )
@@ -220,7 +207,6 @@ const priceRefSummary = computed(() => {
   return { total, withPrice, without: total - withPrice }
 })
 
-/* Validation */
 const validationRules = computed(() => ({
   id_customer: { required: helpers.withMessage('Customer wajib diisi.', required) },
   customer_contact_id: { required: helpers.withMessage('Kontak tujuan wajib dipilih.', required) },
@@ -286,7 +272,6 @@ const validationRules = computed(() => ({
 
 const v$ = useVuelidate(validationRules, form)
 
-/* Helper tampilan error */
 function fieldError(field: string): string {
   const f = (v$.value as any)[field]
   return f?.$error ? (f.$errors[0]?.$message?.toString() ?? '') : ''
@@ -305,7 +290,6 @@ function itemInputClass(idx: number, field: 'id_produk' | 'persen'): string {
   return itemError(idx, field) ? 'input-error' : ''
 }
 
-// gabungin semua error message (top-level + per-baris item) buat ringkasan sticky
 function collectErrorMessages(): string[] {
   const msgs: string[] = []
   const push = (m?: string) => { if (m && !msgs.includes(m)) msgs.push(m) }
@@ -350,11 +334,11 @@ async function fetchHargaByDate() {
   if (!periodeAwal || !idCabang) return
   hargaLoading.value = true
   try {
-    const { data } = await axios.get('/api/produk-hargas/by-date', {
+    const { data } = await axios.get('/api/product-prices/by-date', {
       params: {
-        periode_awal: periodeAwal,
-        periode_akhir: periodeAkhir,
-        id_cabang: idCabang,
+        start_date: periodeAwal,
+        end_date: periodeAkhir,
+        branch_id: idCabang,
         ...(cfg.usePe ? { pe: 1 } : {}),
       },
     })
@@ -370,7 +354,6 @@ async function fetchHargaByDate() {
 
 watch(() => [form.masa_berlaku, form.sampai_dengan, form.id_cabang], fetchHargaByDate)
 
-// Kontak yang lagi kepilih ikut hilang kalau dia bukan milik customer yang baru dipilih.
 watch(() => form.id_customer, async (val) => {
   await fetchCustomerContacts(val)
   if (form.customer_contact_id && !customerContacts.value.some(c => String(c.id) === String(form.customer_contact_id))) {
@@ -405,7 +388,6 @@ watch(() => [oaTruckInput.id_transportir, oaTruckInput.id_angkut_wilayah, oaTruc
   }
 })
 
-/* Data fetchers */
 async function fetchSelects() {
   try {
     const [cusData, cabData, prdData] = await Promise.all([
@@ -458,7 +440,6 @@ async function fetchPenawaran() {
     }
 
     Object.assign(form, {
-      /* Section 1: Informasi Penawaran */
       nomor_penawaran: data.nomor_penawaran,
       id_customer: data.id_customer ? String(data.id_customer) : '',
       customer_contact_id: data.customer_contact?.id_contact ? String(data.customer_contact.id_contact) : '',
@@ -466,13 +447,11 @@ async function fetchPenawaran() {
       masa_berlaku: data.masa_berlaku,
       sampai_dengan: data.sampai_dengan,
 
-      /* Section 2: Detail Pengiriman & Daftar Produk */
       type_pengiriman: data.type_pengiriman || '',
       metode: data.metode || '',
       lokasi_pengiriman: data.lokasi_pengiriman || '',
       keterangan: data.keterangan || '',
 
-      /* Section 3: Pembayaran & Lainnya */
       tipe_pembayaran: data.tipe_pembayaran || '',
       acuan_pembayaran: data.acuan_pembayaran || '',
       dp_persen: formatInt(data.dp_persen),
@@ -485,10 +464,8 @@ async function fetchPenawaran() {
       refund: data.refund != null ? Number(data.refund) : 0,
       other_cost: data.other_cost != null ? Number(data.other_cost) : 0,
 
-      /* Section 4: Perhitungan Harga Dasar */
       harga_dasar: data.harga_dasar != null ? Number(data.harga_dasar) : 0,
 
-      /* Sidebar: Catatan & Syarat */
       catatan: data.catatan || '',
       syarat_ketentuan: data.syarat_ketentuan || '',
       lampiran_tambahan: data.lampiran_tambahan || '',
@@ -524,7 +501,6 @@ async function fetchPenawaran() {
   }
 }
 
-/* TomSelect render config untuk produk */
 const produkSelectOptions = {
   placeholder: 'Pilih Produk...',
   dropdownParent: 'body' as const,
@@ -544,7 +520,6 @@ const produkSelectOptions = {
   },
 }
 
-/* Item actions */
 function addItem() {
   form.items.push({ id_produk: '', volume_order: '', harga_tebus: '', persen: 0 } as ItemLine)
   if (form.items.length === 1) {
@@ -559,7 +534,6 @@ function removeItem(idx: number) {
   form.items.forEach(it => updateHargaTebus(it))
 }
 
-/* evenSplitPersen jalan pas jumlah baris berubah, redistributePersen jalan pas user edit persen manual */
 function evenSplitPersen(items: ItemLine[]) {
   const n = items.length
   if (n === 0) return
@@ -641,7 +615,6 @@ function updateHargaTebus(item: ItemLine) {
   const hasil = harga * persen / 100
   item.harga_tebus = isNaN(hasil) ? '' : hasil.toLocaleString('id-ID')
 
-  // volume = ukuran_dasar × persen, cuma buat metode kapal (CIF/DAP); metode lain ukuran_dasar kosong jadi biarin manual
   const dasar = toFloat(form.ukuran_dasar)
   if (dasar > 0) {
     const volume = Math.round(dasar * persen / 100)
@@ -649,7 +622,6 @@ function updateHargaTebus(item: ItemLine) {
   }
 }
 
-/* Submit */
 async function submitForm() {
   const valid = await v$.value.$validate()
   if (!valid) {
@@ -690,14 +662,12 @@ async function submitForm() {
     }
 
     const payload = {
-      /* Section 1: Informasi Penawaran */
       id_customer: Number(form.id_customer),
       customer_contact_id: Number(form.customer_contact_id),
       id_cabang: form.id_cabang,
       masa_berlaku: form.masa_berlaku,
       sampai_dengan: form.sampai_dengan,
 
-      /* Section 2: Detail Pengiriman & Daftar Produk */
       type_pengiriman: form.type_pengiriman,
       metode: form.metode,
       ongkos: payloadOngkos,
@@ -705,7 +675,6 @@ async function submitForm() {
       lokasi_pengiriman: form.lokasi_pengiriman,
       keterangan: form.keterangan,
 
-      /* Section 3: Pembayaran & Lainnya */
       tipe_pembayaran: form.tipe_pembayaran,
       ...(isProenergi ? {
         acuan_pembayaran: form.acuan_pembayaran,
@@ -720,7 +689,6 @@ async function submitForm() {
       refund: form.refund,
       other_cost: form.other_cost,
 
-      /* Section 4: Perhitungan Harga Dasar */
       harga_dasar: form.harga_dasar,
       oat: form.oat,
       subtotal: subtotal.value,
@@ -732,7 +700,6 @@ async function submitForm() {
       ppn_harga_dasar: ppnHargaDasar.value,
       grand_total_harga_dasar: grandTotalHargaDasar.value,
 
-      /* Sidebar: Catatan & Syarat */
       catatan: form.catatan,
       syarat_ketentuan: form.syarat_ketentuan,
       lampiran_tambahan: form.lampiran_tambahan,
@@ -763,7 +730,6 @@ function goBack() {
   router.push({ name: cfg.listRoute })
 }
 
-// Jalan pintas biar user gak perlu keluar dari form penawaran cuma buat nambah satu kontak.
 function openNewContactForm() {
   if (!form.id_customer) return
   newContactError.value = null
@@ -802,7 +768,6 @@ async function submitNewContact() {
   }
 }
 
-/* Helpers */
 function lineTotal(item: ItemLine): number {
   const v = parseInt((item.volume_order || '').replace(/\./g, ''), 10) || 0
   const h = parseInt((item.harga_tebus || '').replace(/\./g, ''), 10) || 0
@@ -870,7 +835,6 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </template>
 
-    <!-- Section 1: Informasi Penawaran -->
     <CardSection title="Informasi Penawaran" description="Customer, cabang invoice dan informasi penerima"
       icon="FileText">
       <div class="grid grid-cols-12 gap-4">
@@ -978,7 +942,6 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </CardSection>
 
-    <!-- Section 2: Detail Pengiriman & Daftar Produk -->
     <CardSection title="Detail Pengiriman & Daftar Produk"
               description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
               icon-class="bg-indigo-100 text-indigo-600">
@@ -1018,7 +981,6 @@ function formatCurrency(v: number | string = 0) {
                       <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
                         }}</small>
                     </div>
-                    <!-- OA Kapal (conditional) -->
                     <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
                       class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <h4 class="font-section mb-3">Ongkos Kapal</h4>
@@ -1058,7 +1020,6 @@ function formatCurrency(v: number | string = 0) {
                       </div>
                     </div>
 
-                    <!-- OA Truck (conditional) -->
                     <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
                       class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <h4 class="font-section mb-3">Ongkos Truck</h4>
@@ -1119,7 +1080,6 @@ function formatCurrency(v: number | string = 0) {
 
               <hr class="my-4" />
 
-              <!-- Rincian Item -->
               <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
                 <div v-if="hargaFetched && !hargaLoading">
                   <Button type="button" variant="outline-primary"
@@ -1240,7 +1200,6 @@ function formatCurrency(v: number | string = 0) {
                         <td></td>
                         <td></td>
                       </tr>
-                      <!-- discount field (form.discount) sengaja disembunyikan dulu di UI -->
                       <tr v-if="totalDiskon > 0" class="bg-yellow-50">
                         <td colspan="5" class="px-4 py-2 font-strong text-right !text-yellow-700">Diskon</td>
                         <td class="px-4 py-2 font-num text-right !text-yellow-800">-{{ formatCurrency(totalDiskon)
@@ -1261,7 +1220,6 @@ function formatCurrency(v: number | string = 0) {
               </div>
             </CardSection>
 
-            <!-- Section 3: Pembayaran dan Lainnya -->
             <CardSection title="Pembayaran & Lainnya" description="Metode pembayaran dan detail lainnya" icon="Wallet"
               icon-class="bg-amber-100 text-amber-600">
               <div class="grid grid-cols-12 gap-4">
@@ -1287,7 +1245,6 @@ function formatCurrency(v: number | string = 0) {
                           }}</small>
                       </div>
 
-                      <!-- Proenergi: Acuan Pembayaran -->
                       <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
                         <FormLabel>Acuan Pembayaran</FormLabel>
                         <FormSelect v-model="form.acuan_pembayaran" class="w-full">
@@ -1301,7 +1258,6 @@ function formatCurrency(v: number | string = 0) {
                       </div>
                     </div>
 
-                    <!-- Panel CUSTOM -->
                     <transition name="fade">
                       <div v-if="form.tipe_pembayaran === 'CUSTOM'"
                         class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1380,7 +1336,6 @@ function formatCurrency(v: number | string = 0) {
               </div>
             </CardSection>
 
-            <!-- Section 4: Perhitungan Harga Dasar -->
             <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
               icon-class="bg-emerald-100 text-emerald-600">
               <div class="overflow-x-auto">
@@ -1430,7 +1385,6 @@ function formatCurrency(v: number | string = 0) {
               </div>
             </CardSection>
 
-            <!-- SlideOver: Referensi harga produk untuk periode & cabang terpilih -->
             <Slideover size="lg" :open="priceRefOpen" @close="priceRefOpen = false">
               <Slideover.Panel>
                 <a href="#" class="absolute left-0 right-auto top-0 -ml-12 mt-4" @click.prevent="priceRefOpen = false">
@@ -1447,7 +1401,6 @@ function formatCurrency(v: number | string = 0) {
                 </Slideover.Title>
 
                 <Slideover.Description class="p-5">
-                  <!-- Ringkasan -->
                   <div class="mb-4 flex flex-wrap gap-2">
                     <span
                       class="inline-flex items-center rounded-full bg-slate-100 font-label px-2.5 py-0.5 !text-slate-600">
@@ -1463,13 +1416,11 @@ function formatCurrency(v: number | string = 0) {
                     </span>
                   </div>
 
-                  <!-- Pencarian -->
                   <div class="relative mb-4">
                     <Lucide icon="Search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <FormInput v-model="priceRefSearch" type="text" placeholder="Cari produk / jenis..." class="pl-9" />
                   </div>
 
-                  <!-- Daftar -->
                   <div class="overflow-hidden rounded-xl border border-slate-200">
                     <table class="w-full divide-y divide-slate-200">
                       <thead class="bg-slate-50">
@@ -1549,7 +1500,6 @@ function formatCurrency(v: number | string = 0) {
               </div>
             </FormModal>
 
-            <!-- Sidebar: Catatan & Syarat Ketentuan -->
             <template #sidebar>
               <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
                 icon-class="bg-rose-100 text-rose-600">
