@@ -37,7 +37,7 @@ export const verificationNavigation: NavItem[] = [
         pageName: "penawarans-verifikasi",
         title: "Quotation",
         permission: "penawaran.verify",
-        activePageNames: ["penawarans-verifikasi-detail"],
+        activePageNames: ["penawarans-verifikasi-bm-detail"],
         badgeKey: "penawaran",
       },
       {
@@ -46,7 +46,7 @@ export const verificationNavigation: NavItem[] = [
         title: "Quotation Proenergi",
         permission: "penawaran.proenergi.verify",
         activePageNames: [
-          "penawarans-verifikasi-detail-proenergi",
+          "penawarans-verifikasi-bm-detail-proenergi",
           "penawarans-verifikasi-om-detail-proenergi",
         ],
       },

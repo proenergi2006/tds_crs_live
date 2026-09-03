@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { debounce } from 'lodash'
@@ -7,7 +7,6 @@ import { debounce } from 'lodash'
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
-import { FormSelect } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
@@ -48,9 +47,7 @@ const brand = computed<Brand>(() => (route.meta.brand as Brand) === 'proenergi' 
 const cfg = computed(() => BRAND_CONFIG[brand.value])
 
 const penawarans = ref<any[]>([])
-const cabangs = ref<any[]>([])
 const searchQuery = ref('')
-const filterCabang = ref<string | number>('')
 const perPage = ref(10)
 const currentPage = ref(1)
 const totalPages = ref(1)
@@ -63,6 +60,7 @@ const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
 
 const canManagePenawaran = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.manage') : auth.can('penawaran.manage'))
 const canViewAnyPenawaran = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.viewAny') : auth.can('penawaran.viewAny'))
+const dataListColspan = computed(() => (canViewAnyPenawaran.value ? 8 : 7))
 
 function canManageRow(pen: any) {
   return (
@@ -71,18 +69,9 @@ function canManageRow(pen: any) {
   )
 }
 
-onMounted(() => fetchCabangs())
-
 watch(() => cfg.value.apiBase, () => fetchData(1), { immediate: true })
-watch([searchQuery, filterCabang], debounce(() => fetchData(1), 300))
+watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
-
-async function fetchCabangs() {
-  try {
-    const res = await axios.get('/api/cabangs', { params: { per_page: 200 } })
-    cabangs.value = res.data.data || res.data
-  } catch { }
-}
 
 async function fetchData(page = 1) {
   loading.value = true
@@ -92,7 +81,6 @@ async function fetchData(page = 1) {
         page,
         per_page: perPage.value,
         search: searchQuery.value || undefined,
-        id_cabang: filterCabang.value || undefined,
       },
     })
     penawarans.value = res.data.data
@@ -195,26 +183,17 @@ function joinWithAmpersand(items: string[]): string {
       </PageHeader>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="penawarans.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+        :empty="penawarans.length === 0" :colspan="dataListColspan" :show-footer="true" :show-toolbar="true" :total="totalRecords"
         :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor atau customer..."
         loading-text="Memuat data penawaran..." empty-description="Belum ada penawaran untuk ditampilkan."
         @page-change="goToPage">
-        <template #toolbar-extra>
-          <FormSelect v-model="filterCabang" class="w-48 !box">
-            <option value="">— Semua Cabang —</option>
-            <option v-for="c in cabangs" :key="c.id_cabang" :value="c.id_cabang">
-              {{ c.nama_cabang }}
-            </option>
-          </FormSelect>
-        </template>
-
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nomor Penawaran</Table.Th>
           <Table.Th>Customer</Table.Th>
-          <Table.Th>Cabang Invoice</Table.Th>
+          <Table.Th v-if="canViewAnyPenawaran">Marketing</Table.Th>
+          <Table.Th class="text-center">Tanggal Dibuat</Table.Th>
           <Table.Th class="text-center">Masa Berlaku</Table.Th>
-          <Table.Th class="text-right">Volume</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
@@ -279,14 +258,14 @@ function joinWithAmpersand(items: string[]): string {
             <Table.Td class="whitespace-nowrap">
               {{ pen.customer?.company_name || '-' }}
             </Table.Td>
-            <Table.Td class="whitespace-nowrap">
-              {{ pen.cabang?.nama_cabang || '-' }}
+            <Table.Td v-if="canViewAnyPenawaran" class="whitespace-nowrap">
+              {{ pen.marketing?.name || '-' }}
+            </Table.Td>
+            <Table.Td class="text-center whitespace-nowrap">
+              {{ formatDate(pen.created_at) }}
             </Table.Td>
             <Table.Td class="text-center whitespace-nowrap">
               {{ formatDate(pen.masa_berlaku) }} – {{ formatDate(pen.sampai_dengan) }}
-            </Table.Td>
-            <Table.Td class="text-right whitespace-nowrap">
-              {{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³
             </Table.Td>
             <Table.Td class="text-center">
               <span class="inline-flex items-center px-3 py-1 rounded-full font-label"

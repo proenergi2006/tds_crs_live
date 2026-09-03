@@ -189,9 +189,11 @@
   $cust  = optional($penawaran->customer);
 
   $produkLines = $penawaran->items
-    ->map(function($it){
+    ->filter(fn($it) => $it->produk)
+    ->groupBy('id_produk')
+    ->map(function($group){
+      $it = $group->first();
       $p = $it->produk;
-      if (!$p) return null;
 
       $uk = optional($p->ukuran);
       $st = optional($uk->satuan);
@@ -201,9 +203,8 @@
         $st->nama_satuan ?? null,
       ])));
 
-      $persen = $it->persen !== null
-        ? rtrim(rtrim(number_format($it->persen, 2, '.', ''), '0'), '.')
-        : '0';
+      $persenSum = $group->sum(fn($x) => (float) ($x->persen ?? 0));
+      $persen = rtrim(rtrim(number_format($persenSum, 2, '.', ''), '0'), '.');
 
       return trim(
         $p->nama_produk
@@ -211,8 +212,6 @@
         . ' (' . $persen . '%)'
       );
     })
-    ->filter()
-    ->unique()
     ->values();
 
   $rupiah = fn($n) => 'Rp '.number_format((float)$n, 0, ',', '.');

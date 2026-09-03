@@ -76,6 +76,7 @@ const marginPercent = computed<number>(() => {
   return dasar > 0 ? (margin.value / dasar) * 100 : 0
 })
 const totalGrossProfit = computed<number>(() => margin.value * totalVolume.value)
+const hasIncompleteCogs = computed<boolean>(() => items.value.some((it: any) => it.cogs_price == null))
 
 const cogsBasisNote = computed<string>(() => {
   if (isMultiProduct.value) return ''
@@ -390,6 +391,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               <Table bordered sm class="font-body mt-4">
                 <Table.Thead class="bg-slate-50">
                   <Table.Th>Produk</Table.Th>
+                  <Table.Th class="w-40">Source</Table.Th>
                   <Table.Th class="w-28 text-right">Persen</Table.Th>
                   <Table.Th class="w-40 text-right">Volume</Table.Th>
                   <Table.Th class="w-40 text-right">Pricelist</Table.Th>
@@ -405,9 +407,13 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                         }}
                       </div>
                     </Table.Td>
+                    <Table.Td class="font-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
                     <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.persen) }}%</Table.Td>
                     <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
+                    <Table.Td class="font-num text-lg text-right">
+                      <span v-if="item.price_list != null">{{ formatCurrency(item.price_list) }}</span>
+                      <span v-else class="text-slate-400" title="Harga tidak tersedia untuk periode/cabang ini">—</span>
+                    </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
@@ -476,27 +482,33 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
             <div v-if="config.showMarginSection" class="mt-6 border-t border-slate-100 pt-5">
               <h4 class="font-section mb-3">Analisa Margin</h4>
-              <dl class="grid grid-cols-3 gap-4">
-                <div v-if="config.showCogsRow" class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Harga COGS<template v-if="isMultiProduct"> (Weighted-Average)</template></dt>
-                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(cogs) }}</dd>
-                </div>
-                <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Margin Harga Dasar terhadap COGS</dt>
-                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
-                  </dd>
-                </div>
-                <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Total Estimasi Gross Profit</dt>
-                  <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(totalGrossProfit) }}</dd>
-                </div>
-              </dl>
-              <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 italic font-caption text-slate-500">
-                *Weighted-Average
-                dihitung berdasarkan bobot (persen) tiap produk dalam penawaran ini.</div>
-              <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{
-                cogsBasisNote }}
+              <div v-if="hasIncompleteCogs"
+                class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md font-body !text-amber-700">
+                Data COGS tidak lengkap untuk sebagian item — margin tidak dihitung
               </div>
+              <template v-else>
+                <dl class="grid grid-cols-3 gap-4">
+                  <div v-if="config.showCogsRow" class="bg-slate-100 p-4 rounded-lg text-right">
+                    <dt class="font-label">Harga COGS<template v-if="isMultiProduct"> (Weighted-Average)</template></dt>
+                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(cogs) }}</dd>
+                  </div>
+                  <div class="bg-slate-100 p-4 rounded-lg text-right">
+                    <dt class="font-label">Margin Harga Dasar terhadap COGS</dt>
+                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
+                    </dd>
+                  </div>
+                  <div class="bg-slate-100 p-4 rounded-lg text-right">
+                    <dt class="font-label">Total Estimasi Gross Profit</dt>
+                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(totalGrossProfit) }}</dd>
+                  </div>
+                </dl>
+                <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 italic font-caption text-slate-500">
+                  *Weighted-Average
+                  dihitung berdasarkan bobot (persen) tiap produk dalam penawaran ini.</div>
+                <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{
+                  cogsBasisNote }}
+                </div>
+              </template>
             </div>
           </CardSection>
 
@@ -602,7 +614,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                   </div>
                 </div>
 
-                <Button v-if="penawaran.status === 'approved_om'" variant="outline-primary"
+                <Button variant="outline-primary"
                   class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
                   <Lucide icon="Printer" class="h-4 w-4" />
                   Preview PDF

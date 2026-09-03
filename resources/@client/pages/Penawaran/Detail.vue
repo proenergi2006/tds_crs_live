@@ -57,7 +57,6 @@ const items = computed<any[]>(() => penawaran.value.items || [])
 
 const dash = (v: any) => (v === null || v === undefined || v === '' ? '-' : v)
 
-/* Section: Pembayaran & Lainnya */
 const paymentFields = computed(() => {
   const p = penawaran.value
   return [
@@ -79,14 +78,12 @@ const paymentFields = computed(() => {
   ]
 })
 
-/* Section: Perhitungan Harga Dasar — formula diport dari Form.vue */
 const dppHargaDasar = computed(() =>
   (Number(penawaran.value.harga_dasar) || 0) + (Number(penawaran.value.oat) || 0)
 )
 const ppnHargaDasar = computed(() => Math.round(dppHargaDasar.value * 0.11))
 const grandTotalHargaDasar = computed(() => dppHargaDasar.value + ppnHargaDasar.value)
 
-/* Section: Rincian Item — footer totals, gated canSeeHarga */
 const subtotal = computed(() =>
   items.value.reduce((sum: number, it: any) => sum + (Number(it.jumlah_harga) || 0), 0)
 )
@@ -95,7 +92,6 @@ const totalDiskon = computed(() =>
 )
 const grandTotalHargaTebusSetelahDiskon = computed(() => subtotal.value - totalDiskon.value)
 
-/* Section: Rincian Item — Volume/Persen totals footer, hanya tampil saat items > 2 */
 const totalVolume = computed(() =>
   items.value.reduce((sum: number, it: any) => sum + (Number(it.volume_order) || 0), 0)
 )
@@ -103,7 +99,6 @@ const totalPersen = computed(() =>
   items.value.reduce((sum: number, it: any) => sum + (Number(it.persen) || 0), 0)
 )
 
-/* Section: Ongkos Angkut — mirror kondisi tampil Form.vue:982,1019 */
 const ongkosList = computed<any[]>(() => penawaran.value.ongkos || [])
 const showOngkosKapal = computed(() => penawaran.value.metode === 'CIF' || penawaran.value.metode === 'DAP')
 const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penawaran.value.metode === 'FOT')
@@ -121,7 +116,6 @@ function wilayahLabel(w: any) {
   return parts.length ? parts.join(' - ') : null
 }
 
-// backend (PenawaranApprovalStepsBuilder) yang nentuin title/status/label, frontend cuma format timestamp-nya
 const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>(() =>
   (penawaran.value.approval_attempts ?? []).map((attempt: any) => ({
     label: attempt.label,
@@ -213,7 +207,6 @@ function formatNumber(v: number | string = 0) {
   <div class="page-content-wrapper">
     <div class="flex flex-col gap-4 intro-x">
 
-      <!-- HEADER -->
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
           <h2 class="font-display">{{ cfg.title }}</h2>
@@ -232,13 +225,10 @@ function formatNumber(v: number | string = 0) {
         </div>
       </div>
 
-      <!-- 2-COLUMN LAYOUT -->
       <div class="gap-6 grid grid-cols-1 xl:grid-cols-3">
 
-        <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
-          <!-- Section 1: Informasi Penawaran -->
           <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText">
             <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-5">
@@ -324,7 +314,6 @@ function formatNumber(v: number | string = 0) {
 
           </CardSection>
 
-          <!-- Section 2: Detail Pengiriman & Daftar Produk -->
           <CardSection title="Detail Pengiriman & Daftar Produk"
             description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
@@ -340,7 +329,6 @@ function formatNumber(v: number | string = 0) {
                     <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
                   </div>
 
-                  <!-- Ongkos Kapal (conditional) -->
                   <div v-if="showOngkosKapal" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
                     <div class="mb-2 font-label">Ongkos Kapal</div>
                     <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
@@ -369,7 +357,6 @@ function formatNumber(v: number | string = 0) {
                     </div>
                   </div>
 
-                  <!-- Ongkos Truck (conditional) -->
                   <div v-if="showOngkosTruck" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
                     <div class="mb-2 font-label">Ongkos Truck</div>
                     <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
@@ -417,6 +404,7 @@ function formatNumber(v: number | string = 0) {
             <Table bordered sm class="mt-4 font-body">
               <Table.Thead class="bg-slate-50">
                 <Table.Th>Produk</Table.Th>
+                <Table.Th class="w-40">Source</Table.Th>
                 <Table.Th class="w-28 text-right">Persen</Table.Th>
                 <Table.Th class="w-40 text-right">Volume</Table.Th>
               </Table.Thead>
@@ -430,6 +418,7 @@ function formatNumber(v: number | string = 0) {
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
+                  <Table.Td class="font-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
                   <Table.Td class="font-num text-lg text-right">
                     {{ formatNumber(item.persen) }}%
                   </Table.Td>
@@ -439,7 +428,7 @@ function formatNumber(v: number | string = 0) {
 
               <Table.Tbody v-if="items.length > 2" class="bg-slate-50 border-slate-200 border-t">
                 <Table.Tr>
-                  <Table.Td class="py-2.5 pr-6 font-header text-right">Total</Table.Td>
+                  <Table.Td colspan="2" class="py-2.5 pr-6 font-header text-right">Total</Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalPersen) }}%</Table.Td>
                   <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalVolume) }}</Table.Td>
                   <Table.Td v-if="canSeeHarga" colspan="2"></Table.Td>
@@ -475,9 +464,8 @@ function formatNumber(v: number | string = 0) {
             </Table>
           </CardSection>
 
-          <div class="gap-6 grid xl:grid-cols-5">
-            <div class="xl:col-span-3">
-              <!-- Section 3: Pembayaran & Lainnya -->
+          <div class="gap-6 grid xl:grid-cols-2">
+            <div>
               <CardSection title="Pembayaran & Lainnya" description="Ketentuan pembayaran dan info lainnya"
                 icon="Wallet" icon-class="bg-amber-100 text-amber-600" class="h-full">
                 <div class="gap-4 grid grid-cols-12">
@@ -492,8 +480,7 @@ function formatNumber(v: number | string = 0) {
               </CardSection>
             </div>
 
-            <div class="xl:col-span-2">
-              <!-- Section 4: Perhitungan Harga Dasar -->
+            <div>
               <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dasar dan estimasi PPN"
                 icon="Calculator" icon-class="bg-emerald-100 text-emerald-600" class="h-full">
                 <dl class="flex flex-col gap-4 px-4">
@@ -533,7 +520,6 @@ function formatNumber(v: number | string = 0) {
           </div>
 
           <div class="gap-6 grid grid-cols-2">
-            <!-- Catatan & Syarat -->
             <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div class="flex flex-col gap-4">
                 <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
@@ -547,7 +533,6 @@ function formatNumber(v: number | string = 0) {
               </div>
             </CardSection>
 
-            <!-- Lampiran Tambahan -->
             <CardSection title="Lampiran Tambahan" icon="Paperclip" icon-class="bg-rose-100 text-rose-600">
               <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
                 <p class="font-body whitespace-pre-line">{{ penawaran.lampiran_tambahan || '-' }}</p>
@@ -556,11 +541,9 @@ function formatNumber(v: number | string = 0) {
           </div>
         </div>
 
-        <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
           <div class="top-6 sticky space-y-4">
 
-            <!-- Status & Aksi -->
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
