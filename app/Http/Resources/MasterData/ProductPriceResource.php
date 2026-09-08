@@ -10,6 +10,8 @@ class ProductPriceResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $canViewInternal = (bool) $request->user()?->can('price-period.view');
+
         return [
             'id'             => $this->id,
             'price_period_id' => $this->price_period_id,
@@ -17,18 +19,20 @@ class ProductPriceResource extends JsonResource
             'product_id'     => $this->product_id,
             'price_list'     => $this->price_list,
             'price_list_pe'  => $this->price_list_pe,
-            'bm_price'       => $this->bm_price,
-            'cogs_price'     => $this->cogs_price,
-            'cogs_basis'     => $this->cogs_basis,
-            'cogs_basis_label' => $this->cogs_basis ? ProductPriceCogsBasis::from($this->cogs_basis)->label() : null,
-            'margin_amount'  => $this->margin_amount,
-            'om_price'       => $this->om_price,
-            'ceo_price'      => $this->ceo_price,
-            'notes'          => $this->notes,
-            'created_at'     => $this->created_at,
-            'created_by'     => $this->created_by,
-            'updated_at'     => $this->updated_at,
-            'updated_by'     => $this->updated_by,
+            $this->mergeWhen($canViewInternal, fn() => [
+                'bm_price'         => $this->bm_price,
+                'cogs_price'       => $this->cogs_price,
+                'cogs_basis'       => $this->cogs_basis,
+                'cogs_basis_label' => $this->cogs_basis ? ProductPriceCogsBasis::from($this->cogs_basis)->label() : null,
+                'margin_amount'    => $this->margin_amount,
+                'om_price'         => $this->om_price,
+                'ceo_price'        => $this->ceo_price,
+                'notes'            => $this->notes,
+                'created_at'       => $this->created_at,
+                'created_by'       => $this->created_by,
+                'updated_at'       => $this->updated_at,
+                'updated_by'       => $this->updated_by,
+            ]),
             'price_period'   => $this->whenLoaded('pricePeriod', fn() => [
                 'id'         => $this->pricePeriod->id,
                 'start_date' => optional($this->pricePeriod->start_date)->format('Y-m-d'),

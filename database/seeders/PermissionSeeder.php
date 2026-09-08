@@ -71,6 +71,12 @@ class PermissionSeeder extends Seeder
             'roles'       => [2, 5],
         ],
         [
+            'name'        => 'price-period.consume',
+            'module'      => 'price-period',
+            'description' => 'Baca periode & harga jual aktif untuk form Penawaran (Marketing/KAE) — tanpa akses halaman periode harga & tanpa kolom biaya/margin',
+            'roles'       => [4, 12, 13, 14],
+        ],
+        [
             'name'        => 'price-period.manage',
             'module'      => 'price-period',
             'description' => 'Tambah, ubah, hapus periode harga (Procurement)',

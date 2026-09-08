@@ -26,7 +26,8 @@ class PricePeriodController extends Controller
 
     public function index(Request $request)
     {
-        if ($request->user()->cant('price-period.view')) {
+        $user = $request->user();
+        if ($user->cant('price-period.view') && $user->cant('price-period.consume')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -35,7 +36,8 @@ class PricePeriodController extends Controller
 
     public function show(Request $request, $id)
     {
-        if ($request->user()->cant('price-period.view')) {
+        $user = $request->user();
+        if ($user->cant('price-period.view') && $user->cant('price-period.consume')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
