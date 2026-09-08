@@ -16,6 +16,7 @@ class Penawaran extends Model
         'id_customer',
         'customer_contact_id',
         'id_cabang',
+        'price_period_id',
         'nomor_penawaran',
         'qr_code',
         'masa_berlaku',
@@ -79,6 +80,11 @@ class Penawaran extends Model
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'id_cabang', 'id_cabang');
+    }
+
+    public function pricePeriod(): BelongsTo
+    {
+        return $this->belongsTo(PricePeriod::class);
     }
 
     public function items()

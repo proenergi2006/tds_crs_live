@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\RomanMonth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -139,7 +140,7 @@ class PrController extends Controller
     {
         $now   = now();
         $yyyy  = (int)$now->format('Y');
-        $roman = $this->toRoman((int)$now->format('n'));
+        $roman = RomanMonth::of($now->format('n'));
 
         // Cari urutan terbesar di bulan & tahun berjalan.
         // Pakai regex Postgres untuk ambil digit diawal (lebih aman).
@@ -155,11 +156,5 @@ class PrController extends Controller
         $seq4 = str_pad((string)$next, 4, '0', STR_PAD_LEFT);
 
         return "{$seq4}/TDS/DR/{$inisialCabang}/{$roman}/{$yyyy}";
-    }
-
-    private function toRoman(int $month): string
-    {
-        $map = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII'];
-        return $map[$month] ?? 'I';
     }
 }

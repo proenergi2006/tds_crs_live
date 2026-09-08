@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\Penawaran;
 use App\Http\Requests\Penawaran\StorePenawaranRequest;
 use App\Http\Requests\Penawaran\UpdatePenawaranRequest;
+use App\Http\Resources\PenawaranIndexResource;
+use App\Http\Resources\PenawaranDetailResource;
 use Illuminate\Http\Request;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\QrCodeService;
 use App\Actions\Penawaran\CreatePenawaranAction;
 use App\Actions\Penawaran\UpdatePenawaranAction;
@@ -17,9 +19,6 @@ use App\Actions\Penawaran\ApprovePenawaranOmAction;
 use App\Actions\Penawaran\RejectPenawaranOmAction;
 use App\Actions\Penawaran\ResolvePenawaranQueueAction;
 use App\Actions\Penawaran\GeneratePenawaranPdfAction;
-use App\Enums\ProductPriceCogsBasis;
-use App\Support\ProductPrice\ActivePriceForPeriodQuery;
-use App\Support\Approval\PenawaranApprovalStepsBuilder;
 
 class PenawaranController extends Controller
 {
@@ -33,6 +32,34 @@ class PenawaranController extends Controller
         return $brand === 'proenergi'
             ? ['penawaran.proenergi.verify', "penawaran.proenergi.verify-{$step}"]
             : ['penawaran.verify', "penawaran.verify-{$step}"];
+    }
+
+    private function authorizeVerificationStep(Request $request, string $brand, string $step): void
+    {
+        foreach ($this->verificationGatePermissions($brand, $step) as $permission) {
+            if ($request->user()->cant($permission)) {
+                throw new HttpResponseException(response()->json(['message' => 'Forbidden'], 403));
+            }
+        }
+    }
+
+    private function prepareVerificationRequest(Request $request, $id, string $brand, string $step, string $catatanRule): Penawaran
+    {
+        $this->authorizeVerificationStep($request, $brand, $step);
+        $penawaran = $this->resolvePenawaran($brand, (int) $id);
+        $request->validate(['catatan' => $catatanRule]);
+
+        return $penawaran;
+    }
+
+    private function verificationResponse(array $result)
+    {
+        $payload = ['message' => $result['message']];
+        if (isset($result['error'])) {
+            $payload['error'] = $result['error'];
+        }
+
+        return response()->json($payload, $result['status'] ?? 200);
     }
 
     public function index(Request $request, string $brand)
@@ -49,7 +76,7 @@ class PenawaranController extends Controller
         $search  = $request->query('search');
 
         $query = Penawaran::where('brand', $brand)
-            ->with(['customer', 'cabang', 'items.produk.jenis', 'items.produk.ukuran.satuan'])
+            ->with(['customer', 'user', 'items.produk.jenis', 'items.produk.ukuran'])
             ->withSum('items as total_volume', 'volume_order');
 
         if ($user->cant($permissionAny)) {
@@ -64,9 +91,10 @@ class PenawaranController extends Controller
             });
         }
 
-        $data = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $paginator->through(fn ($penawaran) => (new PenawaranIndexResource($penawaran))->resolve());
 
-        return response()->json($data);
+        return response()->json($paginator);
     }
 
     public function show(Request $request, $id, string $brand)
@@ -78,6 +106,8 @@ class PenawaranController extends Controller
             'cabang',
             'items.produk.jenis',
             'items.produk.ukuran.satuan',
+            'items.productPrice',
+            'items.sourceCabang',
             'ongkos.volume',
             'ongkos.transportir',
             'ongkos.wilayah.provinsi',
@@ -98,46 +128,41 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $hargaByProduk = (new ActivePriceForPeriodQuery())->forProducts(
-            $penawaran->items->pluck('id_produk')->unique()->values()->all(),
-            $penawaran->id_cabang,
-            $penawaran->masa_berlaku
-        );
-
-        foreach ($penawaran->items as $item) {
-            $itemHarga = $hargaByProduk->get($item->id_produk);
-            $item->cogs_price = $itemHarga->cogs_price ?? null;
-            $item->cogs_basis = $itemHarga->cogs_basis ?? null;
-        }
-
-        $payload = $penawaran->makeHidden('documentApprovals')->toArray();
-        $payload['approval_attempts'] = app(PenawaranApprovalStepsBuilder::class)->buildAttempts($penawaran);
-
-        return response()->json($payload);
+        return response()->json((new PenawaranDetailResource($penawaran))->resolve());
     }
 
     public function store(StorePenawaranRequest $request, string $brand)
     {
-        $result = (new CreatePenawaranAction())->execute($request->validated(), $brand, $request->user());
+        try {
+            $penawaran = (new CreatePenawaranAction())->execute($request->validated(), $brand, $request->user());
 
-        if (array_key_exists('error', $result)) {
-            return response()->json(['message' => $result['message'], 'error' => $result['error']], $result['status']);
+            return response()->json($penawaran, 201);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Gagal menyimpan penawaran',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json($result['penawaran'], $result['status']);
     }
 
     public function update(UpdatePenawaranRequest $request, $id, string $brand)
     {
         $penawaran = $this->resolvePenawaran($brand, (int) $id);
 
-        $result = (new UpdatePenawaranAction())->execute($penawaran, $request->validated(), $request->user());
+        try {
+            $updated = (new UpdatePenawaranAction())->execute($penawaran, $request->validated(), $request->user());
 
-        if (array_key_exists('error', $result)) {
-            return response()->json(['message' => $result['message'], 'error' => $result['error']], $result['status']);
+            return response()->json($updated);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Gagal update penawaran',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json($result['penawaran']);
     }
 
     public function destroy(Request $request, $id, string $brand)
@@ -172,7 +197,7 @@ class PenawaranController extends Controller
 
         $result = (new SubmitPenawaranAction())->execute(
             $penawaran,
-            $this->bmVerificationUrl($brand, $penawaran->id_penawaran)
+            $this->verificationUrl($brand, $penawaran->id_penawaran, 'bm')
         );
 
         $response = ['message' => $result['message']];
@@ -202,14 +227,7 @@ class PenawaranController extends Controller
 
     public function verifikasi(Request $request, $id, string $brand)
     {
-        foreach ($this->verificationGatePermissions($brand, 'bm') as $permission) {
-            if ($request->user()->cant($permission)) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
-
-        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
-        $request->validate(['catatan' => 'nullable|string']);
+        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'bm', 'nullable|string');
 
         $result = (new ApprovePenawaranBmAction())->execute(
             $penawaran,
@@ -217,22 +235,15 @@ class PenawaranController extends Controller
             $request->catatan,
             $request->user()->name ?? 'BM',
             $this->detailUrl($brand, $penawaran->id_penawaran),
-            $this->omVerificationUrl($brand, $penawaran->id_penawaran)
+            $this->verificationUrl($brand, $penawaran->id_penawaran, 'om')
         );
 
-        return response()->json(['message' => $result['message']], $result['status'] ?? 200);
+        return $this->verificationResponse($result);
     }
 
     public function tolakbm(Request $request, $id, string $brand)
     {
-        foreach ($this->verificationGatePermissions($brand, 'bm') as $permission) {
-            if ($request->user()->cant($permission)) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
-
-        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
-        $request->validate(['catatan' => 'required|string']);
+        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'bm', 'required|string');
 
         $result = (new RejectPenawaranBmAction())->execute(
             $penawaran,
@@ -241,7 +252,7 @@ class PenawaranController extends Controller
             $this->detailUrl($brand, $penawaran->id_penawaran)
         );
 
-        return response()->json(['message' => $result['message']]);
+        return $this->verificationResponse($result);
     }
 
     public function omVerificationIndex(Request $request, string $brand)
@@ -263,30 +274,21 @@ class PenawaranController extends Controller
 
     public function verifikasiOm(Request $request, $id, string $brand)
     {
-        foreach ($this->verificationGatePermissions($brand, 'om') as $permission) {
-            if ($request->user()->cant($permission)) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
+        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'om', 'nullable|string');
 
-        $penawaran = $this->resolvePenawaran($brand, (int) $id);
-        $request->validate(['catatan' => 'nullable|string']);
+        $result = (new ApprovePenawaranOmAction())->execute(
+            $penawaran,
+            $request->user()->id,
+            $request->catatan,
+            $this->detailUrl($brand, $penawaran->id_penawaran)
+        );
 
-        $result = (new ApprovePenawaranOmAction())->execute($penawaran, $request->user()->id, $request->catatan, $this->detailUrl($brand, $penawaran->id_penawaran));
-
-        return response()->json(['message' => $result['message']]);
+        return $this->verificationResponse($result);
     }
 
     public function tolakom(Request $request, $id, string $brand)
     {
-        foreach ($this->verificationGatePermissions($brand, 'om') as $permission) {
-            if ($request->user()->cant($permission)) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
-
-        $penawaran = $this->resolvePenawaran($brand, (int) $id, ['customer', 'cabang']);
-        $request->validate(['catatan' => 'required|string']);
+        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'om', 'required|string');
 
         $result = (new RejectPenawaranOmAction())->execute(
             $penawaran,
@@ -295,7 +297,7 @@ class PenawaranController extends Controller
             $this->detailUrl($brand, $penawaran->id_penawaran)
         );
 
-        return response()->json(['message' => $result['message']]);
+        return $this->verificationResponse($result);
     }
 
     public function previewPdfMultiLang(Request $request, $id, string $brand)
@@ -318,47 +320,15 @@ class PenawaranController extends Controller
         );
     }
 
-    public function lookupForCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
-    {
-        if ($request->user()->cant('verification.customer')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $penawarans = $customer->penawarans()
-            ->withSum('items as total_volume', 'volume_order')
-            ->orderByDesc('id_penawaran')
-            ->get();
-
-        $data = $penawarans->map(function (Penawaran $penawaran) {
-            return [
-                'id_penawaran'    => $penawaran->id_penawaran,
-                'nomor_penawaran' => $penawaran->nomor_penawaran,
-                'masa_berlaku'    => $penawaran->masa_berlaku,
-                'sampai_dengan'   => $penawaran->sampai_dengan,
-                'harga_dasar'     => $penawaran->harga_dasar,
-                'oat'             => $penawaran->oat,
-                'total_volume'    => $penawaran->total_volume,
-            ];
-        });
-
-        return response()->json(['data' => $data]);
-    }
-
     private function detailUrl(string $brand, int $idPenawaran): string
     {
         $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
         return url("/{$prefix}/{$idPenawaran}");
     }
 
-    private function bmVerificationUrl(string $brand, int $idPenawaran): string
+    private function verificationUrl(string $brand, int $idPenawaran, string $role): string
     {
         $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
-        return url("/{$prefix}/{$idPenawaran}/verifikasi");
-    }
-
-    private function omVerificationUrl(string $brand, int $idPenawaran): string
-    {
-        $prefix = $brand === 'proenergi' ? 'penawarans-proenergi' : 'penawarans';
-        return url("/{$prefix}/verifikasi/om/{$idPenawaran}");
+        return url("/{$prefix}/verifikasi/{$role}/{$idPenawaran}");
     }
 }

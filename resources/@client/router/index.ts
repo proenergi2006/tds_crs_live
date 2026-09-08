@@ -519,8 +519,8 @@ const routes = [
         },
       },
       {
-        path: "/penawarans/:id/verifikasi",
-        name: "penawarans-verifikasi-detail",
+        path: "/penawarans/verifikasi/bm/:id",
+        name: "penawarans-verifikasi-bm-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
         meta: {
           role: "bm",
@@ -529,8 +529,8 @@ const routes = [
         },
       },
       {
-        path: "/penawarans-proenergi/:id/verifikasi",
-        name: "penawarans-verifikasi-detail-proenergi",
+        path: "/penawarans-proenergi/verifikasi/bm/:id",
+        name: "penawarans-verifikasi-bm-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
         meta: {
           role: "bm",

@@ -177,7 +177,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customers/{customer}/review-attachment', [CustomerReviewController::class, 'uploadReviewAttachment']);
     Route::delete('customers/{customer}/review-attachment/{no}', [CustomerReviewController::class, 'deleteReviewAttachment']);
 
-    Route::get('customers/{customer}/penawarans', [PenawaranController::class, 'lookupForCustomer']);
+    Route::get('customers/{customer}/penawarans', [CustomerVerificationController::class, 'lookupForCustomer']);
 
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);

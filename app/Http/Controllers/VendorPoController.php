@@ -8,6 +8,7 @@ use App\Models\Terminal;
 use Illuminate\Http\Request;
 use App\Models\Vendor;
 use App\Models\VendorPoProduk;
+use App\Support\RomanMonth;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
@@ -92,7 +93,7 @@ class VendorPoController extends Controller
             $cabang = Cabang::findOrFail($terminal->id_cabang);
 
             $nextPoNumber = $vendor->urut_po + 1;
-            $bulanRomawi = $this->getBulanRomawi(date('m'));
+            $bulanRomawi = RomanMonth::of(date('m'));
             $tahun = substr(date('Y'), -2);
             $nomorPo = str_pad($nextPoNumber, 3, '0', STR_PAD_LEFT)
                 . '/' . $vendor->inisial
@@ -300,26 +301,6 @@ class VendorPoController extends Controller
                 'tempDir'         => storage_path('app/dompdf-tmp'),
             ])
             ->stream($filename);
-    }
-
-    // bulan angka ke romawi
-    private function getBulanRomawi($month)
-    {
-        $months = [
-            '01' => 'I',
-            '02' => 'II',
-            '03' => 'III',
-            '04' => 'IV',
-            '05' => 'V',
-            '06' => 'VI',
-            '07' => 'VII',
-            '08' => 'VIII',
-            '09' => 'IX',
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII'
-        ];
-        return $months[$month] ?? 'I'; // fallback 'I' kalau ga ketemu
     }
 
     // endpoint publik nampilin data PO (json)

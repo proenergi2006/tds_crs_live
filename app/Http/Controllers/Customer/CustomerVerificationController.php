@@ -15,6 +15,7 @@ use App\Models\Customer;
 use App\Models\CustomerVerification;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
+use App\Models\Penawaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -611,5 +612,31 @@ class CustomerVerificationController extends Controller
 
         $queue = $this->pendingStepQuery(self::ROLE_BM)->count();
         return response()->json(['queue' => $queue]);
+    }
+
+    public function lookupForCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $penawarans = $customer->penawarans()
+            ->withSum('items as total_volume', 'volume_order')
+            ->orderByDesc('id_penawaran')
+            ->get();
+
+        $data = $penawarans->map(function (Penawaran $penawaran) {
+            return [
+                'id_penawaran'    => $penawaran->id_penawaran,
+                'nomor_penawaran' => $penawaran->nomor_penawaran,
+                'masa_berlaku'    => $penawaran->masa_berlaku,
+                'sampai_dengan'   => $penawaran->sampai_dengan,
+                'harga_dasar'     => $penawaran->harga_dasar,
+                'oat'             => $penawaran->oat,
+                'total_volume'    => $penawaran->total_volume,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
     }
 }

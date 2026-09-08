@@ -42,7 +42,7 @@ export function getVerifikasiConfig(
       : "Daftar Verifikasi Penawaran",
     description: `Monitor penawaran yang menunggu verifikasi ${ROLE_LABEL[role]}.`,
     endpoint: `${ENDPOINT_BASE[brand]}/${role}`,
-    detailRouteName: `penawarans-verifikasi${isOm ? "-om" : ""}-detail${isProenergi ? "-proenergi" : ""}`,
+    detailRouteName: `penawarans-verifikasi-${isOm ? "om" : "bm"}-detail${isProenergi ? "-proenergi" : ""}`,
   };
 }
 

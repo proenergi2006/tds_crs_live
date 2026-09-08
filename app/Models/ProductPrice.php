@@ -34,6 +34,13 @@ class ProductPrice extends Model
         'ceo_price'     => 'decimal:2',
     ];
 
+    public function priceListForBrand(string $brand): float
+    {
+        return $brand === 'proenergi' && (float) $this->price_list_pe > 0
+            ? (float) $this->price_list_pe
+            : (float) $this->price_list;
+    }
+
     public function pricePeriod(): BelongsTo
     {
         return $this->belongsTo(PricePeriod::class);
