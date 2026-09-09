@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerIncoterm;
 use App\Enums\CustomerStatus;
+use App\Enums\CustomerVerificationStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,6 +18,8 @@ class Customer extends Model
 
     protected $primaryKey = 'id_customer';
     public $timestamps = false;
+
+    public const REVERIFICATION_INTERVAL_MONTHS = 6;
 
     protected $casts = [
         'inco_terms' => CustomerIncoterm::class,
@@ -83,14 +86,12 @@ class Customer extends Model
         return $this->hasMany(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer');
     }
 
-    // satu baris di customer_addresses, bukan kolom di customers; unique partial index jamin maksimal 1 head_office per customer
     public function headOfficeAddress(): HasOne
     {
         return $this->hasOne(\App\Models\CustomerAddress::class, 'id_customer', 'id_customer')
             ->where('address_type', CustomerAddressType::HeadOffice->value);
     }
 
-    // subselect (bukan eager-load) buat endpoint yang butuh key company_address apa adanya; pasang cuma kalau select kolom udah eksplisit
     public function scopeWithHeadOfficeAddressLine(Builder $query): Builder
     {
         return $query->addSelect(['company_address' => CustomerAddress::query()
@@ -105,15 +106,9 @@ class Customer extends Model
         return $this->hasMany(\App\Models\CustomerContact::class, 'id_customer', 'id_customer');
     }
 
-    public function creditSubmissions(): HasMany
+    public function creditRequest(): HasOne
     {
-        return $this->hasMany(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer');
-    }
-
-    public function latestCreditSubmission(): HasOne
-    {
-        return $this->hasOne(\App\Models\CustomerCreditSubmission::class, 'id_customer', 'id_customer')
-            ->latestOfMany('id_submission');
+        return $this->hasOne(\App\Models\CustomerCreditRequest::class, 'id_customer', 'id_customer');
     }
 
     public function statusHistory(): HasMany
@@ -132,6 +127,15 @@ class Customer extends Model
             ->latestOfMany('id_verification');
     }
 
+    public function latestApprovedVerification(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerVerification::class, 'id_customer', 'id_customer')
+            ->ofMany(
+                ['reviewed_at' => 'max'],
+                fn (Builder $query) => $query->where('status', CustomerVerificationStatus::Approved)
+            );
+    }
+
     public function logistik(): HasOne
     {
         return $this->hasOne(\App\Models\CustomerLogistik::class, 'id_customer', 'id_customer');
@@ -140,5 +144,28 @@ class Customer extends Model
     public function payment(): HasOne
     {
         return $this->hasOne(\App\Models\CustomerPayment::class, 'id_customer', 'id_customer');
+    }
+
+    public function getIsVerifiedAttribute(): bool
+    {
+        return $this->latestApprovedVerification !== null;
+    }
+
+    public function getNeedsReverificationAttribute(): bool
+    {
+        $cycle = $this->latestApprovedVerification;
+
+        return $cycle?->reviewed_at !== null
+            && $cycle->reviewed_at->lt(now()->subMonths(self::REVERIFICATION_INTERVAL_MONTHS));
+    }
+
+    public function getCurrentCreditLimitAttribute(): ?int
+    {
+        return $this->latestApprovedVerification?->approved_limit;
+    }
+
+    public function isUnderReview(): bool
+    {
+        return $this->latestVerification?->status === CustomerVerificationStatus::InReview;
     }
 }

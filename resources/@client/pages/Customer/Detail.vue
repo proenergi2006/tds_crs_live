@@ -16,12 +16,18 @@ import CreditDataTab from './components/CreditDataTab.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { error: notifyError } = useNotification()
+const { success, error: notifyError } = useNotification()
 
 const idCustomer = Number(route.params.id)
 
-/* State: load utama -- dipakai bareng header & CustomerDataTab biar GET customer cukup sekali */
+const VERIFICATION_GROUP_LABELS: Record<string, string> = {
+  data_customer: 'Data Customer',
+  review: 'Sales Review',
+  credit: 'Credit Application / TOP',
+}
+
 const loading = ref(true)
+const submitting = ref(false)
 const customerSummary = ref<any>({})
 
 const tabItems = computed(() => [
@@ -31,13 +37,15 @@ const tabItems = computed(() => [
   { label: 'LCR', description: 'Hasil survei customer site', complete: !!customerSummary.value?.tab_completeness?.lcr },
 ])
 
-const hasParentCompany = computed(() => (customerSummary.value?.parent_company !== null || customerSummary.value?.parent_company !== null))
-const kycStatus = computed(() => customerSummary.value?.latest_verification?.kyc_status ?? null)
+const hasParentCompany = computed(() => !!customerSummary.value?.parent_company)
+const isUnderReview = computed<boolean>(() => customerSummary.value?.latest_verification?.status === 'in_review')
 
-// komputasi dari kelengkapan 4 tab aja, belum nempel ke endpoint apa pun -- masih indikator visual doang
-const isVerified = computed(() =>
-  tabItems.value.every(t => t.complete)
-)
+async function loadCustomer() {
+  loading.value = true
+  await fetchCustomer()
+  loading.value = false
+}
+onMounted(loadCustomer)
 
 async function fetchCustomer() {
   try {
@@ -48,12 +56,33 @@ async function fetchCustomer() {
   }
 }
 
-async function loadCustomer() {
-  loading.value = true
-  await fetchCustomer()
-  loading.value = false
+async function refreshCompleteness() {
+  try {
+    const { data } = await axios.get(`/api/customers/${idCustomer}/tab-completeness`)
+    if (customerSummary.value) customerSummary.value.tab_completeness = data
+  } catch {}
 }
-onMounted(loadCustomer)
+
+async function submitVerification(): Promise<void> {
+  submitting.value = true
+  try {
+    await axios.post(`/api/customers/${idCustomer}/verification`, {})
+    success('Berhasil', 'Verifikasi customer berhasil diajukan.')
+    await fetchCustomer()
+  } catch (e: any) {
+    if (e.response?.status === 409) {
+      notifyError('Gagal', 'Verifikasi customer ini sedang dalam review.')
+    } else if (e.response?.status === 422) {
+      const incompleteGroups = e.response?.data?.incomplete_groups ?? []
+      const labels = incompleteGroups.map((group: string) => VERIFICATION_GROUP_LABELS[group] ?? group).join(', ')
+      notifyError('Gagal', `Data belum lengkap: ${labels}`)
+    } else {
+      notifyError('Gagal', e.response?.data?.message ?? 'Gagal memproses verifikasi.')
+    }
+  } finally {
+    submitting.value = false
+  }
+}
 
 function goBack() {
   router.push({ name: 'customers-list' })
@@ -69,8 +98,9 @@ function goBack() {
           :description="hasParentCompany ? `Part of: ${customerSummary.parent_company}` : 'Detail data dan verifikasi customer'">
           <template #action>
             <div class="flex items-center gap-2">
-              <Button v-if="isVerified" variant="primary">
-                <Lucide icon="ShieldCheck" class="mr-2 w-4 h-4" />
+              <Button v-if="!isUnderReview" variant="primary" :disabled="submitting" @click="submitVerification">
+                <Lucide v-if="submitting" icon="Loader2" class="mr-2 w-4 h-4 animate-spin" />
+                <Lucide v-else icon="ShieldCheck" class="mr-2 w-4 h-4" />
                 Proses Verifikasi
               </Button>
               <Button variant="outline-secondary" @click="goBack">
@@ -107,13 +137,16 @@ function goBack() {
             <CustomerDataTab :id-customer="idCustomer" :customer="customerSummary" @updated="fetchCustomer" />
           </Tab.Panel>
           <Tab.Panel>
-            <SalesReviewDataTab :id-customer="idCustomer" :kyc-status="kycStatus" />
+            <SalesReviewDataTab :id-customer="idCustomer" :is-under-review="isUnderReview" @saved="refreshCompleteness" />
           </Tab.Panel>
           <Tab.Panel>
-            <CreditDataTab :id-customer="idCustomer" :kyc-status="kycStatus" />
+            <CreditDataTab :id-customer="idCustomer" :is-under-review="isUnderReview"
+              :latest-approved-verification="customerSummary?.latest_approved_verification ?? null"
+              @saved="refreshCompleteness" />
           </Tab.Panel>
           <Tab.Panel>
-            <LcrDataTab :id-customer="idCustomer" :customer-logistik="customerSummary?.logistik" />
+            <LcrDataTab :id-customer="idCustomer" :customer-logistik="customerSummary?.logistik"
+              @saved="refreshCompleteness" />
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>

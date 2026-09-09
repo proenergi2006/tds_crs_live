@@ -26,8 +26,7 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerAddressController;
 use App\Http\Controllers\Customer\CustomerContactController;
 use App\Http\Controllers\Customer\CustomerController;
-use App\Http\Controllers\Customer\CustomerCreditItemController;
-use App\Http\Controllers\Customer\CustomerCreditSubmissionController;
+use App\Http\Controllers\Customer\CustomerCreditRequestController;
 use App\Http\Controllers\Customer\CustomerDocumentController;
 use App\Http\Controllers\Customer\CustomerOnboardingController;
 use App\Http\Controllers\Customer\CustomerPaymentController;
@@ -131,7 +130,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('customers/check-company-name', [CustomerController::class, 'checkCompanyName']);
     Route::apiResource('customers', CustomerController::class);
+    Route::get('customers/{customer}/tab-completeness', [CustomerController::class, 'tabCompleteness']);
     Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
+    Route::post('customers/{customer}/verification', [CustomerVerificationController::class, 'store']);
 
     // authz per-row di controller (ownership check), bukan middleware can:
     Route::get('customers/{customer}/documents', [CustomerDocumentController::class, 'index']);
@@ -154,15 +155,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'update']);
     Route::delete('customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'destroy']);
 
-    Route::get('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'index']);
-    Route::post('customers/{customer}/credit-submissions', [CustomerCreditSubmissionController::class, 'store']);
-    Route::get('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'show']);
-    Route::put('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'update']);
-    Route::delete('customers/{customer}/credit-submissions/{submission}', [CustomerCreditSubmissionController::class, 'destroy']);
-
-    Route::post('customers/{customer}/credit-submissions/{submission}/items', [CustomerCreditItemController::class, 'store']);
-    Route::put('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'update']);
-    Route::delete('customers/{customer}/credit-submissions/{submission}/items/{item}', [CustomerCreditItemController::class, 'destroy']);
+    Route::get('customers/{customer}/credit-request', [CustomerCreditRequestController::class, 'show']);
+    Route::put('customers/{customer}/credit-request', [CustomerCreditRequestController::class, 'update']);
 
     Route::get('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'index']);
     Route::post('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'store']);
@@ -236,33 +230,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('customer-pos', PoCustomerController::class);
 
     Route::get('review/lcr-sites', [CustomerLcrController::class, 'reviewIndex']);
+    // harus di atas review/lcr-sites/{lcrSite} -- kalau tidak, "stats" ketangkap sebagai {lcrSite} lalu route-model-bind balik 404
+    Route::get('review/lcr-sites/stats', [CustomerLcrController::class, 'reviewStats']);
     Route::get('review/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'reviewShow']);
     Route::patch('review/lcr-sites/{lcrSite}/decision', [CustomerLcrController::class, 'decide']);
     Route::patch('review/lcr-sites/{lcrSite}/reset-decision', [CustomerLcrController::class, 'resetDecision']);
 
-    Route::apiResource('customer-verifications', CustomerVerificationController::class);
-
     Route::get('review/customer-verifications/stats', [CustomerVerificationController::class, 'reviewStats']);
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
-    Route::get('review/customer-verifications/{id}/approval-timeline', [CustomerVerificationController::class, 'approvalTimeline'])->whereNumber('id');
+    Route::patch('customer-verifications/{customerVerification}/decision', [CustomerVerificationController::class, 'decision']);
 
-    Route::patch('customer-verifications/{customerVerification}/set-reviewed', [CustomerVerificationController::class, 'setReviewed']);
-
-    Route::post('review/customer-verifications/{id}/forward', [CustomerVerificationController::class, 'forward'])->whereNumber('id');
-    Route::post('review/customer-verifications/{id}/close',   [CustomerVerificationController::class, 'close'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document', [CustomerVerificationController::class, 'document'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document/data-customer', [CustomerVerificationController::class, 'dataCustomerDocument'])->whereNumber('id');
-
-    Route::prefix('review/admin')->group(function () {
-        Route::get('/customer-verifications', [CustomerVerificationController::class, 'reviewAdminIndex']);
-        Route::get('/customer-verifications/stats', [CustomerVerificationController::class, 'reviewAdminStats']);
-    });
-
-    Route::prefix('review/bm')->group(function () {
-        Route::get('customer-verifications',       [CustomerVerificationController::class, 'reviewBmIndex']);
-        Route::get('customer-verifications/stats', [CustomerVerificationController::class, 'reviewBmStats']);
-    });
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
 

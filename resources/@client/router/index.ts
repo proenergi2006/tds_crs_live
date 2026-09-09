@@ -583,12 +583,7 @@ const routes = [
         name: "logistik-lcr-detail",
         component: () => import("@/pages/LogistikLcrDetail.vue"),
         props: true,
-      },
-      {
-        path: "/customer-verifications",
-        name: "customer-verifications",
-        component: () => import("@/pages/CustomerVerification/Index.vue"),
-        meta: { permission: "customer.viewOwn" },
+        meta: { permission: "logistik.lcr.verify" },
       },
       {
         path: "/link-customers",

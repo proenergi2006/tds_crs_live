@@ -111,22 +111,22 @@
 
   {{-- Credit Application --}}
   <h2>4. Credit Application</h2>
-  @if ($submission)
+  @if ($creditRequest || $verification->approved_limit !== null)
     <table class="kv section">
       <tr>
-        <td class="label">Credit Limit Diajukan</td><td class="colon">:</td><td>{{ $submission->credit_limit_request ?? '-' }}</td>
+        <td class="label">Credit Limit Diajukan</td><td class="colon">:</td><td>{{ $creditRequest?->requested_limit ?? '-' }}</td>
       </tr>
       <tr>
-        <td class="label">Credit Limit Disetujui</td><td class="colon">:</td><td>{{ $submission->credit_limit_approval ?? '-' }}</td>
+        <td class="label">Credit Limit Disetujui</td><td class="colon">:</td><td>{{ $verification->approved_limit ?? '-' }}</td>
       </tr>
       <tr>
-        <td class="label">TOP Diajukan (hari)</td><td class="colon">:</td><td>{{ $submission->top_request ?? '-' }}</td>
+        <td class="label">TOP Diajukan (hari)</td><td class="colon">:</td><td>{{ $creditRequest?->requested_top ?? '-' }}</td>
       </tr>
       <tr>
-        <td class="label">TOP Disetujui (hari)</td><td class="colon">:</td><td>{{ $submission->top_approval ?? '-' }}</td>
+        <td class="label">TOP Disetujui (hari)</td><td class="colon">:</td><td>{{ $verification->approved_top ?? '-' }}</td>
       </tr>
       <tr>
-        <td class="label">Financial Review</td><td class="colon">:</td><td class="rich-text-content">{!! $submission->financial_review ?? '-' !!}</td>
+        <td class="label">Financial Review</td><td class="colon">:</td><td class="rich-text-content">{!! $verification->financial_review ?? '-' !!}</td>
       </tr>
     </table>
   @else

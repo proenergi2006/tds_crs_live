@@ -443,6 +443,50 @@ async function fetchCustomerContacts() {
   }
 }
 
+/* Format nomor kontak untuk tampilan & input. DB simpan digit polos -- format cuma di UI.
+   Telepon = "(kode area 3 digit) nomor"; Mobile = grup 4 digit dipisah spasi.
+   Catatan: kode area diasumsikan 3 digit -- kurang pas untuk kota dengan kode 4 digit (0274, 0778, dst). */
+function formatOfficePhone(raw: string | null | undefined): string {
+  const digits = (raw ?? '').replace(/\D/g, '').slice(0, 12)
+  return digits.length <= 3 ? digits : `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+}
+
+function groupMobileDigits(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '').slice(0, 14).replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+/* Kebalikan format di atas -- dipakai sebelum kirim ke API supaya DB terima digit polos. */
+function stripPhoneDigits(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '')
+}
+
+/* Reformat sambil ketik, caret dikembalikan ke posisi digit yang sama biar edit di tengah tetap enak. */
+function applyFormattedInput(event: Event, formatFn: (raw: string) => string, assign: (value: string) => void) {
+  const target = event.target as HTMLInputElement
+  const caret = target.selectionStart ?? target.value.length
+  const digitsBeforeCaret = target.value.slice(0, caret).replace(/\D/g, '').length
+
+  const formatted = formatFn(target.value)
+  assign(formatted)
+  target.value = formatted
+
+  let pos = 0
+  let seen = 0
+  while (pos < formatted.length && seen < digitsBeforeCaret) {
+    if (/\d/.test(formatted[pos])) seen++
+    pos++
+  }
+  target.setSelectionRange(pos, pos)
+}
+
+function onContactPhoneInput(event: Event) {
+  applyFormattedInput(event, formatOfficePhone, (value) => { contactForm.phone = value })
+}
+
+function onContactMobileInput(event: Event) {
+  applyFormattedInput(event, groupMobileDigits, (value) => { contactForm.mobile = value })
+}
+
 function resetContactForm() {
   contactFormError.value = null
   contactFormErrors.value = {}
@@ -471,8 +515,8 @@ function openEditContact(contact: CustomerContactRecord) {
     id: contact.id,
     full_name: contact.full_name,
     position: contact.position ?? '',
-    phone: contact.phone ?? '',
-    mobile: contact.mobile ?? '',
+    phone: formatOfficePhone(contact.phone),
+    mobile: groupMobileDigits(contact.mobile),
     email: contact.email ?? '',
   })
   contactFormOpen.value = true
@@ -491,11 +535,16 @@ async function submitContactForm() {
     return
   }
 
+  if (!contactForm.phone.trim() && !contactForm.mobile.trim() && !contactForm.email.trim()) {
+    contactFormError.value = 'Minimal salah satu dari Telepon, Mobile, atau Email wajib diisi.'
+    return
+  }
+
   const payload = {
     full_name: contactForm.full_name.trim(),
     position: contactForm.position.trim() || null,
-    phone: contactForm.phone.trim() || null,
-    mobile: contactForm.mobile.trim() || null,
+    phone: stripPhoneDigits(contactForm.phone) || null,
+    mobile: stripPhoneDigits(contactForm.mobile) || null,
     email: contactForm.email.trim() || null,
   }
 
@@ -607,27 +656,38 @@ onMounted(fetchCustomerContacts)
           <div class="font-body">Belum ada kontak yang ditambahkan.</div>
         </div>
 
-        <div v-else class="gap-3 grid sm:grid-cols-2">
-          <div v-for="c in customerContacts" :key="c.id" class="p-3 border border-slate-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <div
-                class="flex justify-center items-center bg-cyan-100 rounded-full w-10 h-10 font-strong text-cyan-700 shrink-0">
-                {{ (c.full_name || '?').charAt(0).toUpperCase() }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="font-strong truncate">{{ c.full_name }}</div>
-                <div v-if="c.position" class="font-caption truncate">{{ c.position }}</div>
-              </div>
-              <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8 shrink-0"
-                @click="openEditContact(c)">
-                <Lucide icon="Edit" class="w-4 h-4" />
-              </Button>
-            </div>
-            <div v-if="c.phone || c.mobile" class="mt-2 font-caption truncate">
-              {{ [c.phone, c.mobile].filter(Boolean).join(' | ') }}
-            </div>
-            <p v-if="c.email" class="mt-1 font-caption truncate">{{ c.email }}</p>
-          </div>
+        <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
+          <table class="divide-y divide-slate-200 w-full min-w-[640px]">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-3 py-2 w-12 font-label text-center">No</th>
+                <th class="px-3 py-2 font-label text-left">Nama</th>
+                <th class="px-3 py-2 font-label text-left">Telepon</th>
+                <th class="px-3 py-2 font-label text-left">Mobile</th>
+                <th class="px-3 py-2 font-label text-left">Email</th>
+                <th class="px-3 py-2 w-20 font-label text-center">Aksi</th>
+              </tr>
+            </thead>
+
+            <tbody class="bg-white divide-y divide-slate-200">
+              <tr v-for="(c, idx) in customerContacts" :key="c.id" class="hover:bg-slate-50 transition">
+                <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+                <td class="px-3 py-2">
+                  <div class="font-strong">{{ c.full_name }}</div>
+                  <div v-if="c.position" class="font-caption text-slate-500">({{ c.position }})</div>
+                </td>
+                <td class="px-3 py-2 font-body">{{ c.phone ? formatOfficePhone(c.phone) : '-' }}</td>
+                <td class="px-3 py-2 font-body">{{ c.mobile ? groupMobileDigits(c.mobile) : '-' }}</td>
+                <td class="px-3 py-2 font-body break-all">{{ c.email || '-' }}</td>
+                <td class="px-3 py-2 text-center">
+                  <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
+                    @click="openEditContact(c)">
+                    <Lucide icon="Edit" class="w-4 h-4" />
+                  </Button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </CardSection>
 
@@ -655,10 +715,11 @@ onMounted(fetchCustomerContacts)
           <span class="font-body">Memuat dokumen...</span>
         </div>
 
-        <div v-else-if="documentRows.length === 0"
+        <div
+          v-else-if="documentRows.length === 0 && freeFormDocumentRows.length === 0 && newFreeFormRows.length === 0"
           class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
           <Lucide icon="Inbox" class="w-8 h-8 text-slate-400" />
-          <div class="font-body">Belum ada jenis dokumen yang aktif.</div>
+          <div class="font-body">Belum ada dokumen. Klik "Tambah" untuk menambah dokumen.</div>
         </div>
 
         <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
@@ -790,11 +851,21 @@ onMounted(fetchCustomerContacts)
         <div class="gap-3 grid grid-cols-2">
           <div>
             <FormLabel>Telepon</FormLabel>
-            <FormInput v-model="contactForm.phone" placeholder="021-xxxxxxx" />
+            <FormInput
+              :value="contactForm.phone"
+              inputmode="tel"
+              placeholder="cth. (021) 5551234"
+              @input="onContactPhoneInput"
+            />
           </div>
           <div>
             <FormLabel>Mobile</FormLabel>
-            <FormInput v-model="contactForm.mobile" placeholder="08xx-xxxx-xxxx" />
+            <FormInput
+              :value="contactForm.mobile"
+              inputmode="numeric"
+              placeholder="cth. 0812 3456 7890"
+              @input="onContactMobileInput"
+            />
           </div>
         </div>
         <div>

@@ -19,7 +19,6 @@ class StoreCustomerRequest extends FormRequest
             'corporate_detail.customer_type'   => 'nullable|string|max:100',
             'corporate_detail.company_name'    => 'nullable|string|max:255',
             'corporate_detail.phone'           => 'nullable|string|max:50',
-            'corporate_detail.fax'             => 'nullable|string|max:50',
 
             'head_office_address'              => 'required|array',
             'head_office_address.address_line' => 'nullable|string',

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Actions\Customer\EvaluateCustomerTabCompletenessAction;
 use App\Actions\Customer\UpsertCustomerAddressAction;
 use App\Enums\CustomerAddressType;
-use App\Enums\CustomerKycStatus;
+use App\Enums\CustomerVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerAddressByTypeRequest;
@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
-    // site_address punya jalur sync sendiri (SyncCustomerLcrSiteDetailsAction) -- ditolak di updateAddress() biar gak bikin data gak sinkron.
     private const ADDRESS_TYPES_MANAGED_ELSEWHERE = [
         CustomerAddressType::SiteAddress,
     ];
@@ -68,7 +67,7 @@ class CustomerController extends Controller
         }
 
         $q = (clone $base)
-            ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang', 'latestVerification.latestDocumentApproval'])
+            ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang', 'latestVerification', 'latestApprovedVerification'])
             ->withExists(['lcr as has_lcr'])
             ->withCount(['penawarans as quotation_count'])
             ->orderBy('company_name');
@@ -92,16 +91,12 @@ class CustomerController extends Controller
         ]);
     }
 
-    // badge/filter berbasis kyc_status, bukan approval cycle lama; gak ada badge "ditolak" karena gak ada penolakan di level KYC
     private function applyStatusFilter($query, string $status): void
     {
         if ($status === 'verified') {
-            $query->whereHas('latestVerification', fn($vq) => $vq->where('kyc_status', CustomerKycStatus::Closed));
+            $query->whereHas('verifications', fn($vq) => $vq->where('status', CustomerVerificationStatus::Approved));
         } elseif ($status === 'unverified') {
-            $query->where(function ($outer) {
-                $outer->whereDoesntHave('latestVerification')
-                    ->orWhereHas('latestVerification', fn($vq) => $vq->where('kyc_status', '!=', CustomerKycStatus::Closed));
-            });
+            $query->whereDoesntHave('verifications', fn($vq) => $vq->where('status', CustomerVerificationStatus::Approved));
         }
     }
 
@@ -109,36 +104,21 @@ class CustomerController extends Controller
     {
         $latest = $customer->latestVerification;
 
-        if (!$latest) {
-            return 'belum_ada_link';
+        if ($latest?->status === CustomerVerificationStatus::InReview) {
+            return 'in_review';
         }
 
-        if ($latest->kyc_status === CustomerKycStatus::Closed) {
-            return 'verified';
+        if ($latest?->status === CustomerVerificationStatus::Rejected) {
+            return 'rejected';
         }
 
-        $isExpired = $latest->expired_at !== null && $latest->expired_at->lte(now());
-
-        if (!$latest->is_submitted && !$isExpired) {
-            return 'menunggu_customer';
+        if ($customer->is_verified) {
+            return $customer->needs_reverification ? 'verified_due' : 'verified';
         }
 
-        if (!$latest->is_submitted && $isExpired) {
-            return 'link_kedaluwarsa';
-        }
-
-        if ($latest->kyc_status === CustomerKycStatus::Draft) {
-            return 'perlu_direview';
-        }
-
-        if ($latest->kyc_status === CustomerKycStatus::Forwarded) {
-            return 'menunggu_admin_finance';
-        }
-
-        return 'belum_ada_link';
+        return 'unverified';
     }
 
-    // kyc_status di-expose untuk reactive lock Tab 1/2/4 & tombol Forward di FE.
     private function formatLatestVerification(?CustomerVerification $verification): ?array
     {
         if (!$verification) {
@@ -147,12 +127,26 @@ class CustomerController extends Controller
 
         return [
             'id_verification' => $verification->id_verification,
-            'is_submitted'    => (bool) $verification->is_submitted,
-            'is_forwarded'    => (bool) $verification->is_forwarded,
-            'is_active'       => (bool) $verification->is_active,
-            'expired_at'      => optional($verification->expired_at)->toISOString(),
-            'stage_label'     => $verification->stageLabel(),
-            'kyc_status'      => $verification->kyc_status?->value,
+            'status'          => $verification->status->value,
+            'status_label'    => $verification->status->label(),
+            'is_scheduled'    => (bool) $verification->is_scheduled,
+            'submitted_at'    => optional($verification->submitted_at)->toISOString(),
+            'reviewed_at'     => optional($verification->reviewed_at)->toISOString(),
+            'reject_note'     => $verification->reject_note,
+        ];
+    }
+
+    private function formatLatestApprovedVerification(?CustomerVerification $verification): ?array
+    {
+        if (!$verification) {
+            return null;
+        }
+
+        return [
+            'approved_limit'   => $verification->approved_limit,
+            'approved_top'     => $verification->approved_top,
+            'financial_review' => $verification->financial_review,
+            'reviewed_at'      => optional($verification->reviewed_at)->toISOString(),
         ];
     }
 
@@ -194,7 +188,8 @@ class CustomerController extends Controller
 
         $customer->load([
             'user',
-            'latestVerification.latestDocumentApproval.steps',
+            'latestVerification',
+            'latestApprovedVerification',
             'addresses.province',
             'addresses.regency',
             'addresses.district',
@@ -203,11 +198,10 @@ class CustomerController extends Controller
             'payment',
             'logistik',
             'lcr',
-            'creditSubmissions',
+            'creditRequest',
             'documents.documentType',
         ]);
 
-        // kolom alamat di customers udah gak diupdate lagi, response diambil dari baris head_office biar shape-nya sama kayak dulu
         $headOffice = $customer->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
 
         $customer->setRelation('province', $headOffice?->province);
@@ -222,9 +216,35 @@ class CustomerController extends Controller
         $customer->village_id = $headOffice?->village_id;
 
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
+        $customer->latest_approved_verification = $this->formatLatestApprovedVerification($customer->latestApprovedVerification);
         $customer->tab_completeness = $evaluateTabCompleteness->execute($customer);
+        $customer->append(['is_verified', 'needs_reverification', 'current_credit_limit']);
 
         return response()->json($customer);
+    }
+
+    public function tabCompleteness(Request $request, Customer $customer, EvaluateCustomerTabCompletenessAction $evaluateTabCompleteness)
+    {
+        $user = $request->user();
+
+        $allowed = $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $customer->id_user === $user->id);
+
+        if (!$allowed) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $customer->load([
+            'addresses',
+            'payment',
+            'contacts',
+            'documents.documentType',
+            'creditRequest',
+            'latestVerification',
+            'lcr.latestDocumentApproval',
+        ]);
+
+        return response()->json($evaluateTabCompleteness->execute($customer));
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
@@ -238,11 +258,8 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        // data customer terkunci begitu KYC di-forward; guard cuma aktif kalau ada verification cycle yang jalan
-        $latestVerification = $customer->latestVerification;
-
-        if ($latestVerification && $latestVerification->kyc_status !== CustomerKycStatus::Draft) {
-            return response()->json(['message' => 'Data customer terkunci, KYC sudah di-forward.'], 409);
+        if ($customer->isUnderReview()) {
+            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
         }
 
         $data = $request->validated();
@@ -389,7 +406,6 @@ class CustomerController extends Controller
     {
         $id = $customer->id_customer;
 
-        // customer_contacts multi-row sekarang, gak ada header row yang perlu di-seed kayak tabel 1:1 di bawah
         CustomerLogistik::firstOrCreate(['id_customer' => $id]);
 
         CustomerPayment::firstOrCreate(['id_customer' => $id], [

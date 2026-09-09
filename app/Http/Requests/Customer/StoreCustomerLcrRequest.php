@@ -121,13 +121,23 @@ class StoreCustomerLcrRequest extends FormRequest
             'address.village_id'     => 'nullable|string|exists:villages,id',
             'address.postal_code'    => 'nullable|string|max:10',
 
-            'contacts'                => 'nullable|array',
+            // PIC site LCR wajib -- minimal satu kontak dengan nama. Berlaku juga di update (UpdateCustomerLcrRequest extends).
+            'contacts'                => 'required|array|min:1',
             'contacts.*.id_contact'   => 'nullable|integer|exists:customer_contacts,id_contact',
             'contacts.*.full_name'    => 'required|string|max:255',
             'contacts.*.position'     => 'nullable|string|max:255',
             'contacts.*.phone'        => 'nullable|string|max:50',
             'contacts.*.mobile'       => 'nullable|string|max:50',
             'contacts.*.email'        => 'nullable|email|max:255',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'contacts.required'          => 'Minimal satu Penanggung Jawab (PIC) wajib diisi.',
+            'contacts.min'               => 'Minimal satu Penanggung Jawab (PIC) wajib diisi.',
+            'contacts.*.full_name.required' => 'Nama Penanggung Jawab (PIC) wajib diisi.',
         ];
     }
 }

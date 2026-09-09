@@ -43,7 +43,6 @@ const corporateRows = computed(() => {
     { label: 'Nama Perusahaan', value: dash(cust.company_name) },
     { label: 'Holding', value: dash(cust.parent_company) },
     { label: 'Telepon', value: dash(cust.phone) },
-    { label: 'Fax', value: dash(cust.fax) },
     { label: 'Email', value: dash(cust.email) },
     { label: 'Website', value: dash(cust.website) },
     {
@@ -68,7 +67,6 @@ const corporateForm = reactive({
   company_name: '',
   parent_company: '',
   phone: '',
-  fax: '',
   email: '',
   website: '',
   business_type: '',
@@ -119,7 +117,6 @@ function startEditCorporate() {
     company_name: cust.company_name ?? '',
     parent_company: cust.parent_company ?? '',
     phone: cust.phone ?? '',
-    fax: cust.fax ?? '',
     email: cust.email ?? '',
     website: cust.website ?? '',
     business_type: cust.business_type ?? '',
@@ -207,13 +204,7 @@ async function submitCorporateForm() {
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
       <span class="font-label text-[14px]">Telepon</span>
       <div class="mt-0.5 w-2/3">
-        <FormInput v-model="corporateForm.phone" placeholder="021-xxxxxxx" />
-      </div>
-    </div>
-    <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Fax</span>
-      <div class="mt-0.5 w-2/3">
-        <FormInput v-model="corporateForm.fax" placeholder="021-xxxxxxx" />
+        <FormInput v-model="corporateForm.phone" placeholder="cth. (021) 5551234" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">

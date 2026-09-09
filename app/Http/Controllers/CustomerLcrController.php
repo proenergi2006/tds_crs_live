@@ -37,8 +37,6 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        // address & contacts di-load sekalian biar formatSite() gak N+1 waktu
-        // dipanggil per-row di index()/reviewIndex().
         $sites = $customer->lcr()
             ->with(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts'])
             ->orderByDesc('id_lcr')
@@ -116,8 +114,6 @@ class CustomerLcrController extends Controller
         $contactsData = array_key_exists('contacts', $data) ? ($data['contacts'] ?? []) : null;
         unset($data['address'], $data['contacts']);
 
-        // update() sekarang harus koordinasi 3 tabel (lcr + address + contacts),
-        // makanya dibungkus transaction -- kalau salah satu langkah gagal, gak nyisa parsial.
         DB::transaction(function () use ($lcrSite, $data, $request, $addressData, $contactsData) {
             $lcrSite->update([
                 ...$data,
@@ -147,10 +143,6 @@ class CustomerLcrController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Antrean review Logistik lintas-customer (semua site LCR yang punya
-     * siklus approval aktif/riwayat).
-     */
     public function reviewIndex(Request $request)
     {
         if (!$request->user()->can(self::verifyPermission())) {
@@ -161,9 +153,6 @@ class CustomerLcrController extends Controller
         $q       = trim((string) $request->query('q', ''));
         $status  = $request->query('status', 'pending');
 
-        // Eager-load pakai company_name -- itu nama kolom customers sekarang,
-        // udah di-rename dari nama_perusahaan. address & contacts ikut dimuat
-        // di sini juga biar formatSite() gak N+1 waktu dipanggil per-row.
         $query = CustomerLcr::query()
             ->with(['customer:id_customer,company_name', 'latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts']);
 
@@ -187,8 +176,6 @@ class CustomerLcrController extends Controller
         }
 
         if ($q !== '') {
-            // survey_address udah didrop dari kolom customer_lcr, alamat site sekarang
-            // ada di relasi address (customer_addresses.address_line).
             $query->where(function ($w) use ($q) {
                 $w->where('site_name', 'like', "%{$q}%")
                     ->orWhereHas('address', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
@@ -202,6 +189,25 @@ class CustomerLcrController extends Controller
         $paginated->getCollection()->transform(fn (CustomerLcr $site) => $this->formatSite($site));
 
         return response()->json($paginated);
+    }
+
+    public function reviewStats(Request $request)
+    {
+        if (!$request->user()->can(self::verifyPermission())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $sites = CustomerLcr::query()->with('latestDocumentApproval')->get();
+
+        $countBy = fn (DocumentApprovalStatus $s) => $sites
+            ->filter(fn (CustomerLcr $site) => $site->latestDocumentApproval?->status === $s)
+            ->count();
+
+        return response()->json([
+            'pending'   => $countBy(DocumentApprovalStatus::InProgress),
+            'disetujui' => $countBy(DocumentApprovalStatus::Approved),
+            'ditolak'   => $countBy(DocumentApprovalStatus::Rejected),
+        ]);
     }
 
     public function reviewShow(Request $request, CustomerLcr $lcrSite)
@@ -326,12 +332,7 @@ class CustomerLcrController extends Controller
             && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
     }
 
-    // Key di response JSON ini sengaja beda dari nama kolom aslinya (mis.
-    // latitude_lokasi <- latitude), buat jaga kontrak existing.
-    //
-    // Method checking (quality/quantity truk & vessel) disimpan sebagai array
-    // enum value mentah, jadi label array-nya dihitung di sini supaya FE gak
-    // perlu tahu mapping value->label sendiri.
+    // key JSON di sini sengaja beda dari nama kolom (latitude_lokasi <- latitude, dst), FE existing udah depend ke nama-nama ini
     private function formatSite(CustomerLcr $site): array
     {
         $cycle = $site->latestDocumentApproval;
@@ -344,7 +345,6 @@ class CustomerLcrController extends Controller
                 'nama_perusahaan' => $site->customer->company_name,
             ] : null,
 
-            /* Grup 1: identitas & info umum */
             'site_name'                => $site->site_name,
             'survey_date'              => optional($site->survey_date)->toDateString(),
             'surveyor_names'           => $site->surveyor_names,
@@ -360,7 +360,6 @@ class CustomerLcrController extends Controller
             'survey_notes'             => $site->survey_notes,
             'id_wil_oa'                => $site->id_wil_oa,
 
-            /* Grup 2: akses & rute */
             'max_truck_capacity_min' => $site->max_truck_capacity_min,
             'max_truck_capacity_max' => $site->max_truck_capacity_max,
             'access_notes'           => $site->access_notes,
@@ -370,19 +369,16 @@ class CustomerLcrController extends Controller
             'rute_lokasi'            => $site->rute_lokasi,
             'note_lokasi'            => $site->note_lokasi,
 
-            /* Grup 3: layout & unloading truk */
             'unloading_method'        => $site->unloading_method,
             'max_trucks_per_day'      => $site->max_trucks_per_day,
             'unloading_notes'         => $site->unloading_notes,
 
-            /* Grup 4: penyimpanan */
             'storage_type'            => $site->storage_type,
             'storage_type_label'      => $site->storage_type?->label(),
             'storage_type_other'      => $site->storage_type_other,
             'storage_capacity'        => $site->storage_capacity,
             'storage_notes'           => $site->storage_notes,
 
-            /* Grup 5: verifikasi quality/quantity */
             'quality_checking_method'        => $site->quality_checking_method ?? [],
             'quality_checking_method_labels' => array_map(fn ($v) => QualityCheckingMethod::from($v)->label(), $site->quality_checking_method ?? []),
             'quality_checking_method_other'  => $site->quality_checking_method_other,
@@ -393,7 +389,6 @@ class CustomerLcrController extends Controller
             'quantity_checking_method_other'  => $site->quantity_checking_method_other,
             'quantity_checking_notes'         => $site->quantity_checking_notes,
 
-            /* Grup 6: vessel/jetty */
             'supports_vessel_delivery'        => $site->supports_vessel_delivery,
             'vessel_type'                     => $site->vessel_type?->value,
             'vessel_type_label'               => $site->vessel_type?->label(),
@@ -421,14 +416,11 @@ class CustomerLcrController extends Controller
             'jetty_permit_info'               => $site->jetty_permit_info,
             'document_requirements'           => $site->document_requirements,
 
-            /* Grup 7: koordinat lokasi */
             'latitude_lokasi'       => $site->latitude,
             'longitude_lokasi'      => $site->longitude,
             'link_google_maps'      => $site->google_maps_link,
             'coordinates'           => $site->coordinates,
 
-            // address/contacts di-null-safe-kan buat relasi yang belum di-eager-load,
-            // biar formatSite() tetap aman dipanggil dari endpoint yang belum load ini.
             'address' => $site->relationLoaded('address') && $site->address ? [
                 'address_line' => $site->address->address_line,
                 'province_id'  => $site->address->province_id,

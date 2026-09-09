@@ -10,9 +10,6 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
-// Form inline, 14 pertanyaan dari CustomerReviewQuestionCode enum; question_code dikirim, question di-strip sebelum kirim.
-
-// ReviewAnswer server-derive dari CustomerReviewQuestionCode -- FE cuma menampilkan, tidak membangun daftar sendiri.
 interface ReviewAnswer {
   question_code: string
   question: string
@@ -28,12 +25,13 @@ interface ReviewAttachment {
 
 const props = defineProps<{
   idCustomer: number
-  kycStatus?: string | null
+  isUnderReview: boolean
 }>()
+
+const emit = defineEmits<{ (e: 'saved'): void }>()
 
 const { success, error: notifyError } = useNotification()
 
-/* State */
 const reviewAnswers = ref<ReviewAnswer[]>([])
 const attachments = ref<ReviewAttachment[]>([])
 const reviewedAt = ref<string | null>(null)
@@ -41,10 +39,8 @@ const loading = ref(true)
 const saving = ref(false)
 const pendingFiles = ref<File | File[] | null>(null)
 
-// undefined/null kycStatus dianggap TIDAK terkunci (falsy-safe), bukan cuma saat kycStatus === 'draft'.
-const locked = computed(() => !!props.kycStatus && props.kycStatus !== 'draft')
+const locked = computed<boolean>(() => props.isUnderReview)
 
-// Dipetakan dari shape {path,url,original_name} ke ExistingFile ({id,name,url}) yang diharap FileUploadField; index dipakai sebagai id.
 const existingAttachmentFiles = computed(() =>
   attachments.value.map((a, index) => ({ id: index, name: a.original_name, url: a.url })),
 )
@@ -58,7 +54,6 @@ function formatReviewedAt(value: string | null) {
   }
 }
 
-/* Fetch */
 async function fetchReview() {
   loading.value = true
   try {
@@ -73,7 +68,6 @@ async function fetchReview() {
   }
 }
 
-/* Submit */
 async function saveReview() {
   if (locked.value) return
 
@@ -86,6 +80,7 @@ async function saveReview() {
     reviewAnswers.value = data?.review_answers ?? reviewAnswers.value
     reviewedAt.value = data?.reviewed_at ?? reviewedAt.value
     success('Berhasil', 'Sales Review tersimpan.')
+    emit('saved')
   } catch (e: any) {
     if (e.response?.status === 409) {
       notifyError('Gagal', 'Tab ini terkunci — KYC sudah di-forward.')
@@ -97,7 +92,6 @@ async function saveReview() {
   }
 }
 
-// Lampiran diupload langsung saat file dipilih (bukan ditahan sampai Simpan), konsisten pola CustomerDataTab.vue.
 async function uploadAttachment(file: File) {
   if (locked.value) return
 
@@ -127,7 +121,6 @@ async function deleteAttachment(index: number) {
   }
 }
 
-// multiple=true bisa emit File[] sekaligus -- tiap file diupload satu-satu, selection lokal direset setelahnya.
 async function handleFilesSelected(value: File | File[] | null) {
   const files = Array.isArray(value) ? value : value ? [value] : []
   for (const file of files) {
@@ -153,7 +146,7 @@ onMounted(fetchReview)
   <CardSection v-else title="Sales Review" description="Jawaban Marketing untuk 14 pertanyaan review KYC."
     icon="ClipboardEdit" icon-class="bg-primary/10 text-primary">
     <p v-if="locked" class="bg-amber-50 mb-4 px-3 py-2.5 border border-amber-200 rounded-lg font-body !text-amber-700">
-      Tab ini terkunci, KYC sudah di-forward.
+      Tab ini terkunci, verifikasi sedang berjalan.
     </p>
 
     <div class="overflow-x-auto">

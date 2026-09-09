@@ -337,7 +337,7 @@ async function submitNpwpForm() {
     <div class="flex justify-between items-start gap-4 pb-1.5 border-slate-100 border-b">
       <span class="font-label text-[14px]">Alamat</span>
       <div class="mt-0.5 w-1/2">
-        <FormTextarea v-model="headOfficeForm.address_line" rows="2"
+        <FormTextarea v-model="headOfficeForm.address_line" rows="2" auto-resize
           placeholder="Nama jalan, nomor, gedung, lantai, dst." />
       </div>
     </div>
@@ -357,7 +357,7 @@ async function submitNpwpForm() {
         <TomSelect :key="String(!!headOfficeForm.province_id)" v-model="headOfficeForm.regency_id" class="w-full"
           :disabled="!headOfficeForm.province_id">
           <option value="">{{ headOfficeForm.province_id ? 'Cari Kabupaten/Kota' : '-- Pilih Provinsi dulu --'
-          }}</option>
+            }}</option>
           <option v-for="k in headOfficeRegion.regencies.value" :key="k.id" :value="k.id">{{ k.name }}
           </option>
         </TomSelect>
@@ -369,7 +369,7 @@ async function submitNpwpForm() {
         <TomSelect :key="String(!!headOfficeForm.regency_id)" v-model="headOfficeForm.district_id" class="w-full"
           :disabled="!headOfficeForm.regency_id">
           <option value="">{{ headOfficeForm.regency_id ? 'Cari Kecamatan' : '-- Pilih Kabupaten/Kota dulu --'
-          }}</option>
+            }}</option>
           <option v-for="d in headOfficeRegion.districts.value" :key="d.id" :value="d.id">{{ d.name }}
           </option>
         </TomSelect>
