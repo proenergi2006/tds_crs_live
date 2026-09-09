@@ -47,7 +47,6 @@ use App\Http\Controllers\OngkosKapalController;
 use App\Http\Controllers\MasterTruckController;
 use App\Http\Controllers\OngkosTruckController;
 use App\Http\Controllers\PoCustomerController;
-use App\Http\Controllers\SalesConfirmationController;
 use App\Http\Controllers\CustomerLcrController;
 use App\Http\Controllers\CustomerReviewController;
 use App\Http\Controllers\MapsLinkController;
@@ -252,7 +251,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']);
 
     Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
-    Route::post('/po-customers/{poc}/close', [PoCustomerController::class, 'closePo']);
 
     Route::get('/po-customers/{poc}/plan', [PoCustomerController::class, 'getPoPlan']);
     Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']);

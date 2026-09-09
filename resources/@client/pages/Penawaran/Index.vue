@@ -283,6 +283,11 @@ function joinWithAmpersand(items: string[]): string {
                   @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)">
                   <Lucide icon="Trash2" class="w-4 h-4" />
                 </ExtendableButton>
+
+                <ExtendableButton v-if="String(pen.disposisi_penawaran) === '4'" variant="soft-success" rounded
+                  label="Buat PO Customer" @click="openCreateSalesOrder(pen.id_penawaran)">
+                  <Lucide icon="ShoppingCart" class="w-4 h-4" />
+                </ExtendableButton>
               </div>
             </Table.Td>
           </Table.Tr>

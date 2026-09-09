@@ -1,11 +1,9 @@
 <template>
     <div class="p-6 intro-y">
-      <!-- Header -->
       <div class="flex items-center mb-4">
-        <h2 class="text-lg font-semibold">PO Customer</h2>
+        <h2 class="text-lg font-semibold">Antrean Pengiriman</h2>
       </div>
-  
-      <!-- Toolbar -->
+
       <div class="flex flex-wrap items-center gap-2 mb-4 intro-y sm:flex-nowrap">
         <FormInput v-model="q" placeholder="Keywords Customer / Nomor PO..." class="w-80 !box">
           <template #icon><Lucide icon="Search" /></template>
@@ -23,7 +21,6 @@
         </div>
       </div>
   
-      <!-- Table -->
       <div class="overflow-x-auto bg-white shadow rounded-lg">
         <Table class="min-w-[1200px] divide-y divide-slate-200">
           <Table.Thead>
@@ -41,10 +38,8 @@
   
           <Table.Tbody>
             <Table.Tr v-for="(row, i) in rows" :key="row.id_poc" class="align-top hover:bg-slate-50">
-              <!-- No -->
               <Table.Td class="text-center">{{ (page - 1) * perPage + i + 1 }}</Table.Td>
-  
-              <!-- Kode Dokumen -->
+
               <Table.Td class="whitespace-nowrap">
                 <div class="font-semibold">{{ docCode(row) }}</div>
                 <div class="text-slate-500 text-xs">
@@ -55,25 +50,21 @@
                 </div>
               </Table.Td>
   
-              <!-- Customer -->
               <Table.Td class="whitespace-nowrap">
-                <div class="font-semibold">{{ kode(row.customer?.kode_pelanggan) }}</div>
-                <div class="text-slate-700">{{ row.customer?.nama_perusahaan || '-' }}</div>
+                <div class="font-semibold">{{ kode(row.customer?.customer_code) }}</div>
+                <div class="text-slate-700">{{ row.customer?.company_name || '-' }}</div>
               </Table.Td>
-  
-              <!-- Cabang/Marketing -->
+
               <Table.Td class="whitespace-nowrap">
                 <div>{{ row.cabang_name || 'Jakarta' }}</div>
                 <div class="italic text-slate-600">{{ row.marketing_name || '-' }}</div>
               </Table.Td>
-  
-              <!-- Nomor / Tanggal PO -->
+
               <Table.Td class="whitespace-nowrap">
                 <div class="font-semibold">{{ row.nomor_poc || '-' }}</div>
                 <div class="text-slate-500 text-xs">{{ fmtDate(row.tanggal_poc) }}</div>
               </Table.Td>
-  
-              <!-- Volume / Harga -->
+
               <Table.Td class="whitespace-nowrap">
                 <div class="font-medium">
                   {{ fmtNumber(row.volume_liter) }} m³
@@ -84,18 +75,15 @@
                 <div class="text-xs text-slate-600">Sisa Buku&nbsp;&nbsp;{{ fmtNumber(row.book_remaining_liter || 0) }} m³</div>
                 <div class="text-xs text-slate-600">Vol Close PO {{ fmtNumber(row.close_volume_liter || 0) }} m³</div>
               </Table.Td>
-  
-              <!-- Progress -->
+
               <Table.Td class="whitespace-nowrap">
                 <div class="w-36 h-4 bg-slate-200 rounded overflow-hidden">
                   <div class="h-full bg-sky-500" :style="{ width: progressPct(row) + '%' }"></div>
                 </div>
                 <div class="text-xs mt-1">{{ progressPct(row).toFixed(2) }}%</div>
               </Table.Td>
-  
-              <!-- Aksi -->
+
               <Table.Td class="text-center whitespace-nowrap">
-                <!-- Planning pengiriman (hanya muncul bila disposisi BM) -->
                 <button
     class="text-emerald-600 hover:text-emerald-800 mx-1"
     @click="plan(row)"
@@ -103,8 +91,7 @@
   >
     <Lucide icon="ClipboardList" class="w-5 h-5" />
   </button>
-  
-                <!-- Detail -->
+
                 <button class="text-sky-600 hover:text-sky-800 mx-1"
                   @click="$router.push({ name: 'sales-confirmations-bm-detail-po', params: { id: row.id_poc } })"
                   title="Detail">
@@ -120,7 +107,6 @@
         </Table>
       </div>
   
-      <!-- Pagination -->
       <div class="flex justify-between items-center mt-4 intro-y">
         <div class="text-slate-500">Page {{ page }} of {{ lastPage }}</div>
         <Pagination>
@@ -166,7 +152,7 @@
   function docCode(row:any){ return `PO-${String(row.id_poc || 0).padStart(5,'0')}` }
   
   function progressPct(row:any){
-    const vol = Number(row.volume_liter || row.volume_poc || 0) // liter
+    const vol = Number(row.volume_liter || row.volume_poc || 0)
     const ship = Number(row.shipped_liter || 0)
     if (vol <= 0) return 0
     const pct = (ship / vol) * 100
@@ -184,14 +170,12 @@
           page: toPage,
           per_page: perPage.value,
           search: q.value || undefined,
-          disposisi: 2, // hanya yang Terverifikasi BM
+          disposisi: 2,
         }
       })
-      // siapkan field tampilan seperti tabel kiri
       rows.value = (data.data || []).map((r:any) => ({
         ...r,
-        // pastikan liter & harga per liter tersedia
-        volume_liter: Number(r.volume_poc_liter ?? r.volume_poc ?? 0), // backendmu mungkin kirim volume_m3 sebelumnya
+        volume_liter: Number(r.volume_poc_liter ?? r.volume_poc ?? 0),
         harga_per_liter: Number(r.harga_poc_per_liter ?? r.harga_poc ?? 0),
         shipped_liter: Number(r.shipped_liter ?? 0),
         book_remaining_liter: Number(r.book_remaining_liter ?? 0),

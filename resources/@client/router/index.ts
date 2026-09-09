@@ -569,7 +569,13 @@ const routes = [
       {
         path: "/po-customers",
         name: "po-customers-index",
-        component: () => import("@/pages/PoCustomersIndex.vue"),
+        component: () => import("@/pages/PoCustomer/Index.vue"),
+      },
+      {
+        path: "/po-customers/:id",
+        name: "po-customers-detail",
+        component: () => import("@/pages/PoCustomer/Detail.vue"),
+        meta: { breadcrumbTitle: "Detail PO Customer" },
       },
 
       {
@@ -609,23 +615,19 @@ const routes = [
       {
         path: "/sales-confirmations",
         name: "sales-confirmations",
-        component: () => import("@/pages/SalesConfirmationIndex.vue"),
+        component: () => import("@/pages/SalesConfirmation/Index.vue"),
         meta: { permission: "sales-confirmation.manage" },
+      },
+      {
+        path: "/sales-confirmations/delivery-queue",
+        name: "sales-confirmations-delivery-queue",
+        component: () => import("@/pages/SalesConfirmationDeliveryQueue.vue"),
       },
       {
         path: "/sales-confirmations/:id",
         name: "sales-confirmations-detail",
-        component: () => import("@/pages/SalesConfirmationDetail.vue"),
-      },
-      {
-        path: "/sales-confirmations/bm",
-        name: "sales-confirmations-bm",
-        component: () => import("@/pages/SalesConfirmationBM.vue"),
-      },
-      {
-        path: "/sales-confirmations/bm/:id",
-        name: "sales-confirmations-bm-detail",
-        component: () => import("@/pages/SalesConfirmationBMDetail.vue"),
+        component: () => import("@/pages/SalesConfirmation/Detail.vue"),
+        meta: { breadcrumbTitle: "Detail Sales Confirmation" },
       },
 
       {

@@ -37,9 +37,20 @@ export const customerNavigation: NavItem[] = [
       {
         icon: "ShoppingCart",
         pageName: "po-customers-index",
-        title: "Sales Order",
-        activePageNames: ["penawarans-po", "po-customer-plan"],
-        permission: "penawaran.tds.manage",
+        title: "PO Customer",
+        activePageNames: ["po-customers-detail", "penawarans-po"],
+      },
+      {
+        icon: "ClipboardCheck",
+        pageName: "sales-confirmations",
+        title: "Sales Confirmation",
+        activePageNames: [
+          "sales-confirmations-detail",
+          "sales-confirmations-delivery-queue",
+          "sales-confirmations-bm-detail-po",
+          "po-customer-plan",
+        ],
+        permission: "sales-confirmation.manage",
       },
     ],
   },

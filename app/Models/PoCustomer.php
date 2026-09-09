@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PoCustomer extends Model
 {
@@ -22,17 +25,6 @@ class PoCustomer extends Model
         'produk_poc',
         'lampiran_poc',
         'lampiran_poc_ori',
-        'disposisi_poc',
-        'poc_approved',
-        'tgl_approved',
-        'sm_result',
-        'sm_pic',
-        'sm_summary',
-        'sm_tanggal',
-        'om_result',
-        'om_pic',
-        'om_summary',
-        'om_tanggal',
         'created_time',
         'created_ip',
         'created_by',
@@ -46,19 +38,50 @@ class PoCustomer extends Model
         'is_edit',
     ];
 
-    public function customer()
+    protected $casts = [
+        'tanggal_poc' => 'date',
+        'supply_date' => 'date',
+        'harga_poc' => 'decimal:4',
+        'volume_poc' => 'integer',
+        'created_time' => 'datetime',
+        'lastupdate_time' => 'datetime',
+    ];
+
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
-    public function penawaran()
+    public function penawaran(): BelongsTo
     {
         return $this->belongsTo(Penawaran::class, 'id_penawaran', 'id_penawaran');
     }
 
-    public function salesConfirmation()
-{
-    return $this->hasOne(\App\Models\SalesConfirmation::class, 'po_customer_id', 'id_poc');
-}
-}
+    public function salesConfirmation(): HasOne
+    {
+        return $this->hasOne(SalesConfirmation::class, 'po_customer_id', 'id_poc');
+    }
 
+    public function poCustomerPlans(): HasMany
+    {
+        return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
+    }
+
+    public function getStatusKeyAttribute(): string
+    {
+        return match (true) {
+            $this->salesConfirmation === null => 'awaiting_sc',
+            (int) $this->salesConfirmation->getRawOriginal('disposisi') === 4 => 'done',
+            default => 'sc_in_progress',
+        };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status_key) {
+            'awaiting_sc' => 'Menunggu Sales Confirmation',
+            'sc_in_progress' => 'Sales Confirmation Diproses',
+            'done' => 'Selesai',
+        };
+    }
+}

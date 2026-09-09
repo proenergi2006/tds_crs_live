@@ -246,8 +246,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'sales-confirmation.manage',
             'module'      => 'sales-confirmation',
-            'description' => 'Kelola Sales Confirmation dan Review Data Customer (Admin Finance)',
-            'roles'       => [9],
+            'description' => 'Kelola Sales Confirmation dan Review Data Customer (Admin Finance & Branch Manager)',
+            'roles'       => [8, 9],
         ],
 
         [
