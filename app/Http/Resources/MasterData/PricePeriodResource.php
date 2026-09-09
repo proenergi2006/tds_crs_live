@@ -32,8 +32,10 @@ class PricePeriodResource extends JsonResource
             'jumlah_cabang'        => (int) ($this->jumlah_cabang ?? 0),
             'jumlah_belum_lengkap' => (int) ($this->jumlah_belum_lengkap ?? 0),
             'terakhir_diupdate'    => $this->terakhir_diupdate ?? null,
-            'attachments'          => $this->attachments ?? [],
-            'notes'                => $this->notes,
+            $this->mergeWhen((bool) $request->user()?->can('price-period.view'), fn() => [
+                'attachments' => $this->attachments ?? [],
+                'notes'       => $this->notes,
+            ]),
         ];
     }
 }

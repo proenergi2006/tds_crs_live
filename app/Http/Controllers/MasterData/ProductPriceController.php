@@ -13,7 +13,8 @@ class ProductPriceController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->user()->cant('price-period.view')) {
+        $user = $request->user();
+        if ($user->cant('price-period.view') && $user->cant('price-period.consume')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
