@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { debounce } from 'lodash'
 
@@ -100,14 +100,6 @@ function goToPage(page: number) {
 
 function openCreate() {
   router.push({ name: cfg.value.createRoute })
-}
-
-function openDetail(id: number) {
-  router.push({ name: cfg.value.detailRoute, params: { id } })
-}
-
-function openEdit(id: number) {
-  router.push({ name: cfg.value.editRoute, params: { id } })
 }
 
 function openCreateSalesOrder(id: number) {
@@ -275,11 +267,13 @@ function joinWithAmpersand(items: string[]): string {
             </Table.Td>
             <Table.Td class="w-[260px] text-center">
               <div class="inline-flex justify-center items-center gap-1">
-                <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openDetail(pen.id_penawaran)">
+                <ExtendableButton variant="soft-dark" rounded label="Detail" :as="RouterLink"
+                  :to="{ name: cfg.detailRoute, params: { id: pen.id_penawaran } }">
                   <Lucide icon="Eye" class="w-4 h-4" />
                 </ExtendableButton>
 
-                <ExtendableButton variant="soft-pending" rounded label="Edit" @click="openEdit(pen.id_penawaran)">
+                <ExtendableButton variant="soft-pending" rounded label="Edit" :as="RouterLink"
+                  :to="{ name: cfg.editRoute, params: { id: pen.id_penawaran } }">
                   <Lucide icon="Edit" class="w-4 h-4" />
                 </ExtendableButton>
 
