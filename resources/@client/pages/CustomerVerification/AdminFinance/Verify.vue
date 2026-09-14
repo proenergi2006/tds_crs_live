@@ -3,61 +3,31 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
+import Alert from '@/components/Base/Alert'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import { Tab } from '@/components/Base/Headless'
-import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
+import { FormLabel, FormTextarea } from '@/components/Base/Form'
+import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import RichTextField from '@/components/SystemDesign/Form/RichTextField.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
-import CustomerDataTab from '@/pages/Customer/components/CustomerDataTab.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 
-// 5 fetch terpisah sengaja, gak ada endpoint agregasi -- biar logic shaping gak dobel di 2 tempat
+import CustomerDataTab from '@/pages/Customer/components/CustomerDataTab.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-/* State: bootstrap (reviewShow()) */
 const idVerification = Number(route.params.id)
-const loading = ref(true)
-const bootstrapError = ref<string | null>(null)
-const idCustomer = ref<number | null>(null)
-const kycStatus = ref<string | null>(null)
-const customer = ref<any>(null)
 
-/* State: Tab 1 -- Data Customer, perlu fetch /customers/{id} sendiri karena reviewShow() cuma proyeksi tipis buat page title */
-const fullCustomer = ref<any>(null)
-const fullCustomerLoading = ref(true)
-
-/* State: Tab 2 -- Sales Review */
-const review = ref<any>(null)
-const reviewLoading = ref(true)
-const reviewError = ref<string | null>(null)
-
-/* State: Tab 3 -- LCR */
-const lcrSites = ref<any[]>([])
-const lcrLoading = ref(true)
-const lcrError = ref<string | null>(null)
-
-/* State: Tab 4 -- Credit Application */
-const submission = ref<any>(null)
-const submissionLoading = ref(true)
-const submissionError = ref<string | null>(null)
-
-/* State: Penawaran Lookup */
-const penawarans = ref<any[]>([])
-const penawaranLoading = ref(true)
-const penawaranError = ref<string | null>(null)
-
-/* Tab layout diselaraskan dengan Customer/Detail.vue (4 tab + tambahan Penawaran) */
-const tabItems = [
+const TAB_ITEMS = [
   { label: 'Data Customer' },
   { label: 'Sales Review' },
   { label: 'Credit Application / TOP' },
@@ -65,98 +35,64 @@ const tabItems = [
   { label: 'Penawaran' },
 ]
 
-/* State: Close KYC */
-const closeDialogOpen = ref(false)
-const closeLoading = ref(false)
-const creditLimitApproval = ref<number>(0)
-const topApproval = ref<number>(0)
+const LCR_STATUS_LABELS: Record<string, string> = {
+  in_progress: 'Dalam Proses',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
+  cancelled: 'Dibatalkan',
+}
+
+const loading = ref(true)
+const bootstrapError = ref<string | null>(null)
+const detail = ref<any>(null)
+
+const decisionMode = ref<'approve' | 'reject'>('approve')
+const approvedLimit = ref<number | null>(null)
+const approvedTop = ref<number | null>(null)
 const financialReview = ref<string>('')
+const rejectNote = ref<string>('')
+const submitting = ref(false)
+const confirmOpen = ref(false)
 
-/* Computed */
-const kycStatusLabel = computed(() => {
-  return { draft: 'Draft', forwarded: 'Diteruskan ke Admin Finance', closed: 'Ditutup' }[kycStatus.value ?? ''] ?? '-'
+const penawarans = ref<any[]>([])
+const penawaranLoading = ref(true)
+const penawaranError = ref<string | null>(null)
+
+const pageTitle = computed(() =>
+  detail.value?.customer?.company_name ? `Verifikasi Customer — ${detail.value.customer.company_name}` : 'Verifikasi Customer',
+)
+const isInReview = computed<boolean>(() => detail.value?.status === 'in_review')
+const lcrAllApproved = computed<boolean>(() => detail.value?.lcr?.all_approved === true)
+const canDownloadDocument = computed<boolean>(() => detail.value?.status === 'in_review' || detail.value?.status === 'approved')
+const decisionSubmitDisabled = computed<boolean>(() =>
+  submitting.value || (decisionMode.value === 'reject' && !rejectNote.value.trim()),
+)
+
+onMounted(async () => {
+  await fetchDetail()
+  if (detail.value) {
+    fetchPenawarans()
+  }
 })
-const pageTitle = computed(() => customer.value?.company_name ? `Verifikasi KYC — ${customer.value.company_name}` : 'Verifikasi KYC Customer')
-const pageDescription = computed(() => `Status KYC saat ini: ${kycStatusLabel.value}.`)
-// kycStatus null (bootstrap gagal) dianggap terkunci, bukan malah izinin aksi diam-diam
-const printDisabled = computed(() => kycStatus.value !== 'forwarded' && kycStatus.value !== 'closed')
-const closeFormDisabled = computed(() => kycStatus.value !== 'forwarded')
 
-/* Fetch */
-async function fetchAll() {
+async function fetchDetail(): Promise<void> {
   loading.value = true
   bootstrapError.value = null
   try {
     const { data } = await axios.get(`/api/review/customer-verifications/${idVerification}`)
-    idCustomer.value = data.id_customer
-    kycStatus.value = data.kyc_status
-    customer.value = data.customer
+    detail.value = data
   } catch (e: any) {
-    bootstrapError.value = e.response?.data?.message ?? 'Gagal memuat data verifikasi KYC.'
+    bootstrapError.value = e.response?.data?.message ?? 'Gagal memuat data verifikasi.'
+  } finally {
     loading.value = false
-    return
-  }
-  loading.value = false
-
-  await Promise.all([fetchFullCustomer(), fetchReview(), fetchLcrSites(), fetchSubmission(), fetchPenawarans()])
-}
-
-async function fetchFullCustomer() {
-  fullCustomerLoading.value = true
-  try {
-    const { data } = await axios.get(`/api/customers/${idCustomer.value}`)
-    fullCustomer.value = data || {}
-  } catch (e: any) {
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat Data Customer.')
-  } finally {
-    fullCustomerLoading.value = false
   }
 }
 
-async function fetchReview() {
-  reviewLoading.value = true
-  reviewError.value = null
-  try {
-    const { data } = await axios.get(`/api/review/customer-verifications/${idVerification}/review`)
-    review.value = data
-  } catch (e: any) {
-    reviewError.value = e.response?.data?.message ?? 'Gagal memuat Sales Review.'
-  } finally {
-    reviewLoading.value = false
-  }
-}
-
-async function fetchLcrSites() {
-  lcrLoading.value = true
-  lcrError.value = null
-  try {
-    const { data } = await axios.get(`/api/customers/${idCustomer.value}/lcr-sites`)
-    lcrSites.value = Array.isArray(data) ? data : []
-  } catch (e: any) {
-    lcrError.value = e.response?.data?.message ?? 'Gagal memuat data LCR.'
-  } finally {
-    lcrLoading.value = false
-  }
-}
-
-async function fetchSubmission() {
-  submissionLoading.value = true
-  submissionError.value = null
-  try {
-    const { data } = await axios.get(`/api/customers/${idCustomer.value}/credit-submissions`)
-    submission.value = Array.isArray(data) && data.length > 0 ? data[0] : null
-  } catch (e: any) {
-    submissionError.value = e.response?.data?.message ?? 'Gagal memuat Credit Application.'
-  } finally {
-    submissionLoading.value = false
-  }
-}
-
-async function fetchPenawarans() {
+async function fetchPenawarans(): Promise<void> {
   penawaranLoading.value = true
   penawaranError.value = null
   try {
-    const { data } = await axios.get(`/api/customers/${idCustomer.value}/penawarans`)
+    const { data } = await axios.get(`/api/customers/${detail.value.customer.id_customer}/penawarans`)
     penawarans.value = Array.isArray(data?.data) ? data.data : []
   } catch (e: any) {
     penawaranError.value = e.response?.data?.message ?? 'Gagal memuat Penawaran.'
@@ -165,9 +101,8 @@ async function fetchPenawarans() {
   }
 }
 
-/* Actions */
-// window.open() langsung ke URL gak bisa -- bukan lewat axios jadi gak kebaca middleware auth:sanctum, makanya pola blob+tab pre-open (lihat pdfPreviewTab.ts)
-async function openDocument() {
+async function openDocument(): Promise<void> {
+  // window.open() langsung ke URL gak bisa -- bukan lewat axios jadi gak kebaca middleware auth:sanctum, makanya pola blob+tab pre-open (lihat pdfPreviewTab.ts)
   const tab = openPdfLoadingTab()
   try {
     const response = await axios.get(`/api/review/customer-verifications/${idVerification}/document`, {
@@ -187,274 +122,329 @@ async function openDocument() {
   }
 }
 
-async function submitClose() {
-  closeLoading.value = true
+async function submitDecision(): Promise<void> {
+  submitting.value = true
   try {
-    const { data } = await axios.post(`/api/review/customer-verifications/${idVerification}/close`, {
-      credit_limit_approval: creditLimitApproval.value,
-      top_approval: topApproval.value,
-      financial_review: financialReview.value,
-    })
+    const payload = decisionMode.value === 'approve'
+      ? {
+        action: 'approve',
+        approved_limit: approvedLimit.value,
+        approved_top: approvedTop.value,
+        financial_review: financialReview.value,
+      }
+      : { action: 'reject', reject_note: rejectNote.value }
 
-    kycStatus.value = data.kyc_status
-    closeDialogOpen.value = false
-    success('Berhasil', 'KYC berhasil ditutup.')
+    await axios.patch(`/api/customer-verifications/${idVerification}/decision`, payload)
+
+    success('Berhasil', decisionMode.value === 'approve' ? 'Verifikasi customer berhasil disetujui.' : 'Verifikasi customer berhasil ditolak.')
     router.push({ name: 'review-data-customer-admin' })
   } catch (e: any) {
-    if (e.response?.status === 422) {
-      notifyError('Gagal', e.response?.data?.message ?? 'Belum ada pengajuan credit untuk customer ini.')
-    } else if (e.response?.status === 409) {
-      notifyError('Gagal', e.response?.data?.message ?? 'KYC belum di-forward atau sudah ditutup.')
+    const status = e.response?.status
+    if (status === 409) {
+      notifyError('Gagal', 'Siklus ini sudah selesai.')
+      router.push({ name: 'review-data-customer-admin' })
+    } else if (status === 422) {
+      const errors = e.response?.data?.errors
+      if (errors) {
+        notifyError('Gagal', (Object.values(errors)[0] as string[] | undefined)?.[0] ?? 'Periksa kembali input Anda.')
+      } else {
+        notifyError('Gagal', e.response?.data?.message ?? 'Periksa kembali input Anda.')
+      }
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal menutup KYC.')
+      notifyError('Gagal', e.response?.data?.message ?? 'Gagal memproses keputusan verifikasi.')
     }
   } finally {
-    closeLoading.value = false
+    submitting.value = false
+    confirmOpen.value = false
   }
 }
 
-function goBack() {
+function goBack(): void {
   router.back()
 }
 
-onMounted(fetchAll)
+function statusBadgeClass(status?: string): string {
+  if (status === 'in_review') return 'bg-amber-100 text-amber-700'
+  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'rejected') return 'bg-rose-100 text-rose-700'
+  return 'bg-slate-100 text-slate-700'
+}
+
+function lcrStatusLabel(status?: string | null): string {
+  return LCR_STATUS_LABELS[status ?? ''] ?? 'Belum ada approval'
+}
 </script>
 
 <template>
-  <FormPage :title="pageTitle" :description="pageDescription" size="full" layout="sidebar" surface="plain"
-    :show-footer="false" :loading="loading" :error="bootstrapError" @cancel="goBack">
-    <template #action>
-      <Button variant="outline-secondary" @click="goBack">
-        <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
-        Kembali
-      </Button>
-    </template>
+  <div class="page-content-wrapper">
+    <div class="flex flex-col gap-4 intro-y">
+      <PageHeader :title="pageTitle" variant="flat">
+        <template #action>
+          <Button variant="outline-secondary" @click="goBack">
+            <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
+            Kembali
+          </Button>
+        </template>
 
-    <Tab.Group v-if="!loading && idCustomer !== null">
-      <Tab.List variant="link-tabs" class="gap-1 border-b border-slate-200">
-        <Tab v-for="t in tabItems" :key="t.label" :full-width="false" v-slot="{ selected }">
-          <Tab.Button class="flex items-center gap-2 px-4 py-2.5 text-sm" :class="selected
-            ? 'text-primary border-b-primary font-medium'
-            : 'text-slate-500 border-b-transparent hover:text-slate-700 hover:border-b-slate-300'">
-            <span>{{ t.label }}</span>
-          </Tab.Button>
-        </Tab>
-      </Tab.List>
-
-      <Tab.Panels class="mt-4">
-        <Tab.Panel>
-          <div v-if="fullCustomerLoading" class="flex min-h-[200px] items-center justify-center gap-3 text-slate-500">
-            <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-            <span class="font-body">Memuat Data Customer...</span>
+        <template #body>
+          <div v-if="detail" class="flex flex-col gap-3 pt-3 border-slate-200 border-t">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+              <div class="flex flex-col items-center gap-x-4 gap-y-1">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label"
+                  :class="statusBadgeClass(detail.status)">
+                  {{ detail.status_label }}
+                </span>
+                <span class="font-caption text-slate-500">Diajukan {{ formatDateTime(detail.submitted_at) ?? '-' }} · {{
+                  detail.submitted_by?.name ?? '-' }}</span>
+                <span v-if="detail.reviewed_at" class="font-caption text-slate-500">Direview {{
+                  formatDateTime(detail.reviewed_at) }} · {{ detail.reviewed_by?.name ?? '-' }}</span>
+              </div>
+              <Button v-if="canDownloadDocument" variant="outline-primary" class="inline-flex items-center gap-2"
+                @click="openDocument">
+                <Lucide icon="Printer" class="w-4 h-4" />
+                Cetak Dokumen (Gabungan)
+              </Button>
+            </div>
+            <div v-if="detail.status === 'rejected'" class="bg-rose-50 px-3 py-2 border border-rose-200 rounded-lg">
+              <div class="font-label !text-rose-700">Alasan Penolakan</div>
+              <div class="font-body !text-rose-700">{{ detail.reject_note || '-' }}</div>
+            </div>
           </div>
-          <CustomerDataTab v-else :id-customer="idCustomer!" :customer="fullCustomer" />
-        </Tab.Panel>
+        </template>
+      </PageHeader>
 
-        <Tab.Panel>
-          <CardSection title="Sales Review" icon="ClipboardCheck" icon-class="bg-emerald-100 text-emerald-600">
-            <div v-if="reviewLoading" class="flex min-h-[100px] items-center justify-center gap-3 text-slate-500">
-              <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-              <span class="font-body">Memuat Sales Review...</span>
-            </div>
+      <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[320px] text-slate-500">
+        <Lucide icon="Loader2" class="w-6 h-6 animate-spin" />
+        <span class="font-body">Memuat data verifikasi...</span>
+      </div>
 
-            <div v-else-if="reviewError"
-              class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
-              {{ reviewError }}
-            </div>
+      <div v-else-if="bootstrapError"
+        class="bg-rose-50 px-4 py-3 border border-rose-200 rounded-lg font-body !text-rose-700 whitespace-pre-line">
+        {{ bootstrapError }}
+      </div>
 
-            <div v-else class="space-y-4">
-              <div v-for="qa in review?.review_answers ?? []" :key="qa.question_code">
-                <div class="font-label">{{ qa.question }}</div>
-                <div
-                  class="font-body mt-1 whitespace-pre-line rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  {{ qa.answer || '-' }}
+      <Tab.Group v-else-if="detail !== null" :default-index="2">
+        <Tab.List variant="link-tabs" class="gap-1 border-slate-200 border-b">
+          <Tab v-for="t in TAB_ITEMS" :key="t.label" :full-width="false" v-slot="{ selected }">
+            <Tab.Button class="flex items-center gap-2 px-4 py-2.5 text-sm" :class="selected
+              ? 'text-primary border-b-primary font-medium'
+              : 'text-slate-500 border-b-transparent hover:text-slate-700 hover:border-b-slate-300'">
+              <span>{{ t.label }}</span>
+            </Tab.Button>
+          </Tab>
+        </Tab.List>
+
+        <Tab.Panels class="mt-4">
+          <Tab.Panel>
+            <CustomerDataTab :id-customer="detail.customer.id_customer" :customer="detail.customer"
+              :show-onboarding-link="false" />
+          </Tab.Panel>
+
+          <Tab.Panel>
+            <CardSection title="Sales Review" icon="ClipboardCheck" icon-class="bg-emerald-100 text-emerald-600">
+              <div v-if="!detail.review?.length"
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                <div class="font-body">Belum ada jawaban Sales Review.</div>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div v-for="qa in detail.review" :key="qa.question_code">
+                  <div class="font-label">{{ qa.question }}</div>
+                  <div
+                    class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body whitespace-pre-line">
+                    {{ qa.answer || '-' }}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardSection>
-        </Tab.Panel>
+            </CardSection>
+          </Tab.Panel>
 
-        <Tab.Panel>
-          <CardSection title="Credit Application" icon="CreditCard" icon-class="bg-violet-100 text-violet-600">
-            <div v-if="submissionLoading" class="flex min-h-[100px] items-center justify-center gap-3 text-slate-500">
-              <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-              <span class="font-body">Memuat Credit Application...</span>
-            </div>
-
-            <div v-else-if="submissionError"
-              class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
-              {{ submissionError }}
-            </div>
-
-            <div v-else-if="!submission"
-              class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-              <Lucide icon="Inbox" class="h-6 w-6 text-slate-400" />
-              <div class="font-body">Belum ada pengajuan credit untuk customer ini.</div>
-            </div>
-
-            <template v-else>
-              <dl class="grid grid-cols-1 gap-y-3 gap-x-8 sm:grid-cols-2">
-                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                  <span class="font-label">Jenis Pengajuan</span>
-                  <span class="font-strong text-right">{{ submission.submission_type_label || '-' }}</span>
-                </div>
-                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                  <span class="font-label">Credit Limit Diajukan</span>
-                  <span class="font-strong text-right">{{ formatCurrency(submission.credit_limit_request) }}</span>
-                </div>
-                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                  <span class="font-label">TOP Diajukan</span>
-                  <span class="font-strong text-right">{{ submission.top_request ?? '-' }} hari</span>
-                </div>
-              </dl>
-
-              <div v-if="submission.credit_limit_approval !== null" class="mt-5 border-t border-slate-100 pt-4">
-                <div class="font-section mb-3">Hasil Keputusan Admin Finance</div>
-                <dl class="grid grid-cols-1 gap-y-3 gap-x-8 sm:grid-cols-2">
-                  <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                    <span class="font-label">Credit Limit Disetujui</span>
-                    <span class="font-strong text-right">{{ formatCurrency(submission.credit_limit_approval) }}</span>
+          <Tab.Panel>
+            <div class="lg:items-start gap-4 grid grid-cols-1 lg:grid-cols-2">
+              <div class="space-y-4">
+                <CardSection title="Credit Application" icon="CreditCard" icon-class="bg-violet-100 text-violet-600">
+                  <div v-if="!detail.credit_request"
+                    class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                    <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                    <div class="font-body">Belum ada pengajuan credit untuk customer ini.</div>
                   </div>
-                  <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                    <span class="font-label">TOP Disetujui</span>
-                    <span class="font-strong text-right">{{ submission.top_approval ?? '-' }} hari</span>
-                  </div>
-                </dl>
-                <div class="mt-3">
-                  <div class="font-label">Financial Review</div>
-                  <div v-if="submission.financial_review"
-                    class="font-body rich-text-content mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-                    v-html="submission.financial_review" />
-                  <div v-else class="font-body mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">-</div>
-                </div>
+
+                  <template v-else>
+                    <dl class="gap-x-8 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                      <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+                        <span class="font-label">Credit Limit Diajukan</span>
+                        <span class="font-strong text-right">{{ formatCurrency(detail.credit_request.requested_limit)
+                        }}</span>
+                      </div>
+                      <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+                        <span class="font-label">TOP Diajukan</span>
+                        <span class="font-strong text-right">{{ detail.credit_request.requested_top ?? '-' }} hari</span>
+                      </div>
+                    </dl>
+                  </template>
+                </CardSection>
+
+                <CardSection v-if="isInReview && decisionMode === 'approve'" title="Financial Review"
+                  icon="FileText" icon-class="bg-indigo-100 text-indigo-600">
+                  <RichTextField v-model="financialReview" :disabled="submitting" />
+                </CardSection>
               </div>
-            </template>
-          </CardSection>
-        </Tab.Panel>
 
-        <Tab.Panel>
-          <CardSection title="LCR" icon="MapPin" icon-class="bg-amber-100 text-amber-600">
-            <div v-if="lcrLoading" class="flex min-h-[100px] items-center justify-center gap-3 text-slate-500">
-              <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-              <span class="font-body">Memuat data LCR...</span>
+              <div class="space-y-4">
+                <CardSection v-if="isInReview" title="Keputusan" description="Putuskan approve atau reject siklus ini."
+                  icon="Gavel" icon-class="bg-blue-100 text-blue-600">
+                  <div class="space-y-3">
+                    <div class="flex gap-2">
+                      <Button type="button" class="flex-1 justify-center items-center gap-2"
+                        :variant="decisionMode === 'approve' ? 'primary' : 'outline-secondary'"
+                        @click="decisionMode = 'approve'">
+                        Approve
+                      </Button>
+                      <Button type="button" class="flex-1 justify-center items-center gap-2"
+                        :variant="decisionMode === 'reject' ? 'danger' : 'outline-secondary'"
+                        @click="decisionMode = 'reject'">
+                        Reject
+                      </Button>
+                    </div>
+
+                    <template v-if="decisionMode === 'approve'">
+                      <CurrencyField v-model="approvedLimit" label="Credit Limit Disetujui" required
+                        :disabled="submitting" />
+                      <NumberField v-model="approvedTop" label="TOP Disetujui" suffix="hari" :decimals="0" required
+                        :disabled="submitting" />
+
+                      <Alert v-if="!lcrAllApproved" variant="soft-warning"
+                        class="flex items-start gap-3 bg-amber-100 border-amber-200 text-amber-700">
+                        <Lucide icon="AlertTriangle" class="mt-0.5 w-4 h-4 shrink-0" />
+                        <span>LCR belum diverifikasi Logistik — silakan koordinasikan dengan tim Logistik. Verifikasi ini tetap bisa dilanjutkan.</span>
+                      </Alert>
+                    </template>
+
+                    <template v-else>
+                      <FormLabel>Alasan Penolakan</FormLabel>
+                      <FormTextarea v-model="rejectNote" rows="3" :disabled="submitting" />
+                    </template>
+
+                    <Button class="inline-flex justify-center items-center gap-2 w-full"
+                      :variant="decisionMode === 'approve' ? 'primary' : 'danger'" :disabled="decisionSubmitDisabled"
+                      @click="confirmOpen = true">
+                      <Lucide icon="Send" class="w-4 h-4" />
+                      Ajukan Keputusan
+                    </Button>
+                  </div>
+                </CardSection>
+
+                <CardSection v-if="detail.status === 'approved'" title="Hasil Keputusan Admin Finance" icon="BadgeCheck"
+                  icon-class="bg-emerald-100 text-emerald-600">
+                  <dl class="gap-x-8 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                    <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+                      <span class="font-label">Credit Limit Disetujui</span>
+                      <span class="font-strong text-right">{{ formatCurrency(detail.approved_limit) }}</span>
+                    </div>
+                    <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+                      <span class="font-label">TOP Disetujui</span>
+                      <span class="font-strong text-right">{{ detail.approved_top ?? '-' }} hari</span>
+                    </div>
+                  </dl>
+                  <div class="mt-3">
+                    <div class="font-label">Financial Review</div>
+                    <div v-if="detail.financial_review"
+                      class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body rich-text-content"
+                      v-html="detail.financial_review" />
+                    <div v-else class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body">-</div>
+                  </div>
+                </CardSection>
+              </div>
             </div>
+          </Tab.Panel>
 
-            <div v-else-if="lcrError"
-              class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
-              {{ lcrError }}
-            </div>
+          <Tab.Panel>
+            <CardSection title="LCR" icon="MapPin" icon-class="bg-amber-100 text-amber-600">
+              <template #action>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label"
+                  :class="lcrAllApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
+                  {{ lcrAllApproved ? 'Disetujui Semua' : 'Belum Lengkap' }}
+                </span>
+              </template>
 
-            <div v-else-if="lcrSites.length === 0"
-              class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-              <Lucide icon="Inbox" class="h-6 w-6 text-slate-400" />
-              <div class="font-body">Belum ada data LCR tercatat.</div>
-            </div>
+              <div v-if="!detail.lcr?.sites?.length"
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                <div class="font-body">Belum ada data LCR tercatat.</div>
+              </div>
 
-            <div v-else class="overflow-x-auto">
-              <Table bordered sm class="font-body">
-                <Table.Thead class="bg-slate-50">
-                  <Table.Th class="font-label">Nama Site</Table.Th>
-                  <Table.Th class="font-label">Status</Table.Th>
-                </Table.Thead>
-                <Table.Tbody class="bg-white">
-                  <Table.Tr v-for="site in lcrSites" :key="site.id_lcr">
-                    <Table.Td class="font-strong">{{ site.site_name || '-' }}</Table.Td>
-                    <Table.Td>{{ site.approval?.status_label || 'Belum ada approval' }}</Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </div>
-          </CardSection>
-        </Tab.Panel>
+              <div v-else class="overflow-x-auto">
+                <Table bordered sm class="font-body">
+                  <Table.Thead class="bg-slate-50">
+                    <Table.Th class="font-label">Nama Site</Table.Th>
+                    <Table.Th class="font-label">Status</Table.Th>
+                  </Table.Thead>
+                  <Table.Tbody class="bg-white">
+                    <Table.Tr v-for="site in detail.lcr.sites" :key="site.id_lcr">
+                      <Table.Td class="font-strong">{{ site.site_name || '-' }}</Table.Td>
+                      <Table.Td>{{ lcrStatusLabel(site.approval_status) }}</Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </div>
+            </CardSection>
+          </Tab.Panel>
 
-        <Tab.Panel>
-          <CardSection title="Penawaran" description="Daftar Penawaran milik customer ini." icon="FileText"
-            icon-class="bg-cyan-100 text-cyan-600">
-            <div v-if="penawaranLoading" class="flex min-h-[100px] items-center justify-center gap-3 text-slate-500">
-              <Lucide icon="Loader2" class="h-5 w-5 animate-spin" />
-              <span class="font-body">Memuat Penawaran...</span>
-            </div>
+          <Tab.Panel>
+            <CardSection title="Penawaran" description="Daftar Penawaran milik customer ini." icon="FileText"
+              icon-class="bg-cyan-100 text-cyan-600">
+              <div v-if="penawaranLoading" class="flex justify-center items-center gap-3 min-h-[100px] text-slate-500">
+                <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
+                <span class="font-body">Memuat Penawaran...</span>
+              </div>
 
-            <div v-else-if="penawaranError"
-              class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
-              {{ penawaranError }}
-            </div>
+              <div v-else-if="penawaranError"
+                class="bg-rose-50 px-4 py-3 border border-rose-200 rounded-lg font-body !text-rose-700">
+                {{ penawaranError }}
+              </div>
 
-            <div v-else-if="penawarans.length === 0"
-              class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-              <Lucide icon="Inbox" class="h-6 w-6 text-slate-400" />
-              <div class="font-body">Belum ada Penawaran tercatat.</div>
-            </div>
+              <div v-else-if="penawarans.length === 0"
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                <div class="font-body">Belum ada Penawaran tercatat.</div>
+              </div>
 
-            <div v-else class="overflow-x-auto">
-              <Table bordered sm class="font-body">
-                <Table.Thead class="bg-slate-50">
-                  <Table.Th class="font-label">Nomor Penawaran</Table.Th>
-                  <Table.Th class="font-label">Masa Berlaku</Table.Th>
-                  <Table.Th class="font-label text-right">Volume</Table.Th>
-                  <Table.Th class="font-label text-right">Harga Dasar</Table.Th>
-                  <Table.Th class="font-label text-right">Ongkos Angkut</Table.Th>
-                </Table.Thead>
-                <Table.Tbody class="bg-white">
-                  <Table.Tr v-for="p in penawarans" :key="p.id_penawaran">
-                    <Table.Td class="font-strong">{{ p.nomor_penawaran || '-' }}</Table.Td>
-                    <Table.Td>{{ formatDate(p.masa_berlaku) }} &ndash; {{ formatDate(p.sampai_dengan) }}</Table.Td>
-                    <Table.Td class="font-num text-right">{{ formatNumber(p.total_volume) }}</Table.Td>
-                    <Table.Td class="font-num text-right">{{ formatCurrency(p.harga_dasar) }}</Table.Td>
-                    <Table.Td class="font-num text-right">{{ formatCurrency(p.oat) }}</Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </div>
-          </CardSection>
-        </Tab.Panel>
-      </Tab.Panels>
-    </Tab.Group>
+              <div v-else class="overflow-x-auto">
+                <Table bordered sm class="font-body">
+                  <Table.Thead class="bg-slate-50">
+                    <Table.Th class="font-label">Nomor Penawaran</Table.Th>
+                    <Table.Th class="font-label">Masa Berlaku</Table.Th>
+                    <Table.Th class="font-label text-right">Volume</Table.Th>
+                    <Table.Th class="font-label text-right">Harga Dasar</Table.Th>
+                    <Table.Th class="font-label text-right">Ongkos Angkut</Table.Th>
+                  </Table.Thead>
+                  <Table.Tbody class="bg-white">
+                    <Table.Tr v-for="p in penawarans" :key="p.id_penawaran">
+                      <Table.Td class="font-strong">{{ p.nomor_penawaran || '-' }}</Table.Td>
+                      <Table.Td>{{ formatDate(p.masa_berlaku) }} &ndash; {{ formatDate(p.sampai_dengan) }}</Table.Td>
+                      <Table.Td class="font-num text-right">{{ formatNumber(p.total_volume) }}</Table.Td>
+                      <Table.Td class="font-num text-right">{{ formatCurrency(p.harga_dasar) }}</Table.Td>
+                      <Table.Td class="font-num text-right">{{ formatCurrency(p.oat) }}</Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </div>
+            </CardSection>
+          </Tab.Panel>
+        </Tab.Panels>
+      </Tab.Group>
+    </div>
+  </div>
 
-    <template #sidebar>
-      <CardSection title="Cetak Dokumen" description="Ringkasan KYC untuk rapat management (offline)." icon="Printer"
-        icon-class="bg-slate-100 text-slate-600">
-        <div class="space-y-2">
-          <Button variant="outline-primary" class="inline-flex w-full items-center justify-center gap-2"
-            :disabled="printDisabled" @click="openDocument">
-            <Lucide icon="Printer" class="h-4 w-4" />
-            Cetak Dokumen (Gabungan)
-          </Button>
-        </div>
-        <p v-if="printDisabled" class="font-caption mt-2">
-          Dokumen hanya bisa dicetak setelah KYC di-forward.
-        </p>
-      </CardSection>
-
-      <CardSection title="Tutup KYC" description="Keputusan final Admin Finance." icon="ShieldCheck"
-        icon-class="bg-primary/10 text-primary">
-        <div class="space-y-3">
-          <RichTextField v-model="financialReview" label="Financial Review" :disabled="closeFormDisabled" />
-          <CurrencyField v-model="creditLimitApproval" label="Credit Limit Disetujui" :disabled="closeFormDisabled" />
-          <NumberField v-model="topApproval" label="TOP Disetujui" suffix="hari" :decimals="0"
-            :disabled="closeFormDisabled" />
-
-          <p v-if="kycStatus === 'draft'"
-            class="font-body rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 !text-amber-700">
-            KYC belum di-forward, form ini belum bisa diisi.
-          </p>
-          <p v-else-if="kycStatus === 'closed'"
-            class="font-body rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 !text-emerald-700">
-            KYC sudah ditutup, keputusan tidak bisa diubah lagi.
-          </p>
-
-          <Button variant="primary" class="inline-flex w-full items-center justify-center gap-2"
-            :disabled="closeFormDisabled" @click="closeDialogOpen = true">
-            <Lucide icon="Lock" class="h-4 w-4" />
-            Tutup KYC
-          </Button>
-        </div>
-      </CardSection>
-    </template>
-  </FormPage>
-
-  <ConfirmDialog :open="closeDialogOpen" title="Tutup KYC customer ini?"
-    description="Tindakan ini TIDAK BISA dibatalkan. Keputusan credit limit & TOP akan menjadi final."
-    confirm-text="Ya, Tutup KYC" icon="AlertTriangle" icon-class="bg-danger/10 text-danger" variant="danger"
-    :loading="closeLoading" @close="closeDialogOpen = false" @confirm="submitClose" />
+  <ConfirmDialog :open="confirmOpen"
+    :title="decisionMode === 'approve' ? 'Setujui verifikasi customer ini?' : 'Tolak verifikasi customer ini?'"
+    :description="decisionMode === 'approve'
+      ? 'Credit limit dan TOP yang disetujui akan berlaku efektif setelah ini.'
+      : 'Marketing akan melihat alasan penolakan dan bisa mengajukan ulang verifikasi.'"
+    :confirm-text="decisionMode === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak'"
+    :icon="decisionMode === 'approve' ? 'Check' : 'X'"
+    :icon-class="decisionMode === 'approve' ? 'bg-primary/10 text-primary' : 'bg-danger/10 text-danger'"
+    :variant="decisionMode === 'approve' ? 'primary' : 'danger'" :loading="submitting" @close="confirmOpen = false"
+    @confirm="submitDecision" />
 </template>

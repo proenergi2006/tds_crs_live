@@ -14,11 +14,10 @@ import { useAuthStore } from '@/stores/auth'
 
 import {
   getVerifikasiConfig,
-  getDisposisiLabel,
-  disposisiBadgeClass,
   type VerifikasiRole,
   type VerifikasiBrand,
 } from './config'
+import { disposisiBadgeClass } from '@/pages/Penawaran/status'
 import { formatDate } from '@/utils/format'
 
 type PenawaranItem = any
@@ -27,17 +26,14 @@ const route = useRoute()
 const { error } = useNotification()
 const auth = useAuthStore()
 
-// computed, bukan const: route ini di-share TDS/Proenergi tanpa remount antar navigasi
 const brand = computed(() => route.meta.brand as VerifikasiBrand)
 
-// permission granular seragam kedua brand -- TDS reguler menyusul pola Proenergi yang sudah benar
 const bmPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-bm' : 'penawaran.verify-bm')
 const omPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-om' : 'penawaran.verify-om')
 
 const canSeeBm = computed(() => auth.can(bmPermission.value))
 const canSeeOm = computed(() => auth.can(omPermission.value))
 
-// true kalau user tidak match spesifik salah satu (mis. Administrator) — butuh toggle manual
 const isAmbiguousRole = computed(() => canSeeBm.value === canSeeOm.value)
 const manualRole = ref<VerifikasiRole | null>(null)
 
@@ -149,7 +145,7 @@ watch(perPage, () => fetchData(1))
             <Table.Td class="text-center">
               <span class="font-label inline-flex items-center rounded-full px-3 py-1"
                 :class="disposisiBadgeClass(pen.disposisi_penawaran)">
-                {{ getDisposisiLabel(pen.disposisi_penawaran) }}
+                {{ pen.disposisi_label || '-' }}
               </span>
             </Table.Td>
 

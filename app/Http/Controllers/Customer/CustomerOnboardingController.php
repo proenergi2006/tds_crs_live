@@ -34,14 +34,13 @@ class CustomerOnboardingController extends Controller
             ->values()
             ->all();
 
-        $isLocked = $customer->latestVerification?->is_submitted === true;
+        $isLocked = $customer->isUnderReview();
         $isExpired = $customer->token_expired_at !== null && $customer->token_expired_at->lte(now());
         $status = $isLocked ? 'used' : ($isExpired ? 'expired' : 'active');
 
         $registeredAddress = $customer->addresses
             ->firstWhere('address_type', CustomerAddressType::RegisteredNpwp);
 
-        // head office address dibaca dari baris head_office, bukan kolom customers yang udah gak diupdate lagi
         $headOfficeAddress = $customer->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
 
         return response()->json([
@@ -136,7 +135,7 @@ class CustomerOnboardingController extends Controller
     {
         $customer = Customer::where('onboarding_token', $token)->firstOrFail();
 
-        if ($customer->latestVerification?->is_submitted === true) {
+        if ($customer->isUnderReview()) {
             return response()->json(['message' => 'Data onboarding ini sudah masuk proses verifikasi dan tidak bisa diubah lagi.'], 409);
         }
 
@@ -170,7 +169,6 @@ class CustomerOnboardingController extends Controller
             ->all();
     }
 
-    // dokumen bebas Onboarding gak punya CustomerDocumentType, satu-satunya penanda saat ini id_document_type NULL
     private function formatFreeFormDocuments(Customer $customer): array
     {
         return $customer->documents

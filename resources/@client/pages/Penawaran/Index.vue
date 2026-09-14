@@ -7,14 +7,15 @@ import { debounce } from 'lodash'
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import { Menu } from '@/components/Base/Headless'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/format'
-import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 import TippyContent from '@/components/Base/TippyContent'
+import { disposisiBadgeClass } from './status'
 
 const router = useRouter()
 const route = useRoute()
@@ -42,7 +43,6 @@ const BRAND_CONFIG = {
   },
 }
 
-// computed, bukan const: route TDS/Proenergi berbagi komponen ini tanpa remount
 const brand = computed<Brand>(() => (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds')
 const cfg = computed(() => BRAND_CONFIG[brand.value])
 
@@ -127,29 +127,6 @@ async function submitDelete() {
   }
 }
 
-function getDisposisiLabel(value: string | number): string {
-  switch (String(value)) {
-    case '1': return 'Draft'
-    case '2': return 'Menunggu Verifikasi BM'
-    case '3': return 'Menunggu Verifikasi OM'
-    case '4': return 'Disetujui OM'
-    case '5': return 'Ditolak BM'
-    case '6': return 'Ditolak OM'
-    default: return '-'
-  }
-}
-
-function disposisiClass(v: string | number) {
-  const val = String(v)
-  return {
-    'bg-slate-100 text-slate-600': val === '1',
-    'bg-amber-100 text-amber-700': val === '2',
-    'bg-orange-100 text-orange-700': val === '3',
-    'bg-emerald-100 text-emerald-700': val === '4',
-    'bg-rose-100 text-rose-700': val === '5' || val === '6',
-  }
-}
-
 function sizePills(item: any): string[] {
   const nama = item?.produk?.ukuran?.nama_ukuran
   if (!nama) return []
@@ -175,23 +152,23 @@ function joinWithAmpersand(items: string[]): string {
       </PageHeader>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="penawarans.length === 0" :colspan="dataListColspan" :show-footer="true" :show-toolbar="true" :total="totalRecords"
-        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor atau customer..."
-        loading-text="Memuat data penawaran..." empty-description="Belum ada penawaran untuk ditampilkan."
-        @page-change="goToPage">
+        :empty="penawarans.length === 0" :colspan="dataListColspan" :show-footer="true" :show-toolbar="true"
+        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+        search-placeholder="Cari nomor atau customer..." loading-text="Memuat data penawaran..."
+        empty-description="Belum ada penawaran untuk ditampilkan." @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nomor Penawaran</Table.Th>
           <Table.Th>Customer</Table.Th>
+          <Table.Th>Titik Serah Terima</Table.Th>
           <Table.Th v-if="canViewAnyPenawaran">Marketing</Table.Th>
-          <Table.Th class="text-center">Tanggal Dibuat</Table.Th>
-          <Table.Th class="text-center">Masa Berlaku</Table.Th>
+          <Table.Th>Tanggal</Table.Th>
           <Table.Th class="text-center">Status</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
+          <Table.Th class="right-0 z-10 sticky bg-slate-50 text-center">Aksi</Table.Th>
         </template>
 
         <template #body>
-          <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="hover:bg-slate-50 transition">
+          <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="group hover:bg-slate-50 transition">
             <Table.Td class="font-num text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
@@ -250,40 +227,53 @@ function joinWithAmpersand(items: string[]): string {
             <Table.Td class="whitespace-nowrap">
               {{ pen.customer?.company_name || '-' }}
             </Table.Td>
+            <Table.Td class="max-w-[240px] truncate" :title="pen.keterangan || ''">
+              {{ pen.keterangan || '-' }}
+            </Table.Td>
             <Table.Td v-if="canViewAnyPenawaran" class="whitespace-nowrap">
               {{ pen.marketing?.name || '-' }}
             </Table.Td>
-            <Table.Td class="text-center whitespace-nowrap">
-              {{ formatDate(pen.created_at) }}
+            <Table.Td class="whitespace-nowrap">
+              <div class="font-caption text-slate-500">Dibuat: {{ formatDate(pen.created_at) }}</div>
+              <div class="font-caption text-slate-500">Berlaku hingga: {{ formatDate(pen.sampai_dengan) }}</div>
             </Table.Td>
             <Table.Td class="text-center whitespace-nowrap">
-              {{ formatDate(pen.masa_berlaku) }} – {{ formatDate(pen.sampai_dengan) }}
-            </Table.Td>
-            <Table.Td class="text-center">
-              <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
-                :class="disposisiClass(pen.disposisi_penawaran)">
-                {{ getDisposisiLabel(pen.disposisi_penawaran) }}
+              <span class="inline-flex items-center px-3 py-1 rounded-full font-label whitespace-nowrap"
+                :class="disposisiBadgeClass(pen.disposisi_penawaran)">
+                {{ pen.disposisi_label || '-' }}
               </span>
             </Table.Td>
-            <Table.Td class="w-[260px] text-center">
-              <div class="inline-flex justify-center items-center gap-1">
-                <ExtendableButton variant="soft-dark" rounded label="Detail" :as="RouterLink"
-                  :to="{ name: cfg.detailRoute, params: { id: pen.id_penawaran } }">
-                  <Lucide icon="Eye" class="w-4 h-4" />
-                </ExtendableButton>
+            <Table.Td class="right-0 z-10 sticky bg-white group-hover:bg-slate-50 w-[80px] text-center">
+              <Menu>
+                <Menu.Button :as="Button" variant="outline-secondary" class="px-2 py-1">
+                  <Lucide icon="MoreVertical" class="w-4 h-4" />
+                </Menu.Button>
+                <Menu.Items class="w-52" :placement="idx >= penawarans.length - 4 ? 'top-end' : 'bottom-end'">
+                  <Menu.Item :as="RouterLink" :to="{ name: cfg.detailRoute, params: { id: pen.id_penawaran } }">
+                    <Lucide icon="Eye" class="mr-2 w-4 h-4" />
+                    Detail
+                  </Menu.Item>
 
-                <ExtendableButton variant="soft-pending" rounded label="Edit" :as="RouterLink"
-                  :to="{ name: cfg.editRoute, params: { id: pen.id_penawaran } }">
-                  <Lucide icon="Edit" class="w-4 h-4" />
-                </ExtendableButton>
+                  <Menu.Item :as="RouterLink" :to="{ name: cfg.editRoute, params: { id: pen.id_penawaran } }">
+                    <Lucide icon="Edit" class="mr-2 w-4 h-4" />
+                    Edit
+                  </Menu.Item>
 
-                <ExtendableButton
-                  v-if="String(pen.disposisi_penawaran) === '1' || String(pen.disposisi_penawaran) === '2'"
-                  variant="soft-danger" rounded label="Hapus"
-                  @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)">
-                  <Lucide icon="Trash2" class="w-4 h-4" />
-                </ExtendableButton>
-              </div>
+                  <Menu.Item v-if="String(pen.disposisi_penawaran) === '4'"
+                    @click="openCreateSalesOrder(pen.id_penawaran)">
+                    <Lucide icon="ShoppingCart" class="mr-2 w-4 h-4" />
+                    Buat PO Customer
+                  </Menu.Item>
+
+                  <template v-if="String(pen.disposisi_penawaran) === '1' || String(pen.disposisi_penawaran) === '2'">
+                    <Menu.Divider />
+                    <Menu.Item class="!text-danger" @click="confirmDelete(pen.id_penawaran, pen.nomor_penawaran)">
+                      <Lucide icon="Trash2" class="mr-2 w-4 h-4" />
+                      Hapus
+                    </Menu.Item>
+                  </template>
+                </Menu.Items>
+              </Menu>
             </Table.Td>
           </Table.Tr>
         </template>

@@ -4,13 +4,6 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 
-/**
- * customer_code belum pernah di-generate di manapun (udah dicek langsung, semua
- * row live sekarang masih ''). Sequential dengan prefix tetap, formatnya
- * CUST-00001. Pakai lockForUpdate() biar 2 submit onboarding yang barengan gak
- * kebagian nomor yang sama -- caller wajib panggil ini di dalam DB::transaction()
- * yang udah jalan, method ini sendiri gak buka transaction baru.
- */
 class CustomerCodeGenerator
 {
     private const PREFIX = 'CUST-';
@@ -18,11 +11,7 @@ class CustomerCodeGenerator
 
     public static function generate(): string
     {
-        // Postgres gak ngizinin FOR UPDATE bareng fungsi agregat (MAX()), jadi
-        // sebagai gantinya kita lock baris "terakhir" (ORDER BY + LIMIT 1). Di
-        // READ COMMITTED (default Postgres), transaction kedua yang nunggu lock
-        // ini otomatis baca versi terbaru pas lock-nya lepas -- jadi tetap aman
-        // dari race condition, asal semua caller lewat method ini.
+        // postgres gak bolehin FOR UPDATE bareng MAX(), makanya lock baris terakhir doang (order by + limit 1)
         $lastCode = DB::table('customers')
             ->where('customer_code', 'like', self::PREFIX.'%')
             ->orderByDesc('customer_code')

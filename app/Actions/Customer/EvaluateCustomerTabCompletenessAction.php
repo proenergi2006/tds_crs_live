@@ -5,14 +5,15 @@ namespace App\Actions\Customer;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerPaymentTerm;
 use App\Enums\CustomerReviewQuestionCode;
+use App\Enums\CustomerVerificationStatus;
+use App\Enums\DocumentApprovalStatus;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
+use App\Models\CustomerLcr;
 use App\Models\CustomerReview;
 
 class EvaluateCustomerTabCompletenessAction
 {
-    // data_customer/review/credit/lcr -- satu definisi "lengkap" per tab, dipakai buat badge (read-only) & gate forward() KYC.
-
     public function execute(Customer $customer): array
     {
         return [
@@ -80,15 +81,22 @@ class EvaluateCustomerTabCompletenessAction
 
     private function evaluateCredit(Customer $customer): bool
     {
-        $submission = $customer->latestCreditSubmission;
+        $request = $customer->creditRequest;
 
-        return $submission
-            && $submission->credit_limit_request > 0
-            && filled($submission->top_request);
+        $dataFilled = $request
+            && $request->requested_limit > 0
+            && filled($request->requested_top);
+
+        $approved = $customer->latestVerification?->status === CustomerVerificationStatus::Approved;
+
+        return $dataFilled && $approved;
     }
 
     private function evaluateLcr(Customer $customer): bool
     {
-        return $customer->lcr()->exists();
+        $sites = $customer->lcr()->with('latestDocumentApproval')->get();
+
+        return $sites->isNotEmpty()
+            && $sites->every(fn (CustomerLcr $site) => $site->latestDocumentApproval?->status === DocumentApprovalStatus::Approved);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\CustomerKycStatus;
 use App\Enums\CustomerReviewQuestionCode;
 use App\Models\Customer;
 use App\Models\CustomerReview;
@@ -12,7 +11,6 @@ use Illuminate\Validation\Rules\Enum;
 
 class CustomerReviewController extends Controller
 {
-    // Gak nulis is_forwarded di sini, itu tanggung jawabnya CustomerVerificationController::forward().
     public function getReview(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
     {
         if (!$this->canManageCustomer($request, $customer)) {
@@ -76,7 +74,7 @@ class CustomerReviewController extends Controller
         }
 
         if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
+            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
         }
 
         $data = $request->validate([
@@ -122,7 +120,7 @@ class CustomerReviewController extends Controller
         }
 
         if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
+            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
         }
 
         $request->validate([
@@ -159,7 +157,7 @@ class CustomerReviewController extends Controller
         }
 
         if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'KYC sudah diforward, Sales Review tidak bisa diubah lagi.'], 409);
+            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
         }
 
         $review = CustomerReview::where('id_customer', $customer->id_customer)->firstOrFail();
@@ -186,11 +184,8 @@ class CustomerReviewController extends Controller
         return $user->can('customer.manage') && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
     }
 
-    // customer_verifications boleh gak ada sama sekali (customer baru pasca onboarding-optional) -- lock cuma aktif kalau ada row legacy non-draft.
     private function isLocked(Customer $customer): bool
     {
-        $cv = $customer->latestVerification;
-
-        return $cv && $cv->kyc_status !== CustomerKycStatus::Draft;
+        return $customer->isUnderReview();
     }
 }

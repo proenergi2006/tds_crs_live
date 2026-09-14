@@ -107,13 +107,16 @@ async function submitDelete() {
   }
 }
 
-// Status verifikasi disederhanakan ke UI: hanya "Verified"/"Unverified", backend tetap kirim 6 state.
 function getVerificationBadgeLabel(item: any) {
-  return item.verification_badge === 'verified' ? 'Verified' : 'Unverified'
+  return ['verified', 'verified_due'].includes(item.verification_badge) ? 'Verified' : 'Unverified'
 }
 
 function getVerificationBadgeClass(badge?: string) {
-  return badge === 'verified' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-700'
+  return ['verified', 'verified_due'].includes(badge ?? '') ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-700'
+}
+
+function needsReverification(item: any) {
+  return item.verification_badge === 'verified_due'
 }
 </script>
 
@@ -136,7 +139,6 @@ function getVerificationBadgeClass(badge?: string) {
           <div class="font-label">Total Customer</div>
           <div class="font-num-display mt-1">{{ totalRecords }}</div>
         </div>
-        <!-- status_customer belum tersedia di API, ditampilkan sebagai placeholder -->
         <div class="box p-4">
           <div class="font-label">Prospect</div>
           <div class="font-num-display mt-1 text-slate-300"
@@ -189,10 +191,16 @@ function getVerificationBadgeClass(badge?: string) {
               <div class="font-body">{{ row.phone || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-                :class="getVerificationBadgeClass(row.verification_badge)">
-                {{ getVerificationBadgeLabel(row) }}
-              </span>
+              <div class="inline-flex items-center gap-1.5">
+                <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
+                  :class="getVerificationBadgeClass(row.verification_badge)">
+                  {{ getVerificationBadgeLabel(row) }}
+                </span>
+                <span v-if="needsReverification(row)"
+                  class="font-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-amber-100 text-amber-700">
+                  Perlu Pemutakhiran
+                </span>
+              </div>
             </Table.Td>
             <Table.Td class="text-center">
               <Lucide v-if="row.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />

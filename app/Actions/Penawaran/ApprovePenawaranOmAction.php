@@ -4,6 +4,7 @@ namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ResolvesApprovalTemplate;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\PenawaranDisposisi;
 use App\Mail\PenawaranApprovedMail;
 use App\Models\User;
 use App\Services\Approval\DocumentApprovalService;
@@ -23,7 +24,7 @@ class ApprovePenawaranOmAction
         try {
             $penawaran->update([
                 'status'              => 'approved_om',
-                'disposisi_penawaran' => 4,
+                'disposisi_penawaran' => PenawaranDisposisi::DisetujuiOm,
                 'token_verifikasi'    => strtoupper(Str::random(17)),
             ]);
 

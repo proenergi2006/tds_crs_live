@@ -172,8 +172,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'penawaran.viewOwn',
             'module'      => 'penawaran',
-            'description' => 'Lihat penawaran milik sendiri (Marketing/Key Account)',
-            'roles'       => [4, 12],
+            'description' => 'Lihat penawaran milik sendiri (Marketing/Key Account) — juga jadi gate akses menu/route Quotation, sehingga role dengan penawaran.viewAny (mis. Admin Finance) turut ditambahkan di sini',
+            'roles'       => [4, 12, 9],
         ],
         [
             'name'        => 'penawaran.viewAny',
@@ -246,8 +246,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'sales-confirmation.manage',
             'module'      => 'sales-confirmation',
-            'description' => 'Kelola Sales Confirmation dan Review Data Customer (Admin Finance)',
-            'roles'       => [9],
+            'description' => 'Kelola Sales Confirmation dan Review Data Customer (Admin Finance & Branch Manager)',
+            'roles'       => [8, 9],
         ],
 
         [

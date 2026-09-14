@@ -1,405 +1,409 @@
-<template>
-  <div class="p-6 w-full">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold text-gray-700">Form PO Customer</h2>
-      <RouterLink
-        to="/penawarans"
-        class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded transition"
-      >
-        ← Kembali
-      </RouterLink>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-6 rounded shadow-md">
-      <!-- Kiri -->
-      <div class="space-y-4">
-        <!-- Customer -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Nama Customer</label>
-          <select v-model="form.customer_id" class="form-input" disabled>
-            <option :value="form.customer_id">{{ form.customer_nama }}</option>
-          </select>
-        </div>
-
-        <!-- TOP -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">TOP / Termin Pembayaran *</label>
-          <input type="text" v-model="form.top_poc" class="form-input" />
-        </div>
-
-        <!-- Nomor Penawaran -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Nomor Penawaran</label>
-          <select v-model="form.id_penawaran" class="form-input" disabled>
-            <option :value="form.id_penawaran">{{ form.nomor_penawaran }}</option>
-          </select>
-        </div>
-
-        <!-- TABEL KETERANGAN PENAWARAN -->
-        <div v-if="penawaranLoaded" class="mt-2">
-          <table class="min-w-full border border-gray-300 text-sm">
-            <thead>
-              <tr class="bg-gray-100">
-                <th colspan="2" class="text-center py-2 font-bold text-gray-700">KETERANGAN</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r w-1/3">Masa berlaku harga</td>
-                <td class="px-4 py-2">
-                  {{ formatDate(form.masa_berlaku) }} – {{ formatDate(form.sampai_dengan) }}
-                </td>
-              </tr>
-
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r">Cabang</td>
-                <td class="px-4 py-2">{{ form.cabang_nama }}</td>
-              </tr>
-
-              <!-- Produk per item -->
-              <tr
-                v-for="(it, i) in items"
-                :key="it.id_penawaran_item || i"
-                class="border-t align-top"
-              >
-                <td class="px-4 py-2 border-r">Produk {{ i + 1 }}</td>
-                <td class="px-4 py-2">
-                  <div class="font-medium">
-                    {{ it.produk?.nama_produk || '-' }}
-                    <span v-if="it.produk?.jenis?.nama"> · {{ it.produk?.jenis?.nama }}</span>
-                  </div>
-                  <div>
-                    Ukuran:
-                    <span class="font-medium">
-                      {{ it.produk?.ukuran?.nama_ukuran || '-' }}
-                    </span>
-                    <span class="text-gray-500">
-                      (Satuan: {{ it.produk?.ukuran?.satuan?.nama_satuan || '-' }})
-                    </span>
-                  </div>
-                  <div>
-                    Volume:
-                    <span class="font-medium">{{ formatNumber(toNumber(it.volume_order)) }}</span>
-                  </div>
-                  <div>
-                    Harga / m³:
-                    <span class="font-medium">{{ formatCurrency(toNumber(it.harga_tebus)) }}</span>
-                  </div>
-                </td>
-              </tr>
-
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r">Ongkos Angkut</td>
-                <td class="px-4 py-2">{{ formatCurrency(form.oat) }}</td>
-              </tr>
-
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r">Total Volume</td>
-                <td class="px-4 py-2">{{ formatNumber(form.volume) }}</td>
-              </tr>
-
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r">Harga / m³</td>
-                <td class="px-4 py-2">
-                  <template v-if="allSamePrices">
-                    {{ formatCurrency(form.harga_unit) }}
-                  </template>
-                  <template v-else>
-                    <span class="italic text-gray-500">Bervariasi</span>
-                  </template>
-                </td>
-              </tr>
-
-              <tr class="border-t">
-                <td class="px-4 py-2 border-r">Total Harga (Σ volume × harga)</td>
-                <td class="px-4 py-2">{{ formatCurrency(form.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Ringkasan di bawah tabel -->
-        <div class="grid grid-cols-1 gap-4">
-          <div>
-           <!-- JADI: Total Harga (jumlah harga semua produk) -->
-<label class="block text-sm text-gray-600 mb-1">Total Harga</label>
-<input
-  type="text"
-  :value="formatCurrency(totalHargaProduk)"
-  readonly
-  class="form-input"
-/>
-          </div>
-
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">Jumlah Volume (Total) *</label>
-            <input type="text" :value="formatNumber(form.volume)" readonly class="form-input" />
-          </div>
-
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">Total Order</label>
-            <input type="text" :value="formatCurrency(form.total)" readonly class="form-input" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Kanan -->
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Nomor PO *</label>
-          <input type="text" v-model="form.nomor_po" class="form-input" />
-        </div>
-
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Tanggal PO *</label>
-          <input type="date" v-model="form.tanggal_po" class="form-input" />
-        </div>
-
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Tanggal Pengiriman *</label>
-          <input type="date" v-model="form.tanggal_kirim" class="form-input" />
-        </div>
-
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">Lampiran</label>
-          <input type="file" @change="handleFile" class="form-input" />
-        </div>
-
-        <div class="pt-6">
-          <button
-            class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-            @click="submit"
-          >
-            💾 Simpan PO
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, reactive, ref, toRefs } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useVuelidate } from '@vuelidate/core'
+import { helpers, integer, minValue, required, requiredIf } from '@vuelidate/validators'
 import axios from 'axios'
-import Swal from 'sweetalert2'
 
-const penawaranLoaded = ref(false)
+import Button from '@/components/Base/Button'
+import Lucide from '@/components/Base/Lucide'
+import Table from '@/components/Base/Table'
+import TippyContent from '@/components/Base/TippyContent'
+import TomSelect from '@/components/Base/TomSelect'
+import { FormInput, FormLabel, FormSelect } from '@/components/Base/Form'
+import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
+import DateField from '@/components/SystemDesign/Form/DateField.vue'
+import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
+import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
+import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
+
 const route = useRoute()
-const id_penawaran = route.query.id_penawaran
+const router = useRouter()
+const { success, error: notifyError } = useNotification()
 
+const idPenawaran = String(route.query.id_penawaran ?? '')
+
+const pageLoading = ref(false)
+const submitting = ref(false)
+const formError = ref('')
 const items = ref<any[]>([])
+const hargaDasar = ref(0)
+const volumePoc = ref<number>(0)
+const penawaranOptions = ref<Array<{ id_penawaran: number; nomor_penawaran: string; customer_nama: string }>>([])
 
-const form = ref<any>({
-  // header penawaran
-  customer_id: '',
+const form = reactive({
+  customer_id: '' as number | string,
   customer_nama: '',
-  id_penawaran: id_penawaran || '',
+  id_penawaran: idPenawaran as number | string,
   nomor_penawaran: '',
-  cabang_nama: '',
   masa_berlaku: '',
   sampai_dengan: '',
   oat: 0,
-
-  // aggregations
-  harga_unit: 0, // unit price (from first item if all same)
-  volume: 0,     // sum of volumes
-  total: 0,      // Σ volume * harga
-
-  // submit fields
-  top_poc: '',
   nomor_po: '',
+  tipe_bayar: '' as string,
+  termin_hari: '' as string | number,
   tanggal_po: '',
   tanggal_kirim: '',
-  lampiran: null,
-  produk_poc: '', // send 1st product id to backend (column required)
+  lampiran: null as File | null,
+  produk_poc: '' as number | string,
 })
 
-const totalHargaProduk = computed(() =>
-  items.value.reduce((sum, it) => sum + toNumber(it.harga_tebus), 0)
+const penawaranTotalVolume = computed(() =>
+  Math.round(items.value.reduce((sum, it) => sum + Number(it.volume_order ?? 0), 0)),
 )
+const dppPerM3 = computed(() => hargaDasar.value + Number(form.oat ?? 0))
+const totalHarga = computed(() => dppPerM3.value * volumePoc.value)
 
-/* ---------- helpers ---------- */
+const rules = {
+  id_penawaran: { required: helpers.withMessage('Pilih Penawaran terlebih dahulu', required) },
+  nomor_po: { required: helpers.withMessage('Nomor PO Customer wajib diisi', required) },
+  tipe_bayar: { required: helpers.withMessage('Tipe pembayaran wajib dipilih', required) },
+  termin_hari: {
+    requiredIfCredit: helpers.withMessage(
+      'Termin (hari) wajib diisi untuk tipe Credit',
+      requiredIf(() => form.tipe_bayar === 'CREDIT'),
+    ),
+    integer: helpers.withMessage('Termin harus berupa angka bulat', integer),
+    minValue: helpers.withMessage('Termin harus lebih dari 0', minValue(1)),
+  },
+  tanggal_po: { required: helpers.withMessage('Tanggal PO wajib diisi', required) },
+  tanggal_kirim: {
+    required: helpers.withMessage('Tanggal pengiriman wajib diisi', required),
+    notBeforeTanggalPo: helpers.withMessage(
+      'Tanggal pengiriman tidak boleh sebelum tanggal PO',
+      (value: string) => !value || !form.tanggal_po || value >= form.tanggal_po,
+    ),
+  },
+  volumePoc: {
+    required: helpers.withMessage('Total Volume PO wajib diisi', required),
+    integer: helpers.withMessage('Total Volume PO harus berupa angka bulat', integer),
+    minValue: helpers.withMessage('Total Volume PO harus lebih dari 0', minValue(1)),
+  },
+}
 
-// convert string "2.100,00" / "2,100.00" / 2100 → number
-function toNumber(val: any): number {
-  if (val === null || val === undefined) return 0
-  if (typeof val === 'number') return val
+const v$ = useVuelidate(rules, { ...toRefs(form), volumePoc })
 
-  const s = String(val).trim()
-  if (!s) return 0
-
-  // If both separators exist, assume European "dot thousands, comma decimal"
-  if (s.includes('.') && s.includes(',')) {
-    const cleaned = s.replace(/\./g, '').replace(',', '.')
-    const n = Number(cleaned)
-    return isNaN(n) ? 0 : n
+onMounted(async () => {
+  if (idPenawaran) {
+    form.id_penawaran = idPenawaran
   }
 
-  // If only comma exists, treat as decimal separator
-  if (s.includes(',') && !s.includes('.')) {
-    const cleaned = s.replace(',', '.')
-    const n = Number(cleaned)
-    return isNaN(n) ? 0 : n
+  await Promise.all([
+    fetchPenawaranOptions(),
+    idPenawaran ? fetchPenawaranDetail(idPenawaran) : Promise.resolve(),
+  ])
+
+  if (idPenawaran && !penawaranOptions.value.some(opt => String(opt.id_penawaran) === idPenawaran)) {
+    penawaranOptions.value.push({
+      id_penawaran: Number(idPenawaran),
+      nomor_penawaran: form.nomor_penawaran,
+      customer_nama: form.customer_nama,
+    })
   }
-
-  const n = Number(s.replace(/[^\d.-]/g, ''))
-  return isNaN(n) ? 0 : n
-}
-
-function formatNumber(n: number) {
-  return (Number(n) || 0).toLocaleString('id-ID')
-}
-
-function formatCurrency(value: number | string) {
-  const num = typeof value === 'string' ? toNumber(value) : value
-  return isNaN(num as number)
-    ? 'Rp. 0'
-    : `Rp. ${(num as number).toLocaleString('id-ID', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return '-'
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-}
-
-/* ---------- derived ---------- */
-
-const allSamePrices = computed(() => {
-  if (!items.value.length) return true
-  const base = toNumber(items.value[0]?.harga_tebus)
-  return items.value.every(it => toNumber(it.harga_tebus) === base)
 })
 
-function calcTotals() {
-  const totalVol = items.value.reduce((sum, it) => sum + toNumber(it.volume_order), 0)
-
-  const firstPrice = items.value[0] ? toNumber(items.value[0].harga_tebus) : 0
-
-  const totalOrder = items.value.reduce(
-    (sum, it) => sum + toNumber(it.volume_order) * toNumber(it.harga_tebus),
-    0
-  )
-
-  form.value.volume = Math.round(totalVol) // liters as integer
-  form.value.harga_unit = allSamePrices.value ? firstPrice : 0
-  form.value.total = totalOrder
-}
-
-/* ---------- io ---------- */
-
-function handleFile(e: any) {
-  form.value.lampiran = e.target.files[0]
-}
-
-async function fetchPenawaran() {
-  if (!id_penawaran) return
+async function fetchPenawaranOptions() {
   try {
-    const { data } = await axios.get(`/api/penawarans/${id_penawaran}`)
+    const { data } = await axios.get('/api/penawarans', {
+      params: { status: 'approved_om', per_page: 200 },
+    })
+    penawaranOptions.value = (data.data ?? []).map((row: any) => ({
+      id_penawaran: row.id_penawaran,
+      nomor_penawaran: row.nomor_penawaran,
+      customer_nama: row.customer?.company_name || '-',
+    }))
+  } catch {
+    notifyError('Gagal', 'Gagal memuat daftar penawaran')
+  }
+}
 
-    // header
-    form.value.customer_id = data.id_customer
-    form.value.customer_nama = data.customer?.company_name || '-'
-    form.value.id_penawaran = data.id_penawaran
-    form.value.nomor_penawaran = data.nomor_penawaran || '-'
-    form.value.cabang_nama = data.cabang?.nama_cabang || '-'
-    form.value.masa_berlaku = data.masa_berlaku
-    form.value.sampai_dengan = data.sampai_dengan
-    form.value.oat = toNumber(data.oat)
+async function fetchPenawaranDetail(id: string | number) {
+  if (!id) return
 
-    // items
+  pageLoading.value = true
+
+  try {
+    const { data } = await axios.get(`/api/penawarans/${id}`)
+
+    form.customer_id = data.id_customer
+    form.customer_nama = data.customer?.company_name || '-'
+    form.id_penawaran = data.id_penawaran
+    form.nomor_penawaran = data.nomor_penawaran || '-'
+    form.masa_berlaku = data.masa_berlaku
+    form.sampai_dengan = data.sampai_dengan
+    form.oat = Number(data.oat ?? 0)
+    hargaDasar.value = Number(data.harga_dasar ?? 0)
+
+    const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
+    form.tipe_bayar = tipeBayar
+    form.termin_hari = terminHari ?? ''
+
     items.value = Array.isArray(data.items) ? data.items : []
+    form.produk_poc = items.value[0]?.produk?.id_produk || ''
+    volumePoc.value = penawaranTotalVolume.value
+  } catch {
+    notifyError('Gagal', 'Gagal memuat data penawaran')
+  } finally {
+    pageLoading.value = false
+  }
+}
 
-    // default for produk_poc (first product id, to satisfy NOT NULL)
-    form.value.produk_poc = items.value[0]?.produk?.id_produk || ''
+function deriveDefaultPayment(tipePembayaran: string | null | undefined, repaymentHari: unknown): { tipeBayar: string; terminHari: number | null } {
+  const val = String(tipePembayaran ?? '').trim().toUpperCase()
+  if (val === 'CBD') return { tipeBayar: 'CBD', terminHari: null }
+  if (val === 'COD') return { tipeBayar: 'COD', terminHari: null }
+  const topMatch = val.match(/^TOP\s*(\d+)$/)
+  if (topMatch) return { tipeBayar: 'CREDIT', terminHari: Number(topMatch[1]) }
+  if (val === 'CUSTOM') return { tipeBayar: 'CREDIT', terminHari: Number(repaymentHari) || null }
+  return { tipeBayar: 'CREDIT', terminHari: null }
+}
 
-    // totals
-    calcTotals()
-
-    penawaranLoaded.value = true
-  } catch (err) {
-    alert('Gagal memuat data penawaran')
+function onPenawaranSelected(value: string | string[]): void {
+  const id = Array.isArray(value) ? value[0] : value
+  if (id && String(id) !== String(form.id_penawaran)) {
+    form.id_penawaran = id
+    fetchPenawaranDetail(id)
   }
 }
 
 async function submit() {
-  // volume integer
-  const cleanVolume = Math.round(Number(form.value.volume) || 0)
+  formError.value = ''
+
+  const valid = await v$.value.$validate()
+  if (!valid) return
+
+  submitting.value = true
 
   const payload = new FormData()
-  payload.append('id_customer', String(form.value.customer_id))
-  payload.append('id_penawaran', String(form.value.id_penawaran))
-  payload.append('nomor_poc', form.value.nomor_po)
-  payload.append('top_poc', form.value.top_poc)
-  payload.append('tanggal_poc', form.value.tanggal_po)
-  payload.append('supply_date', form.value.tanggal_kirim)
-
-  // KIRIM TOTAL HARGA (bukan unit), dan JANGAN duplikat field
-  payload.append('harga_poc', String(totalHargaProduk.value))
-
-  payload.append('volume_poc', String(cleanVolume))
-
-  // ⬇️ WAJIB: kirim produk_poc agar tidak NULL di DB
-  payload.append('produk_poc', String(form.value.produk_poc || ''))
-
-  if (form.value.lampiran) {
-    payload.append('lampiran_poc', form.value.lampiran)
+  payload.append('id_customer', String(form.customer_id))
+  payload.append('id_penawaran', String(form.id_penawaran))
+  payload.append('nomor_poc', form.nomor_po)
+  payload.append('tipe_bayar', form.tipe_bayar)
+  if (form.tipe_bayar === 'CREDIT') {
+    payload.append('termin_hari', String(form.termin_hari))
   }
+  payload.append('tanggal_poc', form.tanggal_po)
+  payload.append('supply_date', form.tanggal_kirim)
+  payload.append('volume_poc', String(Math.round(volumePoc.value)))
+  payload.append('produk_poc', String(form.produk_poc || ''))
 
-  // Konfirmasi yang sesuai (tampilkan Total Harga)
-  const html =
-    `PO akan disimpan:<br>` +
-    `• Volume: <b>${formatNumber(cleanVolume)} m³</b><br>` +
-    `• Total Harga Produk: <b>${formatCurrency(totalHargaProduk.value)}</b><br>` +
-    `• Total Order (Σ volume × harga): <b>${formatCurrency(form.value.total)}</b>`
-
-  const result = await Swal.fire({
-    title: 'Apakah Anda yakin?',
-    html,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Ya, simpan',
-    cancelButtonText: 'Batal',
-  })
-  if (!result.isConfirmed) return
+  if (form.lampiran) {
+    payload.append('lampiran_poc', form.lampiran)
+  }
 
   try {
     await axios.post('/api/customer-pos', payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    await Swal.fire({
-      icon: 'success',
-      title: 'PO berhasil disimpan!',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
-    })
-  } catch (err: any) {
-    if (err.response?.status === 422) {
-      const errs = err.response?.data?.errors || {}
-      const msg = Object.values(errs).flat().join('<br>')
-      Swal.fire({ icon: 'error', title: 'Validasi gagal', html: msg })
+    success('Berhasil', 'PO Customer berhasil dibuat')
+    router.push({ name: 'po-customers-index' })
+  } catch (e: any) {
+    if (e.response?.status === 422) {
+      const errs = e.response?.data?.errors || {}
+      formError.value = Object.values(errs).flat().join('\n')
     } else {
-      // bantu debug
-      console.error('Save failed:', err.response?.data || err)
-      Swal.fire({ icon: 'error', title: 'Terjadi kesalahan saat menyimpan PO' })
+      notifyError('Gagal', e.response?.data?.message ?? 'Terjadi kesalahan saat menyimpan PO')
     }
+  } finally {
+    submitting.value = false
   }
 }
 
+function goBack() {
+  router.push({ name: 'penawarans-list' })
+}
 
-onMounted(fetchPenawaran)
+function fieldError(field: 'id_penawaran' | 'nomor_po' | 'tipe_bayar' | 'termin_hari' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {
+  return v$.value[field].$errors[0]?.$message?.toString() ?? ''
+}
+
+function poVolumeForItem(it: any) {
+  return Math.round(volumePoc.value * Number(it.persen ?? 0) / 100)
+}
 </script>
 
-<style scoped>
-.form-input {
-  @apply border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
-</style>
+<template>
+  <FormPage title="Buat PO Customer"
+    description="Sumber harga dari Penawaran terpilih. Lengkapi detail PO untuk memproses." size="full" layout="sidebar"
+    surface="plain" :show-footer="false" :loading="pageLoading || submitting" :error="formError" @submit="submit">
+    <template #action>
+      <Button type="button" variant="outline-secondary" class="inline-flex items-center gap-2" @click="goBack">
+        <Lucide icon="ArrowLeft" class="w-4 h-4" />
+        Kembali
+      </Button>
+    </template>
+
+    <CardSection title="Sumber Penawaran" description="Data penawaran yang menjadi dasar PO Customer." icon="FileText">
+      <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
+        <div>
+          <div class="font-label">Nomor Penawaran</div>
+          <TomSelect :model-value="String(form.id_penawaran)" class="w-full"
+            :options="{ placeholder: 'Pilih penawaran...', dropdownParent: 'body' }"
+            @update:modelValue="onPenawaranSelected">
+            <option v-for="opt in penawaranOptions" :key="opt.id_penawaran" :value="String(opt.id_penawaran)">
+              {{ opt.nomor_penawaran }} — {{ opt.customer_nama }}
+            </option>
+          </TomSelect>
+          <small v-if="fieldError('id_penawaran')" class="font-caption !text-rose-600">{{ fieldError('id_penawaran') }}</small>
+        </div>
+        <div>
+          <div class="font-label">Masa Berlaku Harga</div>
+          <FormInput type="text" :value="`${formatDate(form.masa_berlaku)} – ${formatDate(form.sampai_dengan)}`"
+            readonly class="w-full !bg-white dark:!bg-darkmode-800" />
+        </div>
+      </div>
+    </CardSection>
+
+    <CardSection title="Rincian Item Penawaran" description="Produk, rasio, dan volume dari penawaran." icon="Boxes"
+      icon-class="bg-indigo-100 text-indigo-600">
+      <div class="overflow-x-auto">
+        <Table bordered sm class="font-body">
+          <Table.Thead class="bg-slate-50">
+            <Table.Tr>
+              <Table.Th class="px-4 py-3 font-label text-left">Produk</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-left">Ukuran</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Rasio</Table.Th>
+              <Table.Th class="px-4 py-3 font-label text-right">Volume</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+
+          <Table.Tbody class="bg-white">
+            <Table.Tr v-for="(it, i) in items" :key="it.id_penawaran_item || i">
+              <Table.Td class="px-4 py-3">
+                <div class="font-strong">{{ it.produk?.nama_produk || '-' }}</div>
+                <div v-if="it.produk?.jenis?.nama" class="font-caption">{{ it.produk?.jenis?.nama }}</div>
+              </Table.Td>
+              <Table.Td class="px-4 py-3">
+                {{ it.produk?.ukuran?.nama_ukuran || '-' }}
+                <span class="font-caption">({{ it.produk?.ukuran?.satuan?.nama_satuan || '-' }})</span>
+              </Table.Td>
+              <Table.Td class="px-4 py-3 font-num text-right">{{ it.persen != null ? `${Math.round(Number(it.persen ??
+                0))}%` : '-' }}</Table.Td>
+              <Table.Td class="px-4 py-3 font-num text-right">
+                <div>{{ formatNumber(poVolumeForItem(it)) }} m³</div>
+              </Table.Td>
+            </Table.Tr>
+
+            <Table.Tr v-if="!items.length">
+              <Table.Td colspan="4" class="px-4 py-6 font-body text-center">Belum ada item penawaran.</Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+
+          <Table.Tbody class="bg-slate-50">
+            <Table.Tr>
+              <Table.Td colspan="3" class="px-4 py-2 font-strong text-right">Total Volume</Table.Td>
+              <Table.Td class="px-4 py-2 text-right">
+                <NumberField v-model.number="volumePoc" class="ml-auto w-40 max-w-[10rem]" suffix="m³" :decimals="0"
+                  :error="fieldError('volumePoc')" />
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td colspan="3" class="px-4 py-2 font-strong text-right">Harga per m³</Table.Td>
+              <Table.Td class="px-4 py-2 text-right">
+                <div class="font-num">
+                  <span class="font-num text-xl hover:underline cursor-pointer" :data-tooltip="'po-dpp-breakdown'">{{
+                    formatCurrency(dppPerM3) }}</span>
+                </div>
+                <div class="tooltip-content">
+                  <TippyContent :to="'po-dpp-breakdown'" :options="{ placement: 'left', interactive: true }">
+                    <div class="w-60 max-w-[85vw]">
+                      <div class="flex items-center gap-2 mb-3">
+                        <span class="bg-primary rounded-full w-2 h-2 shrink-0"></span>
+                        <span class="font-label text-slate-500 tracking-wide">Komposisi Harga per m³</span>
+                      </div>
+                      <div class="flex justify-between items-center gap-4">
+                        <span class="font-caption text-slate-500">Harga Dasar</span>
+                        <span class="font-strong">{{ formatCurrency(hargaDasar) }}</span>
+                      </div>
+                      <div class="flex justify-between items-center gap-4">
+                        <span class="font-caption text-slate-500">Ongkos Angkut</span>
+                        <span class="font-strong">{{ formatCurrency(form.oat) }}</span>
+                      </div>
+                      <div class="flex justify-between items-center gap-4 mt-2 pt-1 border-slate-100 border-t">
+                        <span class="font-caption text-slate-500">Total per m³</span>
+                        <span class="font-strong">{{ formatCurrency(dppPerM3) }}</span>
+                      </div>
+                    </div>
+                  </TippyContent>
+                </div>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td colspan="3" class="px-4 py-2 font-header text-right">Total Harga</Table.Td>
+              <Table.Td class="px-4 py-2 font-num-lg text-xl text-right">{{ formatCurrency(totalHarga) }}</Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+        </Table>
+      </div>
+    </CardSection>
+
+    <template #sidebar>
+      <CardSection title="Detail PO Customer" description="Lengkapi data wajib untuk memproses PO." icon="ClipboardList"
+        icon-class="bg-amber-100 text-amber-600">
+        <template v-if="form.id_penawaran" #action>
+          <span class="bg-rose-50 px-2.5 py-1 rounded-full font-caption !text-rose-600">Wajib</span>
+        </template>
+
+        <div v-if="!form.id_penawaran" class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+          <Lucide icon="FileSearch" class="h-8 w-8 text-slate-300" />
+          <p class="font-body text-slate-500">Pilih Penawaran terlebih dahulu untuk mengisi detail PO Customer.</p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div>
+            <FormLabel for="nomor_po">Nomor PO Customer
+              <RequiredAsterisk />
+            </FormLabel>
+            <FormInput id="nomor_po" v-model="form.nomor_po" placeholder="mis. PO/2026/001"
+              :class="v$.nomor_po.$error ? 'border-rose-500' : ''" />
+            <small v-if="v$.nomor_po.$error" class="font-caption !text-rose-600">{{ fieldError('nomor_po') }}</small>
+          </div>
+
+          <div class="gap-4 grid grid-cols-2">
+            <div>
+              <FormLabel for="tipe_bayar">Tipe Pembayaran
+                <RequiredAsterisk />
+              </FormLabel>
+              <FormSelect id="tipe_bayar" v-model="form.tipe_bayar" class="w-full"
+                :class="v$.tipe_bayar.$error ? 'border-rose-500' : ''">
+                <option value="" disabled>Pilih…</option>
+                <option value="CBD">CBD</option>
+                <option value="COD">COD</option>
+                <option value="CREDIT">Credit</option>
+              </FormSelect>
+              <small v-if="v$.tipe_bayar.$error" class="font-caption !text-rose-600">{{ fieldError('tipe_bayar') }}</small>
+            </div>
+
+            <div v-if="form.tipe_bayar === 'CREDIT'">
+              <FormLabel for="termin_hari">Termin (Hari)
+                <RequiredAsterisk />
+              </FormLabel>
+              <NumberField id="termin_hari" v-model.number="form.termin_hari" suffix="hari" :decimals="0"
+                :error="fieldError('termin_hari')" />
+            </div>
+          </div>
+
+          <div class="gap-4 grid grid-cols-2">
+            <DateField v-model="form.tanggal_po" label="Tanggal PO" required placeholder="Pilih tanggal PO"
+              :error="fieldError('tanggal_po')" />
+            <DateField v-model="form.tanggal_kirim" label="Tanggal Pengiriman" required
+              placeholder="Pilih tanggal pengiriman" :error="fieldError('tanggal_kirim')" />
+          </div>
+
+          <FileUploadField v-model="form.lampiran" label="Lampiran Dokumen PO" accept=".pdf,.jpg,.jpeg,.png"
+            :max-size-mb="2" hint="Opsional. PDF, JPG, atau PNG maksimal 2MB." />
+
+          <Button type="submit" variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
+            :disabled="pageLoading || submitting">
+            <Lucide v-if="pageLoading || submitting" icon="Loader2" class="h-4 w-4 animate-spin" />
+            <Lucide v-else icon="Save" class="h-4 w-4" />
+            Simpan
+          </Button>
+        </div>
+      </CardSection>
+    </template>
+  </FormPage>
+</template>

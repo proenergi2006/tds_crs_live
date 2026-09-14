@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
@@ -8,51 +9,39 @@ import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { createResourceApi } from '@/utils/resourceApi'
+import { formatCurrency, formatDateTime } from '@/utils/format'
 
-// limit kredit agregat (bukan per-produk) -- approval/review-nya read-only, diisi Admin Finance pas Tutup KYC, bukan dari form ini
 const props = defineProps<{
   idCustomer: number
-  kycStatus?: string | null
+  isUnderReview: boolean
+  latestApprovedVerification: {
+    approved_limit: number | null
+    approved_top: number | null
+    financial_review: string | null
+    reviewed_at: string | null
+  } | null
 }>()
+
+const emit = defineEmits<{ (e: 'saved'): void }>()
 
 const { success, error: notifyError } = useNotification()
 
-const creditSubmissionsApi = createResourceApi(`/customers/${props.idCustomer}/credit-submissions`)
-
-/* State: pengajuan kredit -- endpoint-nya CRUD multi-row, di sini cuma pakai row terbaru (index 0, backend udah orderByDesc) */
 const loading = ref(true)
 const saving = ref(false)
-const submissionId = ref<number | null>(null)
-const creditLimitRequest = ref<number | null>(null)
-const topRequest = ref<number | null>(null)
-const creditLimitApproval = ref<number | null>(null)
-const topApproval = ref<number | null>(null)
-const financialReview = ref<string>('')
+const requestedLimit = ref<number | null>(null)
+const requestedTop = ref<number | null>(null)
 
-const locked = computed(() => !!props.kycStatus && props.kycStatus !== 'draft')
+const locked = computed<boolean>(() => props.isUnderReview)
 
-function applySubmission(row: any) {
-  submissionId.value = row?.id ?? null
-  creditLimitRequest.value = row?.credit_limit_request ?? null
-  topRequest.value = row?.top_request ?? null
-  creditLimitApproval.value = row?.credit_limit_approval ?? null
-  topApproval.value = row?.top_approval ?? null
-  financialReview.value = row?.financial_review ?? ''
-}
+onMounted(fetchCreditRequest)
 
-function formatCurrency(value: number | null): string {
-  if (value === null || value === undefined) return '-'
-  return `Rp ${value.toLocaleString('id-ID')}`
-}
-
-async function fetchSubmission() {
+async function fetchCreditRequest(): Promise<void> {
   loading.value = true
   try {
-    const { data } = await creditSubmissionsApi.getAll()
-    const rows = Array.isArray(data) ? data : []
-    if (rows.length > 0) {
-      applySubmission(rows[0])
+    const { data } = await axios.get(`/api/customers/${props.idCustomer}/credit-request`)
+    if (data) {
+      requestedLimit.value = data.requested_limit
+      requestedTop.value = data.requested_top
     }
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat pengajuan kredit.')
@@ -61,24 +50,20 @@ async function fetchSubmission() {
   }
 }
 
-async function saveSubmission() {
+async function saveCreditRequest(): Promise<void> {
   saving.value = true
   try {
-    const payload = {
-      submission_type: 'new_customer',
-      credit_limit_request: creditLimitRequest.value,
-      top_request: topRequest.value,
-    }
-
-    const { data } = submissionId.value === null
-      ? await creditSubmissionsApi.store(payload)
-      : await creditSubmissionsApi.update(submissionId.value, payload)
-
-    applySubmission(data)
+    const { data } = await axios.put(`/api/customers/${props.idCustomer}/credit-request`, {
+      requested_limit: requestedLimit.value,
+      requested_top: requestedTop.value,
+    })
+    requestedLimit.value = data.requested_limit
+    requestedTop.value = data.requested_top
     success('Berhasil', 'Pengajuan kredit tersimpan.')
+    emit('saved')
   } catch (e: any) {
     if (e.response?.status === 409) {
-      notifyError('Gagal', 'Tab ini terkunci — KYC sudah di-forward.')
+      notifyError('Gagal', 'Data terkunci, verifikasi sedang berjalan.')
     } else if (e.response?.status === 422) {
       const errors = e.response?.data?.errors || {}
       notifyError('Gagal', (Object.values(errors)[0] as string[] | undefined)?.[0] ?? 'Periksa kembali input Anda.')
@@ -89,17 +74,15 @@ async function saveSubmission() {
     saving.value = false
   }
 }
-
-onMounted(fetchSubmission)
 </script>
 
 <template>
   <div class="gap-6 grid">
     <Alert v-if="locked" variant="soft-warning">
-      Tab ini terkunci — KYC sudah di-forward. Pengajuan kredit tidak bisa diubah dari halaman ini.
+      Verifikasi sedang berjalan. Pengajuan kredit tidak bisa diubah sampai Admin Finance memberi keputusan.
     </Alert>
 
-    <div class="gap-6 grid" :class="creditLimitApproval !== null ? 'sm:grid-cols-2' : ''">
+    <div class="gap-6 grid" :class="props.latestApprovedVerification !== null ? 'sm:grid-cols-2' : ''">
       <CardSection title=" Credit Application"
         description="Pengajuan limit kredit &amp; term of payment (TOP) untuk customer ini." icon="Wallet"
         icon-class="bg-emerald-100 text-emerald-600">
@@ -110,13 +93,13 @@ onMounted(fetchSubmission)
 
         <template v-else>
           <div class="gap-4 grid sm:grid-cols-2">
-            <CurrencyField v-model="creditLimitRequest" label="Credit Limit Request" required :disabled="locked" />
-            <NumberField v-model="topRequest" label="TOP Request" suffix="hari" :decimals="0" :disabled="locked" />
+            <CurrencyField v-model="requestedLimit" label="Credit Limit Request" required :disabled="locked" />
+            <NumberField v-model="requestedTop" label="TOP Request" suffix="hari" :decimals="0" :disabled="locked" />
           </div>
 
           <div class="flex justify-end mt-5">
             <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving"
-              @click="saveSubmission">
+              @click="saveCreditRequest">
               <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
               Simpan
             </Button>
@@ -124,23 +107,27 @@ onMounted(fetchSubmission)
         </template>
       </CardSection>
 
-      <CardSection v-if="creditLimitApproval !== null" title="Hasil Final Credit Limit"
+      <CardSection v-if="props.latestApprovedVerification !== null" title="Hasil Final Credit Limit"
         description="Nilai final yang disetujui." icon="CheckCircle2" icon-class="bg-blue-100 text-blue-600">
         <div class="gap-x-8 gap-y-3 grid sm:grid-cols-2">
           <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
             <span class="font-label">Credit Limit Approval</span>
-            <span class="font-strong text-right">{{ formatCurrency(creditLimitApproval) }}</span>
+            <span class="font-strong text-right">{{ formatCurrency(props.latestApprovedVerification?.approved_limit) }}</span>
           </div>
           <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
             <span class="font-label">TOP Approval</span>
-            <span class="font-strong text-right">{{ topApproval !== null ? `${topApproval} hari` : '-' }}</span>
+            <span class="font-strong text-right">{{ props.latestApprovedVerification?.approved_top !== null ? `${props.latestApprovedVerification?.approved_top} hari` : '-' }}</span>
+          </div>
+          <div class="flex justify-between gap-4 pb-1.5 border-slate-100 border-b">
+            <span class="font-label">Disetujui Pada</span>
+            <span class="font-strong text-right">{{ formatDateTime(props.latestApprovedVerification?.reviewed_at) ?? '-' }}</span>
           </div>
         </div>
         <div class="mt-3">
           <div class="font-label">Financial Review</div>
-          <div v-if="financialReview"
+          <div v-if="props.latestApprovedVerification?.financial_review"
             class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body rich-text-content"
-            v-html="financialReview" />
+            v-html="props.latestApprovedVerification.financial_review" />
           <div v-else class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg font-body">-</div>
         </div>
       </CardSection>

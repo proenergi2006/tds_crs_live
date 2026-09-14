@@ -2,7 +2,6 @@
     <div class="p-6 space-y-4">
       <div class="text-xl font-semibold">PO Customer Plan</div>
   
-      <!-- HEADER -->
       <div class="border rounded bg-white">
         <div class="px-4 py-2 border-b font-medium"></div>
         <div class="p-4">
@@ -13,7 +12,7 @@
               <tr><td class="py-1 pr-6">Periode Penawaran</td><td>: {{ h.periode || '-' }}</td></tr>
               <tr><td class="py-1 pr-6">Customer</td><td>: {{ h.customer_name || '-' }}</td></tr>
   
-              <tr><td class="py-1 pr-6">TOP Customer</td><td>: {{ h.top || '-' }}</td></tr>
+              <tr><td class="py-1 pr-6">TOP Customer</td><td>: {{ h.tipe_bayar_label ? (h.termin_hari ? `${h.tipe_bayar_label} — ${h.termin_hari} Hari` : h.tipe_bayar_label) : '-' }}</td></tr>
               <tr><td class="py-1 pr-6">Nomor PO</td><td>: {{ h.nomor_poc || '-' }}</td></tr>
               <tr><td class="py-1 pr-6">Tanggal PO</td><td>: {{ d(h.tanggal_poc) }}</td></tr>
               <tr><td class="py-1 pr-6">Tgl Pengiriman</td><td>: {{ d(h.supply_date) }}</td></tr>
@@ -36,7 +35,6 @@
         </div>
       </div>
   
-      <!-- TABEL RENCANA -->
       <div class="border rounded bg-white">
         <div class="p-0 overflow-x-auto">
           <table class="min-w-full text-sm">
@@ -79,14 +77,12 @@
         </div>
       </div>
   
-      <!-- MODAL TAMBAH DATA -->
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center">
         <div class="absolute inset-0 bg-black/40" @click="close"></div>
         <div class="relative w-full max-w-3xl bg-white rounded-lg shadow-lg">
           <div class="px-5 py-3 border-b font-medium">Tambah Data PO Plan</div>
   
           <div class="p-5 space-y-4 max-h-[80vh] overflow-auto">
-            <!-- header kecil di modal -->
             <table class="w-full text-sm border">
               <tbody>
                 <tr class="bg-slate-100"><td class="p-2 font-semibold">Kode Dokumen {{ h.doc_code }}</td><td></td></tr>
@@ -103,7 +99,6 @@
               </tbody>
             </table>
   
-            <!-- form -->
             <div class="space-y-3">
               <div>
                 <div class="mb-1 text-slate-600">Alamat Kirim *</div>
@@ -161,7 +156,6 @@
   const rows = ref<any[]>([])
   const addresses = ref<string[]>([])
   
-  // modal + form
   const show = ref(false)
   const form = ref<{address:string; ship_date:string; volume_liter:number|null; notes:string}>({
     address: '', ship_date: '', volume_liter: null, notes: ''
@@ -178,13 +172,11 @@
     return ''
   })
   
-  // helpers
   function d(s?: string){ return s ? new Date(s).toLocaleDateString('id-ID',{ day:'2-digit', month:'long', year:'numeric' }) : '-' }
   function dt(s?: string){ return s ? new Date(String(s).replace(' ','T')).toLocaleString('id-ID',{ day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '-' }
   function num(n:any){ const x=Number(n||0); return isNaN(x)?'0':x.toLocaleString('id-ID') }
   function money(n:any){ const x=Number(n||0); return `Rp. ${x.toLocaleString('id-ID',{ minimumFractionDigits:2, maximumFractionDigits:2 })}` }
   
-  // ambil header dari halaman DETAIL (agar selalu terisi)
   async function loadHeaderFromDetail(){
     const { data } = await axios.get(`/api/sales-confirmations/po/${idPoc}`)
     const poc  = data.poc || {}
@@ -202,7 +194,8 @@
       penawaran_code: pen.nomor_penawaran || '-',
       periode,
       customer_name: cust.nama_perusahaan || '-',
-      top: pen.top || '-',
+      tipe_bayar_label: poc.tipe_bayar_label || '-',
+      termin_hari: poc.termin_hari ?? null,
       nomor_poc: poc.nomor_poc || '-',
       tanggal_poc: poc.tanggal_poc || null,
       supply_date: poc.supply_date || null,
@@ -212,11 +205,9 @@
       total_order_rp: vol*harga,
       total_liter: vol, shipped_liter: 0, book_remaining_liter: vol, close_po_liter: 0,
     }
-    // pakai alamat perusahaan sebagai opsi default (kalau ada)
     if (cust.alamat_perusahaan) addresses.value = [cust.alamat_perusahaan]
   }
   
-  // ambil items dari tabel po_customer_plan
   async function loadItems(){
     try{
       const { data } = await axios.get(`/api/po-customers/${idPoc}/plan`)
@@ -245,9 +236,9 @@
   
     try{
       const { data } = await axios.post(`/api/po-customers/${idPoc}/plan`, {
-        address: form.value.address || null,          // disimpan ke status_jadwal
+        address: form.value.address || null,
         ship_date: form.value.ship_date,
-        volume_kirim: Number(form.value.volume_liter),// nama kolom di tabel
+        volume_kirim: Number(form.value.volume_liter),
         notes: form.value.notes || null,
         is_urgent: false,
       })

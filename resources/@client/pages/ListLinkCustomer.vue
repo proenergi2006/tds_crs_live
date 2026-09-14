@@ -141,8 +141,7 @@ const router = useRouter()
       const copied = await copyToClipboard(link)
       if (copied) {
         await Swal.fire({ icon:'success', title:'Token disalin', timer:1000, showConfirmButton:false })
-        // kembali ke halaman sebelumnya (Customer Verification List)
-        router.back() // atau: router.push({ name: 'customer-verifications' })
+        router.back()
       } else {
         await Swal.fire({
           icon: 'warning',

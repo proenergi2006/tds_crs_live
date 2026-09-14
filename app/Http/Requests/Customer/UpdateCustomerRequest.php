@@ -26,7 +26,6 @@ class UpdateCustomerRequest extends FormRequest
             'phone'             => 'nullable|string|max:50',
             'customer_type'     => 'nullable|string|max:100',
             'company_name'      => 'nullable|string|max:255',
-            'fax'               => 'nullable|string|max:50',
 
             'customer_code'         => 'nullable|string|max:50',
             'website'               => 'nullable|string|max:255',

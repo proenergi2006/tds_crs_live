@@ -19,6 +19,7 @@ import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vu
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useRegionCascade } from '@/composables/useRegionCascade'
+import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { typeBusinessOptions } from '@/pages/CustomerOnboarding/optionSets'
 
@@ -30,7 +31,10 @@ const props = defineProps<{
   customerLogistik?: Record<string, any> | null
 }>()
 
+const emit = defineEmits<{ (e: 'saved'): void }>()
+
 const { success, error: notifyError } = useNotification()
+const auth = useAuthStore()
 
 const api = createResourceApi(`/customers/${props.idCustomer}/lcr-sites`)
 const documentsApi = createResourceApi(`/customers/${props.idCustomer}/documents`)
@@ -564,6 +568,8 @@ function openCreateWizard() {
   wizardError.value = null
   v$.value.$reset()
   Object.assign(form, createDefaultForm())
+  // default surveyor = user yang sedang login (marketing pengisi form) -- tetap editable
+  form.surveyor_names = auth.user?.name ?? ''
   resetPhotoState()
   currentStep.value = 0
   wizardOpen.value = true
@@ -696,6 +702,10 @@ async function goNext() {
       notifyError('Gagal', firstError ?? 'Lengkapi seluruh field wajib di step ini sebelum lanjut.')
       return
     }
+    if (!hasValidPic()) {
+      notifyError('Gagal', 'Minimal satu Penanggung Jawab (PIC) dengan nama wajib diisi.')
+      return
+    }
   }
   if (currentStep.value < steps.length - 1) currentStep.value += 1
 }
@@ -734,10 +744,8 @@ function buildPayload() {
   const payload: Record<string, any> = {
     ...rest,
     product_volume: form.product_volume.filter(p => p.produk.trim() || p.volume_bulan.trim()),
-    // contacts selalu dikirim (termasuk kosong) -- backend sync by id_contact, lihat SyncCustomerLcrSiteDetailsAction
-    contacts: contacts.filter(c =>
-      c.full_name.trim() || c.position.trim() || c.mobile.trim() || c.email.trim()
-    ),
+    // cuma baris ber-nama yang dikirim -- baris tanpa nama bukan kontak valid (backend: full_name required). sync by id_contact, lihat SyncCustomerLcrSiteDetailsAction
+    contacts: contacts.filter(c => c.full_name.trim()),
     // baris route_costs yang kosong total di-skip, cost_type cuma wajib buat baris yang amount/notes-nya terisi
     route_costs: form.route_costs.filter(r => r.cost_type.trim() || r.amount !== null || r.notes.trim()),
     // enum kosong ('') dikirim null -- rule enum Laravel gak anggap '' sebagai nullable
@@ -759,7 +767,18 @@ function hasAnyPhoto(): boolean {
   )
 }
 
+// PIC site LCR wajib -- minimal satu baris kontak dengan nama terisi.
+function hasValidPic(): boolean {
+  return form.contacts.some(c => c.full_name.trim())
+}
+
 async function submitWizard() {
+  if (!hasValidPic()) {
+    notifyError('Gagal', 'Minimal satu Penanggung Jawab (PIC) dengan nama wajib diisi (Step 1).')
+    currentStep.value = 0
+    return
+  }
+
   if (!hasAnyPhoto()) {
     notifyError('Gagal', 'Minimal 1 foto lampiran wajib diunggah (foto kantor, foto jalan, atau kategori lainnya) sebelum menyimpan.')
     return
@@ -828,6 +847,7 @@ async function submitWizard() {
         success('Berhasil', 'Site LCR berhasil ditambahkan.')
       }
     }
+    emit('saved')
   } catch (e: any) {
     if (e.response?.status === 422) {
       const errors = e.response?.data?.errors || {}
@@ -855,6 +875,7 @@ async function performDeleteSite() {
     success('Berhasil', 'Site LCR berhasil dihapus.')
     deleteDialogOpen.value = false
     deleteTarget.value = null
+    emit('saved')
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal menghapus site LCR.')
   } finally {
@@ -901,45 +922,46 @@ onMounted(() => {
         <div class="font-body">Belum ada site LCR yang ditambahkan.</div>
       </div>
 
-      <div v-else class="overflow-x-auto">
-        <Table>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th class="w-12">No</Table.Th>
-              <Table.Th>Nama Lokasi</Table.Th>
-              <Table.Th>Alamat Survey</Table.Th>
-              <Table.Th>Tanggal Survey</Table.Th>
-              <Table.Th>Status Approval</Table.Th>
-              <Table.Th class="text-center">Aksi</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            <Table.Tr v-for="(site, index) in sites" :key="site.id_lcr" class="transition hover:bg-slate-50">
-              <Table.Td class="font-num">{{ index + 1 }}.</Table.Td>
-              <Table.Td class="font-strong">{{ site.site_name || '-' }}</Table.Td>
-              <Table.Td class="max-w-xs truncate">{{ site.address?.address_line || '-' }}</Table.Td>
-              <Table.Td>{{ site.survey_date || '-' }}</Table.Td>
-              <Table.Td>
-                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
+        <table class="divide-y divide-slate-200 w-full min-w-[760px]">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-3 py-2 w-12 font-label text-center">No</th>
+              <th class="px-3 py-2 font-label text-left">Nama Lokasi</th>
+              <th class="px-3 py-2 font-label text-left">Alamat Survey</th>
+              <th class="px-3 py-2 font-label text-left">Tanggal Survey</th>
+              <th class="px-3 py-2 font-label text-left">Status Approval</th>
+              <th class="px-3 py-2 w-24 font-label text-center">Aksi</th>
+            </tr>
+          </thead>
+
+          <tbody class="bg-white divide-y divide-slate-200">
+            <tr v-for="(site, index) in sites" :key="site.id_lcr" class="hover:bg-slate-50 transition">
+              <td class="px-3 py-2 font-num text-center">{{ index + 1 }}.</td>
+              <td class="px-3 py-2 font-strong">{{ site.site_name || '-' }}</td>
+              <td class="px-3 py-2 max-w-xs font-body truncate">{{ site.address?.address_line || '-' }}</td>
+              <td class="px-3 py-2 font-body">{{ site.survey_date || '-' }}</td>
+              <td class="px-3 py-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-medium text-xs"
                   :class="approvalBadgeClass(site.approval?.status)">
                   {{ site.approval?.status_label ?? 'Belum Diajukan' }}
                 </span>
-              </Table.Td>
-              <Table.Td class="text-center">
-                <div class="inline-flex items-center justify-center gap-2">
-                  <Button variant="soft-pending" rounded title="Edit" class="!h-8 !w-8 !p-0 !shadow-none"
+              </td>
+              <td class="px-3 py-2 text-center">
+                <div class="inline-flex justify-center items-center gap-2">
+                  <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
                     @click="openEditWizard(site)">
-                    <Lucide icon="Edit" class="h-4 w-4" />
+                    <Lucide icon="Edit" class="w-4 h-4" />
                   </Button>
-                  <Button variant="soft-danger" rounded title="Hapus" class="!h-8 !w-8 !p-0 !shadow-none"
+                  <Button size="sm" variant="soft-danger" title="Hapus" class="!shadow-none !p-0 !w-8 !h-8"
                     @click="confirmDeleteSite(site)">
-                    <Lucide icon="Trash2" class="h-4 w-4" />
+                    <Lucide icon="Trash2" class="w-4 h-4" />
                   </Button>
                 </div>
-              </Table.Td>
-            </Table.Tr>
-          </Table.Tbody>
-        </Table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </CardSection>
 
@@ -1082,6 +1104,54 @@ onMounted(() => {
             <FormInput v-model="form.surveyor_names" placeholder="cth. Budi Santoso" />
           </div>
         </div>
+
+        <div class="grid grid-cols-12 items-start gap-4">
+          <div class="col-span-3 flex flex-col items-start gap-2 pt-2 font-label">
+            <FormLabel>
+              Penanggung Jawab (PIC)
+              <RequiredAsterisk />
+            </FormLabel>
+            <Button size="sm" variant="outline-secondary" @click="addContactRow">
+              <Lucide icon="Plus" class="mr-1 h-4 w-4" /> Tambah
+            </Button>
+          </div>
+          <div class="col-span-9 overflow-x-auto">
+            <Table>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Nama</Table.Th>
+                  <Table.Th>Posisi</Table.Th>
+                  <Table.Th>No. HP</Table.Th>
+                  <Table.Th>Email</Table.Th>
+                  <Table.Th class="text-center">Aksi</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                <Table.Tr v-for="(row, i) in form.contacts" :key="i">
+                  <Table.Td>
+                    <FormInput v-model="row.full_name" placeholder="cth. Ahmad Fauzi" />
+                  </Table.Td>
+                  <Table.Td>
+                    <FormInput v-model="row.position" placeholder="cth. Kepala Gudang" />
+                  </Table.Td>
+                  <Table.Td>
+                    <FormInput v-model="row.mobile" placeholder="cth. 0812-3456-7890" />
+                  </Table.Td>
+                  <Table.Td>
+                    <FormInput v-model="row.email" type="email" placeholder="cth. nama@perusahaan.com" />
+                  </Table.Td>
+                  <Table.Td class="text-center">
+                    <Button size="sm" variant="soft-danger" :disabled="form.contacts.length === 1"
+                      @click="removeContactRow(i)">
+                      <Lucide icon="X" class="h-4 w-4" />
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+            <small class="mt-1 block font-caption text-slate-500">Minimal satu PIC dengan nama wajib diisi.</small>
+          </div>
+        </div>
       </div>
 
       <!-- Step 2: Profil Bisnis & Operasional -- dipisah dari Step 1 karena kepadatan UI, backend tetap 1 grup rule yang sama -->
@@ -1210,49 +1280,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="grid grid-cols-12 items-start gap-4">
-          <div class="col-span-3 flex flex-col items-start gap-2 pt-2 font-label">
-            <FormLabel>Penanggung Jawab (PIC)</FormLabel>
-            <Button size="sm" variant="outline-secondary" @click="addContactRow">
-              <Lucide icon="Plus" class="mr-1 h-4 w-4" /> Tambah
-            </Button>
-          </div>
-          <div class="col-span-9 overflow-x-auto">
-            <Table>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Nama</Table.Th>
-                  <Table.Th>Posisi</Table.Th>
-                  <Table.Th>No. HP</Table.Th>
-                  <Table.Th>Email</Table.Th>
-                  <Table.Th class="text-center">Aksi</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                <Table.Tr v-for="(row, i) in form.contacts" :key="i">
-                  <Table.Td>
-                    <FormInput v-model="row.full_name" placeholder="cth. Ahmad Fauzi" />
-                  </Table.Td>
-                  <Table.Td>
-                    <FormInput v-model="row.position" placeholder="cth. Kepala Gudang" />
-                  </Table.Td>
-                  <Table.Td>
-                    <FormInput v-model="row.mobile" placeholder="cth. 0812-3456-7890" />
-                  </Table.Td>
-                  <Table.Td>
-                    <FormInput v-model="row.email" type="email" placeholder="cth. nama@perusahaan.com" />
-                  </Table.Td>
-                  <Table.Td class="text-center">
-                    <Button size="sm" variant="soft-danger" :disabled="form.contacts.length === 1"
-                      @click="removeContactRow(i)">
-                      <Lucide icon="X" class="h-4 w-4" />
-                    </Button>
-                  </Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
-          </div>
-        </div>
       </div>
 
       <!-- Step 3: Akses & Rute (Grup 2) -->

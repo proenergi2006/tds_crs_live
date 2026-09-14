@@ -12,8 +12,10 @@ class PenawaranIndexResource extends JsonResource
         return [
             'id_penawaran'        => $this->id_penawaran,
             'nomor_penawaran'     => $this->nomor_penawaran,
+            'keterangan'          => $this->keterangan,
             'user_id'             => $this->user_id,
             'disposisi_penawaran' => $this->disposisi_penawaran,
+            'disposisi_label'     => $this->disposisi_label,
             'masa_berlaku'        => $this->masa_berlaku,
             'sampai_dengan'       => $this->sampai_dengan,
             'total_volume'        => $this->total_volume,

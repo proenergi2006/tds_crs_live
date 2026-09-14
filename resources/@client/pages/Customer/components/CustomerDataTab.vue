@@ -18,65 +18,21 @@ import { createResourceApi } from '@/utils/resourceApi'
 import AddressSection from './AddressSection.vue'
 import CorporateDetailSection from './CorporateDetailSection.vue'
 import PaymentSection from './PaymentSection.vue'
+import type { CustomerDocumentType, CustomerDocumentRecord, DocumentRowState, NewFreeFormRow, CustomerContactRecord } from '../types'
 
-/* Type: dokumen customer (customer_document_types + customer_documents) */
-interface CustomerDocumentType {
-  id: number
-  code: string
-  name: string
-  is_active: boolean
-  category: string | null
-}
-interface CustomerDocumentRecord {
-  id: number
-  id_customer: number
-  id_document_type: number | null
-  document_type: { id: number; code: string; name: string } | null
-  document_name: string | null
-  document_number: string | null
-  file_name: string
-  file_path: string
-  url: string | null
-  uploaded_at: string | null
-  uploaded_by: { id: number; name: string } | null
-}
-interface DocumentRowState {
-  file: File | null
-  documentNumber: string
-  uploading: boolean
-  error: string
-}
-interface NewFreeFormRow {
-  label: string
-  file: File | null
-  error: string
-}
-
-/* Type: kontak customer (customer_contacts) */
-interface CustomerContactRecord {
-  id: number
-  id_customer: number
-  id_lcr: number | null
-  full_name: string
-  position: string | null
-  phone: string | null
-  mobile: string | null
-  email: string | null
-  created_at: string | null
-  updated_at: string | null
-}
-
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   idCustomer: number
   customer: any
-}>()
+  showOnboardingLink?: boolean
+}>(), {
+  showOnboardingLink: true,
+})
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
 const { success, error: notifyError } = useNotification()
 const auth = useAuthStore()
 
-/* State: generate link onboarding, dan result dialog */
 const generatingLink = ref(false)
 const linkResultOpen = ref(false)
 const linkResult = reactive({ token: '', link: '', expiresAt: '', alreadyExists: false })
@@ -159,7 +115,6 @@ function closeLinkResult() {
   linkResultOpen.value = false
 }
 
-/* State: Dokumen Customer (customer_document_types + customer_documents) */
 const documentTypesApi = createResourceApi('/customer-document-types')
 const customerDocumentsApi = createResourceApi(`/customers/${props.idCustomer}/documents`)
 
@@ -173,7 +128,6 @@ const deleteDocumentDialogOpen = ref(false)
 const deleteDocumentTarget = ref<CustomerDocumentRecord | null>(null)
 const deleteDocumentLoading = ref(false)
 
-// sengaja allow-list category='onboarding' (bukan exclude 'lcr') -- biar kategori baru di masa depan gak otomatis nongol di sini
 const activeDocumentTypes = computed(() =>
   documentTypes.value.filter(t => t.is_active && t.category === 'onboarding'),
 )
@@ -183,7 +137,6 @@ const documentRows = computed(() =>
     document: customerDocuments.value.find(d => d.id_document_type === type.id) ?? null,
   })),
 )
-// Dokumen bebas (dari Onboarding "Dokumen Lainnya") -- id_document_type null, read+delete only di sini.
 const freeFormDocumentRows = computed(() =>
   customerDocuments.value.filter(d => d.id_document_type === null),
 )
@@ -243,7 +196,6 @@ function handleDocumentFileSelected(event: Event) {
   activeDocumentTypeId.value = null
 }
 
-/* State: baris dokumen bebas baru -- picker-nya terpisah dari documentFileInputRef yang khusus baris fixed (keyed by typeId) */
 const newFreeFormRows = ref<NewFreeFormRow[]>([])
 
 function addFreeFormRow() {
@@ -284,7 +236,7 @@ const hasDirtyDocuments = computed(() =>
   || newFreeFormRows.value.some(row => row.label.trim() || row.file),
 )
 
-/* backend cuma punya create+delete (gak ada replace) -- upload baru dulu, baru hapus lama, cleanup gagal gak boleh gagalin upload utama. refetch/reset state ditangani submitAllDocuments biar cuma sekali */
+// backend cuma punya create+delete, gak ada replace -- makanya upload baru dulu baru hapus lama
 async function uploadDocumentType(row: { type: CustomerDocumentType; document: CustomerDocumentRecord | null }): Promise<boolean> {
   const state = rowState(row.type.id)
   if (!state.file) return true
@@ -321,7 +273,6 @@ async function uploadDocumentType(row: { type: CustomerDocumentType; document: C
   }
 }
 
-/* dokumen bebas kirim document_name (bukan id_document_type) -- baris yang "tersentuh" tetap dikirim walau salah satu kosong, biar backend 422 jelas per field */
 async function uploadFreeFormRow(row: NewFreeFormRow): Promise<boolean> {
   if (!row.label.trim() && !row.file) return true
 
@@ -368,7 +319,6 @@ async function submitAllDocuments() {
       state.file = null
       state.documentNumber = documentRows.value.find(r => r.type.id === row.type.id)?.document?.document_number ?? state.documentNumber
     })
-    // Baris bebas yang sukses dihapus dari staging lokal -- sudah jadi row asli di freeFormDocumentRows setelah refetch.
     newFreeFormRows.value = newFreeFormRows.value.filter(row => !freeFormSucceeded.includes(row))
 
     if (totalFailed === 0) {
@@ -406,7 +356,6 @@ async function performDeleteDocument() {
   }
 }
 
-/* State: Kontak Customer -- satu sumber data buat kartu PIC juga, gak dipisah lagi jadi "PIC Details" read-only + CRUD terpisah */
 const customerContactsApi = createResourceApi(`/customers/${props.idCustomer}/contacts`)
 
 const contactsLoading = ref(true)
@@ -443,6 +392,45 @@ async function fetchCustomerContacts() {
   }
 }
 
+function formatOfficePhone(raw: string | null | undefined): string {
+  const digits = (raw ?? '').replace(/\D/g, '').slice(0, 12)
+  return digits.length <= 3 ? digits : `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+}
+
+function groupMobileDigits(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '').slice(0, 14).replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+function stripPhoneDigits(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '')
+}
+
+function applyFormattedInput(event: Event, formatFn: (raw: string) => string, assign: (value: string) => void) {
+  const target = event.target as HTMLInputElement
+  const caret = target.selectionStart ?? target.value.length
+  const digitsBeforeCaret = target.value.slice(0, caret).replace(/\D/g, '').length
+
+  const formatted = formatFn(target.value)
+  assign(formatted)
+  target.value = formatted
+
+  let pos = 0
+  let seen = 0
+  while (pos < formatted.length && seen < digitsBeforeCaret) {
+    if (/\d/.test(formatted[pos])) seen++
+    pos++
+  }
+  target.setSelectionRange(pos, pos)
+}
+
+function onContactPhoneInput(event: Event) {
+  applyFormattedInput(event, formatOfficePhone, (value) => { contactForm.phone = value })
+}
+
+function onContactMobileInput(event: Event) {
+  applyFormattedInput(event, groupMobileDigits, (value) => { contactForm.mobile = value })
+}
+
 function resetContactForm() {
   contactFormError.value = null
   contactFormErrors.value = {}
@@ -471,8 +459,8 @@ function openEditContact(contact: CustomerContactRecord) {
     id: contact.id,
     full_name: contact.full_name,
     position: contact.position ?? '',
-    phone: contact.phone ?? '',
-    mobile: contact.mobile ?? '',
+    phone: formatOfficePhone(contact.phone),
+    mobile: groupMobileDigits(contact.mobile),
     email: contact.email ?? '',
   })
   contactFormOpen.value = true
@@ -491,11 +479,16 @@ async function submitContactForm() {
     return
   }
 
+  if (!contactForm.phone.trim() && !contactForm.mobile.trim() && !contactForm.email.trim()) {
+    contactFormError.value = 'Minimal salah satu dari Telepon, Mobile, atau Email wajib diisi.'
+    return
+  }
+
   const payload = {
     full_name: contactForm.full_name.trim(),
     position: contactForm.position.trim() || null,
-    phone: contactForm.phone.trim() || null,
-    mobile: contactForm.mobile.trim() || null,
+    phone: stripPhoneDigits(contactForm.phone) || null,
+    mobile: stripPhoneDigits(contactForm.mobile) || null,
     email: contactForm.email.trim() || null,
   }
 
@@ -556,7 +549,7 @@ onMounted(fetchCustomerContacts)
 <template>
   <div class="gap-6 grid grid-cols-2">
     <div class="gap-6 grid lg:grid-cols-1">
-      <div
+      <div v-if="showOnboardingLink"
         class="flex justify-between items-center gap-3 bg-gradient-to-br from-theme-1 via-emerald-800 to-green-600 shadow-sm p-6 box">
         <div>
           <div class="font-header text-white">Customer Onboarding Form</div>
@@ -607,27 +600,38 @@ onMounted(fetchCustomerContacts)
           <div class="font-body">Belum ada kontak yang ditambahkan.</div>
         </div>
 
-        <div v-else class="gap-3 grid sm:grid-cols-2">
-          <div v-for="c in customerContacts" :key="c.id" class="p-3 border border-slate-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <div
-                class="flex justify-center items-center bg-cyan-100 rounded-full w-10 h-10 font-strong text-cyan-700 shrink-0">
-                {{ (c.full_name || '?').charAt(0).toUpperCase() }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="font-strong truncate">{{ c.full_name }}</div>
-                <div v-if="c.position" class="font-caption truncate">{{ c.position }}</div>
-              </div>
-              <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8 shrink-0"
-                @click="openEditContact(c)">
-                <Lucide icon="Edit" class="w-4 h-4" />
-              </Button>
-            </div>
-            <div v-if="c.phone || c.mobile" class="mt-2 font-caption truncate">
-              {{ [c.phone, c.mobile].filter(Boolean).join(' | ') }}
-            </div>
-            <p v-if="c.email" class="mt-1 font-caption truncate">{{ c.email }}</p>
-          </div>
+        <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
+          <table class="divide-y divide-slate-200 w-full min-w-[640px]">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-3 py-2 w-12 font-label text-center">No</th>
+                <th class="px-3 py-2 font-label text-left">Nama</th>
+                <th class="px-3 py-2 font-label text-left">Telepon</th>
+                <th class="px-3 py-2 font-label text-left">Mobile</th>
+                <th class="px-3 py-2 font-label text-left">Email</th>
+                <th class="px-3 py-2 w-20 font-label text-center">Aksi</th>
+              </tr>
+            </thead>
+
+            <tbody class="bg-white divide-y divide-slate-200">
+              <tr v-for="(c, idx) in customerContacts" :key="c.id" class="hover:bg-slate-50 transition">
+                <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+                <td class="px-3 py-2">
+                  <div class="font-strong">{{ c.full_name }}</div>
+                  <div v-if="c.position" class="font-caption text-slate-500">({{ c.position }})</div>
+                </td>
+                <td class="px-3 py-2 font-body">{{ c.phone ? formatOfficePhone(c.phone) : '-' }}</td>
+                <td class="px-3 py-2 font-body">{{ c.mobile ? groupMobileDigits(c.mobile) : '-' }}</td>
+                <td class="px-3 py-2 font-body break-all">{{ c.email || '-' }}</td>
+                <td class="px-3 py-2 text-center">
+                  <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
+                    @click="openEditContact(c)">
+                    <Lucide icon="Edit" class="w-4 h-4" />
+                  </Button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </CardSection>
 
@@ -655,10 +659,11 @@ onMounted(fetchCustomerContacts)
           <span class="font-body">Memuat dokumen...</span>
         </div>
 
-        <div v-else-if="documentRows.length === 0"
+        <div
+          v-else-if="documentRows.length === 0 && freeFormDocumentRows.length === 0 && newFreeFormRows.length === 0"
           class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
           <Lucide icon="Inbox" class="w-8 h-8 text-slate-400" />
-          <div class="font-body">Belum ada jenis dokumen yang aktif.</div>
+          <div class="font-body">Belum ada dokumen. Klik "Tambah" untuk menambah dokumen.</div>
         </div>
 
         <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
@@ -790,11 +795,21 @@ onMounted(fetchCustomerContacts)
         <div class="gap-3 grid grid-cols-2">
           <div>
             <FormLabel>Telepon</FormLabel>
-            <FormInput v-model="contactForm.phone" placeholder="021-xxxxxxx" />
+            <FormInput
+              :value="contactForm.phone"
+              inputmode="tel"
+              placeholder="cth. (021) 5551234"
+              @input="onContactPhoneInput"
+            />
           </div>
           <div>
             <FormLabel>Mobile</FormLabel>
-            <FormInput v-model="contactForm.mobile" placeholder="08xx-xxxx-xxxx" />
+            <FormInput
+              :value="contactForm.mobile"
+              inputmode="numeric"
+              placeholder="cth. 0812 3456 7890"
+              @input="onContactMobileInput"
+            />
           </div>
         </div>
         <div>
