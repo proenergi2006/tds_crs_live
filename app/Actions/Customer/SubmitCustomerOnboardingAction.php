@@ -9,14 +9,12 @@ use App\Models\CustomerContact;
 use App\Models\CustomerDocument;
 use App\Models\CustomerDocumentType;
 use App\Models\CustomerLogistik;
-use App\Services\CustomerCodeGenerator;
 use App\Services\CustomerFileNamingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
-// head office address ditulis lewat jalur yang sama dengan create/update customer manual, bukan kolom identitas customers
 class SubmitCustomerOnboardingAction
 {
     private const CUSTOMERS_IDENTITY_COLUMNS = [
@@ -33,7 +31,6 @@ class SubmitCustomerOnboardingAction
     public function execute(Customer $customer, array $data, string $actorName, ?string $ip): void
     {
         DB::transaction(function () use ($customer, $data, $actorName) {
-            $this->assignCustomerCode($customer);
             $this->updateCustomer($customer, $data['identity'] ?? [], $actorName);
             $this->syncHeadOfficeAddress($customer, $data['identity'] ?? []);
             $this->saveRegisteredAddress($customer, $data['identity'] ?? [], $data['registered_address'] ?? []);
@@ -42,17 +39,6 @@ class SubmitCustomerOnboardingAction
             $this->saveLogistics($customer, $data['logistics'] ?? [], $actorName);
             $this->saveDocuments($customer, $data['documents'] ?? []);
         });
-    }
-
-    // generate customer_code di sini (bukan pas create) biar gak perlu backfill data live yang udah ada tanpa onboarding; guard idempotent
-    private function assignCustomerCode(Customer $customer): void
-    {
-        if (!empty($customer->customer_code)) {
-            return;
-        }
-
-        $customer->customer_code = CustomerCodeGenerator::generate();
-        $customer->save();
     }
 
     private function updateCustomer(Customer $customer, array $identity, string $actorName): void
@@ -97,7 +83,6 @@ class SubmitCustomerOnboardingAction
         );
     }
 
-    // Delete dulu baru upsert, dua-duanya di-scope id_customer -- payload onboarding datang dari token publik tanpa login.
     private function saveContacts(Customer $customer, array $contacts, array $removeIds): void
     {
         if (!empty($removeIds)) {
@@ -198,7 +183,6 @@ class SubmitCustomerOnboardingAction
             return;
         }
 
-        // ganti dokumen fixed = replace, bukan histori -- hapus row+file lama dulu
         CustomerDocument::where('id_customer', $customer->id_customer)
             ->where('id_document_type', $type->id_document_type)
             ->get()
@@ -240,7 +224,6 @@ class SubmitCustomerOnboardingAction
             return;
         }
 
-        // whereNull id_document_type -- cuma dokumen bebas yang boleh dihapus lewat jalur ini, defense in depth dari validasi
         CustomerDocument::where('id_customer', $customer->id_customer)
             ->whereNull('id_document_type')
             ->whereIn('id_document', $ids)

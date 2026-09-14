@@ -146,6 +146,11 @@ class Customer extends Model
         return $this->hasOne(\App\Models\CustomerPayment::class, 'id_customer', 'id_customer');
     }
 
+    public function adminArnya(): HasOne
+    {
+        return $this->hasOne(\App\Models\CustomerAdminArnya::class, 'id_customer', 'id_customer');
+    }
+
     public function getIsVerifiedAttribute(): bool
     {
         return $this->latestApprovedVerification !== null;

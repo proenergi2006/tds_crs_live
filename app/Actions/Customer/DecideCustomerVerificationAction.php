@@ -3,10 +3,9 @@
 namespace App\Actions\Customer;
 
 use App\Enums\CustomerVerificationStatus;
-use App\Enums\DocumentApprovalStatus;
 use App\Models\Customer;
-use App\Models\CustomerLcr;
 use App\Models\CustomerVerification;
+use App\Services\CustomerCodeGenerator;
 use Illuminate\Support\Facades\DB;
 
 class DecideCustomerVerificationAction
@@ -14,9 +13,7 @@ class DecideCustomerVerificationAction
     public function approve(CustomerVerification $verification, int $approvedLimit, int $approvedTop, string $financialReview, int $reviewedBy): CustomerVerification
     {
         return DB::transaction(function () use ($verification, $approvedLimit, $approvedTop, $financialReview, $reviewedBy) {
-            if (!$this->lcrApproved($verification->customer)) {
-                throw new \RuntimeException('LCR sites are not all approved.');
-            }
+            $customer = $verification->customer;
 
             $verification->update([
                 'status'           => CustomerVerificationStatus::Approved,
@@ -27,8 +24,20 @@ class DecideCustomerVerificationAction
                 'reviewed_by'      => $reviewedBy,
             ]);
 
+            $this->assignCustomerCode($customer);
+
             return $verification->fresh();
         });
+    }
+
+    private function assignCustomerCode(Customer $customer): void
+    {
+        if (!empty($customer->customer_code)) {
+            return;
+        }
+
+        $customer->customer_code = CustomerCodeGenerator::generate();
+        $customer->save();
     }
 
     public function reject(CustomerVerification $verification, string $rejectNote, int $reviewedBy): CustomerVerification
@@ -43,13 +52,5 @@ class DecideCustomerVerificationAction
 
             return $verification->fresh();
         });
-    }
-
-    public function lcrApproved(Customer $customer): bool
-    {
-        $sites = $customer->lcr()->with('latestDocumentApproval')->get();
-
-        return $sites->isNotEmpty()
-            && $sites->every(fn (CustomerLcr $site) => $site->latestDocumentApproval?->status === DocumentApprovalStatus::Approved);
     }
 }

@@ -52,6 +52,13 @@ export const customerNavigation: NavItem[] = [
         ],
         permission: "sales-confirmation.manage",
       },
+      {
+        icon: "Wallet",
+        pageName: "ar-agings-index",
+        title: "AR Aging Customer",
+        activePageNames: [],
+        permission: "sales-confirmation.manage",
+      },
     ],
   },
 ];

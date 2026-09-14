@@ -2,14 +2,15 @@
 import { computed, onMounted, reactive, ref, toRefs } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVuelidate } from '@vuelidate/core'
-import { helpers, integer, minValue, required } from '@vuelidate/validators'
+import { helpers, integer, minValue, required, requiredIf } from '@vuelidate/validators'
 import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import TippyContent from '@/components/Base/TippyContent'
-import { FormInput, FormLabel } from '@/components/Base/Form'
+import TomSelect from '@/components/Base/TomSelect'
+import { FormInput, FormLabel, FormSelect } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
@@ -31,18 +32,19 @@ const formError = ref('')
 const items = ref<any[]>([])
 const hargaDasar = ref(0)
 const volumePoc = ref<number>(0)
+const penawaranOptions = ref<Array<{ id_penawaran: number; nomor_penawaran: string; customer_nama: string }>>([])
 
 const form = reactive({
   customer_id: '' as number | string,
   customer_nama: '',
   id_penawaran: idPenawaran as number | string,
   nomor_penawaran: '',
-  cabang_nama: '',
   masa_berlaku: '',
   sampai_dengan: '',
   oat: 0,
   nomor_po: '',
-  top_poc: '',
+  tipe_bayar: '' as string,
+  termin_hari: '' as string | number,
   tanggal_po: '',
   tanggal_kirim: '',
   lampiran: null as File | null,
@@ -56,8 +58,17 @@ const dppPerM3 = computed(() => hargaDasar.value + Number(form.oat ?? 0))
 const totalHarga = computed(() => dppPerM3.value * volumePoc.value)
 
 const rules = {
+  id_penawaran: { required: helpers.withMessage('Pilih Penawaran terlebih dahulu', required) },
   nomor_po: { required: helpers.withMessage('Nomor PO Customer wajib diisi', required) },
-  top_poc: { required: helpers.withMessage('TOP / termin pembayaran wajib diisi', required) },
+  tipe_bayar: { required: helpers.withMessage('Tipe pembayaran wajib dipilih', required) },
+  termin_hari: {
+    requiredIfCredit: helpers.withMessage(
+      'Termin (hari) wajib diisi untuk tipe Credit',
+      requiredIf(() => form.tipe_bayar === 'CREDIT'),
+    ),
+    integer: helpers.withMessage('Termin harus berupa angka bulat', integer),
+    minValue: helpers.withMessage('Termin harus lebih dari 0', minValue(1)),
+  },
   tanggal_po: { required: helpers.withMessage('Tanggal PO wajib diisi', required) },
   tanggal_kirim: {
     required: helpers.withMessage('Tanggal pengiriman wajib diisi', required),
@@ -75,28 +86,60 @@ const rules = {
 
 const v$ = useVuelidate(rules, { ...toRefs(form), volumePoc })
 
-onMounted(fetchPenawaran)
-
-async function fetchPenawaran() {
-  if (!idPenawaran) {
-    formError.value = 'Buka form ini lewat tombol Buat PO Customer di halaman Penawaran.'
-    return
+onMounted(async () => {
+  if (idPenawaran) {
+    form.id_penawaran = idPenawaran
   }
+
+  await Promise.all([
+    fetchPenawaranOptions(),
+    idPenawaran ? fetchPenawaranDetail(idPenawaran) : Promise.resolve(),
+  ])
+
+  if (idPenawaran && !penawaranOptions.value.some(opt => String(opt.id_penawaran) === idPenawaran)) {
+    penawaranOptions.value.push({
+      id_penawaran: Number(idPenawaran),
+      nomor_penawaran: form.nomor_penawaran,
+      customer_nama: form.customer_nama,
+    })
+  }
+})
+
+async function fetchPenawaranOptions() {
+  try {
+    const { data } = await axios.get('/api/penawarans', {
+      params: { status: 'approved_om', per_page: 200 },
+    })
+    penawaranOptions.value = (data.data ?? []).map((row: any) => ({
+      id_penawaran: row.id_penawaran,
+      nomor_penawaran: row.nomor_penawaran,
+      customer_nama: row.customer?.company_name || '-',
+    }))
+  } catch {
+    notifyError('Gagal', 'Gagal memuat daftar penawaran')
+  }
+}
+
+async function fetchPenawaranDetail(id: string | number) {
+  if (!id) return
 
   pageLoading.value = true
 
   try {
-    const { data } = await axios.get(`/api/penawarans/${idPenawaran}`)
+    const { data } = await axios.get(`/api/penawarans/${id}`)
 
     form.customer_id = data.id_customer
     form.customer_nama = data.customer?.company_name || '-'
     form.id_penawaran = data.id_penawaran
     form.nomor_penawaran = data.nomor_penawaran || '-'
-    form.cabang_nama = data.cabang?.nama_cabang || '-'
     form.masa_berlaku = data.masa_berlaku
     form.sampai_dengan = data.sampai_dengan
     form.oat = Number(data.oat ?? 0)
     hargaDasar.value = Number(data.harga_dasar ?? 0)
+
+    const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
+    form.tipe_bayar = tipeBayar
+    form.termin_hari = terminHari ?? ''
 
     items.value = Array.isArray(data.items) ? data.items : []
     form.produk_poc = items.value[0]?.produk?.id_produk || ''
@@ -105,6 +148,24 @@ async function fetchPenawaran() {
     notifyError('Gagal', 'Gagal memuat data penawaran')
   } finally {
     pageLoading.value = false
+  }
+}
+
+function deriveDefaultPayment(tipePembayaran: string | null | undefined, repaymentHari: unknown): { tipeBayar: string; terminHari: number | null } {
+  const val = String(tipePembayaran ?? '').trim().toUpperCase()
+  if (val === 'CBD') return { tipeBayar: 'CBD', terminHari: null }
+  if (val === 'COD') return { tipeBayar: 'COD', terminHari: null }
+  const topMatch = val.match(/^TOP\s*(\d+)$/)
+  if (topMatch) return { tipeBayar: 'CREDIT', terminHari: Number(topMatch[1]) }
+  if (val === 'CUSTOM') return { tipeBayar: 'CREDIT', terminHari: Number(repaymentHari) || null }
+  return { tipeBayar: 'CREDIT', terminHari: null }
+}
+
+function onPenawaranSelected(value: string | string[]): void {
+  const id = Array.isArray(value) ? value[0] : value
+  if (id && String(id) !== String(form.id_penawaran)) {
+    form.id_penawaran = id
+    fetchPenawaranDetail(id)
   }
 }
 
@@ -120,7 +181,10 @@ async function submit() {
   payload.append('id_customer', String(form.customer_id))
   payload.append('id_penawaran', String(form.id_penawaran))
   payload.append('nomor_poc', form.nomor_po)
-  payload.append('top_poc', form.top_poc)
+  payload.append('tipe_bayar', form.tipe_bayar)
+  if (form.tipe_bayar === 'CREDIT') {
+    payload.append('termin_hari', String(form.termin_hari))
+  }
   payload.append('tanggal_poc', form.tanggal_po)
   payload.append('supply_date', form.tanggal_kirim)
   payload.append('volume_poc', String(Math.round(volumePoc.value)))
@@ -152,7 +216,7 @@ function goBack() {
   router.push({ name: 'penawarans-list' })
 }
 
-function fieldError(field: 'nomor_po' | 'top_poc' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {
+function fieldError(field: 'id_penawaran' | 'nomor_po' | 'tipe_bayar' | 'termin_hari' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {
   return v$.value[field].$errors[0]?.$message?.toString() ?? ''
 }
 
@@ -164,8 +228,7 @@ function poVolumeForItem(it: any) {
 <template>
   <FormPage title="Buat PO Customer"
     description="Sumber harga dari Penawaran terpilih. Lengkapi detail PO untuk memproses." size="full" layout="sidebar"
-    surface="plain" footer-placement="sidebar" :loading="pageLoading || submitting" :error="formError"
-    submit-text="Simpan" submit-icon="Save" cancel-icon="ArrowLeft" @submit="submit" @cancel="goBack">
+    surface="plain" :show-footer="false" :loading="pageLoading || submitting" :error="formError" @submit="submit">
     <template #action>
       <Button type="button" variant="outline-secondary" class="inline-flex items-center gap-2" @click="goBack">
         <Lucide icon="ArrowLeft" class="w-4 h-4" />
@@ -176,28 +239,21 @@ function poVolumeForItem(it: any) {
     <CardSection title="Sumber Penawaran" description="Data penawaran yang menjadi dasar PO Customer." icon="FileText">
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
         <div>
-          <div class="font-label">Nama Customer</div>
-          <div class="font-strong">{{ form.customer_nama || '-' }}</div>
-        </div>
-        <div>
           <div class="font-label">Nomor Penawaran</div>
-          <div class="font-strong">{{ form.nomor_penawaran || '-' }}</div>
+          <TomSelect :model-value="String(form.id_penawaran)" class="w-full"
+            :options="{ placeholder: 'Pilih penawaran...', dropdownParent: 'body' }"
+            @update:modelValue="onPenawaranSelected">
+            <option v-for="opt in penawaranOptions" :key="opt.id_penawaran" :value="String(opt.id_penawaran)">
+              {{ opt.nomor_penawaran }} — {{ opt.customer_nama }}
+            </option>
+          </TomSelect>
+          <small v-if="fieldError('id_penawaran')" class="font-caption !text-rose-600">{{ fieldError('id_penawaran') }}</small>
         </div>
         <div>
           <div class="font-label">Masa Berlaku Harga</div>
-          <div class="font-strong">{{ formatDate(form.masa_berlaku) }} – {{ formatDate(form.sampai_dengan) }}</div>
+          <FormInput type="text" :value="`${formatDate(form.masa_berlaku)} – ${formatDate(form.sampai_dengan)}`"
+            readonly class="w-full !bg-white dark:!bg-darkmode-800" />
         </div>
-        <div>
-          <div class="font-label">Cabang</div>
-          <div class="font-strong">{{ form.cabang_nama || '-' }}</div>
-        </div>
-        <!-- <div class="sm:col-span-2">
-          <span
-            class="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-full font-caption text-slate-600">
-            <Lucide icon="BadgeCheck" class="w-3.5 h-3.5" />
-            Penawaran Aktif
-          </span>
-        </div> -->
       </div>
     </CardSection>
 
@@ -228,7 +284,6 @@ function poVolumeForItem(it: any) {
                 0))}%` : '-' }}</Table.Td>
               <Table.Td class="px-4 py-3 font-num text-right">
                 <div>{{ formatNumber(poVolumeForItem(it)) }} m³</div>
-                <!-- <div class="font-caption text-slate-500">dari Penawaran: {{ formatNumber(it.volume_order) }} m³</div> -->
               </Table.Td>
             </Table.Tr>
 
@@ -288,11 +343,16 @@ function poVolumeForItem(it: any) {
     <template #sidebar>
       <CardSection title="Detail PO Customer" description="Lengkapi data wajib untuk memproses PO." icon="ClipboardList"
         icon-class="bg-amber-100 text-amber-600">
-        <template #action>
+        <template v-if="form.id_penawaran" #action>
           <span class="bg-rose-50 px-2.5 py-1 rounded-full font-caption !text-rose-600">Wajib</span>
         </template>
 
-        <div class="space-y-4">
+        <div v-if="!form.id_penawaran" class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+          <Lucide icon="FileSearch" class="h-8 w-8 text-slate-300" />
+          <p class="font-body text-slate-500">Pilih Penawaran terlebih dahulu untuk mengisi detail PO Customer.</p>
+        </div>
+
+        <div v-else class="space-y-4">
           <div>
             <FormLabel for="nomor_po">Nomor PO Customer
               <RequiredAsterisk />
@@ -302,13 +362,28 @@ function poVolumeForItem(it: any) {
             <small v-if="v$.nomor_po.$error" class="font-caption !text-rose-600">{{ fieldError('nomor_po') }}</small>
           </div>
 
-          <div>
-            <FormLabel for="top_poc">TOP / Termin Pembayaran
-              <RequiredAsterisk />
-            </FormLabel>
-            <FormInput id="top_poc" v-model="form.top_poc" placeholder="mis. 30 hari"
-              :class="v$.top_poc.$error ? 'border-rose-500' : ''" />
-            <small v-if="v$.top_poc.$error" class="font-caption !text-rose-600">{{ fieldError('top_poc') }}</small>
+          <div class="gap-4 grid grid-cols-2">
+            <div>
+              <FormLabel for="tipe_bayar">Tipe Pembayaran
+                <RequiredAsterisk />
+              </FormLabel>
+              <FormSelect id="tipe_bayar" v-model="form.tipe_bayar" class="w-full"
+                :class="v$.tipe_bayar.$error ? 'border-rose-500' : ''">
+                <option value="" disabled>Pilih…</option>
+                <option value="CBD">CBD</option>
+                <option value="COD">COD</option>
+                <option value="CREDIT">Credit</option>
+              </FormSelect>
+              <small v-if="v$.tipe_bayar.$error" class="font-caption !text-rose-600">{{ fieldError('tipe_bayar') }}</small>
+            </div>
+
+            <div v-if="form.tipe_bayar === 'CREDIT'">
+              <FormLabel for="termin_hari">Termin (Hari)
+                <RequiredAsterisk />
+              </FormLabel>
+              <NumberField id="termin_hari" v-model.number="form.termin_hari" suffix="hari" :decimals="0"
+                :error="fieldError('termin_hari')" />
+            </div>
           </div>
 
           <div class="gap-4 grid grid-cols-2">
@@ -321,20 +396,12 @@ function poVolumeForItem(it: any) {
           <FileUploadField v-model="form.lampiran" label="Lampiran Dokumen PO" accept=".pdf,.jpg,.jpeg,.png"
             :max-size-mb="2" hint="Opsional. PDF, JPG, atau PNG maksimal 2MB." />
 
-          <div class="gap-3 grid grid-cols-3 bg-slate-50 p-3 border border-slate-200 rounded-lg">
-            <div>
-              <div class="font-caption">Item</div>
-              <div class="font-strong">{{ items.length }}</div>
-            </div>
-            <div>
-              <div class="font-caption">Total Volume</div>
-              <div class="font-strong">{{ formatNumber(volumePoc) }} m³</div>
-            </div>
-            <div>
-              <div class="font-caption">Total Harga</div>
-              <div class="font-strong">{{ formatCurrency(totalHarga) }}</div>
-            </div>
-          </div>
+          <Button type="submit" variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
+            :disabled="pageLoading || submitting">
+            <Lucide v-if="pageLoading || submitting" icon="Loader2" class="h-4 w-4 animate-spin" />
+            <Lucide v-else icon="Save" class="h-4 w-4" />
+            Simpan
+          </Button>
         </div>
       </CardSection>
     </template>

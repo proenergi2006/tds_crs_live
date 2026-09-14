@@ -2,14 +2,25 @@
 
 namespace App\Actions\Penawaran;
 
+use App\Enums\PenawaranDisposisi;
 use App\Models\Penawaran;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ResolvePenawaranQueueAction
 {
     private const DISPOSISI_BY_STEP = [
-        'bm' => [2, 3, 4, 5, 6],
-        'om' => [3, 4, 6],
+        'bm' => [
+            PenawaranDisposisi::MenungguVerifikasiBm->value,
+            PenawaranDisposisi::MenungguVerifikasiOm->value,
+            PenawaranDisposisi::DisetujuiOm->value,
+            PenawaranDisposisi::DitolakBm->value,
+            PenawaranDisposisi::DitolakOm->value,
+        ],
+        'om' => [
+            PenawaranDisposisi::MenungguVerifikasiOm->value,
+            PenawaranDisposisi::DisetujuiOm->value,
+            PenawaranDisposisi::DitolakOm->value,
+        ],
     ];
 
     public function execute(string $brand, string $step, ?string $search, int $perPage): LengthAwarePaginator

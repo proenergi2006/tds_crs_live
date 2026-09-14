@@ -3,6 +3,7 @@
 namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ManagesPenawaranLineItems;
+use App\Enums\PenawaranDisposisi;
 use App\Models\Cabang;
 use App\Models\Penawaran;
 use App\Models\PricePeriod;
@@ -30,7 +31,7 @@ class CreatePenawaranAction
             $data = array_merge($data, $this->calculateTotals($data['items'], $data['discount'] ?? 0, $data['oat'] ?? 0));
             $data['nomor_penawaran'] = $this->generateNomor($cabang, $brand);
             $data['status'] = 'draft';
-            $data['disposisi_penawaran'] = '1';
+            $data['disposisi_penawaran'] = PenawaranDisposisi::Draft;
             $data['type_pengiriman'] = $data['type_pengiriman'] ?? null;
             $data['created_at'] = now();
             $data['created_by'] = optional($user)->name;

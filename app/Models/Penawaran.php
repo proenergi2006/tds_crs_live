@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PenawaranBrand;
+use App\Enums\PenawaranDisposisi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -64,7 +65,12 @@ class Penawaran extends Model
     ];
 
     protected $casts = [
-        'brand' => PenawaranBrand::class,
+        'brand'               => PenawaranBrand::class,
+        'disposisi_penawaran' => PenawaranDisposisi::class,
+    ];
+
+    protected $appends = [
+        'disposisi_label',
     ];
 
     public function customer()
@@ -115,5 +121,10 @@ class Penawaran extends Model
     public function actedAtForStep(int $stepOrder): ?\Illuminate\Support\Carbon
     {
         return $this->latestDocumentApproval?->steps->firstWhere('step_order', $stepOrder)?->acted_at;
+    }
+
+    public function getDisposisiLabelAttribute(): ?string
+    {
+        return $this->disposisi_penawaran?->label();
     }
 }

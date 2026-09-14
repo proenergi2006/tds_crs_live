@@ -4,6 +4,7 @@ namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ResolvesApprovalTemplate;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\PenawaranDisposisi;
 use App\Mail\PenawaranRejectedMail;
 use App\Models\User;
 use App\Services\Approval\DocumentApprovalService;
@@ -23,7 +24,7 @@ class RejectPenawaranBmAction
         try {
             $penawaran->update([
                 'status'              => 'rejected_bm',
-                'disposisi_penawaran' => 5,
+                'disposisi_penawaran' => PenawaranDisposisi::DitolakBm,
             ]);
 
             $service = new DocumentApprovalService();

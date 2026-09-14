@@ -85,10 +85,6 @@ class CustomerVerificationController extends Controller
         $data = $request->validated();
 
         if ($data['action'] === 'approve') {
-            if (!$action->lcrApproved($customerVerification->customer)) {
-                return response()->json(['message' => 'LCR belum diverifikasi Logistik.'], 422);
-            }
-
             $customerVerification = $action->approve(
                 $customerVerification,
                 (int) $data['approved_limit'],

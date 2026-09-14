@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\PoCustomerPaymentType;
+use App\Enums\PoCustomerScProcessState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,7 +19,8 @@ class PoCustomer extends Model
     protected $fillable = [
         'id_customer',
         'id_penawaran',
-        'top_poc',
+        'tipe_bayar',
+        'termin_hari',
         'nomor_poc',
         'tanggal_poc',
         'supply_date',
@@ -36,6 +40,7 @@ class PoCustomer extends Model
         'tgl_bayar_po',
         'keterangan_bayar',
         'is_edit',
+        'sc_process_state',
     ];
 
     protected $casts = [
@@ -45,6 +50,9 @@ class PoCustomer extends Model
         'volume_poc' => 'integer',
         'created_time' => 'datetime',
         'lastupdate_time' => 'datetime',
+        'sc_process_state' => PoCustomerScProcessState::class,
+        'tipe_bayar' => PoCustomerPaymentType::class,
+        'termin_hari' => 'integer',
     ];
 
     public function customer(): BelongsTo
@@ -67,21 +75,54 @@ class PoCustomer extends Model
         return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
     }
 
+    public function unblockRequests(): HasMany
+    {
+        return $this->hasMany(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc');
+    }
+
+    public function activeUnblockRequest(): ?PoCustomerUnblockRequest
+    {
+        return $this->unblockRequests()->where('status', DocumentApprovalStatus::InProgress)->latest('id')->first();
+    }
+
+    public function approvedUnblockRequest(): ?PoCustomerUnblockRequest
+    {
+        return $this->unblockRequests()->where('status', DocumentApprovalStatus::Approved)->first();
+    }
+
+    public function getIsLockedAttribute(): bool
+    {
+        return $this->sc_process_state === PoCustomerScProcessState::Cleared
+            || ($this->sc_process_state === PoCustomerScProcessState::Blocked && $this->activeUnblockRequest() !== null)
+            || $this->salesConfirmation !== null;
+    }
+
     public function getStatusKeyAttribute(): string
     {
+        $sc = $this->salesConfirmation;
+
         return match (true) {
-            $this->salesConfirmation === null => 'awaiting_sc',
-            (int) $this->salesConfirmation->getRawOriginal('disposisi') === 4 => 'done',
-            default => 'sc_in_progress',
+            $sc !== null && (int) $sc->getRawOriginal('disposisi') === 4 => 'done',
+            $sc !== null                                                 => 'sc_in_progress',
+            $this->sc_process_state === PoCustomerScProcessState::Blocked => 'blocked',
+            $this->sc_process_state === PoCustomerScProcessState::Cleared => 'awaiting_sc',
+            default                                                      => 'awaiting_process',
         };
     }
 
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status_key) {
-            'awaiting_sc' => 'Menunggu Sales Confirmation',
-            'sc_in_progress' => 'Sales Confirmation Diproses',
-            'done' => 'Selesai',
+            'awaiting_process' => 'Menunggu Proses SC',
+            'blocked'          => 'Block SC',
+            'awaiting_sc'      => 'Menunggu Sales Confirmation',
+            'sc_in_progress'   => 'Sales Confirmation Diproses',
+            'done'             => 'Selesai',
         };
+    }
+
+    public function getTipeBayarLabelAttribute(): ?string
+    {
+        return $this->tipe_bayar?->label();
     }
 }

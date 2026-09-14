@@ -85,10 +85,15 @@ class PenawaranController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('nomor_penawaran', 'like', "%{$search}%")
-                    ->orWhereHas('customer', fn($cq) => $cq->where('company_name', 'like', "%{$search}%"))
-                    ->orWhereHas('customerContact', fn($cq) => $cq->where('full_name', 'like', "%{$search}%"));
+                $q->where('nomor_penawaran', 'ilike', "%{$search}%")
+                    ->orWhereHas('customer', fn($cq) => $cq->where('company_name', 'ilike', "%{$search}%"))
+                    ->orWhereHas('customerContact', fn($cq) => $cq->where('full_name', 'ilike', "%{$search}%"));
             });
+        }
+
+        $status = $request->query('status');
+        if ($status) {
+            $query->where('status', $status);
         }
 
         $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);

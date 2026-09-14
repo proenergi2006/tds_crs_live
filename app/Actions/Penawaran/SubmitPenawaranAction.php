@@ -3,6 +3,7 @@
 namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ResolvesApprovalTemplate;
+use App\Enums\PenawaranDisposisi;
 use App\Mail\PenawaranApprovalRequestMail;
 use App\Models\User;
 use App\Services\Approval\DocumentApprovalService;
@@ -11,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-// model-agnostic, dipanggil buat Penawaran (TDS) & PenawaranProenergi -- kolomnya sama walau beda class
 class SubmitPenawaranAction
 {
     use ResolvesApprovalTemplate;
@@ -31,11 +31,10 @@ class SubmitPenawaranAction
         try {
             $penawaran->update([
                 'status'              => 'waiting_branch_manager',
-                'disposisi_penawaran' => '2',
+                'disposisi_penawaran' => PenawaranDisposisi::MenungguVerifikasiBm,
                 'updated_at'          => now(),
             ]);
 
-            // dual-write: mulai cycle DocumentApproval bersamaan dengan update kolom lama di atas
             $service = new DocumentApprovalService();
             $templateCode = $this->templateCodeFor($penawaran);
             $service->startCycle($penawaran, $templateCode);

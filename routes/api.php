@@ -47,6 +47,8 @@ use App\Http\Controllers\OngkosKapalController;
 use App\Http\Controllers\MasterTruckController;
 use App\Http\Controllers\OngkosTruckController;
 use App\Http\Controllers\PoCustomerController;
+use App\Http\Controllers\PoCustomerUnblockRequestController;
+use App\Http\Controllers\CustomerArAgingController;
 use App\Http\Controllers\CustomerLcrController;
 use App\Http\Controllers\CustomerReviewController;
 use App\Http\Controllers\MapsLinkController;
@@ -157,6 +159,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customers/{customer}/credit-request', [CustomerCreditRequestController::class, 'show']);
     Route::put('customers/{customer}/credit-request', [CustomerCreditRequestController::class, 'update']);
 
+    Route::get('customers/{customer}/ar-aging', [CustomerArAgingController::class, 'show']);
+    Route::put('customers/{customer}/ar-aging', [CustomerArAgingController::class, 'upsert']);
+    Route::get('ar-agings', [CustomerArAgingController::class, 'index']);
+
     Route::get('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'index']);
     Route::post('customers/{customer}/lcr-sites', [CustomerLcrController::class, 'store']);
     Route::get('customers/{customer}/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'show']);
@@ -248,7 +254,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
     Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
 
-    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'saveSalesConfirmationBM']);
+    Route::post('/po-customers/{poc}/process-sc', [PoCustomerController::class, 'processSalesConfirmation']);
+
+    Route::get('/po-customers/{poc}/unblock-context', [PoCustomerUnblockRequestController::class, 'unblockContext']);
+    Route::post('/po-customers/{poc}/unblock-requests', [PoCustomerUnblockRequestController::class, 'store']);
+    Route::patch('/po-customer-unblock-requests/{unblockRequest}/decision', [PoCustomerUnblockRequestController::class, 'decide']);
 
     Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
 

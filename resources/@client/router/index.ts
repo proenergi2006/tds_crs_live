@@ -638,6 +638,16 @@ const routes = [
       },
 
       {
+        path: "/ar-agings",
+        name: "ar-agings-index",
+        component: () => import("@/pages/CustomerArAging/Index.vue"),
+        meta: {
+          permission: "sales-confirmation.manage",
+          breadcrumbTitle: "AR Aging Customer",
+        },
+      },
+
+      {
         path: "/po-customer-plan/:id",
         name: "po-customer-plan",
         component: () => import("@/pages/PoCustomerPlan.vue"),
@@ -741,8 +751,7 @@ router.beforeEach(async (to, from, next) => {
   if (token && !auth.user) {
     try {
       await auth.fetchUser();
-    } catch (e) {
-      // noop
+    } catch {
     }
   }
 

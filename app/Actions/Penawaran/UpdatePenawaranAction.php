@@ -3,6 +3,7 @@
 namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ManagesPenawaranLineItems;
+use App\Enums\PenawaranDisposisi;
 use App\Models\Penawaran;
 use App\Models\PricePeriod;
 use App\Models\User;
@@ -36,7 +37,7 @@ class UpdatePenawaranAction
 
             $penawaran->forceFill([
                 'status'              => 'draft',
-                'disposisi_penawaran' => '1',
+                'disposisi_penawaran' => PenawaranDisposisi::Draft,
             ])->save();
 
             $this->replaceOngkos($penawaran, $data['ongkos'] ?? []);

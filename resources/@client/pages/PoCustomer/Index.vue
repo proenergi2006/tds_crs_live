@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { debounce } from 'lodash'
 
+import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
 
 import { poCustomerStatusBadgeClass } from './status'
 
 const router = useRouter()
+const auth = useAuthStore()
 const { error: notifyError } = useNotification()
 const poCustomerApi = createResourceApi('/customer-pos')
 
@@ -25,6 +28,8 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
+
+const canManage = computed(() => auth.can('penawaran.manage'))
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
@@ -58,12 +63,23 @@ function goToPage(page: number): void {
 function openDetail(id: number): void {
   router.push({ name: 'po-customers-detail', params: { id } })
 }
+
+function goToCreate(): void {
+  router.push({ name: 'penawarans-po' })
+}
 </script>
 
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <PageHeader title="PO Customer" description="Daftar PO Customer dan status verifikasinya." />
+      <PageHeader title="PO Customer" description="Daftar PO Customer dan status verifikasinya.">
+        <template #action>
+          <Button v-if="canManage" variant="white" class="inline-flex items-center gap-2" @click="goToCreate">
+            <Lucide icon="PlusCircle" class="w-4 h-4" />
+            Buat PO Customer
+          </Button>
+        </template>
+      </PageHeader>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="poCustomers.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"

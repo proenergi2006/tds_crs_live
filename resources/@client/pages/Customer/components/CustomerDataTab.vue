@@ -18,65 +18,21 @@ import { createResourceApi } from '@/utils/resourceApi'
 import AddressSection from './AddressSection.vue'
 import CorporateDetailSection from './CorporateDetailSection.vue'
 import PaymentSection from './PaymentSection.vue'
+import type { CustomerDocumentType, CustomerDocumentRecord, DocumentRowState, NewFreeFormRow, CustomerContactRecord } from '../types'
 
-/* Type: dokumen customer (customer_document_types + customer_documents) */
-interface CustomerDocumentType {
-  id: number
-  code: string
-  name: string
-  is_active: boolean
-  category: string | null
-}
-interface CustomerDocumentRecord {
-  id: number
-  id_customer: number
-  id_document_type: number | null
-  document_type: { id: number; code: string; name: string } | null
-  document_name: string | null
-  document_number: string | null
-  file_name: string
-  file_path: string
-  url: string | null
-  uploaded_at: string | null
-  uploaded_by: { id: number; name: string } | null
-}
-interface DocumentRowState {
-  file: File | null
-  documentNumber: string
-  uploading: boolean
-  error: string
-}
-interface NewFreeFormRow {
-  label: string
-  file: File | null
-  error: string
-}
-
-/* Type: kontak customer (customer_contacts) */
-interface CustomerContactRecord {
-  id: number
-  id_customer: number
-  id_lcr: number | null
-  full_name: string
-  position: string | null
-  phone: string | null
-  mobile: string | null
-  email: string | null
-  created_at: string | null
-  updated_at: string | null
-}
-
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   idCustomer: number
   customer: any
-}>()
+  showOnboardingLink?: boolean
+}>(), {
+  showOnboardingLink: true,
+})
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
 const { success, error: notifyError } = useNotification()
 const auth = useAuthStore()
 
-/* State: generate link onboarding, dan result dialog */
 const generatingLink = ref(false)
 const linkResultOpen = ref(false)
 const linkResult = reactive({ token: '', link: '', expiresAt: '', alreadyExists: false })
@@ -159,7 +115,6 @@ function closeLinkResult() {
   linkResultOpen.value = false
 }
 
-/* State: Dokumen Customer (customer_document_types + customer_documents) */
 const documentTypesApi = createResourceApi('/customer-document-types')
 const customerDocumentsApi = createResourceApi(`/customers/${props.idCustomer}/documents`)
 
@@ -173,7 +128,6 @@ const deleteDocumentDialogOpen = ref(false)
 const deleteDocumentTarget = ref<CustomerDocumentRecord | null>(null)
 const deleteDocumentLoading = ref(false)
 
-// sengaja allow-list category='onboarding' (bukan exclude 'lcr') -- biar kategori baru di masa depan gak otomatis nongol di sini
 const activeDocumentTypes = computed(() =>
   documentTypes.value.filter(t => t.is_active && t.category === 'onboarding'),
 )
@@ -183,7 +137,6 @@ const documentRows = computed(() =>
     document: customerDocuments.value.find(d => d.id_document_type === type.id) ?? null,
   })),
 )
-// Dokumen bebas (dari Onboarding "Dokumen Lainnya") -- id_document_type null, read+delete only di sini.
 const freeFormDocumentRows = computed(() =>
   customerDocuments.value.filter(d => d.id_document_type === null),
 )
@@ -243,7 +196,6 @@ function handleDocumentFileSelected(event: Event) {
   activeDocumentTypeId.value = null
 }
 
-/* State: baris dokumen bebas baru -- picker-nya terpisah dari documentFileInputRef yang khusus baris fixed (keyed by typeId) */
 const newFreeFormRows = ref<NewFreeFormRow[]>([])
 
 function addFreeFormRow() {
@@ -284,7 +236,7 @@ const hasDirtyDocuments = computed(() =>
   || newFreeFormRows.value.some(row => row.label.trim() || row.file),
 )
 
-/* backend cuma punya create+delete (gak ada replace) -- upload baru dulu, baru hapus lama, cleanup gagal gak boleh gagalin upload utama. refetch/reset state ditangani submitAllDocuments biar cuma sekali */
+// backend cuma punya create+delete, gak ada replace -- makanya upload baru dulu baru hapus lama
 async function uploadDocumentType(row: { type: CustomerDocumentType; document: CustomerDocumentRecord | null }): Promise<boolean> {
   const state = rowState(row.type.id)
   if (!state.file) return true
@@ -321,7 +273,6 @@ async function uploadDocumentType(row: { type: CustomerDocumentType; document: C
   }
 }
 
-/* dokumen bebas kirim document_name (bukan id_document_type) -- baris yang "tersentuh" tetap dikirim walau salah satu kosong, biar backend 422 jelas per field */
 async function uploadFreeFormRow(row: NewFreeFormRow): Promise<boolean> {
   if (!row.label.trim() && !row.file) return true
 
@@ -368,7 +319,6 @@ async function submitAllDocuments() {
       state.file = null
       state.documentNumber = documentRows.value.find(r => r.type.id === row.type.id)?.document?.document_number ?? state.documentNumber
     })
-    // Baris bebas yang sukses dihapus dari staging lokal -- sudah jadi row asli di freeFormDocumentRows setelah refetch.
     newFreeFormRows.value = newFreeFormRows.value.filter(row => !freeFormSucceeded.includes(row))
 
     if (totalFailed === 0) {
@@ -406,7 +356,6 @@ async function performDeleteDocument() {
   }
 }
 
-/* State: Kontak Customer -- satu sumber data buat kartu PIC juga, gak dipisah lagi jadi "PIC Details" read-only + CRUD terpisah */
 const customerContactsApi = createResourceApi(`/customers/${props.idCustomer}/contacts`)
 
 const contactsLoading = ref(true)
@@ -443,9 +392,6 @@ async function fetchCustomerContacts() {
   }
 }
 
-/* Format nomor kontak untuk tampilan & input. DB simpan digit polos -- format cuma di UI.
-   Telepon = "(kode area 3 digit) nomor"; Mobile = grup 4 digit dipisah spasi.
-   Catatan: kode area diasumsikan 3 digit -- kurang pas untuk kota dengan kode 4 digit (0274, 0778, dst). */
 function formatOfficePhone(raw: string | null | undefined): string {
   const digits = (raw ?? '').replace(/\D/g, '').slice(0, 12)
   return digits.length <= 3 ? digits : `(${digits.slice(0, 3)}) ${digits.slice(3)}`
@@ -455,12 +401,10 @@ function groupMobileDigits(raw: string | null | undefined): string {
   return (raw ?? '').replace(/\D/g, '').slice(0, 14).replace(/(\d{4})(?=\d)/g, '$1 ')
 }
 
-/* Kebalikan format di atas -- dipakai sebelum kirim ke API supaya DB terima digit polos. */
 function stripPhoneDigits(raw: string | null | undefined): string {
   return (raw ?? '').replace(/\D/g, '')
 }
 
-/* Reformat sambil ketik, caret dikembalikan ke posisi digit yang sama biar edit di tengah tetap enak. */
 function applyFormattedInput(event: Event, formatFn: (raw: string) => string, assign: (value: string) => void) {
   const target = event.target as HTMLInputElement
   const caret = target.selectionStart ?? target.value.length
@@ -605,7 +549,7 @@ onMounted(fetchCustomerContacts)
 <template>
   <div class="gap-6 grid grid-cols-2">
     <div class="gap-6 grid lg:grid-cols-1">
-      <div
+      <div v-if="showOnboardingLink"
         class="flex justify-between items-center gap-3 bg-gradient-to-br from-theme-1 via-emerald-800 to-green-600 shadow-sm p-6 box">
         <div>
           <div class="font-header text-white">Customer Onboarding Form</div>

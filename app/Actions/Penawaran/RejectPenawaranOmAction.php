@@ -4,6 +4,7 @@ namespace App\Actions\Penawaran;
 
 use App\Actions\Penawaran\Concerns\ResolvesApprovalTemplate;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\PenawaranDisposisi;
 use App\Mail\PenawaranRejectedMail;
 use App\Models\User;
 use App\Services\Approval\DocumentApprovalService;
@@ -23,7 +24,7 @@ class RejectPenawaranOmAction
         try {
             $penawaran->update([
                 'status'              => 'rejected_om',
-                'disposisi_penawaran' => 6,
+                'disposisi_penawaran' => PenawaranDisposisi::DitolakOm,
             ]);
 
             $service = new DocumentApprovalService();

@@ -13,15 +13,16 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 
-import { salesConfirmationBadgeClass } from './status'
+import { salesConfirmationBadgeClass, unblockStepForRole, unblockStepOwnerLabel } from './status'
+import UnblockModal from "./components/UnblockModal.vue";
 
 const router = useRouter()
 const auth = useAuthStore()
-const { error: notifyError } = useNotification()
+const { error: notifyError, info } = useNotification()
 
 const ROLE_BM = 8
 
-const disposisiFilter = ref<number | null>(auth.hasRole(ROLE_BM) ? 2 : null)
+const disposisiFilter = ref<number | null>(null)
 const salesConfirmations = ref<any[]>([])
 const searchQuery = ref('')
 const perPage = ref(10)
@@ -29,8 +30,10 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
+const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) };
 
 const isBranchManager = computed(() => auth.hasRole(ROLE_BM))
+const myUnblockStep = computed<number | null>(() => unblockStepForRole(auth.user?.primary_role?.id));
 
 watch(disposisiFilter, () => fetchData(1))
 watch(searchQuery, debounce(() => fetchData(1), 300))
@@ -67,6 +70,57 @@ function goToPage(page: number): void {
 
 function openDetail(id: number): void {
   router.push({ name: 'sales-confirmations-detail', params: { id } })
+}
+
+function openUnblockModal(idPoc: number): void {
+  unblockModal.idPoc.value = idPoc;
+  unblockModal.open.value = true;
+}
+
+function closeUnblockModal(): void {
+  unblockModal.open.value = false;
+  unblockModal.idPoc.value = null;
+}
+
+function handleRowAction(row: any): void {
+  if (row.sc_process_state !== "blocked") {
+    openDetail(row.id_poc);
+    return;
+  }
+
+  const req = row.active_unblock_request;
+
+  if (!req && myUnblockStep.value === 1 && auth.can("sales-confirmation.manage")) {
+    openUnblockModal(row.id_poc);
+    return;
+  }
+
+  if (req && myUnblockStep.value !== null && Number(req.current_step_order) === myUnblockStep.value) {
+    openUnblockModal(row.id_poc);
+    return;
+  }
+
+  if (req) {
+    info("Menunggu Keputusan", `Menunggu ${unblockStepOwnerLabel(req.current_step_order)} memutuskan.`);
+  } else {
+    info("Belum Diajukan", "Menunggu Admin Finance mengajukan Unblock untuk PO ini.");
+  }
+}
+
+function handleUnblockSaved(): void {
+  fetchData(currentPage.value);
+}
+
+function rowBadgeLabel(row: any): string {
+  if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "Diblokir — Perlu Diajukan";
+  if (row.sc_process_state === "blocked" && row.active_unblock_request) return "Menunggu Persetujuan Unblock (BM)";
+  return row.disposisi_text;
+}
+
+function rowBadgeClass(row: any): string {
+  if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "bg-rose-100 text-rose-700";
+  if (row.sc_process_state === "blocked" && row.active_unblock_request) return "bg-amber-100 text-amber-700";
+  return salesConfirmationBadgeClass(row.disposisi);
 }
 </script>
 
@@ -130,20 +184,23 @@ function openDetail(id: number): void {
 
             <Table.Td class="text-center">
               <span class="font-label inline-flex items-center rounded-full px-3 py-1"
-                :class="salesConfirmationBadgeClass(row.disposisi)">
-                {{ row.disposisi_text }}
+                :class="rowBadgeClass(row)">
+                {{ rowBadgeLabel(row) }}
               </span>
               <div v-if="row.disposisi_time" class="text-slate-500">{{ formatDateTime(row.disposisi_time) }} WIB</div>
             </Table.Td>
 
             <Table.Td class="text-center">
-              <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openDetail(row.id_poc)">
+              <ExtendableButton variant="soft-dark" rounded label="Detail" @click="handleRowAction(row)">
                 <Lucide icon="Eye" class="w-4 h-4" />
               </ExtendableButton>
             </Table.Td>
           </Table.Tr>
         </template>
       </DataList>
+
+      <UnblockModal :open="unblockModal.open.value" :id-poc="unblockModal.idPoc.value" @close="closeUnblockModal"
+        @saved="handleUnblockSaved" />
     </div>
   </div>
 </template>

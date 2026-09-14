@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\SalesConfirmation\DecideSalesConfirmationAction;
+use App\Actions\PoCustomer\ProcessSalesConfirmationGateAction;
 use App\Actions\SalesConfirmation\SaveSalesConfirmationAction;
 use App\Http\Requests\SalesConfirmation\SaveSalesConfirmationRequest;
 use App\Models\PoCustomer;
 use App\Models\Penawaran;
+use App\Enums\PoCustomerScProcessState;
 use App\Enums\SalesConfirmationStatus;
 
+use App\Models\Customer;
 use App\Models\CustomerAdminArnya;
 use App\Models\SalesConfirmation;
 use App\Models\SalesConfirmationApproval;
@@ -16,13 +18,13 @@ use App\Models\PoCustomerPlan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 
 class PoCustomerController extends Controller
 {
-    private const ROLE_BM = 8;
     private const ROLE_ADMIN_FINANCE = 9;
     private const PENAWARAN_STATUS_APPROVED_OM = 'approved_om';
 
@@ -69,17 +71,27 @@ class PoCustomerController extends Controller
             'volume_poc'       => 'required|integer',
             'produk_poc'       => 'nullable|integer',
             'lampiran_poc'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'top_poc'          => 'required|string|max:20',
+            'tipe_bayar'       => ['required', Rule::in(['CBD', 'COD', 'CREDIT'])],
+            'termin_hari'      => ['required_if:tipe_bayar,CREDIT', 'nullable', 'integer', 'min:1'],
         ]);
 
         $penawaran = Penawaran::find($validated['id_penawaran']);
         if ($penawaran?->status !== self::PENAWARAN_STATUS_APPROVED_OM) {
             throw ValidationException::withMessages([
-                'id_penawaran' => ['Sales Order hanya bisa dibuat dari Penawaran yang sudah disetujui OM.'],
+                'id_penawaran' => ['PO Customer hanya bisa dibuat dari Penawaran yang sudah disetujui OM.'],
+            ]);
+        }
+
+        $customer = Customer::find($validated['id_customer']);
+        if (! $customer?->is_verified) {
+            throw ValidationException::withMessages([
+                'id_customer' => ['PO Customer hanya bisa dibuat untuk customer yang sudah terverifikasi (KYC).'],
             ]);
         }
 
         $data = Arr::except($validated, ['lampiran_poc']);
+
+        $data['termin_hari'] = $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null;
 
         $data['harga_poc'] = (float) ($penawaran->harga_dasar ?? 0) + (float) ($penawaran->oat ?? 0);
 
@@ -90,6 +102,9 @@ class PoCustomerController extends Controller
 
             $data['lampiran_poc'] = $path;
             $data['lampiran_poc_ori'] = $file->getClientOriginalName();
+        } else {
+            $data['lampiran_poc'] = '';
+            $data['lampiran_poc_ori'] = '';
         }
 
         $data['created_time'] = now();
@@ -105,14 +120,27 @@ class PoCustomerController extends Controller
 
     public function show(int $id): \Illuminate\Http\JsonResponse
     {
-        $po = PoCustomer::with(['customer', 'penawaran', 'salesConfirmation'])->findOrFail($id);
-        $po->append(['status_key', 'status_label']);
+        $po = PoCustomer::with([
+            'customer',
+            'penawaran.items.produk.jenis',
+            'penawaran.items.produk.ukuran',
+            'salesConfirmation',
+        ])->findOrFail($id);
+        $po->append(['status_key', 'status_label', 'tipe_bayar_label']);
         return response()->json($po);
     }
 
     public function destroy($id)
     {
+        if (auth()->user()->cant('penawaran.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $po = PoCustomer::findOrFail($id);
+
+        if ($po->is_locked) {
+            return response()->json(['message' => 'PO Customer tidak bisa dihapus karena sudah masuk proses Sales Confirmation.'], 409);
+        }
 
         if ($po->lampiran_poc && Storage::disk('public')->exists($po->lampiran_poc)) {
             Storage::disk('public')->delete($po->lampiran_poc);
@@ -138,6 +166,10 @@ class PoCustomerController extends Controller
                 'customer:id_customer,customer_code,company_name',
                 'penawaran',
                 'salesConfirmation:id,po_customer_id,disposisi,lastupdate_time,created_time',
+            ])
+            ->whereIn('sc_process_state', [
+                PoCustomerScProcessState::Cleared->value,
+                PoCustomerScProcessState::Blocked->value,
             ]);
 
         if ($search !== '') {
@@ -164,6 +196,7 @@ class PoCustomerController extends Controller
 
         $data->getCollection()->transform(function ($po) {
             $sc = $po->salesConfirmation;
+            $activeUnblock = $po->activeUnblockRequest();
 
             $disposisi = (int) ($sc?->getRawOriginal('disposisi') ?? SalesConfirmationStatus::PendingAdmin->value);
             $label     = SalesConfirmationStatus::tryFrom($disposisi)?->label() ?? 'Draft';
@@ -192,6 +225,12 @@ class PoCustomerController extends Controller
                 'disposisi'      => $disposisi,
                 'disposisi_text' => $label,
                 'disposisi_time' => $when ? Carbon::parse($when)->format('Y-m-d H:i:s') : null,
+
+                'sc_process_state' => $po->sc_process_state?->value,
+                'active_unblock_request' => $activeUnblock ? [
+                    'id'                 => $activeUnblock->id,
+                    'current_step_order' => $activeUnblock->latestDocumentApproval?->current_step_order,
+                ] : null,
             ];
         });
 
@@ -205,12 +244,13 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
         return response()->json(['message' => 'Forbidden'], 403);
     }
 
-    $po = PoCustomer::with(['customer', 'penawaran'])->findOrFail($idPoc);
+    $po = PoCustomer::with(['customer.latestApprovedVerification', 'penawaran'])->findOrFail($idPoc);
 
-    $arnya = CustomerAdminArnya::firstOrCreate(
-        ['id_customer' => $po->id_customer],
-        ['not_yet'=>0,'ov_up_07'=>0,'ov_under_30'=>0,'ov_under_60'=>0,'ov_under_90'=>0,'ov_up_90'=>0]
-    );
+    if ($po->sc_process_state !== PoCustomerScProcessState::Cleared) {
+        return response()->json(['message' => 'PO Customer belum lolos gerbang Sales Confirmation.'], 409);
+    }
+
+    $arnya = CustomerAdminArnya::where('id_customer', $po->id_customer)->first();
 
     $sc  = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
     $apr = $sc ? SalesConfirmationApproval::where('id_sales', $sc->id)->first() : null;
@@ -229,12 +269,15 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
 
     return response()->json([
         'poc' => [
-            'id_poc'      => $po->id_poc,
-            'nomor_poc'   => $po->nomor_poc,
-            'tanggal_poc' => $po->tanggal_poc,
-            'supply_date' => $po->supply_date,
-            'volume_poc'  => (float)($po->volume_poc ?? 0),
-            'harga_poc'   => (float)($po->harga_poc ?? 0),
+            'id_poc'           => $po->id_poc,
+            'nomor_poc'        => $po->nomor_poc,
+            'tanggal_poc'      => $po->tanggal_poc,
+            'supply_date'      => $po->supply_date,
+            'volume_poc'       => (float)($po->volume_poc ?? 0),
+            'harga_poc'        => (float)($po->harga_poc ?? 0),
+            'tipe_bayar'       => $po->tipe_bayar?->value,
+            'tipe_bayar_label' => $po->tipe_bayar?->label(),
+            'termin_hari'      => $po->termin_hari,
         ],
         'customer' => [
             'id_customer'   => $po->customer?->id_customer,
@@ -245,17 +288,16 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
         'penawaran' => [
             'nomor_penawaran' => $po->penawaran?->nomor_penawaran ?? '-',
             'marketing_name'  => $marketing,
-            'top'             => $po->top_poc ?? null,
         ],
         'arnya' => [
-            'id_arnya'     => $arnya->id_arnya,
-            'id_customer'  => $arnya->id_customer,
-            'not_yet'      => (float)$arnya->not_yet,
-            'ov_up_07'     => (float)$arnya->ov_up_07,
-            'ov_under_30'  => (float)$arnya->ov_under_30,
-            'ov_under_60'  => (float)$arnya->ov_under_60,
-            'ov_under_90'  => (float)$arnya->ov_under_90,
-            'ov_up_90'     => (float)$arnya->ov_up_90,
+            'id_arnya'            => $arnya?->id_arnya,
+            'id_customer'         => $po->id_customer,
+            'outstanding_current' => (float) ($arnya->outstanding_current ?? 0),
+            'overdue_1_30'        => (float) ($arnya->overdue_1_30 ?? 0),
+            'overdue_31_60'       => (float) ($arnya->overdue_31_60 ?? 0),
+            'overdue_61_90'       => (float) ($arnya->overdue_61_90 ?? 0),
+            'overdue_90_plus'     => (float) ($arnya->overdue_90_plus ?? 0),
+            'total_ar'            => (float) ($arnya?->total_ar ?? 0),
         ],
         'sc' => [
             'disposisi'       => $scDisp,
@@ -270,29 +312,12 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
             'ov_under_60'     => (float)$sc->ov_under_60,
             'ov_under_90'     => (float)$sc->ov_under_90,
             'ov_up_90'        => (float)$sc->ov_up_90,
-            'po_status'       => $sc->po_status,
-            'po_volume'       => (float)$sc->po_volume,
-            'po_amount'       => (float)$sc->po_amount,
-            'reminding'       => $sc->reminding,
-            'proposed_status' => (int)$sc->proposed_status,
-            'add_top'         => (int)$sc->add_top,
-            'add_cl'          => (int)$sc->add_cl,
-            'type_customer'   => $sc->type_customer,
-            'customer_amount' => (float)$sc->customer_amount,
-            'customer_date'   => $sc->customer_date,
-            'lampiran_unblock'     => $sc->lampiran_unblock,
-            'lampiran_unblock_ori' => $sc->lampiran_unblock_ori,
         ] : null,
         'approval' => $apr ? [
             'adm_result'      => (int)$apr->adm_result,
             'adm_summary'     => $apr->adm_summary,
             'adm_result_date' => $apr->adm_result_date,
             'adm_pic'         => $apr->adm_pic,
-
-            'bm_result'       => (int)$apr->bm_result,
-            'bm_summary'      => $apr->bm_summary,
-            'bm_result_date'  => $apr->bm_result_date,
-            'bm_pic'          => $apr->bm_pic,
         ] : null,
     ]);
 }
@@ -304,49 +329,64 @@ public function saveSalesConfirmation(SaveSalesConfirmationRequest $request, int
         return response()->json(['message' => 'Forbidden'], 403);
     }
 
-    $po = PoCustomer::with('customer:id_customer')->findOrFail($idPoc);
+    $po = PoCustomer::with('customer.latestApprovedVerification')->findOrFail($idPoc);
 
-    $sc = $action->execute($po, $request->validated(), $request->file('lampiran_unblock'), $request->user()->name ?? 'system');
+    if ($po->sc_process_state !== PoCustomerScProcessState::Cleared) {
+        return response()->json(['message' => 'PO Customer belum lolos gerbang Sales Confirmation.'], 409);
+    }
+
+    $sc = $action->execute($po, $request->validated(), $request->user()->name ?? 'system');
 
     return response()->json(['success' => true, 'id_sales_confirmation' => $sc->id]);
 }
 
-public function saveSalesConfirmationBM(Request $request, int $idPoc, DecideSalesConfirmationAction $action): \Illuminate\Http\JsonResponse
+public function processSalesConfirmation(Request $request, int $idPoc, ProcessSalesConfirmationGateAction $action): \Illuminate\Http\JsonResponse
 {
-    if ($request->user()->cant('sales-confirmation.manage') || (int) $request->user()->primary_role_id !== self::ROLE_BM) {
+    if ($request->user()->cant('penawaran.manage')) {
         return response()->json(['message' => 'Forbidden'], 403);
     }
 
-    $data = $request->validate([
-        'bm_result'  => 'required|in:1,2',
-        'bm_summary' => 'nullable|string',
-    ]);
+    $po = PoCustomer::with(['customer.latestApprovedVerification', 'salesConfirmation'])->findOrFail($idPoc);
 
-    $po = PoCustomer::findOrFail($idPoc);
-    $sc = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
-
-    if (!$sc) {
-        return response()->json(['message' => 'Sales Confirmation belum dibuat oleh Admin.'], 404);
+    if ($po->sc_process_state === PoCustomerScProcessState::Cleared) {
+        return response()->json(['message' => 'PO Customer sudah lolos gerbang Sales Confirmation.'], 409);
     }
 
-    if (SalesConfirmationStatus::tryFrom((int) $sc->getRawOriginal('disposisi')) !== SalesConfirmationStatus::PendingBm) {
-        return response()->json(['message' => 'Sales Confirmation tidak dalam status Menunggu BM.'], 409);
+    if ($po->sc_process_state === PoCustomerScProcessState::Blocked && $po->activeUnblockRequest() !== null) {
+        return response()->json(['message' => 'Ada pengajuan Unblock yang masih diproses. Selesaikan dulu.'], 409);
     }
 
-    $sc = $action->execute($sc, (int) $data['bm_result'], $data['bm_summary'] ?? null, $request->user()->name ?? 'system');
+    $gate = $action->execute($po, $request->user()->name ?? 'system', $request->ip());
+
+    $po->refresh();
 
     return response()->json([
-        'success'         => true,
-        'disposisi'       => $sc->disposisi->value,
-        'disposisi_label' => $sc->disposisi->label(),
-        'flag_approval'   => (int) $sc->flag_approval,
+        'success'          => true,
+        'sc_process_state' => $po->sc_process_state?->value,
+        'status_key'       => $po->status_key,
+        'status_label'     => $po->status_label,
+        'is_locked'        => $po->is_locked,
+        'gate'             => [
+            'nilai_order'          => $gate['nilai_order'],
+            'current_credit_limit' => $gate['current_credit_limit'],
+            'exposure'             => $gate['exposure'],
+            'headroom'             => $gate['headroom'],
+        ],
     ]);
 }
 
-
 public function updateNomorPo(Request $r, $idPoc){
+    if ($r->user()->cant('penawaran.manage')) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
     $r->validate(['nomor_poc' => 'required|string|max:50']);
-    $po = \App\Models\PoCustomer::findOrFail($idPoc);
+    $po = PoCustomer::findOrFail($idPoc);
+
+    if ($po->is_locked) {
+        return response()->json(['message' => 'Nomor PO tidak bisa diubah karena PO sudah masuk proses Sales Confirmation.'], 409);
+    }
+
     $po->nomor_poc = $r->nomor_poc;
     $po->save();
     return response()->json(['success'=>true]);
@@ -373,7 +413,8 @@ public function getPoPlan($idPoc)
             'penawaran_code'       => $p->nomor_penawaran ?? '-',
             'periode'              => $periode,
             'customer_name'        => $po->customer->nama_perusahaan ?? '-',
-            'top'                  => $po->top_poc ?? ($p->top ?? '-'),
+            'tipe_bayar_label'     => $po->tipe_bayar_label,
+            'termin_hari'          => $po->termin_hari,
             'nomor_poc'            => $po->nomor_poc,
             'tanggal_poc'          => $po->tanggal_poc,
             'supply_date'          => $po->supply_date,
@@ -397,7 +438,6 @@ public function getPoPlan($idPoc)
                     'id'           => $r->id_plan,
                     'issued_at'    => $r->created_time,
                     'ship_date'    => $r->tanggal_kirim,
-                    // po_customer_plan gak punya kolom alamat, alamat/catatan nebeng di status_jadwal
                     'address'      => $r->status_jadwal,
                     'volume_liter' => (int)$r->volume_kirim,
                     'real_liter'   => (int)$r->realisasi_kirim,
@@ -429,7 +469,6 @@ public function getPoPlan($idPoc)
             'realisasi_kirim'  => 0,
             'is_urgent'        => $request->boolean('is_urgent') ? 1 : 0,
             'status_plan'      => 0,
-            // po_customer_plan gak punya kolom alamat, alamat + catatan nebeng di status_jadwal
             'status_jadwal'    => trim(($request->address ? "Alamat: ".$request->address."\n" : '') . ($request->notes ?? '')),
             'catatan_reschedule' => null,
             'ask_approval'     => 0,
