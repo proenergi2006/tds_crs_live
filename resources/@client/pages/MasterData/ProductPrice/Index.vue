@@ -46,6 +46,8 @@ type ProductPriceRow = {
   price_list_pe: string | number | null
   bm_price: string | number | null
   cogs_price: string | number | null
+  cogs_material_price: string | number | null
+  cogs_transport_price: string | number | null
   margin_amount: string | number | null
   om_price: string | number | null
   ceo_price: string | number | null

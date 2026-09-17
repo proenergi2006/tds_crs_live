@@ -37,7 +37,7 @@ class SubmitPenawaranAction
 
             $service = new DocumentApprovalService();
             $templateCode = $this->templateCodeFor($penawaran);
-            $service->startCycle($penawaran, $templateCode);
+            $service->startCycle($penawaran, $templateCode, $this->requiredStepOrdersFor($penawaran));
 
             $template = $service->activeTemplate($templateCode);
             $bmRoleId = $template?->steps->firstWhere('step_order', 1)?->id_role;

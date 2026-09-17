@@ -12,6 +12,7 @@
         "@ckeditor/ckeditor5-build-decoupled-document": "^40.2.0",
         "@ckeditor/ckeditor5-build-inline": "^40.2.0",
         "@ckeditor/ckeditor5-vue": "^7.3.0",
+        "@floating-ui/vue": "^2.0.1",
         "@fullcalendar/core": "^6.1.10",
         "@fullcalendar/daygrid": "^6.1.10",
         "@fullcalendar/interaction": "^6.1.10",

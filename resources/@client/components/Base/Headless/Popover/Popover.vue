@@ -10,10 +10,11 @@ export interface PopoverProps
 </script>
 
 <script setup lang="ts">
+import { computed, provide, ref, useAttrs } from "vue";
 import _ from "lodash";
 import { twMerge } from "tailwind-merge";
 import { Popover as HeadlessPopover } from "@headlessui/vue";
-import { useAttrs, computed } from "vue";
+import { PopoverTriggerKey } from "./context";
 
 const { as = "div" } = defineProps<PopoverProps>();
 
@@ -21,6 +22,9 @@ const attrs = useAttrs();
 const computedClass = computed(() =>
   twMerge(["relative", typeof attrs.class === "string" && attrs.class])
 );
+
+const triggerElRef = ref<HTMLElement | null>(null);
+provide(PopoverTriggerKey, triggerElRef);
 </script>
 
 <template>

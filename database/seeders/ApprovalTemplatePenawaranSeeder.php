@@ -8,15 +8,6 @@ use Illuminate\Database\Seeder;
 
 class ApprovalTemplatePenawaranSeeder extends Seeder
 {
-    /**
-     * Seed template approval Penawaran (TDS & Proenergi) untuk mesin
-     * DocumentApproval. Step OM TDS disederhanakan jadi 1 role approver
-     * (Operation Manager, id_role=10) -- CEO/CFO bukan lagi approver
-     * langsung di step ini (keputusan Engineer, migrasi Tahap 1).
-     *
-     * Idempotent: aman dijalankan berulang (updateOrCreate keyed on
-     * code / [id_template, step_order]).
-     */
     public function run(): void
     {
         $this->seedTemplate('penawaran_tds', 'Approval Penawaran TDS', [
@@ -27,6 +18,11 @@ class ApprovalTemplatePenawaranSeeder extends Seeder
         $this->seedTemplate('penawaran_proenergi', 'Approval Penawaran Proenergi', [
             ['step_order' => 1, 'step_name' => 'Branch Manager Proenergi', 'id_role' => 15],
             ['step_order' => 2, 'step_name' => 'OM Proenergi', 'id_role' => 16],
+        ]);
+
+        $this->seedTemplate('penawaran_polimer', 'Approval Penawaran Polimer', [
+            ['step_order' => 1, 'step_name' => 'Branch Manager Polimer', 'id_role' => 17],
+            ['step_order' => 2, 'step_name' => 'Operation Manager', 'id_role' => 10],
         ]);
     }
 

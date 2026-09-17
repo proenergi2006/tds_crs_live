@@ -52,6 +52,22 @@ class PenawaranController extends Controller
         return $penawaran;
     }
 
+    private function bmStepSuffix(Penawaran $penawaran): string
+    {
+        return $penawaran->items()->whereHas('produk', fn ($q) => $q->where('id_jenis', 11))->exists()
+            ? 'bm-polimer'
+            : 'bm';
+    }
+
+    private function prepareBmVerificationRequest(Request $request, $id, string $brand, string $catatanRule): Penawaran
+    {
+        $penawaran = $this->resolvePenawaran($brand, (int) $id);
+        $this->authorizeVerificationStep($request, $brand, $this->bmStepSuffix($penawaran));
+        $request->validate(['catatan' => $catatanRule]);
+
+        return $penawaran;
+    }
+
     private function verificationResponse(array $result)
     {
         $payload = ['message' => $result['message']];
@@ -220,11 +236,19 @@ class PenawaranController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $user = $request->user();
+        $polimerOnly = match (true) {
+            $user->can('penawaran.verify-bm-polimer') => true,
+            $user->can('penawaran.verify-bm')         => false,
+            default                                   => null,
+        };
+
         $data = (new ResolvePenawaranQueueAction())->execute(
             $brand,
             'bm',
             $request->query('search'),
-            (int) $request->query('per_page', 10)
+            (int) $request->query('per_page', 10),
+            $polimerOnly
         );
 
         return response()->json($data);
@@ -232,7 +256,7 @@ class PenawaranController extends Controller
 
     public function verifikasi(Request $request, $id, string $brand)
     {
-        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'bm', 'nullable|string');
+        $penawaran = $this->prepareBmVerificationRequest($request, $id, $brand, 'nullable|string');
 
         $result = (new ApprovePenawaranBmAction())->execute(
             $penawaran,
@@ -248,7 +272,7 @@ class PenawaranController extends Controller
 
     public function tolakbm(Request $request, $id, string $brand)
     {
-        $penawaran = $this->prepareVerificationRequest($request, $id, $brand, 'bm', 'required|string');
+        $penawaran = $this->prepareBmVerificationRequest($request, $id, $brand, 'required|string');
 
         $result = (new RejectPenawaranBmAction())->execute(
             $penawaran,

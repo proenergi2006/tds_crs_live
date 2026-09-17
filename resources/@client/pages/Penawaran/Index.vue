@@ -248,7 +248,7 @@ function joinWithAmpersand(items: string[]): string {
                 <Menu.Button :as="Button" variant="outline-secondary" class="px-2 py-1">
                   <Lucide icon="MoreVertical" class="w-4 h-4" />
                 </Menu.Button>
-                <Menu.Items class="w-52" :placement="idx >= penawarans.length - 4 ? 'top-end' : 'bottom-end'">
+                <Menu.Items class="w-52" placement="bottom-end">
                   <Menu.Item :as="RouterLink" :to="{ name: cfg.detailRoute, params: { id: pen.id_penawaran } }">
                     <Lucide icon="Eye" class="mr-2 w-4 h-4" />
                     Detail

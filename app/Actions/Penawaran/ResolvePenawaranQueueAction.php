@@ -23,11 +23,17 @@ class ResolvePenawaranQueueAction
         ],
     ];
 
-    public function execute(string $brand, string $step, ?string $search, int $perPage): LengthAwarePaginator
+    public function execute(string $brand, string $step, ?string $search, int $perPage, ?bool $polimerOnly = null): LengthAwarePaginator
     {
         $query = Penawaran::where('brand', $brand)
             ->with(['customer', 'cabang', 'items.produk'])
             ->whereIn('disposisi_penawaran', self::DISPOSISI_BY_STEP[$step]);
+
+        if ($polimerOnly !== null) {
+            $query->{$polimerOnly ? 'whereHas' : 'whereDoesntHave'}(
+                'items.produk', fn ($q) => $q->where('id_jenis', 11)
+            );
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {

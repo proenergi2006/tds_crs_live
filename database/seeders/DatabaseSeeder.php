@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             ApprovalTemplatePenawaranSeeder::class,
             ApprovalTemplatePoCustomerUnblockSeeder::class,
+            ApprovalTemplateSalesConfirmationSeeder::class,
         ]);
     }
 }

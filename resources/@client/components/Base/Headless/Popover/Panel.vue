@@ -23,13 +23,15 @@ export interface PanelProps
 </script>
 
 <script setup lang="ts">
+import { computed, inject, ref, useAttrs } from "vue";
 import _ from "lodash";
 import { twMerge } from "tailwind-merge";
 import {
   PopoverPanel as HeadlessPopoverPanel,
   TransitionRoot,
 } from "@headlessui/vue";
-import { useAttrs, computed } from "vue";
+import { useFloatingPanel } from "@/composables/useFloatingPanel";
+import { PopoverTriggerKey } from "./context";
 
 const { as = "div", placement = "bottom-end" } = defineProps<PanelProps>();
 
@@ -40,43 +42,40 @@ const computedClass = computed(() =>
     typeof attrs.class === "string" && attrs.class,
   ])
 );
+
+const triggerElRef = inject(PopoverTriggerKey);
+const panelElRef = ref<HTMLElement | null>(null);
+const { floatingStyles, isPositioned } = useFloatingPanel(
+  triggerElRef ?? ref(null),
+  panelElRef,
+  computed(() => placement),
+);
 </script>
 
 <template>
-  <TransitionRoot
-    as="template"
-    enter="transition-all ease-linear duration-150"
-    enterFrom="mt-5 invisible opacity-0 translate-y-1"
-    enterTo="mt-1 visible opacity-100 translate-y-0"
-    entered="mt-1"
-    leave="transition-all ease-linear duration-150"
-    leaveFrom="mt-1 visible opacity-100 translate-y-0"
-    leaveTo="mt-5 invisible opacity-0 translate-y-1"
-  >
-    <div
-      :class="[
-        'absolute z-30',
-        { 'left-0 bottom-[100%]': placement == 'top-start' },
-        { 'left-[50%] translate-x-[-50%] bottom-[100%]': placement == 'top' },
-        { 'right-0 bottom-[100%]': placement == 'top-end' },
-        { 'left-[100%] translate-y-[-50%]': placement == 'right-start' },
-        { 'left-[100%] top-[50%] translate-y-[-50%]': placement == 'right' },
-        { 'left-[100%] bottom-0': placement == 'right-end' },
-        { 'top-[100%] right-0': placement == 'bottom-end' },
-        { 'top-[100%] left-[50%] translate-x-[-50%]': placement == 'bottom' },
-        { 'top-[100%] left-0': placement == 'bottom-start' },
-        { 'right-[100%] translate-y-[-50%]': placement == 'left-start' },
-        { 'right-[100%] top-[50%] translate-y-[-50%]': placement == 'left' },
-        { 'right-[100%] bottom-0': placement == 'left-end' },
-      ]"
+  <Teleport to="body">
+    <TransitionRoot
+      as="template"
+      enter="transition ease-linear duration-150"
+      enterFrom="opacity-0 scale-95"
+      enterTo="opacity-100 scale-100"
+      leave="transition ease-linear duration-150"
+      leaveFrom="opacity-100 scale-100"
+      leaveTo="opacity-0 scale-95"
     >
-      <HeadlessPopoverPanel
-        :as="as"
-        :class="computedClass"
-        v-bind="_.omit(attrs, 'class')"
+      <div
+        ref="panelElRef"
+        class="z-[9999]"
+        :style="[floatingStyles, !isPositioned ? { visibility: 'hidden' } : {}]"
       >
-        <slot></slot>
-      </HeadlessPopoverPanel>
-    </div>
-  </TransitionRoot>
+        <HeadlessPopoverPanel
+          :as="as"
+          :class="computedClass"
+          v-bind="_.omit(attrs, 'class')"
+        >
+          <slot></slot>
+        </HeadlessPopoverPanel>
+      </div>
+    </TransitionRoot>
+  </Teleport>
 </template>

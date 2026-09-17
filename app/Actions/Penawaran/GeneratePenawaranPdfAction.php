@@ -21,6 +21,8 @@ class GeneratePenawaranPdfAction
         $with = ['customer.headOfficeAddress', 'customerContact', 'cabang', 'items.produk.ukuran', 'user.primaryRole'];
         $penawaran = Penawaran::where('brand', $brand)->with($with)->findOrFail($id);
 
+        $isPolimer = $penawaran->items()->whereHas('produk', fn ($q) => $q->where('id_jenis', 11))->exists();
+
         $u = $penawaran->user;
         if (!$u && !empty($penawaran->created_by)) {
             $u = \App\Models\User::with('primaryRole')->where('name', $penawaran->created_by)->first();
@@ -75,7 +77,7 @@ class GeneratePenawaranPdfAction
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoRightPath))
             : null;
 
-        $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft', 'logoRight', 'priceDetail'))
+        $pdf = \PDF::loadView($view, compact('penawaran', 'company', 'contact', 'qrBase64', 'logoLeft', 'logoRight', 'priceDetail', 'isPolimer'))
             ->setPaper('A4', 'portrait')
             ->setOptions(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
 

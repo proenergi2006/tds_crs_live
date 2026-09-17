@@ -39,6 +39,7 @@ export const customerNavigation: NavItem[] = [
         pageName: "po-customers-index",
         title: "PO Customer",
         activePageNames: ["po-customers-detail", "penawarans-po"],
+        permission: ["penawaran.viewAny", "penawaran.manage"],
       },
       {
         icon: "ClipboardCheck",
@@ -47,7 +48,6 @@ export const customerNavigation: NavItem[] = [
         activePageNames: [
           "sales-confirmations-detail",
           "sales-confirmations-delivery-queue",
-          "sales-confirmations-bm-detail-po",
           "po-customer-plan",
         ],
         permission: "sales-confirmation.manage",

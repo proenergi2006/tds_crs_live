@@ -93,7 +93,7 @@
   </button>
 
                 <button class="text-sky-600 hover:text-sky-800 mx-1"
-                  @click="$router.push({ name: 'sales-confirmations-bm-detail-po', params: { id: row.id_poc } })"
+                  @click="$router.push({ name: 'sales-confirmations-detail', params: { id: row.id_poc } })"
                   title="Detail">
                   <Lucide icon="Info" class="w-5 h-5" />
                 </button>

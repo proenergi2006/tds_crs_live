@@ -101,7 +101,6 @@
     .qrimg img{ width:18mm; height:18mm; display:block; }
     .qrimg svg{ width:18mm; height:18mm; display:block; }
 
-    /* halaman 2 */
     .page-break{
       page-break-before: always;
     }
@@ -205,7 +204,9 @@
 
   $rupiah = fn($n) => 'Rp '.number_format((float)$n, 0, ',', '.');
 
-  $defaultProduct   = 'Crushed Stone 2-3 (50%), 3-5 (50%) — Blending (Aggregate)';
+  $defaultProduct   = $isPolimer
+    ? 'As per item details'
+    : 'Crushed Stone 2-3 (50%), 3-5 (50%) — Blending (Aggregate)';
   $defaultTolerance = '1% of the total number of shipments';
 
   $hasTerms = !empty(trim($penawaran->syarat_ketentuan ?? ''));
@@ -231,7 +232,7 @@
         @endif
       </td>
       <td class="logo right" style="width:50%">
-        @if($logoRight)
+        @if($logoRight && !($isPolimer ?? false))
           <img src="{{ $logoRight }}" alt="Logo Kanan">
         @endif
       </td>
@@ -264,7 +265,7 @@
     </tr>
   </table>
 
-  <div class="subject">Price Quotation of Crushed Stone</div>
+  <div class="subject">{{ ($isPolimer ?? false) ? 'Price Quotation' : 'Price Quotation of Crushed Stone' }}</div>
 
   <p class="p">Dear Sir,</p>
   <p class="p">
@@ -272,16 +273,23 @@
     a Sales Transportation Mining Business License from ESDM, engaged in the mining sector.
   </p>
   <p class="p">
-    With our experience, product quality assurance, resources, and facilities, we believe that we are able to fulfill
-    the needs of Crushed Stone for <strong>{{ $cust->company_name ?? '—' }}.</strong>
-    Therefore, we are pleased to submit our offer as follows:
+    @if($isPolimer ?? false)
+      With our experience, product quality assurance, resources, and facilities, we believe that we are able to fulfill
+      the needs of <strong>{{ $cust->company_name ?? '—' }}.</strong>
+      Therefore, we are pleased to submit our offer as follows:
+    @else
+      With our experience, product quality assurance, resources, and facilities, we believe that we are able to fulfill
+      the needs of Crushed Stone for <strong>{{ $cust->company_name ?? '—' }}.</strong>
+      Therefore, we are pleased to submit our offer as follows:
+    @endif
   </p>
 
   <div class="box">
     <table class="kv">
+      @php $rowNum = 1; @endphp
       @if(($produkLines ?? collect())->isEmpty())
         <tr>
-          <td class="no">1.</td>
+          <td class="no">{{ $rowNum }}.</td>
           <td class="label"><b>Product</b></td>
           <td class="colon">:</td>
           <td class="value"><b>{!! $defaultProduct !!}</b></td>
@@ -290,7 +298,7 @@
         @foreach($produkLines as $i => $line)
           <tr>
             @if($i === 0)
-              <td class="no">1.</td>
+              <td class="no">{{ $rowNum }}.</td>
               <td class="label"><b>Product</b></td>
               <td class="colon">:</td>
             @else
@@ -302,18 +310,22 @@
           </tr>
         @endforeach
       @endif
+      @php $rowNum++; @endphp
 
+      @unless($isPolimer ?? false)
       <tr>
-        <td class="no">2.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Abrasion</b></td>
         <td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0%' }}</b></td>
       </tr>
+      @php $rowNum++; @endphp
+      @endunless
 
       @if($priceDetail ?? false)
       <tr>
-        <td class="no">3.</td>
-        <td class="label"><b>Base Price per m&sup3;</b></td>
+        <td class="no">{{ $rowNum }}.</td>
+        <td class="label"><b>Base Price{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td>
         <td class="colon">:</td>
         <td class="value">
           {{ $rupiah($penawaran->harga_dasar ?? 0) }}
@@ -328,8 +340,8 @@
       </tr>
       @else
       <tr>
-        <td class="no">3.</td>
-        <td class="label"><b>Price per m&sup3;</b></td>
+        <td class="no">{{ $rowNum }}.</td>
+        <td class="label"><b>Price{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td>
         <td class="colon">:</td>
         <td class="value">
           {{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }}
@@ -337,9 +349,10 @@
         </td>
       </tr>
       @endif
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">4.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Payment Method</b></td>
         <td class="colon">:</td>
         <td class="value">
@@ -370,37 +383,42 @@
           @endif
         </td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">5.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Ordering Method</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->order_method }}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">6.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Delivery Method</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->metode }}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">7.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Handover Point &amp; Unloading T&amp;C</b></td>
         <td class="colon">:</td>
         <td class="value">{!! $penawaran->keterangan !!}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">8.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Tolerance</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->toleransi_penyusutan ?? $defaultTolerance }} %</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">9.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Price &amp; Terms due to</b></td>
         <td class="colon">:</td>
         <td class="value">
@@ -427,7 +445,7 @@
           <strong>PT. Pro Energi</strong>
 
           <div class="qrwrap">
-            @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+            @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
               <img src="{{ $qrBase64 }}" style="width:20mm;height:20mm" alt="QR">
             @endif
           </div>
@@ -475,7 +493,7 @@
           @endif
         </td>
         <td class="logo right" style="width:50%">
-          @if($logoRight)
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>
@@ -507,7 +525,7 @@
 
       <tr>
         <td class="signbox">
-          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+          @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
             <img src="{{ $qrBase64 }}" class="qr" alt="QR">
           @endif
         </td>
@@ -533,7 +551,6 @@
   </div>
 @endif
 
-{{-- Section: halaman lampiran tambahan --}}
 @if($hasLampiranTambahan)
   <div class="page-break"></div>
 
@@ -546,7 +563,7 @@
           @endif
         </td>
         <td class="logo right" style="width:50%">
-          @if($logoRight)
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>

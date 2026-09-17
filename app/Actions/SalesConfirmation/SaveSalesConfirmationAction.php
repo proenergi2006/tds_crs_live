@@ -7,12 +7,11 @@ use App\Models\CustomerAdminArnya;
 use App\Models\PoCustomer;
 use App\Models\SalesConfirmation;
 use App\Models\SalesConfirmationApproval;
+use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Support\Facades\DB;
 
 class SaveSalesConfirmationAction
 {
-    private const ROLE_ADMIN_FINANCE = '9';
-
     public function execute(PoCustomer $po, array $data, string $pic): SalesConfirmation
     {
         $idCustomer = $po->id_customer;
@@ -34,10 +33,10 @@ class SaveSalesConfirmationAction
                     'ov_under_60'     => (float) ($arnya->overdue_31_60 ?? 0),
                     'ov_under_90'     => (float) ($arnya->overdue_61_90 ?? 0),
                     'ov_up_90'        => (float) ($arnya->overdue_90_plus ?? 0),
-                    'disposisi'       => SalesConfirmationStatus::Confirmed,
+                    'disposisi'       => SalesConfirmationStatus::PendingBm,
                     'flag_approval'   => 1,
-                    'role_approved'   => self::ROLE_ADMIN_FINANCE,
-                    'tgl_approved'    => now(),
+                    'role_approved'   => null,
+                    'tgl_approved'    => null,
                     'lastupdate_by'   => $pic,
                     'lastupdate_time' => now(),
                 ]
@@ -58,6 +57,11 @@ class SaveSalesConfirmationAction
                     'adm_pic'         => $pic,
                 ]
             );
+
+            $service = new DocumentApprovalService();
+            if (!$service->activeCycle($sc)) {
+                $service->startCycle($sc, 'sales_confirmation');
+            }
 
             return $sc->refresh();
         });

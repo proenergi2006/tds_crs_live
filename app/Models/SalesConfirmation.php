@@ -5,8 +5,8 @@ namespace App\Models;
 use App\Enums\SalesConfirmationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class SalesConfirmation extends Model
 {
@@ -58,13 +58,13 @@ class SalesConfirmation extends Model
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
-    public function approval(): HasOne
+    public function documentApprovals(): MorphMany
     {
-        return $this->hasOne(SalesConfirmationApproval::class, 'id_sales', 'id');
+        return $this->morphMany(DocumentApproval::class, 'approvable', 'approvable_type', 'approvable_id', 'id');
     }
 
-    public function colleterals(): HasMany
+    public function latestDocumentApproval(): MorphOne
     {
-        return $this->hasMany(SalesColleteral::class, 'sales_id', 'id');
+        return $this->documentApprovals()->one()->latestOfMany('id_approval');
     }
 }

@@ -27,6 +27,7 @@ const auth = useAuthStore()
 const { success, error: notifyError } = useNotification()
 
 const ROLE_ADMIN_FINANCE = 9
+const ROLE_BM = 8
 const idPoc = Number(route.params.id)
 
 const arBuckets = [
@@ -41,6 +42,10 @@ const detail = ref<any>(null)
 const loading = ref(true)
 const submitting = ref(false)
 const formError = ref<string | null>(null)
+
+const bmDecision = ref<'approve' | 'reject' | null>(null)
+const bmNote = ref('')
+const bmSubmitting = ref(false)
 
 const creditLimitDisplay = ref<number>(0)
 const bucketDisplay = ref<Record<ArBucketKey, number>>({
@@ -66,6 +71,13 @@ const isAdminEditable = computed<boolean>(
   () =>
     auth.hasRole(ROLE_ADMIN_FINANCE) &&
     (scDisposisi.value === null || scDisposisi.value === 1),
+)
+
+const isBmDecidable = computed<boolean>(
+  () =>
+    auth.hasRole(ROLE_BM) &&
+    scDisposisi.value === 2 &&
+    detail.value?.bm_approval?.current_step_order === 1,
 )
 
 const totalAr = computed<number>(() =>
@@ -169,6 +181,51 @@ async function submitAdmin(): Promise<void> {
     }
   } finally {
     submitting.value = false
+  }
+}
+
+function selectBmDecision(decision: 'approve' | 'reject'): void {
+  if (bmSubmitting.value) return
+  bmDecision.value = decision
+}
+
+async function submitBmDecision(): Promise<void> {
+  if (!bmDecision.value) {
+    notifyError('Validasi', 'Pilih keputusan (Setuju/Tolak).')
+    return
+  }
+  if (bmDecision.value === 'reject' && bmNote.value.trim() === '') {
+    notifyError('Validasi', 'Catatan wajib diisi untuk keputusan Tolak.')
+    return
+  }
+
+  formError.value = null
+  bmSubmitting.value = true
+  try {
+    await axios.post(`/api/sales-confirmations/po/${idPoc}/bm`, {
+      decision: bmDecision.value,
+      note: bmNote.value,
+    })
+    success('Berhasil', 'Keputusan Branch Manager berhasil disimpan.')
+    load()
+  } catch (e: any) {
+    const status = e.response?.status
+    if (status === 422) {
+      const errors = e.response?.data?.errors ?? {}
+      const messages = Object.values(errors).flat() as string[]
+      formError.value = messages.length
+        ? messages.join('\n')
+        : e.response?.data?.message ?? 'Data yang dikirim tidak valid.'
+    } else if (status === 409) {
+      notifyError('Gagal', e.response?.data?.message ?? 'Status Sales Confirmation sudah berubah.')
+      load()
+    } else if (status === 403) {
+      notifyError('Gagal', e.response?.data?.message ?? 'Anda tidak berwenang melakukan aksi ini.')
+    } else {
+      notifyError('Gagal', e.response?.data?.message ?? 'Gagal menyimpan keputusan Branch Manager.')
+    }
+  } finally {
+    bmSubmitting.value = false
   }
 }
 
@@ -286,6 +343,59 @@ function backToIndex(): void {
         </CardSection>
       </form>
 
+      <form v-else-if="isBmDecidable" class="flex flex-col gap-6" @submit.prevent="submitBmDecision">
+        <CardSection title="Keputusan Branch Manager" icon="ShieldCheck" icon-class="bg-blue-100 text-blue-600">
+          <div class="space-y-4">
+            <div v-if="detail.approval?.adm_summary" class="space-y-1">
+              <span class="font-label">Catatan Admin Finance</span>
+              <div class="mt-1 rounded-lg border border-slate-200 bg-slate-50 p-3 font-body"
+                v-html="detail.approval.adm_summary"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button type="button" class="cursor-pointer rounded-xl border-2 p-4 text-center transition"
+                :class="bmDecision === 'approve' ? 'border-success bg-success/5 text-success' : 'border-slate-200 bg-white text-slate-600'"
+                :disabled="bmSubmitting" @click="selectBmDecision('approve')">
+                <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full"
+                  :class="bmDecision === 'approve' ? 'bg-success text-white' : 'bg-slate-100 text-slate-400'">
+                  <Lucide icon="Check" class="h-5 w-5" />
+                </div>
+                <div class="mt-2 font-strong">Setuju</div>
+              </button>
+
+              <button type="button" class="cursor-pointer rounded-xl border-2 p-4 text-center transition"
+                :class="bmDecision === 'reject' ? 'border-rose-500 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white text-slate-600'"
+                :disabled="bmSubmitting" @click="selectBmDecision('reject')">
+                <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full"
+                  :class="bmDecision === 'reject' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'">
+                  <Lucide icon="X" class="h-5 w-5" />
+                </div>
+                <div class="mt-2 font-strong">Tolak</div>
+              </button>
+            </div>
+
+            <div>
+              <div class="mb-1 flex items-center justify-between">
+                <FormLabel htmlFor="bm-note">Catatan Keputusan</FormLabel>
+                <span class="font-caption" :class="bmDecision === 'reject' ? 'text-amber-600' : 'text-slate-400'">
+                  {{ bmDecision === 'reject' ? 'Wajib untuk Tolak' : 'Opsional' }}
+                </span>
+              </div>
+              <FormTextarea id="bm-note" v-model="bmNote" :rows="4" placeholder="Catatan keputusan Branch Manager"
+                :disabled="bmSubmitting" />
+            </div>
+
+            <div class="flex justify-end">
+              <Button type="submit" variant="primary" :disabled="bmSubmitting">
+                <Lucide v-if="bmSubmitting" icon="Loader2" class="mr-2 h-4 w-4 animate-spin" />
+                <Lucide v-else icon="Check" class="mr-2 h-4 w-4" />
+                Simpan Keputusan
+              </Button>
+            </div>
+          </div>
+        </CardSection>
+      </form>
+
       <template v-else>
         <CardSection title="Disposisi" icon="ShieldCheck" icon-class="bg-emerald-100 text-emerald-600">
           <div class="space-y-3">
@@ -303,6 +413,17 @@ function backToIndex(): void {
               <span class="font-label">Catatan Admin Finance</span>
               <div class="mt-1 rounded-lg border border-slate-200 bg-slate-50 p-3 font-body"
                 v-html="detail.approval.adm_summary"></div>
+            </div>
+
+            <div v-if="detail.bm_approval?.steps?.[0]?.decision_note" class="pt-2 border-t border-slate-100">
+              <span class="font-label">Catatan Branch Manager</span>
+              <div class="mt-1 rounded-lg border border-slate-200 bg-slate-50 p-3 font-body">
+                {{ detail.bm_approval.steps[0].decision_note }}
+              </div>
+              <div class="mt-1 font-caption text-slate-500">
+                {{ detail.bm_approval.steps[0].actor_name || '-' }} ·
+                {{ formatDateTime(detail.bm_approval.steps[0].acted_at) || '-' }}
+              </div>
             </div>
           </div>
         </CardSection>

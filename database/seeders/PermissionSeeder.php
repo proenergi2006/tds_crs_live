@@ -179,7 +179,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'penawaran.viewAny',
             'module'      => 'penawaran',
             'description' => 'Lihat semua penawaran lintas-marketing (Administrator/Admin Finance/BM/OM, CEO merangkap OM)',
-            'roles'       => [1, 9, 8, 10, 2],
+            'roles'       => [1, 9, 8, 10, 2, 17],
         ],
         [
             'name'        => 'penawaran.manage',
@@ -191,7 +191,7 @@ class PermissionSeeder extends Seeder
             'name'        => 'penawaran.verify',
             'module'      => 'penawaran',
             'description' => 'Akses modul approval penawaran (BM/CFO/OM)',
-            'roles'       => [8, 3, 10],
+            'roles'       => [8, 3, 10, 17],
         ],
         [
             'name'        => 'penawaran.verify-bm',
@@ -204,6 +204,12 @@ class PermissionSeeder extends Seeder
             'module'      => 'penawaran',
             'description' => 'Verifikasi Penawaran TDS sebagai Operation Manager',
             'roles'       => [10],
+        ],
+        [
+            'name'        => 'penawaran.verify-bm-polimer',
+            'module'      => 'penawaran',
+            'description' => 'Verifikasi Penawaran Polimer sebagai Branch Manager Polimer',
+            'roles'       => [17],
         ],
 
         [

@@ -13,8 +13,7 @@ export function salesConfirmationBadgeClass(
   }
 }
 
-const UNBLOCK_ROLE_ADMIN_FINANCE = 9;
-const UNBLOCK_ROLE_BM = 8;
+export const UNBLOCK_ROLE_ADMIN_FINANCE = 9;
 
 export function unblockStatusBadgeClass(status?: string | null): string {
   if (status === "in_progress") return "bg-amber-100 text-amber-700";
@@ -35,16 +34,4 @@ export function unblockStepStatusLabel(status?: string | null): string {
   if (status === "approved") return "Disetujui";
   if (status === "rejected") return "Ditolak";
   return status ?? "-";
-}
-
-export function unblockStepForRole(roleId?: number | null): number | null {
-  if (Number(roleId) === UNBLOCK_ROLE_ADMIN_FINANCE) return 1;
-  if (Number(roleId) === UNBLOCK_ROLE_BM) return 2;
-  return null;
-}
-
-export function unblockStepOwnerLabel(stepOrder?: number | null): string {
-  if (stepOrder === 1) return "Admin Finance";
-  if (stepOrder === 2) return "Branch Manager";
-  return "pihak berwenang";
 }
