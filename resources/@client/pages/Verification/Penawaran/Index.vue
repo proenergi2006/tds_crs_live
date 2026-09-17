@@ -31,7 +31,9 @@ const brand = computed(() => route.meta.brand as VerifikasiBrand)
 const bmPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-bm' : 'penawaran.verify-bm')
 const omPermission = computed(() => brand.value === 'proenergi' ? 'penawaran.proenergi.verify-om' : 'penawaran.verify-om')
 
-const canSeeBm = computed(() => auth.can(bmPermission.value))
+const canSeeBm = computed(() =>
+  auth.can(bmPermission.value) || (brand.value !== 'proenergi' && auth.can('penawaran.verify-bm-polimer')),
+)
 const canSeeOm = computed(() => auth.can(omPermission.value))
 
 const isAmbiguousRole = computed(() => canSeeBm.value === canSeeOm.value)

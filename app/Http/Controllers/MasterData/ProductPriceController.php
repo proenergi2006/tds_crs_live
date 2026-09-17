@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\MasterData\StoreProductPriceRequest;
+use App\Http\Requests\MasterData\UpdateProductPriceRequest;
 use App\Http\Resources\MasterData\ProductPriceResource;
 use App\Models\PricePeriod;
 use App\Models\ProductPrice;
@@ -40,6 +42,15 @@ class ProductPriceController extends Controller
                 $q2->whereHas('produk', fn ($q3) => $q3->where('nama_produk', 'like', "%{$s}%"))
                     ->orWhereHas('cabang', fn ($q4) => $q4->where('nama_cabang', 'like', "%{$s}%"));
             });
+        }
+
+        if ($user->cant('price-period.view')) {
+            $q->where('product_prices.bm_price', '>', 0)
+                ->where('product_prices.om_price', '>', 0)
+                ->where('product_prices.ceo_price', '>', 0)
+                ->whereColumn('product_prices.price_list', '>=', 'product_prices.bm_price')
+                ->whereColumn('product_prices.bm_price', '>=', 'product_prices.om_price')
+                ->whereColumn('product_prices.om_price', '>=', 'product_prices.ceo_price');
         }
 
         $q->orderBy('price_periods.start_date', 'desc')
@@ -125,39 +136,23 @@ class ProductPriceController extends Controller
         return response()->json($map);
     }
 
-    public function store(Request $request)
+    public function store(StoreProductPriceRequest $request)
     {
         if ($request->user()->cant('product-price.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $request->merge(array_map(fn ($v) => $v === '' ? null : $v, $request->all()));
-
-        $data = $request->validate([
-            'price_period_id' => 'nullable|exists:price_periods,id',
-            'start_date'      => 'required_without:price_period_id|date',
-            'end_date'        => 'required_without:price_period_id|date|after_or_equal:start_date',
-            'branch_id'       => 'required|exists:cabangs,id_cabang',
-            'product_id'      => 'required|exists:produks,id_produk',
-            'price_list'      => 'nullable|numeric|min:0',
-            'price_list_pe'   => 'nullable|numeric|min:0',
-            'bm_price'        => 'nullable|numeric|min:0',
-            'cogs_price'      => 'nullable|numeric|min:0',
-            'cogs_basis'      => 'required|in:loco,franco',
-            'margin_amount'   => 'nullable|numeric|min:0',
-            'om_price'        => 'nullable|numeric|min:0',
-            'ceo_price'       => 'nullable|numeric|min:0',
-            'notes'           => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $fieldPermissions = [
-            'cogs_price'    => 'product-price.manage',
-            'price_list'    => 'product-price.verify',
-            'price_list_pe' => 'product-price.verify',
-            'margin_amount' => 'product-price.verify',
-            'bm_price'      => 'product-price.verify',
-            'om_price'      => 'product-price.verify',
-            'ceo_price'     => 'product-price.verify',
+            'cogs_material_price'  => 'product-price.manage',
+            'cogs_transport_price' => 'product-price.manage',
+            'price_list'           => 'product-price.verify',
+            'price_list_pe'        => 'product-price.verify',
+            'margin_amount'        => 'product-price.verify',
+            'bm_price'             => 'product-price.verify',
+            'om_price'             => 'product-price.verify',
+            'ceo_price'            => 'product-price.verify',
         ];
 
         foreach ($fieldPermissions as $field => $permission) {
@@ -166,7 +161,9 @@ class ProductPriceController extends Controller
             }
         }
 
-        foreach (['price_list', 'price_list_pe', 'bm_price', 'cogs_price', 'margin_amount', 'om_price', 'ceo_price'] as $k) {
+        $data = $this->computeCogsPrice($data);
+
+        foreach (['price_list', 'price_list_pe', 'bm_price', 'margin_amount', 'om_price', 'ceo_price'] as $k) {
             $data[$k] = $data[$k] ?? 0;
         }
 
@@ -201,40 +198,24 @@ class ProductPriceController extends Controller
         return new ProductPriceResource($productPrice);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateProductPriceRequest $request, $id)
     {
         $user = $request->user();
         if ($user->cant('product-price.manage') && $user->cant('product-price.verify')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $request->merge(array_map(fn ($v) => $v === '' ? null : $v, $request->all()));
-
-        $data = $request->validate([
-            'price_period_id' => 'nullable|exists:price_periods,id',
-            'start_date'      => 'required_without:price_period_id|date',
-            'end_date'        => 'required_without:price_period_id|date|after_or_equal:start_date',
-            'branch_id'       => 'required|exists:cabangs,id_cabang',
-            'product_id'      => 'required|exists:produks,id_produk',
-            'price_list'      => 'nullable|numeric|min:0',
-            'price_list_pe'   => 'nullable|numeric|min:0',
-            'bm_price'        => 'nullable|numeric|min:0',
-            'cogs_price'      => 'nullable|numeric|min:0',
-            'cogs_basis'      => 'nullable|in:loco,franco',
-            'margin_amount'   => 'nullable|numeric|min:0',
-            'om_price'        => 'nullable|numeric|min:0',
-            'ceo_price'       => 'nullable|numeric|min:0',
-            'notes'           => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $fieldPermissions = [
-            'cogs_price'    => 'product-price.manage',
-            'price_list'    => 'product-price.verify',
-            'price_list_pe' => 'product-price.verify',
-            'margin_amount' => 'product-price.verify',
-            'bm_price'      => 'product-price.verify',
-            'om_price'      => 'product-price.verify',
-            'ceo_price'     => 'product-price.verify',
+            'cogs_material_price'  => 'product-price.manage',
+            'cogs_transport_price' => 'product-price.manage',
+            'price_list'           => 'product-price.verify',
+            'price_list_pe'        => 'product-price.verify',
+            'margin_amount'        => 'product-price.verify',
+            'bm_price'             => 'product-price.verify',
+            'om_price'             => 'product-price.verify',
+            'ceo_price'            => 'product-price.verify',
         ];
 
         foreach ($fieldPermissions as $field => $permission) {
@@ -242,6 +223,8 @@ class ProductPriceController extends Controller
                 return response()->json(['message' => "Anda tidak berwenang mengisi kolom {$field}."], 403);
             }
         }
+
+        $data = $this->computeCogsPrice($data);
 
         $startDate = $data['start_date'] ?? null;
         $endDate = $data['end_date'] ?? null;
@@ -275,5 +258,24 @@ class ProductPriceController extends Controller
         ProductPrice::destroy($id);
 
         return response()->json(null, 204);
+    }
+
+    private function computeCogsPrice(array $data): array
+    {
+        if (!array_key_exists('cogs_material_price', $data) && !array_key_exists('cogs_transport_price', $data)) {
+            return $data;
+        }
+
+        $basis = $data['cogs_basis'] ?? null;
+
+        if ($basis === 'loco') {
+            $data['cogs_transport_price'] = null;
+        }
+
+        $material = (float) ($data['cogs_material_price'] ?? 0);
+        $transport = (float) ($data['cogs_transport_price'] ?? 0);
+        $data['cogs_price'] = $material + $transport;
+
+        return $data;
     }
 }

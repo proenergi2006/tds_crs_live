@@ -11,24 +11,29 @@ import TomSelect from "tom-select";
 import _ from "lodash";
 
 const setValue = (el: TomSelectElement, props: TomSelectProps) => {
-  if (props.modelValue.length) {
-    if (Array.isArray(props.modelValue)) {
-      for (const value of props.modelValue) {
-        const selectedOption = Array.from(el).find(
-          (option) =>
-            option instanceof HTMLOptionElement && option.value == value
-        );
-
-        if (
-          selectedOption !== undefined &&
-          selectedOption instanceof HTMLOptionElement
-        ) {
-          selectedOption.selected = true;
-        }
-      }
-    } else {
-      el.value = props.modelValue;
+  if (Array.isArray(props.modelValue)) {
+    if (!props.modelValue.length) {
+      el.selectedIndex = -1;
+      return;
     }
+
+    for (const value of props.modelValue) {
+      const selectedOption = Array.from(el).find(
+        (option) =>
+          option instanceof HTMLOptionElement && option.value == value
+      );
+
+      if (
+        selectedOption !== undefined &&
+        selectedOption instanceof HTMLOptionElement
+      ) {
+        selectedOption.selected = true;
+      }
+    }
+  } else if (props.modelValue) {
+    el.value = props.modelValue;
+  } else {
+    el.selectedIndex = -1;
   }
 };
 
@@ -39,19 +44,13 @@ const init = (
   computedOptions: RecursivePartial<TomSettings>,
   emit: TomSelectEmit
 ) => {
-  // On option add — wire this regardless of modelValue shape (array or single string) so
-  // single-select comboboxes with create:true also persist newly typed options back into
-  // the original <select>; otherwise updateValue()'s "remove stale options" pass strips
-  // them on the next re-render because they were never added to originalEl.
   computedOptions = {
     onOptionAdd: function (value: string | number) {
-      // Add new option
       const newOption = document.createElement("option");
       newOption.value = value.toString();
       newOption.text = value.toString();
       originalEl.add(newOption);
 
-      // Emit option add
       emit("optionAdd", value);
     },
     ...computedOptions,
@@ -59,7 +58,6 @@ const init = (
 
   clonedEl.TomSelect = new TomSelect(clonedEl, computedOptions);
 
-  // On change
   clonedEl.TomSelect.on("change", function (selectedItems: string[] | string) {
     emit(
       "update:modelValue",
@@ -93,7 +91,6 @@ const updateValue = (
   computedOptions: RecursivePartial<TomSettings>,
   emit: TomSelectEmit
 ) => {
-  // Remove old options
   for (const [optionKey, option] of Object.entries(
     clonedEl.TomSelect.options
   )) {
@@ -109,7 +106,6 @@ const updateValue = (
     }
   }
 
-  // Update classnames
   const initialClassNames = clonedEl
     .getAttribute("data-initial-class")
     ?.split(" ");
@@ -136,16 +132,11 @@ const updateValue = (
     Array.from(originalEl.classList).join(" ")
   );
 
-  // Add new options
   const options = originalEl.children;
   if (options) {
     const allowEmptyOption = (computedOptions as any)?.allowEmptyOption === true;
     Array.from(options).forEach(function (optionEl) {
       const optionValue = optionEl.getAttribute("value");
-      // Lewati option placeholder ber-value kosong (value="") agar tidak ikut
-      // ditambahkan sebagai baris yang bisa dipilih di dropdown. Ini menyelaraskan
-      // perilaku dengan init TomSelect yang juga melewati empty option saat
-      // allowEmptyOption=false (lihat getSettings di lib).
       if (!optionValue && !allowEmptyOption) return;
       clonedEl.TomSelect.addOption({
         text: optionEl.textContent,
@@ -154,10 +145,8 @@ const updateValue = (
     });
   }
 
-  // Refresh options
   clonedEl.TomSelect.refreshOptions(false);
 
-  // Update value
   if (
     (!Array.isArray(value) && value !== clonedEl.TomSelect.getValue()) ||
     (Array.isArray(value) && !_.isEqual(value, clonedEl.TomSelect.getValue()))

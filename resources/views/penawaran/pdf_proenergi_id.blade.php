@@ -24,7 +24,6 @@
     .t-right{ text-align:right }
     .t-center{ text-align:center }
 
-    /* Header */
     .hdr{ width:100%; border-collapse:collapse; margin-bottom:6px }
     .hdr td{ vertical-align:top }
     .hdr .logo img{
@@ -52,7 +51,6 @@
 
     .p{ margin:4px 0 8px; text-align:justify }
 
-    /* Bagian isi */
     .box{ width:94%; margin:8px auto 10px; padding:0 }
     .kv{
       width:100%;
@@ -73,7 +71,6 @@
     .value{ width:auto; line-height:1.32; font-size:9.8px }
     .value b{ font-weight:700 }
 
-    /* Signature + contact */
     .sigrow{ width:100%; border-collapse:collapse; margin-top:8px }
     .sigrow td{ vertical-align:top; padding-right:10px }
     .sigrow td:last-child{ padding-right:0 }
@@ -92,7 +89,6 @@
 
     .qrwrap{ text-align:left; margin-left:4mm; margin-top:6mm; }
 
-    /* Footer halaman 1 */
     .brand-band{
       position: fixed;
       left: 0;
@@ -113,7 +109,6 @@
       border: none;
     }
 
-    /* Section: halaman 2 */
     .page-break{
       page-break-before: always;
     }
@@ -216,7 +211,9 @@
 
   $rupiah = fn($n) => 'Rp '.number_format((float)$n, 0, ',', '.');
 
-  $defaultProduct   = 'Batu Pecah 2-3 (50%), 3-5 (50%) — Blending (Agregat)';
+  $defaultProduct   = $isPolimer
+    ? 'Sesuai rincian item'
+    : 'Batu Pecah 2-3 (50%), 3-5 (50%) — Blending (Agregat)';
   $defaultTolerance = '1% dari total jumlah pengiriman';
 
   $hasTerms = !empty(trim($penawaran->syarat_ketentuan ?? ''));
@@ -233,7 +230,6 @@
   $acuanPembayaran = $penawaran->acuan_pembayaran ?? null;
 @endphp
 
-{{-- Section: halaman 1 --}}
 <div class="content">
   <br>
 
@@ -245,7 +241,7 @@
         @endif
       </td>
       <td class="logo right" style="width:50%">
-        @if($logoRight)
+        @if($logoRight && !($isPolimer ?? false))
           <img src="{{ $logoRight }}" alt="Logo Kanan">
         @endif
       </td>
@@ -278,7 +274,7 @@
     </tr>
   </table>
 
-  <div class="subject">Penawaran Harga Batu Pecah</div>
+  <div class="subject">{{ ($isPolimer ?? false) ? 'Penawaran Harga Produk' : 'Penawaran Harga Batu Pecah' }}</div>
 
   <p class="p">Yth. Bapak/Ibu,</p>
   <p class="p">
@@ -286,15 +282,21 @@
     Izin Usaha Penjualan &amp; Jasa Pertambangan dari ESDM, bergerak di bidang pertambangan.
   </p>
   <p class="p">
-    Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
-    kebutuhan Batu Pecah untuk <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @if($isPolimer ?? false)
+      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
+      kebutuhan perusahaan <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @else
+      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
+      kebutuhan Batu Pecah untuk <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @endif
   </p>
 
   <div class="box">
     <table class="kv">
+      @php $rowNum = 1; @endphp
       @if(($produkLines ?? collect())->isEmpty())
         <tr>
-          <td class="no">1.</td>
+          <td class="no">{{ $rowNum }}.</td>
           <td class="label"><b>Produk</b></td>
           <td class="colon">:</td>
           <td class="value"><b>{!! $defaultProduct !!}</b></td>
@@ -303,7 +305,7 @@
         @foreach($produkLines as $i => $line)
           <tr>
             @if($i === 0)
-              <td class="no">1.</td>
+              <td class="no">{{ $rowNum }}.</td>
               <td class="label"><b>Produk</b></td>
               <td class="colon">:</td>
             @else
@@ -315,18 +317,22 @@
           </tr>
         @endforeach
       @endif
+      @php $rowNum++; @endphp
 
+      @unless($isPolimer ?? false)
       <tr>
-        <td class="no">2.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Abrasi</b></td>
         <td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0' }}</b></td>
       </tr>
+      @php $rowNum++; @endphp
+      @endunless
 
       @if($priceDetail ?? false)
       <tr>
-        <td class="no">3.</td>
-        <td class="label"><b>Harga Dasar per m&sup3;</b></td>
+        <td class="no">{{ $rowNum }}.</td>
+        <td class="label"><b>Harga Dasar{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td>
         <td class="colon">:</td>
         <td class="value">
           {{ $rupiah($penawaran->harga_dasar ?? 0) }}
@@ -341,8 +347,8 @@
       </tr>
       @else
       <tr>
-        <td class="no">3.</td>
-        <td class="label"><b>Harga per m&sup3;</b></td>
+        <td class="no">{{ $rowNum }}.</td>
+        <td class="label"><b>Harga{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td>
         <td class="colon">:</td>
         <td class="value">
           {{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }}
@@ -350,9 +356,10 @@
         </td>
       </tr>
       @endif
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">4.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Metode Pembayaran</b></td>
         <td class="colon">:</td>
         <td class="value">
@@ -383,37 +390,42 @@
           @endif
         </td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">5.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Metode Pemesanan</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->order_method }}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">6.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Metode Pengiriman</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->metode }}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">7.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Titik Serah Terima &amp; T&amp;C Bongkar</b></td>
         <td class="colon">:</td>
         <td class="value">{!! $penawaran->keterangan !!}</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">8.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Toleransi</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $penawaran->toleransi_penyusutan ?? $defaultTolerance }} %</td>
       </tr>
+      @php $rowNum++; @endphp
 
       <tr>
-        <td class="no">9.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Periode</b></td>
         <td class="colon">:</td>
         <td class="value">
@@ -430,8 +442,6 @@
     dengan perusahaan Bapak/Ibu. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
   </p>
 
-  {{-- Kalau tidak ada terms, tanda tangan tampil di halaman 1 --}}
- 
     <table class="sigrow">
       <tr>
         <td style="width:55%;">
@@ -439,7 +449,7 @@
           <strong>PT. Pro Energi</strong>
 
           <div class="qrwrap">
-            @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+            @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
               <img src="{{ $qrBase64 }}" style="width:20mm;height:20mm" alt="QR">
             @endif
           </div>
@@ -474,7 +484,6 @@
   </a>
 </div>
 
-{{-- Section: halaman 2, syarat & ketentuan --}}
 @if($hasTerms)
   <div class="page-break"></div>
 
@@ -487,7 +496,7 @@
           @endif
         </td>
         <td class="logo right" style="width:50%">
-          @if($logoRight)
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>
@@ -519,7 +528,7 @@
 
       <tr>
         <td class="signbox">
-          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+          @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
             <img src="{{ $qrBase64 }}" class="qr" alt="QR">
           @endif
         </td>
@@ -545,7 +554,6 @@
   </div>
 @endif
 
-{{-- Section: halaman lampiran tambahan --}}
 @if($hasLampiranTambahan)
   <div class="page-break"></div>
 
@@ -558,7 +566,7 @@
           @endif
         </td>
         <td class="logo right" style="width:50%">
-          @if($logoRight)
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>

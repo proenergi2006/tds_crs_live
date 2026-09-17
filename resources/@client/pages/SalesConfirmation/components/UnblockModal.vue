@@ -16,8 +16,7 @@ import {
   unblockStatusBadgeClass,
   unblockStepBadgeClass,
   unblockStepStatusLabel,
-  unblockStepForRole,
-  unblockStepOwnerLabel,
+  UNBLOCK_ROLE_ADMIN_FINANCE,
 } from "../status";
 import type { UnblockContext, UnblockRequest } from "../types";
 
@@ -40,27 +39,12 @@ const submitForm = {
   uploadError: ref(""),
   submitting: ref(false),
 };
-const decideForm = {
-  decision: ref<"approve" | "reject" | null>(null),
-  note: ref(""),
-  submitting: ref(false),
-};
 
 const activeRequest = computed<UnblockRequest | null>(() => context.value?.active_request ?? null);
 
-const myStep = computed<number | null>(() => unblockStepForRole(auth.user?.primary_role?.id));
-
-const canDecide = computed<boolean>(
-  () =>
-    activeRequest.value?.status === "in_progress" &&
-    auth.can("sales-confirmation.manage") &&
-    myStep.value !== null &&
-    Number(activeRequest.value?.approval?.current_step_order) === myStep.value,
-);
-
-const mode = computed<"submit" | "decide" | "readonly">(() => {
-  if (canDecide.value) return "decide";
-  if (!activeRequest.value && myStep.value === 1 && auth.can("sales-confirmation.manage")) return "submit";
+const mode = computed<"submit" | "readonly">(() => {
+  if (!activeRequest.value && auth.hasRole(UNBLOCK_ROLE_ADMIN_FINANCE) && auth.can("sales-confirmation.manage"))
+    return "submit";
   return "readonly";
 });
 
@@ -84,38 +68,24 @@ const creditExposureStats = computed<{
   };
 });
 
-const noteHint = computed<{ text: string; class: string }>(() =>
-  decideForm.decision.value === "reject"
-    ? { text: "Wajib untuk Tolak", class: "text-amber-600" }
-    : { text: "Opsional", class: "text-slate-400" },
-);
-
 const modalTitle = computed<string>(() => {
   if (mode.value === "submit") return "Ajukan Unblock Kredit";
-  if (mode.value === "decide") return "Keputusan Unblock Kredit";
   return "Status Pengajuan Unblock";
 });
 
 const modalSubmitText = computed<string>(() => {
   if (mode.value === "submit") return "Ajukan";
-  if (mode.value === "decide") return "Simpan Keputusan";
   return "Tutup";
 });
 
 const modalSubmitIcon = computed<Icon>(() => {
   if (mode.value === "submit") return "Send";
-  if (mode.value === "decide") return "Check";
   return "X";
 });
 
-const submitting = computed<boolean>(() => submitForm.submitting.value || decideForm.submitting.value);
+const submitting = computed<boolean>(() => submitForm.submitting.value);
 
-const readonlyMessage = computed<string>(() => {
-  if (activeRequest.value) {
-    return `Menunggu ${unblockStepOwnerLabel(activeRequest.value.approval?.current_step_order)} memutuskan.`;
-  }
-  return "Menunggu Admin Finance mengajukan Unblock untuk PO ini.";
-});
+const readonlyMessage = computed<string>(() => activeRequest.value?.status_label ?? "...");
 
 watch(
   () => props.open,
@@ -150,15 +120,11 @@ function resetForms(): void {
   submitForm.reason.value = "";
   submitForm.attachments.value = [];
   submitForm.uploadError.value = "";
-  decideForm.decision.value = null;
-  decideForm.note.value = "";
 }
 
 function handleSubmit(): void {
   if (mode.value === "submit") {
     submitUnblockRequest();
-  } else if (mode.value === "decide") {
-    decideUnblockRequest();
   } else {
     emit("close");
   }
@@ -198,52 +164,6 @@ async function submitUnblockRequest(): Promise<void> {
   } finally {
     submitForm.submitting.value = false;
   }
-}
-
-function validateDecisionForm(): boolean {
-  if (!decideForm.decision.value) {
-    notifyError("Validasi", "Pilih keputusan (Setuju/Tolak).");
-    return false;
-  }
-  if (decideForm.decision.value === "reject" && decideForm.note.value.trim() === "") {
-    notifyError("Validasi", "Catatan wajib diisi untuk keputusan Tolak.");
-    return false;
-  }
-  return true;
-}
-
-async function decideUnblockRequest(): Promise<void> {
-  if (!validateDecisionForm()) return;
-  if (!activeRequest.value) return;
-
-  decideForm.submitting.value = true;
-  try {
-    await axios.patch(`/api/po-customer-unblock-requests/${activeRequest.value.id}/decision`, {
-      decision: decideForm.decision.value,
-      note: decideForm.note.value,
-    });
-    success("Berhasil", "Keputusan Unblock tersimpan.");
-    emit("saved");
-    emit("close");
-  } catch (e: any) {
-    const status = e.response?.status;
-    if (status === 409) {
-      formError.value = e.response?.data?.message ?? "Status pengajuan Unblock sudah berubah.";
-      await fetchContext();
-      emit("saved");
-    } else if (status === 403 || status === 422) {
-      formError.value = e.response?.data?.message ?? "Keputusan Unblock tidak dapat diproses.";
-    } else {
-      formError.value = e.response?.data?.message ?? "Gagal menyimpan keputusan Unblock.";
-    }
-  } finally {
-    decideForm.submitting.value = false;
-  }
-}
-
-function selectDecision(decision: "approve" | "reject"): void {
-  if (decideForm.submitting.value) return;
-  decideForm.decision.value = decision;
 }
 
 function formatFileSize(bytes?: number | null): string {
@@ -374,117 +294,6 @@ function unblockStepNoteClass(status?: string | null): string {
         <FileUploadField :multiple="true" v-model="submitForm.attachments.value" label="Dokumen Pendukung"
           accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="2" :error="submitForm.uploadError.value"
           hint="Minimal 1 file. PDF/JPG/PNG, maks 2MB per file." :disabled="submitForm.submitting.value" />
-      </div>
-
-      <div v-else-if="mode === 'decide'" class="space-y-5">
-        <div class="space-y-3">
-          <div class="flex justify-between items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label"
-              :class="unblockStatusBadgeClass(activeRequest?.status)">
-              <span class="bg-current rounded-full w-1.5 h-1.5" />
-              {{ activeRequest?.status_label || "-" }}
-            </span>
-            <span class="font-caption text-slate-500">{{ formatDateTime(activeRequest?.created_at) ?? "-" }}</span>
-          </div>
-
-          <div class="font-strong">
-            {{ activeRequest?.requested_by?.name ?? "-" }}
-            <span v-if="activeRequest?.requested_by?.role_name">({{ activeRequest.requested_by.role_name }})</span>
-          </div>
-
-          <div v-if="activeRequest?.reason" class="space-y-1">
-            <div class="font-label">Alasan Pengajuan</div>
-            <div class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-lg font-body text-slate-600 italic whitespace-pre-line">
-              {{ activeRequest.reason }}
-            </div>
-          </div>
-
-          <div v-if="activeRequest?.attachments?.length" class="space-y-1">
-            <div class="font-label">Dokumen Pendukung</div>
-            <div class="space-y-1">
-              <div v-for="att in activeRequest.attachments" :key="att.path"
-                class="flex justify-between items-center gap-2">
-                <a :href="`/storage/${att.path}`" target="_blank" class="flex items-center gap-1.5 font-strong text-primary">
-                  <Lucide icon="Paperclip" class="w-4 h-4 text-slate-400" />
-                  {{ att.original_name }}
-                </a>
-                <span v-if="att.size_bytes != null" class="font-caption text-slate-500 shrink-0">
-                  {{ formatFileSize(att.size_bytes) }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-4 border-slate-100 border-t">
-            <div class="mb-3 font-label">Alur Approval</div>
-            <div class="flex flex-col">
-              <div v-for="(step, index) in activeRequest?.approval?.steps ?? []" :key="step.step_order" class="flex gap-3">
-                <div class="flex flex-col items-center">
-                  <div class="flex justify-center items-center border-2 rounded-full w-8 h-8 shrink-0"
-                    :class="unblockStepDotClass(step.status)">
-                    <Lucide v-if="step.status === 'approved'" icon="Check" class="w-4 h-4" />
-                    <Lucide v-else-if="step.status === 'rejected'" icon="X" class="w-4 h-4" />
-                    <span v-else class="font-label">{{ index + 1 }}</span>
-                  </div>
-                  <div v-if="index < (activeRequest?.approval?.steps?.length ?? 0) - 1" class="flex-1 w-1.5 min-h-8"
-                    :class="unblockStepConnectorClass(step.status)" />
-                </div>
-
-                <div class="flex flex-col flex-1 gap-2 pb-4 last:pb-0">
-                  <div class="flex justify-between items-start gap-2">
-                    <div>
-                      <div class="font-strong">{{ step.step_name || `Langkah ${step.step_order}` }}</div>
-                      <div v-if="step.actor_name" class="font-caption text-slate-500">
-                        {{ step.actor_name }} · {{ formatDateTime(step.acted_at) ?? "-" }}
-                      </div>
-                    </div>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label shrink-0"
-                      :class="unblockStepBadgeClass(step.status)">
-                      {{ unblockStepStatusLabel(step.status) }}
-                    </span>
-                  </div>
-
-                  <div v-if="step.decision_note" class="px-3 py-2 rounded-lg font-body" :class="unblockStepNoteClass(step.status)">
-                    Catatan: {{ step.decision_note }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="space-y-4">
-          <div class="gap-3 grid grid-cols-2">
-            <button type="button" class="p-4 border-2 rounded-xl text-center transition cursor-pointer"
-              :class="decideForm.decision.value === 'approve' ? 'border-success bg-success/5 text-success' : 'border-slate-200 bg-white text-slate-600'"
-              :disabled="decideForm.submitting.value" @click="selectDecision('approve')">
-              <div class="flex justify-center items-center mx-auto rounded-full w-10 h-10"
-                :class="decideForm.decision.value === 'approve' ? 'bg-success text-white' : 'bg-slate-100 text-slate-400'">
-                <Lucide icon="Check" class="w-5 h-5" />
-              </div>
-              <div class="mt-2 font-strong">Setuju</div>
-            </button>
-
-            <button type="button" class="p-4 border-2 rounded-xl text-center transition cursor-pointer"
-              :class="decideForm.decision.value === 'reject' ? 'border-rose-500 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white text-slate-600'"
-              :disabled="decideForm.submitting.value" @click="selectDecision('reject')">
-              <div class="flex justify-center items-center mx-auto rounded-full w-10 h-10"
-                :class="decideForm.decision.value === 'reject' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'">
-                <Lucide icon="X" class="w-5 h-5" />
-              </div>
-              <div class="mt-2 font-strong">Tolak</div>
-            </button>
-          </div>
-
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <span class="font-label">Catatan Keputusan</span>
-              <span class="font-caption" :class="noteHint.class">{{ noteHint.text }}</span>
-            </div>
-            <FormTextarea id="decide-note" v-model="decideForm.note.value" :rows="3" placeholder="Catatan keputusan"
-              :disabled="decideForm.submitting.value" />
-          </div>
-        </div>
       </div>
 
       <div v-else class="space-y-5">

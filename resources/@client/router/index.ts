@@ -525,7 +525,7 @@ const routes = [
         meta: {
           role: "bm",
           brand: "tds",
-          permission: ["penawaran.verify", "penawaran.verify-bm"],
+          permission: "penawaran.verify",
         },
       },
       {
@@ -622,21 +622,17 @@ const routes = [
         path: "/sales-confirmations/delivery-queue",
         name: "sales-confirmations-delivery-queue",
         component: () => import("@/pages/SalesConfirmationDeliveryQueue.vue"),
+        meta: { permission: "sales-confirmation.manage" },
       },
       {
         path: "/sales-confirmations/:id",
         name: "sales-confirmations-detail",
         component: () => import("@/pages/SalesConfirmation/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail Sales Confirmation" },
+        meta: {
+          breadcrumbTitle: "Detail Sales Confirmation",
+          permission: "sales-confirmation.manage",
+        },
       },
-
-      {
-        path: "/sales-confirmations/bm/:id/po",
-        name: "sales-confirmations-bm-detail-po",
-        component: () => import("@/pages/SalesConfirmationBMDetailClassic.vue"),
-        props: true,
-      },
-
       {
         path: "/ar-agings",
         name: "ar-agings-index",

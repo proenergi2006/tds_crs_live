@@ -10,17 +10,6 @@ use App\Models\DocumentApprovalStep;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Mesin generik untuk siklus approval polymorphic `document_approvals` /
- * `document_approval_steps`. $approvable WAJIB sudah punya relasi
- * `documentApprovals()` (morphMany ke DocumentApproval, keyed `approvable_id`
- * pakai primary key model itu sendiri) -- lihat CustomerVerification untuk
- * contoh relasi yang dibutuhkan.
- *
- * Diekstrak sebagai Service (bukan private method di controller) karena
- * cluster logic ini genuinely berdiri sendiri sebagai state machine approval,
- * dipakai lintas domain (customer_verification, customer_lcr_survey, dst).
- */
 class DocumentApprovalService
 {
     public function activeTemplate(string $templateCode): ?ApprovalTemplate
@@ -36,12 +25,7 @@ class DocumentApprovalService
         return $template->steps->firstWhere('id_role', $idRole)?->step_order;
     }
 
-    /**
-     * Mulai siklus approval baru untuk $approvable. Morph relation mendukung
-     * banyak siklus per approvable (mis. re-submit setelah reject), jadi
-     * method ini SELALU membuat row baru, tidak reuse siklus lama.
-     */
-    public function startCycle(Model $approvable, string $templateCode): DocumentApproval
+    public function startCycle(Model $approvable, string $templateCode, ?array $stepOrders = null): DocumentApproval
     {
         $template = $this->activeTemplate($templateCode);
 
@@ -54,14 +38,22 @@ class DocumentApprovalService
             throw new \RuntimeException("Approval template {$templateCode} belum ter-setup dengan benar.");
         }
 
+        $steps = $stepOrders === null
+            ? $template->steps
+            : $template->steps->whereIn('step_order', $stepOrders);
+
+        if ($steps->isEmpty()) {
+            throw new \RuntimeException("stepOrders yang diberikan tidak cocok dengan step manapun di template {$templateCode}.");
+        }
+
         $approval = $approvable->documentApprovals()->create([
             'id_template'        => $template->id_template,
             'status'             => DocumentApprovalStatus::InProgress,
-            'current_step_order' => $template->steps->min('step_order'),
+            'current_step_order' => $steps->min('step_order'),
             'started_at'         => now(),
         ]);
 
-        foreach ($template->steps as $step) {
+        foreach ($steps as $step) {
             DocumentApprovalStep::create([
                 'id_approval'      => $approval->id_approval,
                 'id_template_step' => $step->id_step,
@@ -73,10 +65,6 @@ class DocumentApprovalService
         return $approval;
     }
 
-    /**
-     * Siklus approval TERBARU yang masih in_progress untuk $approvable, atau
-     * null kalau tidak ada.
-     */
     public function activeCycle(Model $approvable): ?DocumentApproval
     {
         return $approvable->documentApprovals()
@@ -86,12 +74,6 @@ class DocumentApprovalService
             ->first();
     }
 
-    /**
-     * Putuskan 1 step (approve/reject) pada siklus in_progress TERBARU milik
-     * $approvable. Kalau step yang diputuskan adalah step_order maksimum
-     * (atau reject di step manapun), siklus ditutup. Kalau bukan, siklus maju
-     * ke step_order berikutnya.
-     */
     public function decideStep(
         Model $approvable,
         int $stepOrder,
@@ -142,10 +124,10 @@ class DocumentApprovalService
             return $approval;
         }
 
-        $templateSteps = $approval->template?->steps ?? collect();
-        $maxStepOrder  = $templateSteps->max('step_order');
+        $cycleSteps   = $approval->steps;
+        $maxStepOrder = $cycleSteps->max('step_order');
 
-        if ($templateSteps->isEmpty() || $stepOrder === $maxStepOrder) {
+        if ($cycleSteps->isEmpty() || $stepOrder === $maxStepOrder) {
             $approval->update([
                 'status'             => DocumentApprovalStatus::Approved,
                 'current_step_order' => null,
@@ -155,7 +137,7 @@ class DocumentApprovalService
             return $approval;
         }
 
-        $nextStepOrder = $templateSteps->pluck('step_order')
+        $nextStepOrder = $cycleSteps->pluck('step_order')
             ->filter(fn ($order) => $order > $stepOrder)
             ->sort()
             ->first();
@@ -183,10 +165,6 @@ class DocumentApprovalService
         return $approval;
     }
 
-    /**
-     * Tutup siklus in_progress TERBARU milik $approvable sebagai Cancelled.
-     * No-op (return null) kalau tidak ada siklus in_progress.
-     */
     public function cancelActiveCycle(Model $approvable): ?DocumentApproval
     {
         $approval = $this->activeCycle($approvable);

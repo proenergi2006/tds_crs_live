@@ -13,7 +13,7 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 
-import { salesConfirmationBadgeClass, unblockStepForRole, unblockStepOwnerLabel } from './status'
+import { salesConfirmationBadgeClass } from './status'
 import UnblockModal from "./components/UnblockModal.vue";
 
 const router = useRouter()
@@ -21,6 +21,7 @@ const auth = useAuthStore()
 const { error: notifyError, info } = useNotification()
 
 const ROLE_BM = 8
+const ROLE_ADMIN_FINANCE = 9
 
 const disposisiFilter = ref<number | null>(null)
 const salesConfirmations = ref<any[]>([])
@@ -33,7 +34,6 @@ const loading = ref(false)
 const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) };
 
 const isBranchManager = computed(() => auth.hasRole(ROLE_BM))
-const myUnblockStep = computed<number | null>(() => unblockStepForRole(auth.user?.primary_role?.id));
 
 watch(disposisiFilter, () => fetchData(1))
 watch(searchQuery, debounce(() => fetchData(1), 300))
@@ -88,23 +88,17 @@ function handleRowAction(row: any): void {
     return;
   }
 
-  const req = row.active_unblock_request;
+  if (row.active_unblock_request) {
+    info("Menunggu", "Pengajuan Unblock untuk PO ini sedang diproses.");
+    return;
+  }
 
-  if (!req && myUnblockStep.value === 1 && auth.can("sales-confirmation.manage")) {
+  if (auth.hasRole(ROLE_ADMIN_FINANCE) && auth.can("sales-confirmation.manage")) {
     openUnblockModal(row.id_poc);
     return;
   }
 
-  if (req && myUnblockStep.value !== null && Number(req.current_step_order) === myUnblockStep.value) {
-    openUnblockModal(row.id_poc);
-    return;
-  }
-
-  if (req) {
-    info("Menunggu Keputusan", `Menunggu ${unblockStepOwnerLabel(req.current_step_order)} memutuskan.`);
-  } else {
-    info("Belum Diajukan", "Menunggu Admin Finance mengajukan Unblock untuk PO ini.");
-  }
+  info("Diblokir", "PO ini diblokir kredit. Menunggu Admin Finance mengajukan Unblock.");
 }
 
 function handleUnblockSaved(): void {

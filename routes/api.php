@@ -135,7 +135,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customers/{customer}/onboarding-link', [CustomerController::class, 'generateOnboardingLink']);
     Route::post('customers/{customer}/verification', [CustomerVerificationController::class, 'store']);
 
-    // authz per-row di controller (ownership check), bukan middleware can:
     Route::get('customers/{customer}/documents', [CustomerDocumentController::class, 'index']);
     Route::post('customers/{customer}/documents', [CustomerDocumentController::class, 'store']);
     Route::put('customers/{customer}/documents/{document}', [CustomerDocumentController::class, 'update']);
@@ -143,7 +142,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('customers/{customer}/addresses', [CustomerAddressController::class, 'index']);
     Route::post('customers/{customer}/addresses', [CustomerAddressController::class, 'store']);
-    // {address} dikunci numerik biar gak tabrakan sama addresses/{addressType} (huruf) di bawah
     Route::put('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'update'])->whereNumber('address');
     Route::delete('customers/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy'])->whereNumber('address');
 
@@ -235,7 +233,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('customer-pos', PoCustomerController::class);
 
     Route::get('review/lcr-sites', [CustomerLcrController::class, 'reviewIndex']);
-    // harus di atas review/lcr-sites/{lcrSite} -- kalau tidak, "stats" ketangkap sebagai {lcrSite} lalu route-model-bind balik 404
     Route::get('review/lcr-sites/stats', [CustomerLcrController::class, 'reviewStats']);
     Route::get('review/lcr-sites/{lcrSite}', [CustomerLcrController::class, 'reviewShow']);
     Route::patch('review/lcr-sites/{lcrSite}/decision', [CustomerLcrController::class, 'decide']);
@@ -253,12 +250,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
     Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
+    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'decideSalesConfirmationBm']);
 
     Route::post('/po-customers/{poc}/process-sc', [PoCustomerController::class, 'processSalesConfirmation']);
 
     Route::get('/po-customers/{poc}/unblock-context', [PoCustomerUnblockRequestController::class, 'unblockContext']);
     Route::post('/po-customers/{poc}/unblock-requests', [PoCustomerUnblockRequestController::class, 'store']);
-    Route::patch('/po-customer-unblock-requests/{unblockRequest}/decision', [PoCustomerUnblockRequestController::class, 'decide']);
 
     Route::put('/po-customers/{poc}/nomor', [PoCustomerController::class, 'updateNomorPo']);
 
@@ -305,7 +302,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 });
 
-// publik, sengaja tanpa auth
 Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'show']);
 Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
 Route::get('/verifikasi-penawaran/{token}', [PenawaranVerificationController::class, 'show']);

@@ -4,11 +4,10 @@
   <meta charset="UTF-8">
   <title>Penawaran {{ $penawaran->nomor_penawaran }}</title>
   <style>
-    /* Kertas A4 potrait + ruang bawah besar untuk pita hijau */
     @page{
       size: A4 portrait;
       margin-top: 44mm;
-      margin-bottom: 44mm;   /* ruang untuk footer + pita */
+      margin-bottom: 44mm;
       margin-left: 42mm;
       margin-right: 42mm;
     }
@@ -16,14 +15,12 @@
     *{ box-sizing:border-box; margin:0; padding:0 }
     body{ font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size:10.1px; color:#222; line-height:1.45 }
 
-    /* Wrapper konten */
     .content{ width:82%; margin:0 auto }
 
-    /* Header */
     .hdr{ width:100%; border-collapse:collapse; margin-bottom:6px }
     .hdr td{ vertical-align:top }
     .hdr .logo img{
-  height: 18mm;     /* biar tinggi logo kiri-kanan sama */
+  height: 18mm;
   width: auto;
 }
 
@@ -44,23 +41,20 @@
     .subject{ text-align:center; font-weight:700; font-size:13.8px; margin:12px 0 9px }
     .p{ margin:4px 0 8px; text-align:justify }
 
-    /* Section: bagian 1-9 tanpa kotak */
-    .box{ width:94%; margin:8px auto 10px; padding:0 } /* border dihilangkan */
+    .box{ width:94%; margin:8px auto 10px; padding:0 }
     .kv{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      border-top: 1px solid #cfd8dc;     /* garis di atas "1. Produk" */
-      border-bottom: 1px solid #cfd8dc;  /* garis di bawah "9. Toleransi" */
+      border-top: 1px solid #cfd8dc;
+      border-bottom: 1px solid #cfd8dc;
       margin-top: 6px;
       margin-bottom: 6px;
     }
 
-    /* Biar jarak atas/bawah enak dilihat */
     .kv tr:first-child td  { padding-top: 8px; }
     .kv tr:last-child  td  { padding-bottom: 8px; }
 
-    /* Pemisah antar baris tetap */
     .kv tr + tr td{ border-top: 0.5px dashed #e6e6e6; }
     .no{ width:20px; font-weight:700 }
     .label{ width:215px; color:#555; font-size:9.8px }
@@ -68,7 +62,6 @@
     .value{ width:auto; line-height:1.32; font-size:9.8px }
     .value b{ font-weight:700 }
 
-    /* Signature + contact */
     .sigrow{ width:100%; border-collapse:collapse; margin-top:8px }
     .sigrow td{ vertical-align:top; padding-right:10px }
     .sigrow td:last-child{ padding-right:0 }
@@ -77,29 +70,27 @@
   border: 1px solid;
   border-radius: 10px;
   padding: 12px 14px;
- 
-  
+
+
   font-size: 11.2px;
-  background-clip: padding-box;     /* jaga sudut rounded rapi */
+  background-clip: padding-box;
 }
 .contact b{
   display:block;
   margin-bottom:6px;
-  
+
 }
 
-    /* Pita full width, nempel kanan–kiri & bawah */
     .brand-band{
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
       height: 18mm;
-    
+
       border: none;
     }
 
-    /* teks footer di atas pita, rapih sejajar dengan margin konten */
     .footer{
       position: fixed;
       left: 42mm;
@@ -107,7 +98,7 @@
       bottom: 6mm;
       text-align: center;
       font-size: 10.8px;
-   
+
       padding: 0;
       border: none;
     }
@@ -115,7 +106,6 @@
 
     .t-right{ text-align:right }
 
-    /* Section: halaman 2, syarat & ketentuan */
     .page-break{
       page-break-before: always;
     }
@@ -220,7 +210,9 @@
 
   $rupiah = fn($n) => 'Rp '.number_format((float)$n, 0, ',', '.');
 
-  $defaultProduct   = 'Batu Pecah 2-3 (50%), 3-5 (50%) — Blending (Agregat)';
+  $defaultProduct   = $isPolimer
+    ? 'Sesuai rincian item'
+    : 'Batu Pecah 2-3 (50%), 3-5 (50%) — Blending (Agregat)';
   $defaultTolerance = '1% dari total jumlah pengiriman';
 
   $hasTerms = !empty(trim($penawaran->syarat_ketentuan ?? ''));
@@ -228,25 +220,24 @@
 @endphp
 
 <div class="content">
-  <!-- Header -->
 <br>
   <table class="hdr">
     <tr>
-      <td class="logo left" style="width:50%">
+      <td class="left logo" style="width:50%">
         @if($logoLeft)
           <img src="{{ $logoLeft }}" alt="Logo Kiri">
         @endif
       </td>
-      
-      <td class="logo right" style="width:50%">
-        @if($logoRight)
+
+      <td class="right logo" style="width:50%">
+        @if($logoRight && !($isPolimer ?? false))
           <img src="{{ $logoRight }}" alt="Logo Kanan">
         @endif
       </td>
-      
+
     </tr>
   </table>
-  
+
 
   <table class="refrow">
     <tr>
@@ -259,7 +250,6 @@
     </tr>
   </table>
 
-  <!-- Attention -->
   <table class="attnwrap">
     <tr>
       <td style="width:100%">
@@ -275,27 +265,30 @@
     </tr>
   </table>
 
-  <!-- Subject -->
-  <div class="subject">Penawaran Harga Batu Pecah</div>
+  <div class="subject">{{ ($isPolimer ?? false) ? 'Penawaran Harga Produk' : 'Penawaran Harga Batu Pecah' }}</div>
 
-  <!-- Intro -->
   <p class="p">Yth. Bapak/Ibu,</p>
   <p class="p">
     Bersama surat ini, perkenankan kami memperkenalkan bahwa kami dari PT Tri Daya Selaras sebagai Badan Hukum yang memiliki
     Izin Usaha Penjualan & Jasa Pertambangan dari ESDM, bergerak di bidang pertambangan.
   </p>
   <p class="p">
-    Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
-    kebutuhan Batu Pecah untuk <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @if($isPolimer ?? false)
+      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
+      kebutuhan perusahaan <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @else
+      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
+      kebutuhan Batu Pecah untuk <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
+    @endif
   </p>
 
 
-  <!-- 1–9: tanpa kotak -->
   <div class="box">
     <table class="kv">
+      @php $rowNum = 1; @endphp
       @if(($produkLines ?? collect())->isEmpty())
   <tr>
-    <td class="no">1.</td>
+    <td class="no">{{ $rowNum }}.</td>
     <td class="label"><b>Produk</b></td>
     <td class="colon">:</td>
     <td class="value"><b>{!! $defaultProduct !!}</b></td>
@@ -304,11 +297,10 @@
   @foreach($produkLines as $i => $line)
     <tr>
       @if($i === 0)
-        <td class="no">1.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Produk</b></td>
         <td class="colon">:</td>
       @else
-        {{-- baris lanjutan: kosongkan kiri supaya sejajar --}}
         <td class="no"></td>
         <td class="label"></td>
         <td class="colon"></td>
@@ -318,14 +310,18 @@
     </tr>
   @endforeach
 @endif
+      @php $rowNum++; @endphp
 
+      @unless($isPolimer ?? false)
       <tr>
-        <td class="no">2.</td><td class="label"><b>Parameter</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Parameter</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $penawaran->abrasi ?? '0' }} </b></td>
       </tr>
+      @php $rowNum++; @endphp
+      @endunless
       @if($priceDetail ?? false)
       <tr>
-        <td class="no">3.</td><td class="label"><b>Harga Dasar per m&sup3;</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Harga Dasar{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td><td class="colon">:</td>
         <td class="value">{{ $rupiah($penawaran->harga_dasar ?? 0) }} <span style="color:#666">(Harga belum termasuk PPN 11%)</span></td>
       </tr>
       <tr>
@@ -334,16 +330,17 @@
       </tr>
       @else
       <tr>
-        <td class="no">3.</td><td class="label"><b>Harga per m&sup3;</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Harga{!! ($isPolimer ?? false) ? '' : ' per m&sup3;' !!}</b></td><td class="colon">:</td>
         <td class="value">{{ $rupiah(($penawaran->harga_dasar ?? 0) + ($penawaran->oat ?? 0)) }} <span style="color:#666">(Harga belum termasuk PPN 11%)</span></td>
       </tr>
       @endif
+      @php $rowNum++; @endphp
       <tr>
-        <td class="no">4.</td>
+        <td class="no">{{ $rowNum }}.</td>
         <td class="label"><b>Metode Pembayaran</b></td>
         <td class="colon">:</td>
         <td class="value">
-      
+
           @if($penawaran->tipe_pembayaran === 'CUSTOM')
             <div style="margin-top:4px">
 
@@ -356,63 +353,66 @@
               <b>{{ $penawaran->tipe_pembayaran }}</b>
             </div>
           @endif
-      
+
         </td>
       </tr>
-      
-      
+      @php $rowNum++; @endphp
+
+
       <tr>
-        <td class="no">5.</td><td class="label"><b>Metode Pemesanan</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Metode Pemesanan</b></td><td class="colon">:</td>
         <td class="value">{{ $penawaran->order_method}}</td>
       </tr>
+      @php $rowNum++; @endphp
       <tr>
-        <td class="no">6.</td><td class="label"><b>Metode Pengiriman</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Metode Pengiriman</b></td><td class="colon">:</td>
         <td class="value">
           {{ $penawaran->metode}}
         </td>
       </tr>
+      @php $rowNum++; @endphp
       <tr>
-        <td class="no">7.</td><td class="label"><b>Titik Serah Terima & T&C Bongkar</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Titik Serah Terima & T&C Bongkar</b></td><td class="colon">:</td>
         <td class="value">{!! $penawaran->keterangan !!}</td>
       </tr>
-     
+      @php $rowNum++; @endphp
+
       <tr>
-        <td class="no">8.</td><td class="label"><b>Toleransi</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Toleransi</b></td><td class="colon">:</td>
         <td class="value">{{ $penawaran->toleransi_penyusutan ?? $defaultTolerance }} %</td>
       </tr>
+      @php $rowNum++; @endphp
       <tr>
-        <td class="no">9.</td><td class="label"><b>Periode</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Periode</b></td><td class="colon">:</td>
         <td class="value">
           {{ \Carbon\Carbon::parse($penawaran->masa_berlaku)->translatedFormat('d F Y') }}
           -
           {{ \Carbon\Carbon::parse($penawaran->sampai_dengan)->translatedFormat('d F Y') }}
         </td>
-        
+
       </tr>
     </table>
   </div>
 
 
-  <!-- Closing -->
   <p class="p">
     Besar harapan kami untuk dapat memperoleh kesempatan dan kepercayaan dari Bapak/Ibu guna menjalin kerja sama yang baik
     dengan perusahaan Bapak/Ibu. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
   </p>
   <p>
 
-  <!-- Signature + Contact -->
   <table class="sigrow">
     <tr>
       <td style="width:55%;">
         Best Regards,<br>
         <strong>PT. Tri Daya Selaras</strong>
         <div class="qrwrap">
-          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+          @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
             <img src="{{ $qrBase64 }}" style="width:20mm;height:20mm" alt="QR">
           @endif
         </div>
-      
-   
+
+
         <strong><u>Vica Krisdianatha</u></strong><br>
         Chief Executive Officer
       </td>
@@ -424,18 +424,17 @@
           {{ $contact['phone'] }}<br>
           <a
           href="mailto:{{ e($contact['email']) }}"
-          class="text-blue-600 underline hover:text-blue-800"
+          class="text-blue-600 hover:text-blue-800 underline"
         >
           {{ $contact['email'] }}
         </a>
-        
+
         </div>
       </td>
     </tr>
   </table>
 </div>
 
-<!-- Pita & footer -->
 <div class="brand-band"></div>
 <div class="footer">
   <hr style="border: none; border-top: 1px solid #000;">
@@ -444,27 +443,26 @@
   href="https://www.tridayaselaras.com"
   target="_blank"
   rel="noopener noreferrer"
-  class="text-blue-600 underline hover:text-blue-800"
+  class="text-blue-600 hover:text-blue-800 underline"
 >
   www.tridayaselaras.com
 </a>
 
 </div>
 
-{{-- Section: halaman 2, syarat & ketentuan --}}
 @if($hasTerms)
   <div class="page-break"></div>
 
   <div class="terms-wrap">
     <table class="hdr">
       <tr>
-        <td class="logo left" style="width:50%">
+        <td class="left logo" style="width:50%">
           @if($logoLeft)
             <img src="{{ $logoLeft }}" alt="Logo Kiri">
           @endif
         </td>
-        <td class="logo right" style="width:50%">
-          @if($logoRight)
+        <td class="right logo" style="width:50%">
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>
@@ -491,16 +489,16 @@
     <table class="sig-table">
       <tr>
         <td class="sig-label">Best Regards,<br>PT. Tri Daya Selaras</td>
-        <td class="sig-label t-right">{{ strtoupper($cust->company_name ?? '-') }}</td>
+        <td class="t-right sig-label">{{ strtoupper($cust->company_name ?? '-') }}</td>
       </tr>
 
       <tr>
         <td class="signbox">
-          @if(!empty($qrBase64) && (int)$penawaran->disposisi_penawaran === 4)
+          @if(!empty($qrBase64) && $penawaran->disposisi_penawaran === \App\Enums\PenawaranDisposisi::DisetujuiOm)
             <img src="{{ $qrBase64 }}" class="qr" alt="QR">
           @endif
         </td>
-        <td class="signbox t-right"></td>
+        <td class="t-right signbox"></td>
       </tr>
 
       <tr>
@@ -508,7 +506,7 @@
           Vica Krisdianatha
           <div class="sig-role">Chief Executive Officer</div>
         </td>
-        <td class="sig-name t-right">
+        <td class="t-right sig-name">
           {{ $penawaran->customerContact->full_name ?? 'Customer' }}
           <div class="sig-role">{{ $penawaran->customerContact->position ?? '' }}</div>
         </td>
@@ -522,20 +520,19 @@
   </div>
 @endif
 
-{{-- Section: halaman lampiran tambahan --}}
 @if($hasLampiranTambahan)
   <div class="page-break"></div>
 
   <div class="terms-wrap">
     <table class="hdr">
       <tr>
-        <td class="logo left" style="width:50%">
+        <td class="left logo" style="width:50%">
           @if($logoLeft)
             <img src="{{ $logoLeft }}" alt="Logo Kiri">
           @endif
         </td>
-        <td class="logo right" style="width:50%">
-          @if($logoRight)
+        <td class="right logo" style="width:50%">
+          @if($logoRight && !($isPolimer ?? false))
             <img src="{{ $logoRight }}" alt="Logo Kanan">
           @endif
         </td>

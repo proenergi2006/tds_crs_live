@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-// id role dipakein eksplisit di banyak tempat (permission seeder dst), makanya harus fix bukan auto-increment.
 class RoleSeeder extends Seeder
 {
     public function run(): void
@@ -26,6 +25,7 @@ class RoleSeeder extends Seeder
             ['id' => 14, 'name' => 'KAE Proenergi', 'role_desc' => 'Role KAE Agent TDS'],
             ['id' => 15, 'name' => 'Branch Manager Proenergi', 'role_desc' => 'Role BM Agent TDS'],
             ['id' => 16, 'name' => 'OM Proenergi', 'role_desc' => 'Role OM Agent TDS'],
+            ['id' => 17, 'name' => 'Branch Manager Polimer', 'role_desc' => '-'],
         ];
 
         foreach ($roles as $role) {

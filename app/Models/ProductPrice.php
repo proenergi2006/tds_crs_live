@@ -16,6 +16,8 @@ class ProductPrice extends Model
         'bm_price',
         'cogs_price',
         'cogs_basis',
+        'cogs_material_price',
+        'cogs_transport_price',
         'margin_amount',
         'om_price',
         'ceo_price',
@@ -25,13 +27,15 @@ class ProductPrice extends Model
     ];
 
     protected $casts = [
-        'price_list'    => 'decimal:2',
-        'price_list_pe' => 'decimal:2',
-        'bm_price'      => 'decimal:2',
-        'cogs_price'    => 'decimal:2',
-        'margin_amount' => 'decimal:2',
-        'om_price'      => 'decimal:2',
-        'ceo_price'     => 'decimal:2',
+        'price_list'            => 'decimal:2',
+        'price_list_pe'         => 'decimal:2',
+        'bm_price'              => 'decimal:2',
+        'cogs_price'            => 'decimal:2',
+        'cogs_material_price'   => 'decimal:2',
+        'cogs_transport_price'  => 'decimal:2',
+        'margin_amount'         => 'decimal:2',
+        'om_price'              => 'decimal:2',
+        'ceo_price'             => 'decimal:2',
     ];
 
     public function priceListForBrand(string $brand): float

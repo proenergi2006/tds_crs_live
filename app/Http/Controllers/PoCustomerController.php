@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Actions\PoCustomer\ProcessSalesConfirmationGateAction;
+use App\Actions\SalesConfirmation\DecideSalesConfirmationAction;
 use App\Actions\SalesConfirmation\SaveSalesConfirmationAction;
+use App\Enums\DocumentApprovalStepStatus;
+use App\Http\Requests\SalesConfirmation\DecideSalesConfirmationRequest;
 use App\Http\Requests\SalesConfirmation\SaveSalesConfirmationRequest;
 use App\Models\PoCustomer;
 use App\Models\Penawaran;
@@ -15,9 +18,11 @@ use App\Models\CustomerAdminArnya;
 use App\Models\SalesConfirmation;
 use App\Models\SalesConfirmationApproval;
 use App\Models\PoCustomerPlan;
+use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
@@ -26,6 +31,7 @@ use Carbon\Carbon;
 class PoCustomerController extends Controller
 {
     private const ROLE_ADMIN_FINANCE = 9;
+    private const ROLE_BM = 8;
     private const PENAWARAN_STATUS_APPROVED_OM = 'approved_om';
 
     public function index(Request $request): \Illuminate\Http\JsonResponse
@@ -252,7 +258,9 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
 
     $arnya = CustomerAdminArnya::where('id_customer', $po->id_customer)->first();
 
-    $sc  = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
+    $sc  = SalesConfirmation::where('po_customer_id', $po->id_poc)
+        ->with(['latestDocumentApproval.steps.templateStep', 'latestDocumentApproval.steps.actor'])
+        ->first();
     $apr = $sc ? SalesConfirmationApproval::where('id_sales', $sc->id)->first() : null;
 
     $scDisp  = (int) ($sc?->getRawOriginal('disposisi') ?? SalesConfirmationStatus::PendingAdmin->value);
@@ -319,6 +327,7 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
             'adm_result_date' => $apr->adm_result_date,
             'adm_pic'         => $apr->adm_pic,
         ] : null,
+        'bm_approval' => $this->formatBmApproval($sc),
     ]);
 }
 
@@ -335,9 +344,49 @@ public function saveSalesConfirmation(SaveSalesConfirmationRequest $request, int
         return response()->json(['message' => 'PO Customer belum lolos gerbang Sales Confirmation.'], 409);
     }
 
+    $existingSc = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
+
+    if ($existingSc?->disposisi === SalesConfirmationStatus::PendingBm) {
+        return response()->json(['message' => 'Sales Confirmation ini sudah diajukan dan sedang menunggu keputusan BM.'], 409);
+    }
+
+    if ($existingSc?->disposisi === SalesConfirmationStatus::Confirmed) {
+        return response()->json(['message' => 'Sales Confirmation ini sudah dikonfirmasi.'], 409);
+    }
+
     $sc = $action->execute($po, $request->validated(), $request->user()->name ?? 'system');
 
     return response()->json(['success' => true, 'id_sales_confirmation' => $sc->id]);
+}
+
+public function decideSalesConfirmationBm(DecideSalesConfirmationRequest $request, int $idPoc, DecideSalesConfirmationAction $action): \Illuminate\Http\JsonResponse
+{
+    $user = $request->user();
+    if ($user->cant('sales-confirmation.manage') || (int) $user->primary_role_id !== self::ROLE_BM) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    $po = PoCustomer::findOrFail($idPoc);
+    $sc = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
+
+    if (!$sc || $sc->disposisi !== SalesConfirmationStatus::PendingBm) {
+        return response()->json(['message' => 'Sales Confirmation ini tidak sedang menunggu keputusan BM.'], 409);
+    }
+
+    $service = new DocumentApprovalService();
+    $cycle = $service->activeCycle($sc);
+
+    if (!$cycle || (int) $cycle->current_step_order !== 1) {
+        return response()->json(['message' => 'Belum giliran BM memutuskan.'], 409);
+    }
+
+    $status = $request->validated()['decision'] === 'approve'
+        ? DocumentApprovalStepStatus::Approved
+        : DocumentApprovalStepStatus::Rejected;
+
+    $sc = $action->execute($sc, $status, $user->id, $request->validated()['note'] ?? null, $user->name ?? 'system');
+
+    return response()->json(['success' => true, 'disposisi' => Str::snake($sc->disposisi->name)]);
 }
 
 public function processSalesConfirmation(Request $request, int $idPoc, ProcessSalesConfirmationGateAction $action): \Illuminate\Http\JsonResponse
@@ -504,6 +553,27 @@ public function getPoPlan($idPoc)
                 'book_remaining_liter' => max(0, (int)($po->volume_poc ?? 0) - (int)$shipped),
             ],
         ]);
+    }
+
+    private function formatBmApproval(?SalesConfirmation $sc): ?array
+    {
+        $cycle = $sc?->latestDocumentApproval;
+
+        if (!$cycle) {
+            return null;
+        }
+
+        return [
+            'current_step_order' => $cycle->current_step_order,
+            'steps'              => $cycle->steps->sortBy('step_order')->map(fn ($step) => [
+                'step_order'    => $step->step_order,
+                'step_name'     => $step->templateStep->step_name ?? null,
+                'status'        => $step->status?->value,
+                'actor_name'    => $step->actor->name ?? null,
+                'acted_at'      => optional($step->acted_at)->toISOString(),
+                'decision_note' => $step->decision_note,
+            ])->values(),
+        ];
     }
 
 }

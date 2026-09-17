@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\PoCustomer;
+namespace App\Http\Requests\SalesConfirmation;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class DecidePoCustomerUnblockRequestRequest extends FormRequest
+class DecideSalesConfirmationRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -3,24 +3,14 @@
 namespace App\Actions\PoCustomer;
 
 use App\Enums\DocumentApprovalStatus;
-use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\PoCustomerScProcessState;
 use App\Models\PoCustomer;
 use App\Models\PoCustomerUnblockRequest;
-use App\Services\Approval\DocumentApprovalService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SubmitPoCustomerUnblockRequestAction
 {
-    private const APPROVAL_TEMPLATE_CODE = 'po_customer_unblock';
-
-    public function __construct(
-        private readonly DocumentApprovalService $approvalService,
-        private readonly DecidePoCustomerUnblockRequestAction $decideAction
-    ) {
-    }
-
     public function execute(PoCustomer $po, array $data, array $files, int $userId, string $pic, ?string $ip): PoCustomerUnblockRequest
     {
         $stored = [];
@@ -40,21 +30,16 @@ class SubmitPoCustomerUnblockRequestAction
                 'id_poc'       => $po->id_poc,
                 'reason'       => $data['reason'] ?? null,
                 'attachments'  => $stored,
-                'status'       => DocumentApprovalStatus::InProgress,
+                'status'       => DocumentApprovalStatus::Approved,
                 'requested_by' => $userId,
             ]);
 
-            $this->approvalService->startCycle($unblockRequest, self::APPROVAL_TEMPLATE_CODE);
-
-            $this->decideAction->execute(
-                $unblockRequest,
-                1,
-                DocumentApprovalStepStatus::Approved,
-                $userId,
-                null,
-                $pic,
-                $ip
-            );
+            $po->update([
+                'sc_process_state' => PoCustomerScProcessState::Cleared,
+                'lastupdate_time'  => now(),
+                'lastupdate_ip'    => $ip,
+                'lastupdate_by'    => $pic,
+            ]);
 
             return $unblockRequest;
         });
