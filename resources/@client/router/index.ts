@@ -698,12 +698,6 @@ const routes = [
         name: "testing-page-2",
         component: () => import("@/pages/Tooltip.vue"),
       },
-
-      {
-        path: "testing-font-preview",
-        name: "testing-font-preview",
-        component: () => import("@/pages/Testing/FontPreview.vue"),
-      },
     ],
   },
   { path: "/:catchAll(.*)", redirect: "/login" },
