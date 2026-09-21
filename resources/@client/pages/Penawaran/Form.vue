@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toRaw } from 'vue'
 import axios from 'axios'
@@ -24,8 +24,12 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-const idParam = route.params.id as string | undefined
-const isEdit = Boolean(idParam)
+// computed, bukan const: create & edit route berbagi komponen ini (lihat router/index.ts), Vue Router
+// reuse instance-nya saat pindah antar keduanya (mis. klik "Buat Penawaran Baru dari Ini" dari mode
+// edit) -- kalau const, idParam/isEdit beku ke nilai mount pertama dan gak keupdate walau initializeForm()
+// dipanggil ulang lewat watch di bawah
+const idParam = computed(() => route.params.id as string | undefined)
+const isEdit = computed(() => Boolean(idParam.value))
 
 type Brand = 'tds' | 'proenergi'
 const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
@@ -36,6 +40,7 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans',
     listRoute: 'penawarans-list',
     detailRoute: 'penawarans-detail',
+    createRoute: 'penawarans-create',
     usePe: false,
     showAcuan: false,
   },
@@ -43,6 +48,7 @@ const BRAND_CONFIG = {
     apiBase: '/api/penawarans-proenergi',
     listRoute: 'penawarans-list-proenergi',
     detailRoute: 'penawarans-detail-proenergi',
+    createRoute: 'penawarans-create-proenergi',
     usePe: true,
     showAcuan: true,
   },
@@ -79,6 +85,13 @@ const oaSelectKey = ref(0)
 const loading = ref(false)
 const pricePeriods = ref<any[]>([])
 const selectedPeriodId = ref<string>('')
+const clonedFromNomor = ref<string | null>(null)
+
+// true kalau penawaran yang sedang diedit periode harganya sudah lewat sampai_dengan -- edit tetap
+// bisa dibuka & dilihat, tapi tidak bisa disimpan (nomor penawaran lama tidak regenerate bulan/tahun
+// romawinya). Ditentukan sekali dari data yang di-load, tidak berubah walau user pilih ulang periode
+// di dropdown (custom pseudo-option) -- quotation ini tetap dianggap "harus jadi penawaran baru"
+const isEditingExpiredPeriod = ref(false)
 
 const itemsModalOpen = ref(false)
 
@@ -92,41 +105,47 @@ interface ItemLine {
   harga_price_list?: number
 }
 
-const form = reactive({
-  nomor_penawaran: '',
-  id_customer: '',
-  customer_contact_id: '',
-  id_cabang: '' as number | '',
-  masa_berlaku: '',
-  sampai_dengan: '',
+// factory, bukan literal langsung -- dipakai ulang buat reset form saat initializeForm() jalan lagi
+// (mis. pindah dari edit ke create+clone tanpa remount komponen, lihat komentar di idParam/isEdit)
+function createDefaultForm() {
+  return {
+    nomor_penawaran: '',
+    id_customer: '',
+    customer_contact_id: '',
+    id_cabang: '' as number | '',
+    masa_berlaku: '',
+    sampai_dengan: '',
 
-  type_pengiriman: '',
-  metode: '',
-  ukuran_dasar: '',
-  items: [] as ItemLine[],
-  lokasi_pengiriman: '',
-  keterangan: '',
+    type_pengiriman: '',
+    metode: '',
+    ukuran_dasar: '',
+    items: [] as ItemLine[],
+    lokasi_pengiriman: '',
+    keterangan: '',
 
-  tipe_pembayaran: '',
-  acuan_pembayaran: '',
-  dp_persen: '',
-  dp_keterangan: '',
-  repayment_persen: '',
-  repayment_hari: '',
-  order_method: '',
-  toleransi_penyusutan: '',
-  abrasi: '',
-  refund: 0,
-  other_cost: 0,
+    tipe_pembayaran: '',
+    acuan_pembayaran: '',
+    dp_persen: '',
+    dp_keterangan: '',
+    repayment_persen: '',
+    repayment_hari: '',
+    order_method: '',
+    toleransi_penyusutan: '',
+    abrasi: '',
+    refund: 0,
+    other_cost: 0,
 
-  harga_dasar: 0,
-  oat: 0,
-  discount: 0,
+    harga_dasar: 0,
+    oat: 0,
+    discount: 0,
 
-  catatan: '',
-  syarat_ketentuan: '',
-  lampiran_tambahan: '',
-})
+    catatan: '',
+    syarat_ketentuan: '',
+    lampiran_tambahan: '',
+  }
+}
+
+const form = reactive(createDefaultForm())
 
 const hargaDasarNumber = computed(() => toNum(form.harga_dasar || 0))
 const oatPerVolume = computed(() => toNum(form.oat || 0))
@@ -217,6 +236,10 @@ function produkLabel(id: string | number): string {
 }
 
 const selectedPeriodLabelText = computed(() => selectedPeriodLabel.value || form.masa_berlaku)
+
+function openCloneFromCurrentEdit() {
+  router.push({ name: cfg.createRoute, query: { clone_from: String(idParam.value) } })
+}
 
 function openItemsModal() {
   if (!selectedPeriodId.value || selectedPeriodId.value === 'custom') {
@@ -321,24 +344,9 @@ function collectErrorMessages(): string[] {
   return msgs
 }
 
-onMounted(async () => {
-  await Promise.all([fetchSelects(), fetchTransportirWilayahVolume()])
-  if (!isEdit) {
-    const jakarta = cabangs.value.find(
-      c => String(c.nama_cabang ?? '').toLowerCase().includes('jakarta'),
-    )
-    if (jakarta) form.id_cabang = jakarta.id_cabang
-
-    const defaultPeriod = periodeOptions.value[0]
-    if (defaultPeriod) selectedPeriodId.value = String(defaultPeriod.id)
-
-    if (route.query.customer_id) {
-      form.id_customer = String(route.query.customer_id)
-    }
-  } else {
-    await fetchPenawaran()
-  }
-})
+// watch route.fullPath (bukan onMounted) -- create & edit route berbagi komponen ini, jadi pindah
+// antar keduanya (atau antar dua id edit berbeda) gak selalu remount komponennya
+watch(() => route.fullPath, initializeForm, { immediate: true })
 
 watch(selectedPeriodId, (id) => {
   if (id === 'custom') return
@@ -380,6 +388,44 @@ watch(() => [oaTruckInput.id_transportir, oaTruckInput.id_angkut_wilayah, oaTruc
     oaTruck.value = 0
   }
 })
+
+// state lokal (form + segala turunannya) di-reset manual di sini, bukan cuma dipercaya kosong dari
+// component mount -- initializeForm() bisa jalan berkali-kali di instance yang sama (lihat komentar
+// idParam/isEdit), jadi sisa state dari route sebelumnya (mis. hasil edit penawaran lain) harus
+// dibuang duluan sebelum branch create/edit di bawah mengisi ulang
+function resetLocalState() {
+  Object.assign(form, createDefaultForm())
+  selectedPeriodId.value = ''
+  clonedFromNomor.value = null
+  isEditingExpiredPeriod.value = false
+  oaKapal.value = 0
+  oaTruck.value = 0
+  Object.assign(oaKapalInput, { id_transportir: '', id_angkut_wilayah: '', id_volume: '' })
+  Object.assign(oaTruckInput, { id_transportir: '', id_angkut_wilayah: '', id_volume: '' })
+  v$.value.$reset()
+}
+
+async function initializeForm() {
+  resetLocalState()
+  await Promise.all([fetchSelects(), fetchTransportirWilayahVolume()])
+  if (!isEdit.value) {
+    const jakarta = cabangs.value.find(
+      c => String(c.nama_cabang ?? '').toLowerCase().includes('jakarta'),
+    )
+    if (jakarta) form.id_cabang = jakarta.id_cabang
+
+    const defaultPeriod = periodeOptions.value[0]
+    if (defaultPeriod) selectedPeriodId.value = String(defaultPeriod.id)
+
+    if (route.query.clone_from) {
+      await fetchCloneSource(String(route.query.clone_from))
+    } else if (route.query.customer_id) {
+      form.id_customer = String(route.query.customer_id)
+    }
+  } else {
+    await fetchPenawaran()
+  }
+}
 
 async function fetchSelects() {
   try {
@@ -428,8 +474,9 @@ async function fetchTransportirWilayahVolume() {
 
 async function fetchPenawaran() {
   try {
-    const { data } = await axios.get(`${cfg.apiBase}/${idParam}`)
+    const { data } = await axios.get(`${cfg.apiBase}/${idParam.value}`)
 
+    isEditingExpiredPeriod.value = isDateExpired(data.sampai_dengan)
     selectedPeriodId.value = data.price_period_id != null ? String(data.price_period_id) : ''
 
     Object.assign(form, {
@@ -497,7 +544,128 @@ async function fetchPenawaran() {
   }
 }
 
+// dipanggil dari mode create (bukan edit) saat route.query.clone_from ada -- membawa data penawaran
+// lama (yang periode harganya sudah expired) ke form penawaran BARU, tanpa auto-save. product_price_id
+// item lama pasti nempel ke periode lama, jadi di-remap ke baris harga produk yang sama di periode
+// aktif (selectedPeriodId sudah di-set ke default period sebelum function ini dipanggil di initializeForm())
+async function fetchCloneSource(cloneFromId: string) {
+  try {
+    const { data } = await axios.get(`${cfg.apiBase}/${cloneFromId}`)
+    clonedFromNomor.value = data.nomor_penawaran || null
+
+    form.id_customer = data.id_customer ? String(data.id_customer) : ''
+    form.customer_contact_id = data.customer_contact?.id_contact ? String(data.customer_contact.id_contact) : ''
+    form.id_cabang = data.id_cabang
+
+    form.type_pengiriman = data.type_pengiriman || ''
+    form.metode = data.metode || ''
+    form.lokasi_pengiriman = data.lokasi_pengiriman || ''
+    form.keterangan = data.keterangan || ''
+
+    form.tipe_pembayaran = data.tipe_pembayaran || ''
+    form.acuan_pembayaran = data.acuan_pembayaran || ''
+    form.dp_persen = formatInt(data.dp_persen)
+    form.dp_keterangan = data.dp_keterangan || ''
+    form.repayment_persen = formatInt(data.repayment_persen)
+    form.repayment_hari = formatInt(data.repayment_hari)
+    form.order_method = data.order_method || ''
+    form.toleransi_penyusutan = data.toleransi_penyusutan ? String(Number(data.toleransi_penyusutan)) : ''
+    form.abrasi = data.abrasi || ''
+    form.refund = data.refund != null ? Number(data.refund) : 0
+    form.other_cost = data.other_cost != null ? Number(data.other_cost) : 0
+
+    form.harga_dasar = data.harga_dasar != null ? Number(data.harga_dasar) : 0
+    form.oat = Number(data.oat) || 0
+
+    form.catatan = data.catatan || ''
+    form.syarat_ketentuan = data.syarat_ketentuan || ''
+    form.lampiran_tambahan = data.lampiran_tambahan || ''
+
+    const ongkosList = Array.isArray(data.ongkos) ? data.ongkos : []
+    const kapal = ongkosList.find((o: any) => (o.jenis || '').toUpperCase() === 'KAPAL')
+    const truck = ongkosList.find((o: any) => (o.jenis || '').toUpperCase() === 'TRUCK')
+    if (kapal) {
+      oaKapalInput.id_transportir = String(kapal.transportir_id ?? '')
+      oaKapalInput.id_angkut_wilayah = String(kapal.wilayah_id ?? '')
+      oaKapalInput.id_volume = String(kapal.volume_id ?? '')
+      oaKapal.value = Number(kapal.ongkos ?? 0)
+    }
+    if (truck) {
+      oaTruckInput.id_transportir = String(truck.transportir_id ?? '')
+      oaTruckInput.id_angkut_wilayah = String(truck.wilayah_id ?? '')
+      oaTruckInput.id_volume = String(truck.volume_id ?? '')
+      oaTruck.value = Number(truck.ongkos ?? 0)
+    }
+    oaSelectKey.value++
+
+    await remapClonedItems(Array.isArray(data.items) ? data.items : [])
+
+    success('Data Dimuat', `Data dari penawaran ${data.nomor_penawaran} berhasil disalin ke form ini. Periksa kembali item & periode harga sebelum menyimpan.`)
+  } catch {
+    notifyError('Gagal', 'Gagal memuat data penawaran sumber untuk disalin.')
+  }
+}
+
+// cocokkan tiap item lama (id_produk + source_branch_id) ke baris product_price di periode AKTIF saat ini --
+// product_price_id lama tidak bisa dipakai langsung karena sudah terikat ke periode yang sudah expired
+async function remapClonedItems(oldItems: any[]) {
+  const targetPeriodId = selectedPeriodId.value
+  if (!targetPeriodId || targetPeriodId === 'custom') {
+    form.items = []
+    return
+  }
+
+  try {
+    const { data } = await axios.get('/api/product-prices', {
+      params: { price_period_id: targetPeriodId, as_list: 1 },
+    })
+    const rows: any[] = data.data || data || []
+    const rowByKey = new Map<string, any>()
+    for (const r of rows) rowByKey.set(`${r.product_id}:${r.branch_id}`, r)
+
+    const remapped: ItemLine[] = []
+    const skipped: string[] = []
+
+    for (const it of oldItems) {
+      const row = rowByKey.get(`${it.id_produk}:${it.source_branch_id}`)
+      if (!row) {
+        skipped.push(it.produk?.nama_produk || `#${it.id_produk}`)
+        continue
+      }
+      const harga = cfg.usePe && Number(row.price_list_pe) > 0 ? Number(row.price_list_pe) : Number(row.price_list)
+      remapped.push({
+        id_produk: String(it.id_produk ?? ''),
+        source_branch_id: it.source_branch_id != null ? String(it.source_branch_id) : '',
+        product_price_id: row.id,
+        source_name: it.source_branch?.nama_cabang ?? '',
+        volume_order: it.volume_order?.toLocaleString('id-ID') || '',
+        persen: it.persen != null ? Number(it.persen) : 0,
+        harga_price_list: harga || 0,
+      })
+    }
+
+    form.items = remapped
+
+    if (skipped.length) {
+      notifyError(
+        'Sebagian Item Tidak Bisa Dibawa',
+        `Produk berikut tidak tersedia di periode harga aktif, silakan tambahkan manual lewat "Susun Item Penawaran": ${skipped.join(', ')}.`,
+      )
+    }
+  } catch {
+    form.items = []
+    notifyError('Gagal', 'Gagal mencocokkan item penawaran ke periode harga aktif.')
+  }
+}
+
 async function submitForm() {
+  if (isEditingExpiredPeriod.value) {
+    notifyError(
+      'Tidak Bisa Disimpan',
+      'Periode harga penawaran ini sudah tidak aktif. Gunakan tombol "Buat Penawaran Baru dari Ini" di atas.',
+    )
+    return
+  }
   if (!selectedPeriodId.value || selectedPeriodId.value === 'custom') {
     notifyError('Periode belum dipilih', 'Pilih periode harga yang aktif untuk penawaran ini.')
     return
@@ -577,10 +745,10 @@ async function submitForm() {
       lampiran_tambahan: form.lampiran_tambahan,
     }
 
-    if (isEdit) {
-      await axios.put(`${cfg.apiBase}/${idParam}`, payload)
+    if (isEdit.value) {
+      await axios.put(`${cfg.apiBase}/${idParam.value}`, payload)
       success('Berhasil', 'Penawaran berhasil diupdate.')
-      router.push({ name: cfg.detailRoute, params: { id: idParam } })
+      router.push({ name: cfg.detailRoute, params: { id: idParam.value } })
     } else {
       const { data } = await axios.post(cfg.apiBase, payload)
       success('Berhasil', 'Penawaran berhasil dibuat.')
@@ -640,6 +808,13 @@ async function submitNewContact() {
   }
 }
 
+function isDateExpired(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false
+  const end = new Date(dateStr)
+  const today = new Date(new Date().toDateString())
+  return end < today
+}
+
 function toFloat(v: string | number): number {
   if (typeof v === 'number') return v
   const s = (v || '').toString().replace(/\./g, '').replace(',', '.')
@@ -684,7 +859,7 @@ function formatCurrency(v: number | string = 0) {
     :description="isEdit ? 'Perbarui data penawaran ke customer.' : 'Lengkapi data penawaran baru ke customer.'"
     size="full" layout="sidebar" surface="plain" footer-placement="sidebar" :loading="loading"
     :submit-text="isEdit ? 'Update Penawaran' : 'Simpan Penawaran'" submit-icon="Save" cancel-icon="ArrowLeft"
-    @cancel="goBack" @submit="submitForm">
+    :disable-submit="isEditingExpiredPeriod" @cancel="goBack" @submit="submitForm">
     <template #action>
       <Button type="button" variant="outline-secondary" class="inline-flex items-center gap-2" @click="goBack">
         <Lucide icon="ArrowLeft" class="w-4 h-4" />
@@ -692,11 +867,33 @@ function formatCurrency(v: number | string = 0) {
       </Button>
     </template>
 
-    <template v-if="isEdit" #header>
-      <div class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-amber-800">
+    <template v-if="isEdit || clonedFromNomor" #header>
+      <div v-if="isEdit && isEditingExpiredPeriod"
+        class="flex flex-wrap justify-between items-center gap-3 bg-rose-50 px-4 py-3 border border-rose-200 rounded-lg text-rose-800">
+        <span class="font-body leading-5">
+          <b>Penawaran ini tidak dapat diedit:</b> periode harga yang berlaku saat penawaran ini dibuat sudah
+          berubah (tidak aktif lagi), sehingga perubahan apa pun di form ini tidak akan tersimpan — gunakan
+          tombol berikut untuk membuat penawaran baru dari data ini.
+        </span>
+        <Button type="button" variant="danger" class="inline-flex items-center gap-2 shrink-0"
+          @click="openCloneFromCurrentEdit">
+          <Lucide icon="Copy" class="w-4 h-4" />
+          Buat Penawaran Baru dari Ini
+        </Button>
+      </div>
+      <div v-else-if="isEdit"
+        class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-amber-800">
         <span class="font-body leading-5">
           <b>Info:</b> Mengubah penawaran akan mengembalikan posisi disposisi ke
           <b>Draft</b> dan proses approval akan dimulai dari awal.
+        </span>
+      </div>
+      <div v-else-if="clonedFromNomor"
+        class="flex items-start gap-2 bg-sky-50 px-4 py-3 border border-sky-200 rounded-lg text-sky-800">
+        <span class="font-body leading-5">
+          <b>Info:</b> Data ini disalin dari penawaran <b>{{ clonedFromNomor }}</b> (periode harganya sudah
+          tidak aktif). Penawaran ini akan mendapat nomor baru, dan item produk sudah dicocokkan ke periode
+          harga yang sedang aktif — periksa kembali sebelum disimpan.
         </span>
       </div>
     </template>
@@ -722,7 +919,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-              }}</small>
+                }}</small>
             </div>
 
             <div v-if="false">
@@ -848,7 +1045,7 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
                 fieldError('type_pengiriman')
-              }}</small>
+                }}</small>
             </div>
 
             <div>
@@ -868,7 +1065,7 @@ function formatCurrency(v: number | string = 0) {
                 </template>
               </FormSelect>
               <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
-              }}</small>
+                }}</small>
             </div>
             <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
               class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
@@ -969,7 +1166,7 @@ function formatCurrency(v: number | string = 0) {
 
       <hr class="my-4" />
 
-      <div class="flex sm:flex-row flex-col sm:items-center justify-between gap-2">
+      <div class="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
         <p class="font-body !text-slate-500">
           Item penawaran disusun lewat modal generator berdasarkan periode &amp; source harga.
         </p>
@@ -1002,7 +1199,7 @@ function formatCurrency(v: number | string = 0) {
               <td class="px-4 py-3 font-num text-right">{{ formatCurrency(item.harga_price_list || 0) }}</td>
             </tr>
             <tr v-if="form.items.length === 0">
-              <td colspan="6" class="px-4 py-10 font-body text-center !text-slate-400">
+              <td colspan="6" class="px-4 py-10 font-body !text-slate-400 text-center">
                 Belum ada item. Klik "Susun Item Penawaran".
               </td>
             </tr>
@@ -1044,7 +1241,7 @@ function formatCurrency(v: number | string = 0) {
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
                   fieldError('tipe_pembayaran')
-                }}</small>
+                  }}</small>
               </div>
 
               <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
@@ -1076,7 +1273,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('dp_persen')" class="block input-error-text">{{
                       fieldError('dp_persen')
-                    }}</small>
+                      }}</small>
                   </div>
 
                   <div class="">
@@ -1092,7 +1289,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                       fieldError('repayment_persen')
-                    }}</small>
+                      }}</small>
                   </div>
                 </div>
                 <p class="mt-2 font-caption">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.

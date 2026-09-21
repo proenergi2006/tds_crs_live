@@ -243,8 +243,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
     Route::patch('customer-verifications/{customerVerification}/decision', [CustomerVerificationController::class, 'decision']);
 
-    Route::get('review/customer-verifications/{id}/document', [CustomerVerificationController::class, 'document'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document/data-customer', [CustomerVerificationController::class, 'dataCustomerDocument'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document/sales-review', [CustomerVerificationController::class, 'salesReviewDocument'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document/credit-application', [CustomerVerificationController::class, 'creditApplicationDocument'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document/lcr', [CustomerVerificationController::class, 'lcrDocument'])->whereNumber('id');
+    Route::get('review/customer-verifications/{id}/document/bulk', [CustomerVerificationController::class, 'bulkDocument'])->whereNumber('id');
 
     Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
 

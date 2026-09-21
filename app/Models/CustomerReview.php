@@ -11,7 +11,7 @@ class CustomerReview extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_customer', 'reviewed_at', 'review_answers', 'review_attachments',
+        'id_customer', 'reviewed_at', 'review_answers', 'review_attachments', 'notes',
     ];
 
     protected $casts = [

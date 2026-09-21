@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Customer;
 
 use App\Actions\Customer\DecideCustomerVerificationAction;
 use App\Actions\Customer\EvaluateCustomerTabCompletenessAction;
+use App\Actions\Customer\GenerateCustomerCreditApplicationDocumentAction;
 use App\Actions\Customer\GenerateCustomerDataDocumentAction;
-use App\Actions\Customer\GenerateCustomerKycDocumentAction;
+use App\Actions\Customer\GenerateCustomerLcrDocumentAction;
+use App\Actions\Customer\GenerateCustomerSalesReviewDocumentAction;
+use App\Actions\Customer\MergeCustomerDocumentsAction;
 use App\Actions\Customer\SubmitCustomerVerificationAction;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerVerificationStatus;
@@ -45,6 +48,10 @@ class CustomerVerificationController extends Controller
 
         if ($customer->isUnderReview()) {
             return response()->json(['message' => 'Verifikasi customer ini sedang dalam review.'], 409);
+        }
+
+        if ($customer->is_verified && !$customer->needs_reverification) {
+            return response()->json(['message' => 'Customer ini sudah terverifikasi dan belum perlu diverifikasi ulang.'], 409);
         }
 
         $incompleteGroups = $action->incompleteGroups($customer);
@@ -200,7 +207,9 @@ class CustomerVerificationController extends Controller
         $cv->customer->district_id = $headOffice?->district_id;
         $cv->customer->village_id = $headOffice?->village_id;
 
-        $review = CustomerReview::where('id_customer', $cv->id_customer)->first()?->review_answers;
+        $customerReview = CustomerReview::where('id_customer', $cv->id_customer)->first();
+        $review = $customerReview?->review_answers;
+        $reviewNotes = $customerReview?->notes;
 
         $sites = CustomerLcr::where('id_customer', $cv->id_customer)->with('latestDocumentApproval')->get();
 
@@ -225,6 +234,7 @@ class CustomerVerificationController extends Controller
             'financial_review'          => $cv->financial_review,
             'customer'                  => $cv->customer,
             'review'                    => $review,
+            'review_notes'              => $reviewNotes,
             'lcr'                       => [
                 'sites' => $sites->map(fn (CustomerLcr $site) => [
                     'id_lcr'          => $site->id_lcr,
@@ -241,7 +251,7 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    public function document(Request $request, int $id, GenerateCustomerKycDocumentAction $action)
+    public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
     {
         if ($request->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -250,25 +260,131 @@ class CustomerVerificationController extends Controller
         $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
-            return response()->json(['message' => 'Dokumen KYC tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
+            return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
         }
 
-        $data = $action->execute($cv);
+        $data = $action->execute($cv->customer);
+        [$logoLeft, $logoRight] = $this->resolveDocumentLogos();
 
-        $pdf = \PDF::loadView('customer.kyc-document', $data)->setPaper('A4', 'portrait');
+        $pdf = \PDF::loadView('customer.data-customer-document', $data + ['logoLeft' => $logoLeft, 'logoRight' => $logoRight])
+            ->setPaper('A4', 'portrait');
 
         $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
 
-        return $pdf->stream("KYC-{$safeName}-{$cv->id_verification}.pdf");
+        return $pdf->stream("Data-Customer-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
+    public function salesReviewDocument(Request $request, int $id, GenerateCustomerSalesReviewDocumentAction $action)
     {
         if ($request->user()->cant('verification.customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json(['message' => 'Fitur cetak Data Customer sedang dalam perbaikan, akan tersedia kembali.'], 503);
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
+            return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
+        }
+
+        $data = $action->execute($cv);
+        [$logoLeft, $logoRight] = $this->resolveDocumentLogos();
+
+        $pdf = \PDF::loadView('customer.sales-review-document', $data + ['logoLeft' => $logoLeft, 'logoRight' => $logoRight])
+            ->setPaper('A4', 'portrait');
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
+
+        return $pdf->stream("Sales-Review-{$safeName}-{$cv->id_verification}.pdf");
+    }
+
+    public function creditApplicationDocument(Request $request, int $id, GenerateCustomerCreditApplicationDocumentAction $action)
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
+            return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
+        }
+
+        $data = $action->execute($cv);
+        [$logoLeft, $logoRight] = $this->resolveDocumentLogos();
+
+        $pdf = \PDF::loadView('customer.credit-application-document', $data + ['logoLeft' => $logoLeft, 'logoRight' => $logoRight])
+            ->setPaper('A4', 'portrait');
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
+
+        return $pdf->stream("Credit-Application-{$safeName}-{$cv->id_verification}.pdf");
+    }
+
+    public function lcrDocument(Request $request, int $id, GenerateCustomerLcrDocumentAction $action)
+    {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
+            return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
+        }
+
+        $data = $action->execute($cv);
+        [$logoLeft, $logoRight] = $this->resolveDocumentLogos();
+
+        $pdf = \PDF::loadView('customer.lcr-document', $data + ['logoLeft' => $logoLeft, 'logoRight' => $logoRight])
+            ->setPaper('A4', 'portrait');
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $data['customer']->company_name);
+
+        return $pdf->stream("LCR-{$safeName}-{$cv->id_verification}.pdf");
+    }
+
+    public function bulkDocument(
+        Request $request,
+        int $id,
+        GenerateCustomerDataDocumentAction $dataDocumentAction,
+        GenerateCustomerSalesReviewDocumentAction $salesReviewAction,
+        GenerateCustomerCreditApplicationDocumentAction $creditApplicationAction,
+        GenerateCustomerLcrDocumentAction $lcrAction,
+        MergeCustomerDocumentsAction $mergeAction,
+    ) {
+        if ($request->user()->cant('verification.customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $cv = CustomerVerification::findOrFail($id);
+
+        if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
+            return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
+        }
+
+        [$logoLeft, $logoRight] = $this->resolveDocumentLogos();
+        $logos = ['logoLeft' => $logoLeft, 'logoRight' => $logoRight];
+
+        $dataCustomerData = $dataDocumentAction->execute($cv->customer);
+        $salesReviewData = $salesReviewAction->execute($cv);
+        $creditApplicationData = $creditApplicationAction->execute($cv);
+        $lcrData = $lcrAction->execute($cv);
+
+        $pdfContents = [
+            \PDF::loadView('customer.data-customer-document', $dataCustomerData + $logos)->setPaper('A4', 'portrait')->output(),
+            \PDF::loadView('customer.sales-review-document', $salesReviewData + $logos)->setPaper('A4', 'portrait')->output(),
+            \PDF::loadView('customer.credit-application-document', $creditApplicationData + $logos)->setPaper('A4', 'portrait')->output(),
+            \PDF::loadView('customer.lcr-document', $lcrData + $logos)->setPaper('A4', 'portrait')->output(),
+        ];
+
+        $merged = $mergeAction->execute($pdfContents);
+
+        $safeName = str_replace(['/', '\\'], '-', (string) $cv->customer->company_name);
+
+        return response($merged, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"Dokumen-Lengkap-{$safeName}-{$cv->id_verification}.pdf\"",
+        ]);
     }
 
     public function lookupForCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
@@ -331,5 +447,17 @@ class CustomerVerificationController extends Controller
         }
 
         return $query;
+    }
+
+    private function resolveDocumentLogos(): array
+    {
+        $toBase64 = function (string $path): ?string {
+            return is_file($path) ? 'data:image/png;base64,' . base64_encode(file_get_contents($path)) : null;
+        };
+
+        return [
+            $toBase64(public_path('images/logo-new.png')),
+            $toBase64(public_path('images/logo-crs.png')),
+        ];
     }
 }

@@ -36,6 +36,7 @@ class CustomerReviewController extends Controller
                 'reviewed_at'        => null,
                 'review_answers'     => $reviewAnswers,
                 'review_attachments' => [],
+                'notes'              => null,
             ]);
         }
 
@@ -64,6 +65,7 @@ class CustomerReviewController extends Controller
             'reviewed_at'        => $review->reviewed_at,
             'review_answers'     => $reviewAnswers,
             'review_attachments' => $review->review_attachments,
+            'notes'              => $review->notes,
         ]);
     }
 
@@ -81,6 +83,7 @@ class CustomerReviewController extends Controller
             'review_answers'                  => 'required|array',
             'review_answers.*.question_code'  => ['required', new Enum(CustomerReviewQuestionCode::class)],
             'review_answers.*.answer'         => 'nullable|string',
+            'notes'                           => 'nullable|string',
         ]);
 
         $reviewAnswers = collect($data['review_answers'])
@@ -104,12 +107,14 @@ class CustomerReviewController extends Controller
             [
                 'review_answers' => $reviewAnswers,
                 'reviewed_at'    => now(),
+                'notes'          => $data['notes'] ?? null,
             ]
         );
 
         return response()->json([
             'review_answers' => $review->review_answers,
             'reviewed_at'    => $review->reviewed_at,
+            'notes'          => $review->notes,
         ]);
     }
 
