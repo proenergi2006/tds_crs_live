@@ -24,13 +24,6 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-// computed, bukan const: create & edit route berbagi komponen ini (lihat router/index.ts), Vue Router
-// reuse instance-nya saat pindah antar keduanya (mis. klik "Buat Penawaran Baru dari Ini" dari mode
-// edit) -- kalau const, idParam/isEdit beku ke nilai mount pertama dan gak keupdate walau initializeForm()
-// dipanggil ulang lewat watch di bawah
-const idParam = computed(() => route.params.id as string | undefined)
-const isEdit = computed(() => Boolean(idParam.value))
-
 type Brand = 'tds' | 'proenergi'
 const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
 const isProenergi = brand === 'proenergi'
@@ -87,10 +80,7 @@ const pricePeriods = ref<any[]>([])
 const selectedPeriodId = ref<string>('')
 const clonedFromNomor = ref<string | null>(null)
 
-// true kalau penawaran yang sedang diedit periode harganya sudah lewat sampai_dengan -- edit tetap
-// bisa dibuka & dilihat, tapi tidak bisa disimpan (nomor penawaran lama tidak regenerate bulan/tahun
-// romawinya). Ditentukan sekali dari data yang di-load, tidak berubah walau user pilih ulang periode
-// di dropdown (custom pseudo-option) -- quotation ini tetap dianggap "harus jadi penawaran baru"
+// true kalau periode penawaran ini sudah lewat sampai_dengan -- nomor lama gak regenerate bulan/tahun romawi kalau diedit, jadi dikunci gak bisa disimpan
 const isEditingExpiredPeriod = ref(false)
 
 const itemsModalOpen = ref(false)
@@ -105,8 +95,7 @@ interface ItemLine {
   harga_price_list?: number
 }
 
-// factory, bukan literal langsung -- dipakai ulang buat reset form saat initializeForm() jalan lagi
-// (mis. pindah dari edit ke create+clone tanpa remount komponen, lihat komentar di idParam/isEdit)
+// factory biar bisa dipanggil ulang buat reset form pas initializeForm() jalan lagi tanpa remount komponen
 function createDefaultForm() {
   return {
     nomor_penawaran: '',
@@ -146,6 +135,9 @@ function createDefaultForm() {
 }
 
 const form = reactive(createDefaultForm())
+
+const idParam = computed(() => route.params.id as string | undefined)
+const isEdit = computed(() => Boolean(idParam.value))
 
 const hargaDasarNumber = computed(() => toNum(form.harga_dasar || 0))
 const oatPerVolume = computed(() => toNum(form.oat || 0))
@@ -226,33 +218,7 @@ const produkById = computed<Record<string, any>>(() => {
   return m
 })
 
-function produkLabel(id: string | number): string {
-  const p = produkById.value[String(id)]
-  if (!p) return `#${id}`
-  const uk = p.ukuran?.nama_ukuran
-    ? ` · ${p.ukuran.nama_ukuran}${p.ukuran?.satuan?.nama_satuan ? ' ' + p.ukuran.satuan.nama_satuan : ''}`
-    : ''
-  return `${p.nama_produk}${uk}`
-}
-
 const selectedPeriodLabelText = computed(() => selectedPeriodLabel.value || form.masa_berlaku)
-
-function openCloneFromCurrentEdit() {
-  router.push({ name: cfg.createRoute, query: { clone_from: String(idParam.value) } })
-}
-
-function openItemsModal() {
-  if (!selectedPeriodId.value || selectedPeriodId.value === 'custom') {
-    notifyError('Periode belum siap', 'Pilih periode harga dulu sebelum menyusun item.')
-    return
-  }
-  itemsModalOpen.value = true
-}
-
-function onItemsSaved(items: any[]) {
-  form.items = items.map((x: any) => ({ ...x }))
-  itemsModalOpen.value = false
-}
 
 const validationRules = computed(() => ({
   id_customer: { required: helpers.withMessage('Customer wajib diisi.', required) },
@@ -319,33 +285,7 @@ const validationRules = computed(() => ({
 
 const v$ = useVuelidate(validationRules, form)
 
-function fieldError(field: string): string {
-  const f = (v$.value as any)[field]
-  return f?.$error ? (f.$errors[0]?.$message?.toString() ?? '') : ''
-}
-
-function inputClass(field: string): string {
-  return (v$.value as any)[field]?.$error ? 'input-error' : ''
-}
-
-function collectErrorMessages(): string[] {
-  const msgs: string[] = []
-  const push = (m?: string) => { if (m && !msgs.includes(m)) msgs.push(m) }
-
-  for (const e of v$.value.$errors) push(e.$message?.toString())
-
-  const eachErrors = (v$.value.items as any)?.$each?.$response?.$errors ?? []
-  for (const rowError of eachErrors) {
-    if (!rowError) continue
-    for (const field of Object.keys(rowError)) {
-      for (const er of rowError[field]) push(er?.$message?.toString())
-    }
-  }
-  return msgs
-}
-
-// watch route.fullPath (bukan onMounted) -- create & edit route berbagi komponen ini, jadi pindah
-// antar keduanya (atau antar dua id edit berbeda) gak selalu remount komponennya
+// watch route.fullPath, bukan onMounted -- create/edit berbagi komponen, pindah rute gak selalu remount
 watch(() => route.fullPath, initializeForm, { immediate: true })
 
 watch(selectedPeriodId, (id) => {
@@ -389,10 +329,7 @@ watch(() => [oaTruckInput.id_transportir, oaTruckInput.id_angkut_wilayah, oaTruc
   }
 })
 
-// state lokal (form + segala turunannya) di-reset manual di sini, bukan cuma dipercaya kosong dari
-// component mount -- initializeForm() bisa jalan berkali-kali di instance yang sama (lihat komentar
-// idParam/isEdit), jadi sisa state dari route sebelumnya (mis. hasil edit penawaran lain) harus
-// dibuang duluan sebelum branch create/edit di bawah mengisi ulang
+// reset manual karena initializeForm() bisa jalan berkali-kali di instance yang sama, gak selalu mount baru yang otomatis kosong
 function resetLocalState() {
   Object.assign(form, createDefaultForm())
   selectedPeriodId.value = ''
@@ -544,10 +481,7 @@ async function fetchPenawaran() {
   }
 }
 
-// dipanggil dari mode create (bukan edit) saat route.query.clone_from ada -- membawa data penawaran
-// lama (yang periode harganya sudah expired) ke form penawaran BARU, tanpa auto-save. product_price_id
-// item lama pasti nempel ke periode lama, jadi di-remap ke baris harga produk yang sama di periode
-// aktif (selectedPeriodId sudah di-set ke default period sebelum function ini dipanggil di initializeForm())
+// bawa data penawaran lama (periode expired) ke form baru tanpa auto-save -- item lama di-remap ke periode aktif karena product_price_id-nya nempel ke periode lama
 async function fetchCloneSource(cloneFromId: string) {
   try {
     const { data } = await axios.get(`${cfg.apiBase}/${cloneFromId}`)
@@ -606,8 +540,7 @@ async function fetchCloneSource(cloneFromId: string) {
   }
 }
 
-// cocokkan tiap item lama (id_produk + source_branch_id) ke baris product_price di periode AKTIF saat ini --
-// product_price_id lama tidak bisa dipakai langsung karena sudah terikat ke periode yang sudah expired
+// cocokkan item lama ke product_price periode aktif -- product_price_id lama gak bisa dipakai langsung, sudah terikat ke periode expired
 async function remapClonedItems(oldItems: any[]) {
   const targetPeriodId = selectedPeriodId.value
   if (!targetPeriodId || targetPeriodId === 'custom') {
@@ -656,6 +589,44 @@ async function remapClonedItems(oldItems: any[]) {
     form.items = []
     notifyError('Gagal', 'Gagal mencocokkan item penawaran ke periode harga aktif.')
   }
+}
+
+function openItemsModal() {
+  if (!selectedPeriodId.value || selectedPeriodId.value === 'custom') {
+    notifyError('Periode belum siap', 'Pilih periode harga dulu sebelum menyusun item.')
+    return
+  }
+  itemsModalOpen.value = true
+}
+
+function onItemsSaved(items: any[]) {
+  form.items = items.map((x: any) => ({ ...x }))
+  itemsModalOpen.value = false
+}
+
+function fieldError(field: string): string {
+  const f = (v$.value as any)[field]
+  return f?.$error ? (f.$errors[0]?.$message?.toString() ?? '') : ''
+}
+
+function inputClass(field: string): string {
+  return (v$.value as any)[field]?.$error ? 'input-error' : ''
+}
+
+function collectErrorMessages(): string[] {
+  const msgs: string[] = []
+  const push = (m?: string) => { if (m && !msgs.includes(m)) msgs.push(m) }
+
+  for (const e of v$.value.$errors) push(e.$message?.toString())
+
+  const eachErrors = (v$.value.items as any)?.$each?.$response?.$errors ?? []
+  for (const rowError of eachErrors) {
+    if (!rowError) continue
+    for (const field of Object.keys(rowError)) {
+      for (const er of rowError[field]) push(er?.$message?.toString())
+    }
+  }
+  return msgs
 }
 
 async function submitForm() {
@@ -770,6 +741,10 @@ function goBack() {
   router.push({ name: cfg.listRoute })
 }
 
+function openCloneFromCurrentEdit() {
+  router.push({ name: cfg.createRoute, query: { clone_from: String(idParam.value) } })
+}
+
 function openNewContactForm() {
   if (!form.id_customer) return
   newContactError.value = null
@@ -813,6 +788,15 @@ function isDateExpired(dateStr: string | null | undefined): boolean {
   const end = new Date(dateStr)
   const today = new Date(new Date().toDateString())
   return end < today
+}
+
+function produkLabel(id: string | number): string {
+  const p = produkById.value[String(id)]
+  if (!p) return `#${id}`
+  const uk = p.ukuran?.nama_ukuran
+    ? ` · ${p.ukuran.nama_ukuran}${p.ukuran?.satuan?.nama_satuan ? ' ' + p.ukuran.satuan.nama_satuan : ''}`
+    : ''
+  return `${p.nama_produk}${uk}`
 }
 
 function toFloat(v: string | number): number {
@@ -919,7 +903,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-                }}</small>
+              }}</small>
             </div>
 
             <div v-if="false">
@@ -1045,7 +1029,7 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
                 fieldError('type_pengiriman')
-                }}</small>
+              }}</small>
             </div>
 
             <div>
@@ -1065,7 +1049,7 @@ function formatCurrency(v: number | string = 0) {
                 </template>
               </FormSelect>
               <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
-                }}</small>
+              }}</small>
             </div>
             <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
               class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
@@ -1241,7 +1225,7 @@ function formatCurrency(v: number | string = 0) {
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
                   fieldError('tipe_pembayaran')
-                  }}</small>
+                }}</small>
               </div>
 
               <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
@@ -1273,7 +1257,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('dp_persen')" class="block input-error-text">{{
                       fieldError('dp_persen')
-                      }}</small>
+                    }}</small>
                   </div>
 
                   <div class="">
@@ -1289,7 +1273,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                       fieldError('repayment_persen')
-                      }}</small>
+                    }}</small>
                   </div>
                 </div>
                 <p class="mt-2 font-caption">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.
