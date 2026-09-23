@@ -369,6 +369,7 @@ async function fetchLcrDocuments(idLcr: number): Promise<void> {
 }
 
 async function uploadLcrDocument(file: File, categoryCode: string, idLcr: number, notes: string): Promise<LcrDocumentRecord> {
+  if (documentTypeMapReady) await documentTypeMapReady
   const formData = new FormData()
   formData.append('id_document_type', String(documentTypeMap[categoryCode]))
   formData.append('file', file)

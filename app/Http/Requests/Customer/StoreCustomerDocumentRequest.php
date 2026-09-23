@@ -17,7 +17,7 @@ class StoreCustomerDocumentRequest extends FormRequest
     // requires_number sudah di-drop dari master, wajib-nomor sekarang hardcoded per code.
     public function rules(): array
     {
-        $code = $this->filled('id_document_type')
+        $code = $this->filled('id_document_type') && is_numeric($this->input('id_document_type'))
             ? CustomerDocumentType::where('id_document_type', $this->input('id_document_type'))->value('code')
             : null;
         $requiresNumber = in_array($code, ['nib', 'npwp'], true);
