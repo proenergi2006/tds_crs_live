@@ -1,382 +1,489 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Data Customer {{ $customer->company_name ?? '-' }}</title>
-  <style>
-    @page { size: A4 portrait; margin: 28mm 24mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 10.5px; color: #111; line-height: 1.4; }
+    <meta charset="UTF-8">
+    <title>Data Customer {{ $customer->company_name ?? '-' }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
 
-    /* @page margin kadang diabaikan dompdf, padding di sini jaga-jaga -- sama pola kayak vendorpos/preview.blade.php */
-    .page-wrap { padding: 8mm 6mm; }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 8.5pt;
+            color: #2b2b2b;
+            line-height: 1.25;
+            margin: 0;
+            padding: 0;
+        }
 
-    .header-logos { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    .header-logos td { vertical-align: middle; padding: 0; }
-    .header-logos img { height: 46px; width: auto; }
-    .header-logos .logo-left { text-align: left; width: 30%; }
-    .header-logos .header-title { text-align: center; width: 40%; font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: #1e3a8a; }
-    .header-logos .logo-right { text-align: right; width: 30%; }
-    .header-rule { border-bottom: 2px solid #1e3a8a; margin-bottom: 12px; }
+        .header {
+            width: 100%;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+        .header table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.logo-pair {
+            width: auto;
+            border-collapse: collapse;
+        }
+        .logo-cell {
+            padding: 0 4px 0 0;
+            vertical-align: middle;
+        }
+        .logo-cell img {
+            height: 44px;
+            width: auto;
+        }
+        .form-title {
+            text-align: right;
+            font-size: 11pt;
+            font-weight: bold;
+            color: #022c22;
+            margin: 0;
+        }
 
-    .section { margin-top: 14px; }
-    .section-header {
-      background: #1e3a8a; color: #fff; font-size: 12px; font-weight: 700;
-      padding: 5px 8px; text-transform: uppercase; letter-spacing: 0.03em;
-    }
-    .section-body { border: 1px solid #1e3a8a; border-top: none; padding: 8px; }
+        .section-title {
+            background-color: #f1f5f9;
+            color: #1e293b;
+            font-size: 8.5pt;
+            font-weight: bold;
+            padding: 3px 6px;
+            margin-top: 8px;
+            border-left: 3px solid #022c22;
+            border-right: 1px solid #cbd5e1;
+            border-top: 1px solid #cbd5e1;
+            text-transform: uppercase;
+        }
 
-    .block-title { font-weight: 700; font-size: 11px; color: #1e3a8a; margin: 10px 0 2px; }
-    .block-title:first-child { margin-top: 0; }
+        .section-content {
+            padding: 6px 12px;
+            border: 1px solid #cbd5e1;
+        }
 
-    table.grid { width: 100%; border-collapse: collapse; margin-top: 4px; }
-    table.grid th, table.grid td { border: 1px solid #b7c0cc; padding: 4px 6px; text-align: left; vertical-align: top; }
-    table.grid th { background: #eef1f5; font-weight: 700; font-size: 10px; color: #111; }
-    .muted { color: #666; font-style: italic; }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2px;
+        }
+        table.data-table td {
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+        .label {
+            font-weight: bold;
+            color: #475569;
+            width: 22%;
+        }
+        .value {
+            color: #0f172a;
+            width: 28%;
+        }
 
-    table.field-grid { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-bottom: 4px; }
-    table.field-grid td { padding: 6px 8px; vertical-align: top; }
-    table.field-grid .field-label { font-weight: 700; width: 20%; }
-    table.field-grid .field-value { width: 30%; border: 1px solid #b7c0cc; border-radius: 3px; background: #fff; }
-    table.field-grid .field-value.field-value-options { border: none; background: transparent; padding-left: 0; }
-    .field-opt { padding: 1px 0; }
-    .field-opt.checked { font-weight: 700; color: #1e3a8a; }
-    .field-other-note { margin-top: 3px; font-size: 9.5px; font-style: italic; color: #666; }
+        table.grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+            margin-bottom: 4px;
+        }
+        table.grid-table th, table.grid-table td {
+            border: 1px solid #cbd5e1;
+            padding: 3px 4px;
+            text-align: left;
+            font-size: 8pt;
+        }
+        table.grid-table th {
+            background-color: #f8fafc;
+            color: #334155;
+            font-weight: bold;
+        }
 
-    table.sig-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    table.sig-table th {
-      border: 1px solid #1e3a8a; background: #eef2fb; padding: 6px; font-size: 11px;
-      font-weight: 700; text-align: center; color: #1e3a8a;
-    }
-    table.sig-table .sig-space { border: 1px solid #1e3a8a; border-top: none; height: 60px; }
-    table.sig-table .sig-name {
-      border: 1px solid #1e3a8a; border-top: none; padding: 6px; text-align: left;
-      font-weight: 700; font-size: 10.5px; color: #111;
-    }
-    table.sig-table .sig-title {
-      border: 1px solid #1e3a8a; border-top: none; padding: 4px 6px 8px; text-align: left;
-      font-size: 11px; color: #1e5fbf;
-    }
+        .checkbox-mark {
+            font-family: 'DejaVu Sans', sans-serif;
+            color: #0f172a;
+            margin-right: 2px;
+        }
 
-    .page-break-before { page-break-before: always; }
-  </style>
+        .col-container {
+            width: 100%;
+            margin-bottom: 2px;
+        }
+        .col-half {
+            width: 49%;
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .signature-section {
+            page-break-inside: avoid;
+        }
+        .sig-box {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+            background-color: #fafafa;
+        }
+        .sig-title {
+            font-weight: bold;
+            font-size: 8.5pt;
+            color: #1e293b;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 2px;
+        }
+        .sig-line {
+            border-bottom: 1px dotted #94a3b8;
+            margin-bottom: 4px;
+        }
+        .sig-area {
+            display: block;
+            min-height: 40px;
+        }
+
+        .muted {
+            color: #666;
+            font-style: italic;
+        }
+        .field-other-note {
+            margin-top: 2px;
+            font-size: 7.5pt;
+            font-style: italic;
+            color: #64748b;
+        }
+    </style>
 </head>
 <body>
-<div class="page-wrap">
 
-  <table class="header-logos">
-    <tr>
-      <td class="logo-left">
-        @if ($logoLeft)
-          <img src="{{ $logoLeft }}" alt="Logo">
-        @endif
-      </td>
-      <td class="header-title">CUSTOMER APPLICATION FORM</td>
-      <td class="logo-right">
-        @if ($logoRight)
-          <img src="{{ $logoRight }}" alt="Crushed Stone">
-        @endif
-      </td>
-    </tr>
-  </table>
-  <div class="header-rule"></div>
-
-  @php
-    $dash = fn ($v) => $v === null || $v === '' ? '-' : $v;
+@php
+    $dash = fn ($v) => $v === null ? '' : $v;
     $regionName = fn ($r) => $r?->name ?? null;
-  @endphp
+    $formatAddressLine = function ($address) use ($regionName) {
+        if (!$address) {
+            return null;
+        }
 
-  {{-- 1. Corporate Details --}}
-  <div class="section">
-    <div class="section-header">1. Corporate Details</div>
-    <div class="section-body">
-        <table class="field-grid">
-            <tr>
-                <td class="field-label">Company Name</td>
-                <td class="field-value">{{ $dash($customer->company_name) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Holding / Parent Company</td>
-                <td class="field-value">{{ $dash($customer->parent_company) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Phone</td>
-                <td class="field-value">{{ $dash($customer->phone) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Fax</td>
-                <td class="field-value">{{ $dash($customer->fax) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Email</td>
-                <td class="field-value">{{ $dash($customer->email) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Website</td>
-                <td class="field-value" style="font-style: underline">{{ $dash($customer->website) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Business Type</td>
-                <td class="field-value">{{ $dash($customer->business_type === 'Other' ? $customer->business_type_other : $customer->business_type) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Ownership</td>
-                <td class="field-value">{{ $dash($customer->ownership_type === 'Other' ? $customer->ownership_type_other : $customer->ownership_type) }}</td>
-            </tr>
-            <tr>
-                <td class="field-label">Incoterms</td>
-                <td class="field-value">{{ $customer->inco_terms ? ($customer->inco_terms->value === 'Other' ? $dash($customer->inco_terms_other) : $customer->inco_terms->label()) : '-' }}</td>
-            </tr>
-        </table>
-    </div>
-  </div>
+        $provincePostal = trim(collect([$regionName($address->province), $address->postal_code])->filter()->implode(' '));
 
-  {{-- 2. Addresses --}}
-  <div class="section">
-    <div class="section-header">2. Addresses</div>
-    <div class="section-body">
-      @php
-        $headOfficeAddressRows = [
-          ['label' => 'Address', 'value' => $headOfficeAddress->address_line ?? null],
-          ['label' => 'Province', 'value' => $regionName($headOfficeAddress->province ?? null)],
-          ['label' => 'City/Regency', 'value' => $regionName($headOfficeAddress->regency ?? null)],
-          ['label' => 'District', 'value' => $regionName($headOfficeAddress->district ?? null)],
-          ['label' => 'Sub-district', 'value' => $regionName($headOfficeAddress->village ?? null)],
-          ['label' => 'Postal Code', 'value' => $headOfficeAddress->postal_code ?? null],
-        ];
-        $npwpAddressRows = [
-          ['label' => 'Address', 'value' => $npwpAddress->address_line ?? null],
-          ['label' => 'Province', 'value' => $regionName($npwpAddress->province ?? null)],
-          ['label' => 'City/Regency', 'value' => $regionName($npwpAddress->regency ?? null)],
-          ['label' => 'District', 'value' => $regionName($npwpAddress->district ?? null)],
-          ['label' => 'Sub-district', 'value' => $regionName($npwpAddress->village ?? null)],
-          ['label' => 'Postal Code', 'value' => $npwpAddress->postal_code ?? null],
-        ];
-        $otherAddressTypeLabels = [
-          \App\Enums\CustomerAddressType::Billing->value => 'Billing',
-          \App\Enums\CustomerAddressType::Correspondence->value => 'Correspondence',
-        ];
-      @endphp
+        return collect([
+            $address->address_line,
+            $regionName($address->village),
+            $regionName($address->district),
+            $regionName($address->regency),
+            $provincePostal !== '' ? $provincePostal : null,
+        ])->filter()->implode(', ');
+    };
+    $renderCheckboxOption = function (string $label, bool $checked) {
+        $mark = $checked ? '&#9745;' : '&#9744;';
+        $labelWeight = $checked ? 'bold' : 'normal';
 
-      <div class="block-title">Head Office Address</div>
-      <table class="field-grid">
-        @foreach ($headOfficeAddressRows as $row)
-          <tr>
-            <td class="field-label">{{ $row['label'] }}</td>
-            <td class="field-value">{{ $dash($row['value']) }}</td>
-          </tr>
-        @endforeach
-      </table>
+        return '<span class="checkbox-mark">' . $mark . '</span> <span style="font-weight: ' . $labelWeight . ';">' . e($label) . '</span>';
+    };
+@endphp
 
-      <div class="block-title">Registered NPWP Address</div>
-      <table class="field-grid">
-        @foreach ($npwpAddressRows as $row)
-          <tr>
-            <td class="field-label">{{ $row['label'] }}</td>
-            <td class="field-value">{{ $dash($row['value']) }}</td>
-          </tr>
-        @endforeach
-      </table>
-
-      @if ($otherAddresses->isNotEmpty())
-        <div class="block-title">Other Addresses</div>
-        <table class="grid">
-          <thead>
-            <tr>
-              <th>Address Type</th><th>Address</th><th>Province</th><th>City/Regency</th>
-              <th>District</th><th>Sub-district</th><th>Postal Code</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach ($otherAddresses as $a)
-              <tr>
-                <td>{{ $otherAddressTypeLabels[$a->address_type->value] ?? $a->address_type->label() }}</td>
-                <td>{{ $dash($a->address_line) }}</td>
-                <td>{{ $dash($regionName($a->province)) }}</td>
-                <td>{{ $dash($regionName($a->regency)) }}</td>
-                <td>{{ $dash($regionName($a->district)) }}</td>
-                <td>{{ $dash($regionName($a->village)) }}</td>
-                <td>{{ $dash($a->postal_code) }}</td>
-              </tr>
-            @endforeach
-          </tbody>
-        </table>
-      @endif
-    </div>
-  </div>
-
-  {{-- 3. Person In Charge --}}
-  <div class="section page-break-before">
-    <div class="section-header">3. Person In Charge</div>
-    <div class="section-body">
-      @php
-        $picGroups = [
-          'director'    => 'Director / Owner',
-          'procurement' => 'Procurement',
-          'finance'     => 'Finance',
-          'site_pic'    => 'Site PIC',
-        ];
-      @endphp
-      <table class="grid">
-        <thead>
-          <tr><th>PIC Type</th><th>Name</th><th>Position</th><th>Phone</th><th>Mobile</th><th>Email</th></tr>
-        </thead>
-        <tbody>
-          @foreach ($picGroups as $code => $groupLabel)
-            @php $rows = $contactsByType->get($code, collect()); @endphp
-            @if ($rows->isEmpty())
-              <tr>
-                <td>{{ $groupLabel }}</td>
-                <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-              </tr>
-            @else
-              @foreach ($rows as $c)
-                <tr>
-                  <td>{{ $groupLabel }}</td>
-                  <td>{{ $dash($c->full_name) }}</td>
-                  <td>{{ $dash($c->position) }}</td>
-                  <td>{{ $dash($c->phone) }}</td>
-                  <td>{{ $dash($c->mobile) }}</td>
-                  <td>{{ $dash($c->email) }}</td>
-                </tr>
-              @endforeach
-            @endif
-          @endforeach
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  {{-- 4. Payment Term & Banking Detail --}}
-  <div class="section">
-    <div class="section-header">4. Payment Term &amp; Banking Detail</div>
-    <div class="section-body">
-      @php
-        $pay = $customer->payment;
-        $pricingOptions = ['Discount Pricelist', 'Quotation'];
-        $paymentMethodOptions = ['SKBDN', 'Bank Guarantee', 'Cover Cek-Giro', 'Transfer'];
-        $paymentTermOptions = ['CBD' => 'Cash Before Delivery (CBD)', 'COD' => 'Cash on Delivery (COD)', 'CREDIT' => 'Credit'];
-        $termBasisOptions = ['days_after_delivery' => 'After Delivery', 'days_after_invoice_received' => 'After Invoice Received'];
-        $creditFacilityOptions = [true => 'YES', false => 'NO'];
-        $checked = fn (bool $isChecked) => $isChecked ? '&#9745;' : '&#9744;';
-      @endphp
-      @if (!$pay)
-        <div class="muted">No payment data available.</div>
-      @else
-        <table class="field-grid">
-          <tr>
-            <td class="field-label">Pricing Method Calculation</td>
-            <td class="field-value field-value-options">
-              @foreach ($pricingOptions as $opt)
-                <div class="field-opt {{ $pay->calculate_method === $opt ? 'checked' : '' }}">
-                  {!! $checked($pay->calculate_method === $opt) !!} {{ $opt }}
-                </div>
-              @endforeach
-              @if ($pay->calculate_method && !in_array($pay->calculate_method, $pricingOptions, true))
-                <div class="field-other-note">Other: {{ $pay->calculate_method }}</div>
-              @endif
+<div class="header">
+    <table>
+        <tr>
+            <td>
+                <table class="logo-pair">
+                    <tr>
+                        <td class="logo-cell">
+                            @if ($logoLeft)
+                                <img src="{{ $logoLeft }}" alt="Logo TDS">
+                            @endif
+                        </td>
+                        <td class="logo-cell">
+                            @if ($logoRight)
+                                <img src="{{ $logoRight }}" alt="Logo Crushed Stone">
+                            @endif
+                        </td>
+                    </tr>
+                </table>
             </td>
-            <td class="field-label">Payment Method</td>
-            <td class="field-value field-value-options">
-              @foreach ($paymentMethodOptions as $opt)
-                <div class="field-opt {{ $pay->payment_method === $opt ? 'checked' : '' }}">
-                  {!! $checked($pay->payment_method === $opt) !!} {{ $opt }}
-                </div>
-              @endforeach
-              @if ($pay->payment_method === 'Other' && $pay->payment_method_other)
-                <div class="field-other-note">Other: {{ $pay->payment_method_other }}</div>
-              @elseif ($pay->payment_method && !in_array($pay->payment_method, $paymentMethodOptions, true))
-                <div class="field-other-note">Other: {{ $pay->payment_method }}</div>
-              @endif
+            <td style="text-align: right;">
+                <div class="form-title">CUSTOMER APPLICATION FORM</div>
             </td>
-          </tr>
-          <tr>
-            <td class="field-label" rowspan="2">Payment Term</td>
-            <td class="field-value field-value-options" rowspan="2">
-              @foreach ($paymentTermOptions as $code => $label)
-                <div class="field-opt {{ $pay->payment_term?->value === $code ? 'checked' : '' }}">
-                  {!! $checked($pay->payment_term?->value === $code) !!} {{ $label }}
-                </div>
-              @endforeach
-            </td>
-            <td class="field-label">Term Days</td>
-            <td class="field-value">{{ $dash($pay->payment_term_days) }} days</td>
-          </tr>
-          <tr>
-            <td class="field-label">Term Basis</td>
-            <td class="field-value field-value-options">
-              @foreach ($termBasisOptions as $code => $label)
-                <div class="field-opt {{ $pay->payment_term_basis?->value === $code ? 'checked' : '' }}">
-                  {!! $checked($pay->payment_term_basis?->value === $code) !!} {{ $label }}
-                </div>
-              @endforeach
-            </td>
-          </tr>
-        </table>
-
-        <table class="field-grid">
-          <tr>
-            <td class="field-label">Bank Name</td>
-            <td class="field-value">{{ $dash($pay->bank_name) }}</td>
-            <td class="field-label">Currency</td>
-            <td class="field-value">{{ $dash($pay->currency) }}</td>
-          </tr>
-          <tr>
-            <td class="field-label">Bank Address</td>
-            <td class="field-value">{{ $dash($pay->bank_address) }}</td>
-            <td class="field-label">Account Number</td>
-            <td class="field-value">{{ $dash($pay->account_number) }}</td>
-          </tr>
-          <tr>
-            <td class="field-label">Have Credit Facility or Bank Loan?</td>
-            <td class="field-value field-value-options">
-              @foreach ($creditFacilityOptions as $value => $label)
-                <div class="field-opt {{ $pay->credit_facility === (bool) $value ? 'checked' : '' }}">
-                  {!! $checked($pay->credit_facility === (bool) $value) !!} {{ $label }}
-                </div>
-              @endforeach
-            </td>
-            <td class="field-label">The creditor(s) who provide the loan / credit facility</td>
-            <td class="field-value">{{ $dash($pay->creditor) }}</td>
-          </tr>
-          <tr>
-            <td class="field-label">Notes</td>
-            <td class="field-value" colspan="3">{{ $dash($pay->extra_notes) }}</td>
-          </tr>
-        </table>
-      @endif
-    </div>
-  </div>
-
-  {{-- Signatures --}}
-  <div class="section">
-    <div class="section-header">Signatures</div>
-    <div class="section-body">
-      <table class="sig-table">
-        <thead>
-          <tr>
-            <th>Customer Representative</th>
-            <th>Sales Person</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="sig-space">&nbsp;</td>
-            <td class="sig-space">&nbsp;</td>
-          </tr>
-          <tr>
-            <td class="sig-name">Name: </td>
-            <td class="sig-name">Name: {{ $dash($customer->user->name ?? null) }}</td>
-          </tr>
-          <tr>
-            <td class="sig-title">Date: </td>
-            <td class="sig-title">Date: </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
+        </tr>
+    </table>
 </div>
+
+<div class="section-title">1. Corporate Details</div>
+<div class="section-content">
+    <table class="data-table">
+        <tr>
+            <td class="label" width="20%">Company Name:</td>
+            <td class="value" colspan="3"><b>{{ $dash($customer->company_name) }}</b></td>
+        </tr>
+        <tr>
+            <td class="label" width="20%">Holding / Parent:</td>
+            <td class="value" colspan="3"><b>{{ $dash($customer->parent_company) }}</b></td>
+        </tr>
+        <tr>
+            <td class="label">Website:</td>
+            <td class="value">{{ $dash($customer->website) }}</td>
+            <td class="label">Ownership:</td>
+            <td class="value">{{ $dash($customer->ownership_type === 'Other' ? $customer->ownership_type_other : $customer->ownership_type) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Email:</td>
+            <td class="value">{{ $dash($customer->email) }}</td>
+            <td class="label">Business Type:</td>
+            <td class="value">{{ $dash($customer->business_type === 'Other' ? $customer->business_type_other : $customer->business_type) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Phone / Fax:</td>
+            <td class="value">{{ $dash($customer->phone) }} / {{ $dash($customer->fax) }}</td>
+            <td class="label">Incoterms:</td>
+            <td class="value">{{ $customer->inco_terms ? ($customer->inco_terms->value === 'Other' ? $dash($customer->inco_terms_other) : $customer->inco_terms->label()) : '' }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section-title">2. Addresses</div>
+<div class="section-content">
+    <table class="data-table">
+        <tr>
+            <td class="label">Head Office:</td>
+            <td colspan="3" class="value">{{ $formatAddressLine($headOfficeAddress) }}</td>
+        </tr>
+        <tr>
+            <td class="label">NPWP Address:</td>
+            <td colspan="3" class="value">{{ $formatAddressLine($npwpAddress) }}</td>
+        </tr>
+    </table>
+
+    @php
+        $otherAddressTypeLabels = [
+            \App\Enums\CustomerAddressType::Billing->value => 'Billing',
+            \App\Enums\CustomerAddressType::Correspondence->value => 'Correspondence',
+        ];
+    @endphp
+    @if ($otherAddresses->isNotEmpty())
+        <table class="grid-table">
+            <thead>
+                <tr>
+                    <th>Address Type</th>
+                    <th>Address</th>
+                    <th>Province</th>
+                    <th>City/Regency</th>
+                    <th>District</th>
+                    <th>Sub-district</th>
+                    <th>Postal Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($otherAddresses as $a)
+                    <tr>
+                        <td>{{ $otherAddressTypeLabels[$a->address_type->value] ?? $a->address_type->label() }}</td>
+                        <td>{{ $dash($a->address_line) }}</td>
+                        <td>{{ $dash($regionName($a->province)) }}</td>
+                        <td>{{ $dash($regionName($a->regency)) }}</td>
+                        <td>{{ $dash($regionName($a->district)) }}</td>
+                        <td>{{ $dash($regionName($a->village)) }}</td>
+                        <td>{{ $dash($a->postal_code) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
+
+<div class="section-title">3. Person In Charge (PIC)</div>
+@php
+    $picGroups = [
+        'director'    => 'Director / Owner',
+        'procurement' => 'Procurement',
+        'finance'     => 'Finance',
+        'site_pic'    => 'Site PIC',
+    ];
+@endphp
+<div class="section-content">
+    <table class="grid-table">
+        <thead>
+            <tr>
+                <th style="width: 18%;">PIC Type</th>
+                <th style="width: 18%;">Name</th>
+                <th style="width: 16%;">Position</th>
+                <th style="width: 15%;">Phone</th>
+                <th style="width: 15%;">Mobile</th>
+                <th style="width: 18%;">Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($picGroups as $code => $groupLabel)
+                @php $rows = $contactsByType->get($code, collect()); @endphp
+                @if ($rows->isEmpty())
+                    <tr>
+                        <td>{{ $groupLabel }}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                @else
+                    @foreach ($rows as $c)
+                        <tr>
+                            <td>{{ $groupLabel }}</td>
+                            <td>{{ $dash($c->full_name) }}</td>
+                            <td>{{ $dash($c->position) }}</td>
+                            <td>{{ $dash($c->phone) }}</td>
+                            <td>{{ $dash($c->mobile) }}</td>
+                            <td>{{ $dash($c->email) }}</td>
+                        </tr>
+                    @endforeach
+                @endif
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
+<div class="section-title">4. Payment Term &amp; Banking Detail</div>
+@php
+    $pay = $customer->payment;
+    $pricingOptions = ['Discount Pricelist', 'Quotation'];
+    $paymentMethodOptions = ['SKBDN', 'Bank Guarantee', 'Cover Cek-Giro', 'Transfer'];
+    $paymentTermOptions = ['CBD' => 'Cash Before Delivery (CBD)', 'COD' => 'Cash on Delivery (COD)', 'CREDIT' => 'Credit'];
+    $termBasisOptions = ['days_after_delivery' => 'After Delivery', 'days_after_invoice_received' => 'After Invoice Received'];
+    $creditFacilityOptions = [true => 'YES', false => 'NO'];
+@endphp
+<div class="section-content">
+@if (!$pay)
+    <div class="muted">No payment data available.</div>
+@else
+    <div class="col-container">
+        <div class="col-half">
+            <table class="data-table">
+                <tr>
+                    <td class="label" style="width: 40%;">Pricing Method:</td>
+                    <td class="value" style="width: 60%;">
+                        @foreach ($pricingOptions as $opt)
+                            {!! $renderCheckboxOption($opt, $pay->calculate_method === $opt) !!}<br>
+                        @endforeach
+                        @if ($pay->calculate_method && !in_array($pay->calculate_method, $pricingOptions, true))
+                            <div class="field-other-note">Other: {{ $pay->calculate_method }}</div>
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Payment Method:</td>
+                    <td class="value">
+                        @foreach ($paymentMethodOptions as $opt)
+                            {!! $renderCheckboxOption($opt, $pay->payment_method === $opt) !!}<br>
+                        @endforeach
+                        @if ($pay->payment_method === 'Other' && $pay->payment_method_other)
+                            <div class="field-other-note">Other: {{ $pay->payment_method_other }}</div>
+                        @elseif ($pay->payment_method && !in_array($pay->payment_method, $paymentMethodOptions, true))
+                            <div class="field-other-note">Other: {{ $pay->payment_method }}</div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-half">
+            <table class="data-table">
+                <tr>
+                    <td class="label" style="width: 20%;">Payment Term:</td>
+                    <td class="value">
+                        @foreach ($paymentTermOptions as $code => $label)
+                            {!! $renderCheckboxOption($label, $pay->payment_term?->value === $code) !!}<br>
+                        @endforeach
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Term Days:</td>
+                    <td class="value">{{ $dash($pay->payment_term_days) }} days</td>
+                </tr>
+                <tr>
+                    <td class="label">Term Basis:</td>
+                    <td class="value">
+                        @foreach ($termBasisOptions as $code => $label)
+                            {!! $renderCheckboxOption($label, $pay->payment_term_basis?->value === $code) !!}<br>
+                        @endforeach
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-container">
+        <div class="col-half">
+            <table class="data-table">
+                <tr>
+                    <td class="label" style="width: 40%;">Bank Name:</td>
+                    <td class="value" style="width: 60%;">{{ $dash($pay->bank_name) }}</td>
+                </tr>
+                <tr>
+                    <td class="label" style="width: 20%;">Bank Account:</td>
+                    <td class="value">{{ $dash($pay->account_number) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Bank Address:</td>
+                    <td class="value">{{ $dash($pay->bank_address) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Currency:</td>
+                    <td class="value">{{ $pay->currency ?: 'IDR' }}</td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-half">
+            <table class="data-table">
+                <tr>
+                    <td class="label">Have Credit Facility or Bank Loan?</td>
+                    <td class="value">
+                        @foreach ($creditFacilityOptions as $value => $label)
+                            {!! $renderCheckboxOption($label, $pay->credit_facility === (bool) $value) !!}&nbsp;&nbsp;&nbsp;
+                        @endforeach
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Creditor <i>(if has credit facility)</i>:</td>
+                    <td class="value">{{ $dash($pay->creditor) }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <table class="data-table">
+        <tr>
+            <td class="label" style="width: 20%;">Notes:</td>
+            <td class="value">{{ $dash($pay->extra_notes) }}</td>
+        </tr>
+    </table>
+@endif
+</div>
+
+<div class="signature-section">
+    <div class="section-title">Signatures</div>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td class="sig-box" style="width: 50%; vertical-align: top;">
+                <div class="sig-title">Customer Representative</div>
+                <table class="data-table">
+                    <tr><td class="sig-area"></td></tr>
+                    <tr><td class="label" style="width: 30%;">Name:</td></tr>
+                    <tr><td class="label">Date:</td></tr>
+                </table>
+                <div class="sig-line"></div>
+                <div style="font-size: 7pt; color: #64748b; text-align: center;">Authorized Signature &amp; Stamp</div>
+            </td>
+            <td class="sig-box" style="width: 50%; vertical-align: top;">
+                <div class="sig-title">Sales Person (Tridaya Selaras)</div>
+                <table class="data-table">
+                    <tr><td class="sig-area"></td></tr>
+                    <tr><td class="label" style="width: 30%;">Name:</td></tr>
+                    <tr><td class="label">Date:</td></tr>
+                </table>
+                <div class="sig-line"></div>
+                <div style="font-size: 7pt; color: #64748b; text-align: center;">Authorized Signature</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
 </body>
 </html>

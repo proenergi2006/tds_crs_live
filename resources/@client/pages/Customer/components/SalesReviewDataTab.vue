@@ -5,7 +5,7 @@ import axios from 'axios'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
-import { FormLabel, FormInput, FormTextarea } from '@/components/Base/Form'
+import { FormInput, FormTextarea } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -34,6 +34,7 @@ const { success, error: notifyError } = useNotification()
 
 const reviewAnswers = ref<ReviewAnswer[]>([])
 const attachments = ref<ReviewAttachment[]>([])
+const notes = ref<string | null>(null)
 const reviewedAt = ref<string | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -60,6 +61,7 @@ async function fetchReview() {
     const { data } = await axios.get(`/api/customers/${props.idCustomer}/review`)
     reviewAnswers.value = data?.review_answers ?? []
     attachments.value = data?.review_attachments ?? []
+    notes.value = data?.notes ?? null
     reviewedAt.value = data?.reviewed_at ?? null
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat Sales Review.')
@@ -75,9 +77,11 @@ async function saveReview() {
   try {
     const payload = {
       review_answers: reviewAnswers.value.map(({ question_code, answer }) => ({ question_code, answer })),
+      notes: notes.value,
     }
     const { data } = await axios.post(`/api/customers/${props.idCustomer}/review`, payload)
     reviewAnswers.value = data?.review_answers ?? reviewAnswers.value
+    notes.value = data?.notes ?? notes.value
     reviewedAt.value = data?.reviewed_at ?? reviewedAt.value
     success('Berhasil', 'Sales Review tersimpan.')
     emit('saved')
@@ -143,49 +147,61 @@ onMounted(fetchReview)
     <span class="font-body">Memuat Sales Review...</span>
   </div>
 
-  <CardSection v-else title="Sales Review" description="Jawaban Marketing untuk 14 pertanyaan review KYC."
-    icon="ClipboardEdit" icon-class="bg-primary/10 text-primary">
-    <p v-if="locked" class="bg-amber-50 mb-4 px-3 py-2.5 border border-amber-200 rounded-lg font-body !text-amber-700">
+  <div v-else class="space-y-4">
+    <p v-if="locked" class="bg-amber-50 px-3 py-2.5 border border-amber-200 rounded-lg font-body !text-amber-700">
       Tab ini terkunci, verifikasi sedang berjalan.
     </p>
 
-    <div class="overflow-x-auto">
-      <Table bordered>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>#</Table.Th>
-            <Table.Th class="w-2/5">Pertanyaan</Table.Th>
-            <Table.Th class="w-3/5">Jawaban</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          <Table.Tr v-for="item in reviewAnswers" :key="item.question_code">
-            <Table.Td class="py-4 align-top">{{ item.order }}.</Table.Td>
-            <Table.Td class="py-4 align-top">{{ item.question }}</Table.Td>
-            <Table.Td class="py-4 align-top">
-              <FormInput v-if="item.field_type === 'shorttext'" v-model="item.answer" :disabled="locked" />
-              <FormTextarea v-else v-model="item.answer" :disabled="locked" rows="2" :auto-resize="true" />
-            </Table.Td>
-          </Table.Tr>
-        </Table.Tbody>
-      </Table>
-    </div>
+    <div class="items-start gap-4 grid grid-cols-1 lg:grid-cols-3">
+      <CardSection class="lg:col-span-2" title="Pertanyaan" description="Jawaban Marketing untuk 14 pertanyaan review KYC."
+        icon="ClipboardEdit" icon-class="bg-primary/10 text-primary">
+        <div class="overflow-x-auto">
+          <Table bordered>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>#</Table.Th>
+                <Table.Th class="w-2/5">Pertanyaan</Table.Th>
+                <Table.Th class="w-3/5">Jawaban</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr v-for="item in reviewAnswers" :key="item.question_code">
+                <Table.Td class="py-4 align-top">{{ item.order }}.</Table.Td>
+                <Table.Td class="py-4 align-top">{{ item.question }}</Table.Td>
+                <Table.Td class="py-4 align-top">
+                  <FormInput v-if="item.field_type === 'shorttext'" v-model="item.answer" :disabled="locked" />
+                  <FormTextarea v-else v-model="item.answer" :disabled="locked" rows="2" :auto-resize="true" />
+                </Table.Td>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table>
+        </div>
+      </CardSection>
 
-    <div class="mt-6 pt-5">
-      <FormLabel>Lampiran</FormLabel>
-      <FileUploadField :model-value="pendingFiles" multiple :existing-files="existingAttachmentFiles" :disabled="locked"
-        accept=".jpg,.jpeg,.png,.pdf,.zip,.rar" :max-size-mb="10" choose-text="Pilih lampiran"
-        empty-text="Belum ada lampiran diunggah" @update:model-value="handleFilesSelected"
-        @remove-existing="handleRemoveExisting" @error="(msg: string) => notifyError('Gagal', msg)" />
-    </div>
+      <div class="space-y-4">
+        <CardSection title="Notes" description="Detail informasi tambahan tentang customer."
+          icon="FileText" icon-class="bg-primary/10 text-primary">
+          <FormTextarea v-model="notes" :disabled="locked" rows="6" :auto-resize="true"
+            placeholder="Narasi hubungan customer, riwayat bisnis, dsb." />
+        </CardSection>
 
-    <div class="flex justify-between items-center gap-3 mt-6 pt-5 border-slate-100 border-t">
-      <span v-if="reviewedAt" class="font-caption">Terakhir disimpan {{ formatReviewedAt(reviewedAt) }}</span>
-      <span v-else />
-      <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving" @click="saveReview">
-        <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
-        Simpan Review
-      </Button>
+        <CardSection title="Lampiran" description="Dokumen pendukung Sales Review."
+          icon="Paperclip" icon-class="bg-primary/10 text-primary">
+          <FileUploadField :model-value="pendingFiles" multiple :existing-files="existingAttachmentFiles" :disabled="locked"
+            accept=".jpg,.jpeg,.png,.pdf,.zip,.rar" :max-size-mb="10" choose-text="Pilih lampiran"
+            empty-text="Belum ada lampiran diunggah" @update:model-value="handleFilesSelected"
+            @remove-existing="handleRemoveExisting" @error="(msg: string) => notifyError('Gagal', msg)" />
+        </CardSection>
+
+        <div class="flex justify-between items-center gap-3 bg-white px-5 py-4 border border-slate-200 rounded-xl">
+          <span v-if="reviewedAt" class="font-caption">Terakhir disimpan {{ formatReviewedAt(reviewedAt) }}</span>
+          <span v-else />
+          <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving" @click="saveReview">
+            <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
+            Simpan Review
+          </Button>
+        </div>
+      </div>
     </div>
-  </CardSection>
+  </div>
 </template>

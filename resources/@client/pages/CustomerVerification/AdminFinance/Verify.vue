@@ -15,6 +15,7 @@ import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import RichTextField from '@/components/SystemDesign/Form/RichTextField.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
+import DocumentDownloadModal, { type DownloadableDocument } from '@/components/SystemDesign/Dialog/DocumentDownloadModal.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
@@ -53,6 +54,9 @@ const financialReview = ref<string>('')
 const rejectNote = ref<string>('')
 const submitting = ref(false)
 const confirmOpen = ref(false)
+
+const downloadModalOpen = ref(false)
+const downloadingDocument = ref(false)
 
 const penawarans = ref<any[]>([])
 const penawaranLoading = ref(true)
@@ -101,11 +105,11 @@ async function fetchPenawarans(): Promise<void> {
   }
 }
 
-async function openDocument(): Promise<void> {
+async function openDocument(category: DownloadableDocument): Promise<void> {
   // window.open() langsung ke URL gak bisa -- bukan lewat axios jadi gak kebaca middleware auth:sanctum, makanya pola blob+tab pre-open (lihat pdfPreviewTab.ts)
   const tab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`/api/review/customer-verifications/${idVerification}/document`, {
+    const response = await axios.get(`/api/review/customer-verifications/${idVerification}/document/${category}`, {
       responseType: 'blob',
     })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
@@ -119,6 +123,16 @@ async function openDocument(): Promise<void> {
     // responseType: 'blob' bikin error response ikut jadi Blob juga, .message gak kebaca -- pesan generic aja
     tab?.close()
     notifyError('Gagal', 'Gagal membuka dokumen KYC.')
+  }
+}
+
+async function handleDocumentSelect(category: DownloadableDocument): Promise<void> {
+  downloadingDocument.value = true
+  try {
+    await openDocument(category)
+  } finally {
+    downloadingDocument.value = false
+    downloadModalOpen.value = false
   }
 }
 
@@ -199,11 +213,13 @@ function lcrStatusLabel(status?: string | null): string {
                 <span v-if="detail.reviewed_at" class="font-caption text-slate-500">Direview {{
                   formatDateTime(detail.reviewed_at) }} · {{ detail.reviewed_by?.name ?? '-' }}</span>
               </div>
-              <Button v-if="canDownloadDocument" variant="outline-primary" class="inline-flex items-center gap-2"
-                @click="openDocument">
-                <Lucide icon="Printer" class="w-4 h-4" />
-                Cetak Dokumen (Gabungan)
-              </Button>
+              <div v-if="canDownloadDocument" class="flex flex-wrap gap-2">
+                <Button variant="outline-primary" size="sm" class="inline-flex items-center gap-2"
+                  @click="downloadModalOpen = true">
+                  <Lucide icon="Download" class="w-4 h-4" />
+                  Download
+                </Button>
+              </div>
             </div>
             <div v-if="detail.status === 'rejected'" class="bg-rose-50 px-3 py-2 border border-rose-200 rounded-lg">
               <div class="font-label !text-rose-700">Alasan Penolakan</div>
@@ -241,6 +257,19 @@ function lcrStatusLabel(status?: string | null): string {
           </Tab.Panel>
 
           <Tab.Panel>
+            <CardSection title="Detail Informasi" icon="FileText" icon-class="bg-emerald-100 text-emerald-600"
+              class="mb-4">
+              <div v-if="!detail.review_notes"
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                <div class="font-body">Belum ada catatan tercatat.</div>
+              </div>
+
+              <div v-else class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-lg font-body whitespace-pre-line">
+                {{ detail.review_notes }}
+              </div>
+            </CardSection>
+
             <CardSection title="Sales Review" icon="ClipboardCheck" icon-class="bg-emerald-100 text-emerald-600">
               <div v-if="!detail.review?.length"
                 class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
@@ -447,4 +476,7 @@ function lcrStatusLabel(status?: string | null): string {
     :icon-class="decisionMode === 'approve' ? 'bg-primary/10 text-primary' : 'bg-danger/10 text-danger'"
     :variant="decisionMode === 'approve' ? 'primary' : 'danger'" :loading="submitting" @close="confirmOpen = false"
     @confirm="submitDecision" />
+
+  <DocumentDownloadModal :open="downloadModalOpen" :loading="downloadingDocument" @close="downloadModalOpen = false"
+    @select="handleDocumentSelect" />
 </template>

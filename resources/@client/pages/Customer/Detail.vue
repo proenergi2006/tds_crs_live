@@ -39,6 +39,10 @@ const tabItems = computed(() => [
 
 const hasParentCompany = computed(() => !!customerSummary.value?.parent_company)
 const isUnderReview = computed<boolean>(() => customerSummary.value?.latest_verification?.status === 'in_review')
+// isUnderReview doang gak cukup -- customer yang masih verified & belum expire (liat Customer::REVERIFICATION_INTERVAL_MONTHS) tetep harus diblok submit ulang
+const isVerified = computed<boolean>(() => !!customerSummary.value?.is_verified)
+const needsReverification = computed<boolean>(() => !!customerSummary.value?.needs_reverification)
+const canSubmitVerification = computed<boolean>(() => !isUnderReview.value && (!isVerified.value || needsReverification.value))
 
 async function loadCustomer() {
   loading.value = true
@@ -71,7 +75,7 @@ async function submitVerification(): Promise<void> {
     await fetchCustomer()
   } catch (e: any) {
     if (e.response?.status === 409) {
-      notifyError('Gagal', 'Verifikasi customer ini sedang dalam review.')
+      notifyError('Gagal', e.response?.data?.message ?? 'Verifikasi customer ini sedang dalam review.')
     } else if (e.response?.status === 422) {
       const incompleteGroups = e.response?.data?.incomplete_groups ?? []
       const labels = incompleteGroups.map((group: string) => VERIFICATION_GROUP_LABELS[group] ?? group).join(', ')
@@ -98,7 +102,7 @@ function goBack() {
           :description="hasParentCompany ? `Part of: ${customerSummary.parent_company}` : 'Detail data dan verifikasi customer'">
           <template #action>
             <div class="flex items-center gap-2">
-              <Button v-if="!isUnderReview" variant="primary" :disabled="submitting" @click="submitVerification">
+              <Button v-if="canSubmitVerification" variant="primary" :disabled="submitting" @click="submitVerification">
                 <Lucide v-if="submitting" icon="Loader2" class="mr-2 w-4 h-4 animate-spin" />
                 <Lucide v-else icon="ShieldCheck" class="mr-2 w-4 h-4" />
                 Proses Verifikasi
