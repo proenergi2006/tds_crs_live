@@ -52,6 +52,11 @@ const activeFilterCount = computed(() =>
   [filterCabang.value, filterProduk.value].filter(Boolean).length,
 )
 
+function needsAction(row: ProductPriceRow): boolean {
+  const num = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? 0 : Number(v))
+  return num(row.ceo_price) === 0 || num(row.margin_amount) === 0 || num(row.price_list) === 0
+}
+
 const filteredRows = computed(() => {
   let rows = props.rows
 
@@ -71,7 +76,7 @@ const filteredRows = computed(() => {
     rows = rows.filter(r => r.product_id === Number(filterProduk.value))
   }
 
-  return rows
+  return [...rows].sort((a, b) => Number(needsAction(b)) - Number(needsAction(a)))
 })
 
 const totalRecords = computed(() => filteredRows.value.length)
