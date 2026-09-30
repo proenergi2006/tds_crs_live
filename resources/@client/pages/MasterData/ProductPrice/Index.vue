@@ -150,6 +150,17 @@ const periodeByCategory = computed<Record<PeriodeCategory, PeriodeRow[]>>(() => 
   inactive: periodeList.value.filter(r => r.category === 'inactive'),
 }))
 
+const tabNeedsAction = computed<Record<PeriodeCategory, boolean>>(() => {
+  const hasIncomplete = (rows: PeriodeRow[]) =>
+    canVerifyPrice.value && rows.some(r => r.status === 'belum_lengkap' && r.jumlah_belum_lengkap > 0)
+
+  return {
+    active: hasIncomplete(periodeByCategory.value.active),
+    upcoming: hasIncomplete(periodeByCategory.value.upcoming),
+    inactive: false,
+  }
+})
+
 const isSinglePeriodTab = computed(() => activeTab.value !== 'inactive')
 
 const focusPeriode = computed<PeriodeRow | null>(() =>
@@ -415,10 +426,12 @@ function formatDateTime(dateStr: string | null) {
         <template #body>
           <div class="inline-flex gap-1 bg-white/10 backdrop-blur-sm p-1 border border-white/20 rounded-lg w-fit">
             <button v-for="tab in TABS" :key="tab.value" type="button"
-              class="px-3 py-1.5 rounded-md font-medium text-sm transition"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition"
               :class="activeTab === tab.value ? 'bg-white text-theme-1 shadow-sm' : 'text-white/80 hover:bg-white/10'"
               @click="activeTab = tab.value">
               {{ tab.label }}
+              <Lucide v-if="tabNeedsAction[tab.value]" icon="AlertTriangle" class="w-3.5 h-3.5 text-amber-400"
+                title="Ada periode yang belum lengkap, perlu tindakan" />
             </button>
           </div>
         </template>

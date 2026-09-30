@@ -23,6 +23,11 @@ class ResolvePenawaranQueueAction
         ],
     ];
 
+    private const NEEDS_ACTION_DISPOSISI = [
+        'bm' => PenawaranDisposisi::MenungguVerifikasiBm->value,
+        'om' => PenawaranDisposisi::MenungguVerifikasiOm->value,
+    ];
+
     public function execute(string $brand, string $step, ?string $search, int $perPage, ?bool $polimerOnly = null): LengthAwarePaginator
     {
         $query = Penawaran::where('brand', $brand)
@@ -43,6 +48,9 @@ class ResolvePenawaranQueueAction
             });
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($perPage);
+        return $query
+            ->orderByRaw('CASE WHEN disposisi_penawaran = ? THEN 0 ELSE 1 END ASC', [self::NEEDS_ACTION_DISPOSISI[$step]])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
     }
 }
