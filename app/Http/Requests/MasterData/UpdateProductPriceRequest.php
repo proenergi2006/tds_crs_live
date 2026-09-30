@@ -3,6 +3,7 @@
 namespace App\Http\Requests\MasterData;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProductPriceRequest extends FormRequest
 {
@@ -29,7 +30,13 @@ class UpdateProductPriceRequest extends FormRequest
             'bm_price'             => 'nullable|numeric|min:0',
             'cogs_basis'           => 'nullable|in:loco,franco',
             'cogs_material_price'  => 'nullable|numeric|min:0',
-            'cogs_transport_price' => 'nullable|required_if:cogs_basis,franco|numeric|min:0',
+            'cogs_transport_price' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->input('cogs_basis') === 'franco'
+                    && $this->user()?->can('product-price.manage')),
+                'numeric',
+                'min:0',
+            ],
             'margin_amount'        => 'nullable|numeric|min:0',
             'om_price'             => 'nullable|numeric|min:0',
             'ceo_price'            => 'nullable|numeric|min:0',
