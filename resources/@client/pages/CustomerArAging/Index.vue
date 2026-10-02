@@ -153,15 +153,14 @@ async function submitEditModal(): Promise<void> {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="AR Aging Customer"
         description="Saldo piutang per customer. Dipakai sebagai exposure di gerbang kredit PO Customer." />
 
-      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="rows.length === 0" :colspan="11" :show-footer="true" :show-toolbar="true" :total="totalRecords"
-        :current-page="currentPage" :total-pages="totalPages"
-        search-placeholder="Cari nama atau kode customer..." loading-text="Memuat data AR aging..."
-        empty-description="Belum ada data customer." @page-change="goToPage">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading" :empty="rows.length === 0"
+        :colspan="11" :show-footer="true" :show-toolbar="true" :total="totalRecords" :current-page="currentPage"
+        :total-pages="totalPages" search-placeholder="Cari nama atau kode customer..."
+        loading-text="Memuat data AR aging..." empty-description="Belum ada data customer." @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12 text-center">No</Table.Th>
           <Table.Th>Kode Customer</Table.Th>
@@ -177,8 +176,8 @@ async function submitEditModal(): Promise<void> {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(row, idx) in rows" :key="row.id_customer" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(row, idx) in rows" :key="row.id_customer" class="hover:bg-slate-50 transition">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
@@ -186,7 +185,7 @@ async function submitEditModal(): Promise<void> {
               {{ row.customer_code || '-' }}
             </Table.Td>
 
-            <Table.Td class="font-strong">
+            <Table.Td class="text-body-strong">
               {{ row.company_name || '-' }}
             </Table.Td>
 
@@ -196,20 +195,20 @@ async function submitEditModal(): Promise<void> {
             <Table.Td class="text-right whitespace-nowrap">{{ formatCurrency(row.overdue_61_90) }}</Table.Td>
             <Table.Td class="text-right whitespace-nowrap">{{ formatCurrency(row.overdue_90_plus) }}</Table.Td>
 
-            <Table.Td class="font-strong text-right whitespace-nowrap">
+            <Table.Td class="text-body-strong text-right whitespace-nowrap">
               {{ formatCurrency(row.total_ar) }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-body">{{ row.updated_by?.name ?? '-' }}</div>
-              <div class="font-caption text-slate-500">{{ formatDateTime(row.updated_at) ?? '-' }}</div>
+              <div class="text-body">{{ row.updated_by?.name ?? '-' }}</div>
+              <div class="text-caption text-slate-500">{{ formatDateTime(row.updated_at) ?? '-' }}</div>
             </Table.Td>
 
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-1">
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
+              <div class="inline-flex justify-center items-center gap-1">
+                <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
                   @click="openEditModal(row)">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </Button>
               </div>
             </Table.Td>
@@ -217,19 +216,17 @@ async function submitEditModal(): Promise<void> {
         </template>
       </DataList>
 
-      <FormModal :open="editModal.open.value"
-        :title="`Edit AR Aging — ${editModal.row.value?.company_name ?? ''}`"
+      <FormModal :open="editModal.open.value" :title="`Edit AR Aging — ${editModal.row.value?.company_name ?? ''}`"
         :loading="editModal.submitting.value" :error="editModal.error.value" size="lg" submit-text="Simpan"
         @close="closeEditModal" @submit="submitEditModal">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <CurrencyField v-for="bucket in AR_BUCKETS" :key="bucket.key"
-            v-model="editModal.form.value[bucket.key]" :label="bucket.label"
-            :disabled="editModal.submitting.value" />
+        <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
+          <CurrencyField v-for="bucket in AR_BUCKETS" :key="bucket.key" v-model="editModal.form.value[bucket.key]"
+            :label="bucket.label" :disabled="editModal.submitting.value" />
         </div>
 
-        <div class="mt-4 flex items-center justify-end gap-3 border-t border-slate-200 pt-3">
-          <span class="font-label">Total AR</span>
-          <span class="font-strong">{{ formatCurrency(editTotal) }}</span>
+        <div class="flex justify-end items-center gap-3 mt-4 pt-3 border-slate-200 border-t">
+          <span class="text-form-label">Total AR</span>
+          <span class="text-body-strong">{{ formatCurrency(editTotal) }}</span>
         </div>
       </FormModal>
     </div>

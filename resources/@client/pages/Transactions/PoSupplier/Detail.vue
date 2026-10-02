@@ -132,62 +132,59 @@ function formatNumber(v: number | string = 0) {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-x flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-x">
 
-      <!-- HEADER -->
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <h2 class="font-display">Detail PO Supplier</h2>
-          <p class="font-lead mt-1">
+          <h2 class="text-screen-title">Detail PO Supplier</h2>
+          <p class="mt-1 text-body-lg">
             Informasi lengkap Purchase Order.
           </p>
         </div>
         <div>
           <Button variant="outline-secondary" @click="goBack">
-            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+            <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
             Kembali
           </Button>
-          <Button v-if="isEditableState" class="ml-2" variant="soft-pending" @click="goToEdit">
-            <Lucide icon="Edit" class="mr-2 h-4 w-4" />
+          <Button v-if="isEditableState" class="ml-2" variant="soft-warning" @click="goToEdit">
+            <Lucide icon="Edit" class="mr-2 w-4 h-4" />
             Edit
           </Button>
         </div>
       </div>
 
-      <!-- 2-COLUMN LAYOUT (mirip FormPage sidebar) -->
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div class="gap-6 grid grid-cols-1 xl:grid-cols-3">
 
-        <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <div class="gap-3 grid grid-cols-1 sm:grid-cols-2">
+              <div class="space-y-3 bg-slate-50 p-4 border border-slate-200 rounded-xl">
                 <div>
-                  <div class="font-label">Nomor PO</div>
-                  <div class="font-strong mt-1">{{ po.nomor_po || '-' }}</div>
+                  <div class="text-form-label">Nomor PO</div>
+                  <div class="mt-1 text-body-strong">{{ po.nomor_po || '-' }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Tanggal PO</div>
-                  <div class="font-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
+                  <div class="text-form-label">Tanggal PO</div>
+                  <div class="mt-1 text-body-strong">{{ formatDate(po.tanggal_inven) }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Terms</div>
-                  <div class="font-strong mt-1">
+                  <div class="text-form-label">Terms</div>
+                  <div class="mt-1 text-body-strong">
                     {{ po.terms || '-' }}
                     <span class="text-slate-400">&nbsp;·&nbsp;{{ po.terms_day || 0 }} hari</span>
                   </div>
                 </div>
               </div>
 
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <div class="space-y-3 bg-slate-50 p-4 border border-slate-200 rounded-xl">
                 <div>
-                  <div class="font-label">Vendor</div>
-                  <div class="font-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
+                  <div class="text-form-label">Vendor</div>
+                  <div class="mt-1 text-body-strong">{{ po.vendor?.nama_vendor || '-' }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Terminal</div>
-                  <div class="font-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
+                  <div class="text-form-label">Terminal</div>
+                  <div class="mt-1 text-body-strong">{{ po.terminal?.nama_terminal || '-' }}</div>
                 </div>
               </div>
             </div>
@@ -196,51 +193,51 @@ function formatNumber(v: number | string = 0) {
           <CardSection title="Rincian Produk" description="Daftar item produk pada purchase order" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
             <div class="overflow-x-auto">
-              <Table bordered sm class="font-body">
+              <Table bordered sm class="text-body">
                 <Table.Thead class="bg-slate-50">
-                  <Table.Th class="font-label">Produk</Table.Th>
-                  <Table.Th class="font-label text-right">Volume PO</Table.Th>
-                  <Table.Th class="font-label text-right">Harga Tebus</Table.Th>
-                  <Table.Th class="font-label text-right">Jumlah Harga</Table.Th>
-                  <Table.Th class="font-label text-center">Kode Tax</Table.Th>
-                  <Table.Th class="font-label text-right">Tax Amount</Table.Th>
+                  <Table.Th class="text-form-label">Produk</Table.Th>
+                  <Table.Th class="text-form-label text-right">Volume PO</Table.Th>
+                  <Table.Th class="text-form-label text-right">Harga Tebus</Table.Th>
+                  <Table.Th class="text-form-label text-right">Jumlah Harga</Table.Th>
+                  <Table.Th class="text-form-label text-center">Kode Tax</Table.Th>
+                  <Table.Th class="text-form-label text-right">Tax Amount</Table.Th>
                 </Table.Thead>
 
                 <Table.Tbody class="bg-white">
                   <Table.Tr v-for="item in produks" :key="item.id_po_produk">
                     <Table.Td>
-                      <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                      <div class="font-caption mt-0.5">
+                      <div class="text-body-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                      <div class="mt-0.5 text-caption">
                         {{ item.produk?.jenis?.nama || '-' }}
                         <span class="mx-1">·</span>
                         {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || ''
                         }}
                       </div>
                     </Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.jumlah_harga) }}</Table.Td>
-                    <Table.Td class="text-center font-strong">{{ item.kd_tax ?? '-' }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">
+                    <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.jumlah_harga) }}</Table.Td>
+                    <Table.Td class="text-body-strong text-center">{{ item.kd_tax ?? '-' }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">
                       {{ item.tax_amount ? formatCurrency(item.tax_amount) : '-' }}
                     </Table.Td>
                   </Table.Tr>
 
                   <Table.Tr>
-                    <Table.Td :colspan="3" class="py-2.5 pr-6 text-right font-header">Subtotal</Table.Td>
-                    <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatCurrency(po.subtotal) }}
+                    <Table.Td :colspan="3" class="py-2.5 pr-6 text-section-title text-right">Subtotal</Table.Td>
+                    <Table.Td class="py-2.5 num-md text-xl text-right">{{ formatCurrency(po.subtotal) }}
                     </Table.Td>
                     <Table.Td :colspan="2"></Table.Td>
                   </Table.Tr>
                   <Table.Tr>
-                    <Table.Td :colspan="3" class="py-2.5 pr-6 text-right font-header">Total Tax</Table.Td>
-                    <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatCurrency(po.ppn11) }}
+                    <Table.Td :colspan="3" class="py-2.5 pr-6 text-section-title text-right">Total Tax</Table.Td>
+                    <Table.Td class="py-2.5 num-md text-xl text-right">{{ formatCurrency(po.ppn11) }}
                     </Table.Td>
                     <Table.Td :colspan="2"></Table.Td>
                   </Table.Tr>
                   <Table.Tr>
-                    <Table.Td :colspan="3" class="py-3.5 pr-6 font-header text-right">Total Order</Table.Td>
-                    <Table.Td class="py-3.5 font-num-lg text-xl text-right !text-emerald-700">
+                    <Table.Td :colspan="3" class="py-3.5 pr-6 text-section-title text-right">Total Order</Table.Td>
+                    <Table.Td class="py-3.5 num-md !text-emerald-700 text-xl text-right">
                       {{ formatCurrency(po.total_order) }}
                     </Table.Td>
                     <Table.Td :colspan="2"></Table.Td>
@@ -250,17 +247,17 @@ function formatNumber(v: number | string = 0) {
             </div>
           </CardSection>
 
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="gap-6 grid grid-cols-1 lg:grid-cols-2">
             <CardSection title="Catatan" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div
-                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
+                class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl min-h-[5rem] text-body whitespace-pre-line">
                 {{ po.keterangan || '-' }}
               </div>
             </CardSection>
 
             <CardSection title="Terms & Condition" icon="ScrollText" icon-class="bg-blue-100 text-blue-600">
               <div
-                class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
+                class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl min-h-[5rem] text-body whitespace-pre-line">
                 {{ po.terms_condition || '-' }}
               </div>
             </CardSection>
@@ -268,9 +265,8 @@ function formatNumber(v: number | string = 0) {
 
         </div>
 
-        <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-6 space-y-4">
+          <div class="top-6 sticky space-y-4">
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <Stepper :steps="approvalSteps" direction="vertical" />
@@ -278,50 +274,50 @@ function formatNumber(v: number | string = 0) {
 
             <div class="bg-white p-6 rounded-lg">
               <div
-                class="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body whitespace-pre-line min-h-[5rem]">
-                <div class="font-label mb-3">APPROVAL NOTES</div>
+                class="bg-slate-50 mb-3 px-4 py-3 border border-slate-200 rounded-xl min-h-[5rem] text-body whitespace-pre-line">
+                <div class="mb-3 text-form-label">APPROVAL NOTES</div>
                 <div class="space-y-3">
-                  <div v-if="po.cfo_result === 2" class="rounded-xl border p-3 space-y-1"
+                  <div v-if="po.cfo_result === 2" class="space-y-1 p-3 border rounded-xl"
                     :class="'border-danger/30 bg-danger/5'">
-                    <div class="flex items-center justify-between">
-                      <span class="font-strong">CFO</span>
-                      <span class="text-xs font-label px-2 py-0.5 rounded-full"
+                    <div class="flex justify-between items-center">
+                      <span class="text-body-strong">CFO</span>
+                      <span class="px-2 py-0.5 rounded-full text-form-label text-xs"
                         :class="po.cfo_result === 2 ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'">
                         {{ po.cfo_result === 2 ? 'Ditolak' : 'Disetujui' }}
                       </span>
                     </div>
-                    <div class="flex items-start justify-between">
-                      <div class="font-body text-xs text-slate-600">{{ po.cfo_summary ?? '-' }}</div>
-                      <div class="font-caption text-slate-400 min-w-36 text-right">{{ formatDate(po.cfo_tgl) }}</div>
+                    <div class="flex justify-between items-start">
+                      <div class="text-body text-slate-600 text-xs">{{ po.cfo_summary ?? '-' }}</div>
+                      <div class="min-w-36 text-caption text-slate-400 text-right">{{ formatDate(po.cfo_tgl) }}</div>
                     </div>
                   </div>
 
                   <div v-if="po.ceo_result !== null && po.ceo_result !== undefined"
-                    class="rounded-xl border p-3 space-y-1"
+                    class="space-y-1 p-3 border rounded-xl"
                     :class="po.ceo_result === 2 ? 'border-danger/30 bg-danger/5' : 'border-success/30 bg-success/5'">
-                    <div class="flex items-center justify-between">
-                      <span class="font-strong">CEO</span>
-                      <span class="text-xs font-label px-2 py-0.5 rounded-full"
+                    <div class="flex justify-between items-center">
+                      <span class="text-body-strong">CEO</span>
+                      <span class="px-2 py-0.5 rounded-full text-form-label text-xs"
                         :class="po.ceo_result === 2 ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'">
                         {{ po.ceo_result === 2 ? 'Ditolak' : 'Disetujui' }}
                       </span>
                     </div>
-                    <div class="flex items-start justify-between">
-                      <div class="font-body text-xs text-slate-600">{{ po.ceo_summary ?? '-' }}</div>
-                      <div class="font-caption text-slate-400 min-w-36 text-right">{{ formatDate(po.ceo_tgl) }}</div>
+                    <div class="flex justify-between items-start">
+                      <div class="text-body text-slate-600 text-xs">{{ po.ceo_summary ?? '-' }}</div>
+                      <div class="min-w-36 text-caption text-slate-400 text-right">{{ formatDate(po.ceo_tgl) }}</div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="flex flex-col gap-2">
-                <Button variant="outline-primary" class="w-full inline-flex items-center justify-center gap-2"
+                <Button variant="outline-primary" class="inline-flex justify-center items-center gap-2 w-full"
                   @click="preview">
-                  <Lucide icon="Printer" class="h-4 w-4" />
+                  <Lucide icon="Printer" class="w-4 h-4" />
                   Preview PDF
                 </Button>
                 <Button :disabled="isApprovalDisabled" variant="primary"
-                  class="w-full inline-flex items-center justify-center gap-2" @click="approveDialogOpen = true">
-                  <Lucide icon="Send" class="h-4 w-4" />
+                  class="inline-flex justify-center items-center gap-2 w-full" @click="approveDialogOpen = true">
+                  <Lucide icon="Send" class="w-4 h-4" />
                   Kirim Persetujuan
                 </Button>
               </div>

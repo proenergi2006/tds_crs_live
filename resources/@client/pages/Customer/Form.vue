@@ -262,15 +262,15 @@ function cancel() {
             @input="onCompanyNameInput"
             @blur="v$.company_name.$touch()"
           />
-          <small v-if="getFieldError('company_name')" class="mt-1 font-caption !text-rose-600">
+          <small v-if="getFieldError('company_name')" class="mt-1 text-caption !text-rose-600">
             {{ getFieldError("company_name") }}
           </small>
-          <div v-else-if="nameCheckStatus === 'available'" class="mt-1 font-caption !text-emerald-600">
+          <div v-else-if="nameCheckStatus === 'available'" class="mt-1 text-caption !text-emerald-600">
             Nama tersedia
           </div>
           <div
             v-else-if="nameCheckStatus === 'taken'"
-            class="flex items-center gap-2 mt-1 font-caption !text-amber-600"
+            class="flex items-center gap-2 mt-1 text-caption !text-amber-600"
           >
             <span>Sudah terdaftar, {{ nameMatches.length }} kecocokan ditemukan</span>
             <button type="button" class="font-semibold underline underline-offset-2" @click="showDuplicatePopup = true">
@@ -298,7 +298,7 @@ function cancel() {
               @update:model-value="v$.customer_type.$touch()"
             />
           </div>
-          <small v-if="getFieldError('customer_type')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('customer_type')" class="text-caption !text-rose-600">
             {{ getFieldError("customer_type") }}
           </small>
         </div>
@@ -337,7 +337,7 @@ function cancel() {
             :class="getFieldError('company_address') ? 'border-rose-500' : ''"
             @blur="v$.company_address.$touch()"
           />
-          <small v-if="getFieldError('company_address')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('company_address')" class="text-caption !text-rose-600">
             {{ getFieldError("company_address") }}
           </small>
         </div>
@@ -359,7 +359,7 @@ function cancel() {
               {{ p.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('province_id')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('province_id')" class="text-caption !text-rose-600">
             {{ getFieldError("province_id") }}
           </small>
         </div>
@@ -384,7 +384,7 @@ function cancel() {
               {{ k.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('regency_id')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('regency_id')" class="text-caption !text-rose-600">
             {{ getFieldError("regency_id") }}
           </small>
         </div>
@@ -409,7 +409,7 @@ function cancel() {
               {{ d.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('district_id')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('district_id')" class="text-caption !text-rose-600">
             {{ getFieldError("district_id") }}
           </small>
         </div>
@@ -434,7 +434,7 @@ function cancel() {
               {{ v.name }}
             </option>
           </TomSelect>
-          <small v-if="getFieldError('village_id')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('village_id')" class="text-caption !text-rose-600">
             {{ getFieldError("village_id") }}
           </small>
         </div>
@@ -451,7 +451,7 @@ function cancel() {
             :class="getFieldError('postal_code') ? 'border-rose-500' : ''"
             @blur="v$.postal_code.$touch()"
           />
-          <small v-if="getFieldError('postal_code')" class="font-caption !text-rose-600">
+          <small v-if="getFieldError('postal_code')" class="text-caption !text-rose-600">
             {{ getFieldError("postal_code") }}
           </small>
         </div>
@@ -470,23 +470,23 @@ function cancel() {
         <div class="relative">
           <div class="flex items-center gap-3">
             <div
-              class="flex justify-center items-center bg-white/15 rounded-lg w-12 h-12 font-header !text-white text-xl shrink-0"
+              class="flex justify-center items-center bg-white/15 rounded-lg w-12 h-12 text-section-title !text-white text-xl shrink-0"
             >
               {{ companyInitial }}
             </div>
 
             <div class="min-w-0">
-              <h2 class="font-header !text-white text-base truncate leading-snug">
+              <h2 class="text-section-title !text-white text-base truncate leading-snug">
                 {{ form.company_name || "Nama Perusahaan" }}
               </h2>
               <div class="flex items-center gap-1.5 mt-1">
                 <span
                   v-if="form.customer_type"
-                  class="inline-flex items-center bg-white/15 px-2 py-0.5 rounded-full font-label !text-white"
+                  class="inline-flex items-center bg-white/15 px-2 py-0.5 rounded-full text-form-label !text-white"
                 >
                   {{ form.customer_type }}
                 </span>
-                <span class="font-caption !text-white/60">• Ringkasan Profil</span>
+                <span class="text-caption !text-white/60">• Ringkasan Profil</span>
               </div>
             </div>
           </div>
@@ -498,21 +498,21 @@ function cancel() {
               <div class="flex justify-center items-center bg-white/15 rounded-full w-8 h-8 shrink-0">
                 <Lucide icon="Phone" class="w-4 h-4 !text-white" />
               </div>
-              <p class="font-body !text-white truncate">{{ form.phone || "-" }}</p>
+              <p class="text-body !text-white truncate">{{ form.phone || "-" }}</p>
             </div>
 
             <div v-if="form.email" class="flex items-center gap-3">
               <div class="flex justify-center items-center bg-white/15 rounded-full w-8 h-8 shrink-0">
                 <Lucide icon="Mail" class="w-4 h-4 !text-white" />
               </div>
-              <p class="font-body !text-white truncate">{{ form.email }}</p>
+              <p class="text-body !text-white truncate">{{ form.email }}</p>
             </div>
 
             <div class="flex items-start gap-3">
               <div class="flex justify-center items-center bg-white/15 mt-0.5 rounded-full w-8 h-8 shrink-0">
                 <Lucide icon="MapPin" class="w-4 h-4 !text-white" />
               </div>
-              <p class="font-body !text-white">{{ fullAddressSummary }}</p>
+              <p class="text-body !text-white">{{ fullAddressSummary }}</p>
             </div>
           </div>
         </div>
@@ -524,8 +524,8 @@ function cancel() {
     <Dialog.Panel>
       <div class="p-6">
         <div class="pb-4 border-slate-200 border-b">
-          <h3 class="font-header">Nama Perusahaan Sudah Terdaftar</h3>
-          <p class="mt-1 font-caption text-slate-500">
+          <h3 class="text-section-title">Nama Perusahaan Sudah Terdaftar</h3>
+          <p class="mt-1 text-caption text-slate-500">
             {{ nameMatches.length }} customer lain memakai nama yang sama/mirip
           </p>
         </div>
@@ -536,8 +536,8 @@ function cancel() {
             :key="match.id_customer"
             class="px-4 py-3 border border-slate-200 rounded-md"
           >
-            <p class="font-body font-semibold">{{ match.company_name }}</p>
-            <p class="mt-0.5 font-caption text-slate-500">Marketing: {{ match.marketing?.name || "-" }}</p>
+            <p class="text-body font-semibold">{{ match.company_name }}</p>
+            <p class="mt-0.5 text-caption text-slate-500">Marketing: {{ match.marketing?.name || "-" }}</p>
           </div>
         </div>
 

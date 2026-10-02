@@ -76,14 +76,14 @@ const rangeParts = computed(() => {
         </div>
 
         <div class="min-w-0 flex-1">
-          <div class="font-section">
+          <div class="text-overline">
             Rentang Tanggal
           </div>
 
           <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <div>
-              <div class="font-caption">Dari</div>
-              <div class="truncate font-strong">
+              <div class="text-caption">Dari</div>
+              <div class="truncate text-body-strong">
                 {{ rangeParts.start }}
               </div>
             </div>
@@ -91,8 +91,8 @@ const rangeParts = computed(() => {
             <Lucide icon="ArrowRight" class="hidden h-4 w-4 text-slate-400 sm:block" />
 
             <div>
-              <div class="font-caption">Sampai</div>
-              <div class="truncate font-strong">
+              <div class="text-caption">Sampai</div>
+              <div class="truncate text-body-strong">
                 {{ rangeParts.end }}
               </div>
             </div>

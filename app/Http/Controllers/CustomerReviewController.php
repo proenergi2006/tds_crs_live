@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CustomerReviewQuestionCode;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Models\Customer;
 use App\Models\CustomerReview;
 use Illuminate\Http\Request;
@@ -11,9 +12,11 @@ use Illuminate\Validation\Rules\Enum;
 
 class CustomerReviewController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     public function getReview(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
     {
-        if (!$this->canManageCustomer($request, $customer)) {
+        if (!$this->canViewCustomer($request, $customer)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -75,8 +78,8 @@ class CustomerReviewController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validate([
@@ -124,8 +127,8 @@ class CustomerReviewController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $request->validate([
@@ -161,8 +164,8 @@ class CustomerReviewController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($this->isLocked($customer)) {
-            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $review = CustomerReview::where('id_customer', $customer->id_customer)->firstOrFail();
@@ -182,15 +185,19 @@ class CustomerReviewController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    private function canViewCustomer(Request $request, Customer $customer): bool
+    {
+        $user = $request->user();
+
+        return $user->can('customer.viewAny')
+            || $user->can('verification.customer')
+            || ($user->can('customer.viewOwn') && $customer->id_user === $user->id);
+    }
+
     private function canManageCustomer(Request $request, Customer $customer): bool
     {
         $user = $request->user();
 
         return $user->can('customer.manage') && ($customer->id_user === $user->id || $user->can('customer.viewAny'));
-    }
-
-    private function isLocked(Customer $customer): bool
-    {
-        return $customer->isUnderReview();
     }
 }

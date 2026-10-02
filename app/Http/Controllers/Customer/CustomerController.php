@@ -7,6 +7,7 @@ use App\Actions\Customer\UpsertCustomerAddressAction;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerVerificationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerAddressByTypeRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     private const ADDRESS_TYPES_MANAGED_ELSEWHERE = [
         CustomerAddressType::SiteAddress,
     ];
@@ -143,10 +146,12 @@ class CustomerController extends Controller
         }
 
         return [
-            'approved_limit'   => $verification->approved_limit,
-            'approved_top'     => $verification->approved_top,
-            'financial_review' => $verification->financial_review,
-            'reviewed_at'      => optional($verification->reviewed_at)->toISOString(),
+            'approved_limit'            => $verification->approved_limit,
+            'approved_top'              => $verification->approved_top,
+            'financial_review_snapshot' => $verification->financial_review_snapshot,
+            'notes'                     => $verification->notes,
+            'finance_attachments'       => $verification->formatFinanceAttachments(),
+            'reviewed_at'               => optional($verification->reviewed_at)->toISOString(),
         ];
     }
 
@@ -217,8 +222,11 @@ class CustomerController extends Controller
 
         $customer->latest_verification = $this->formatLatestVerification($customer->latestVerification);
         $customer->latest_approved_verification = $this->formatLatestApprovedVerification($customer->latestApprovedVerification);
-        $customer->tab_completeness = $evaluateTabCompleteness->execute($customer);
+        $tabSummary = $evaluateTabCompleteness->summary($customer);
+        $customer->tab_completeness = $tabSummary['tab_completeness'];
+        $customer->tab_status = $tabSummary['tab_status'];
         $customer->append(['is_verified', 'needs_reverification', 'current_credit_limit']);
+        $customer->is_edit_locked = $customer->isEditLocked();
 
         return response()->json($customer);
     }
@@ -244,7 +252,12 @@ class CustomerController extends Controller
             'lcr.latestDocumentApproval',
         ]);
 
-        return response()->json($evaluateTabCompleteness->execute($customer));
+        $tabSummary = $evaluateTabCompleteness->summary($customer);
+
+        return response()->json([
+            ...$tabSummary['tab_completeness'],
+            'tab_status' => $tabSummary['tab_status'],
+        ]);
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
@@ -258,8 +271,8 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($customer->isUnderReview()) {
-            return response()->json(['message' => 'Data terkunci, verifikasi sedang berjalan.'], 409);
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validated();
@@ -289,6 +302,12 @@ class CustomerController extends Controller
         if ($customer->penawarans()->exists()) {
             return response()->json([
                 'message' => 'Customer tidak dapat dihapus karena memiliki data penawaran terkait.',
+            ], 422);
+        }
+
+        if ($customer->verifications()->whereIn('status', [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved])->exists()) {
+            return response()->json([
+                'message' => 'Customer tidak dapat dihapus karena memiliki riwayat verifikasi yang sedang berjalan atau sudah disetujui.',
             ], 422);
         }
 
@@ -338,6 +357,10 @@ class CustomerController extends Controller
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $isExpired = $customer->token_expired_at !== null && $customer->token_expired_at->lte(now());
@@ -393,6 +416,10 @@ class CustomerController extends Controller
 
         if (in_array($type, self::ADDRESS_TYPES_MANAGED_ELSEWHERE, true)) {
             return response()->json(['message' => 'Tipe alamat ini dikelola lewat jalur tersendiri, tidak lewat endpoint ini.'], 422);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validated();

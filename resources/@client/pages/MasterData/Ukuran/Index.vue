@@ -16,7 +16,6 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 const ukuranApi = createResourceApi('/ukurans')
 const { success, error } = useNotification()
 
-/* State: data & pagination */
 const allUkurans = ref<any[]>([])
 
 const searchQuery = ref('')
@@ -25,12 +24,10 @@ const perPage = ref(10)
 const currentPage = ref(1)
 const loading = ref(false)
 
-/* State: form */
 const formModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const selectedUkuran = ref<any | null>(null)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
@@ -125,7 +122,6 @@ function setFilterSatuan(value: string) {
   filterSatuan.value = value
 }
 
-/* Form */
 function openCreate() {
   formMode.value = 'create'
   selectedUkuran.value = null
@@ -158,7 +154,6 @@ function syncUkuran(data: any, mode: 'create' | 'edit') {
   }
 }
 
-/* Delete */
 function confirmDelete(id: number) {
   deleteTarget.value = id
   deleteModal.value = true
@@ -196,46 +191,43 @@ async function submitDelete() {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
-      <!-- Page Header -->
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Master Ukuran" description="Kelola data ukuran produk">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-            <Lucide icon="Plus" class="h-4 w-4" />
+            <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Data Baru
           </Button>
         </template>
       </PageHeader>
 
-      <!-- Data Table List -->
       <div>
         <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-          :empty="ukurans.length === 0" :colspan="4" :show-footer="true" :show-toolbar="true"
-          :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
-          :active-filter-count="activeFilterCount" search-placeholder="Cari ukuran..."
-          loading-text="Memuat data ukuran..." empty-description="Belum ada ukuran untuk ditampilkan."
-          @page-change="goToPage">
+          :empty="ukurans.length === 0" :colspan="4" :show-footer="true" :show-toolbar="true" :total="totalRecords"
+          :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
+          search-placeholder="Cari ukuran..." loading-text="Memuat data ukuran..."
+          empty-description="Belum ada ukuran untuk ditampilkan." @page-change="goToPage">
           <template #filters="{ close }">
             <div>
-              <div class="font-section px-3 pb-2 pt-1">
+              <div class="px-3 pt-1 pb-2 text-overline">
                 Satuan
               </div>
 
               <div class="space-y-1">
                 <button type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
+                  class="flex justify-between items-center px-3 py-2 rounded-md w-full text-body text-left transition"
                   :class="filterSatuan === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="setFilterSatuan(''); close()">
                   Semua Satuan
-                  <Lucide v-if="filterSatuan === ''" icon="Check" class="h-4 w-4" />
+                  <Lucide v-if="filterSatuan === ''" icon="Check" class="w-4 h-4" />
                 </button>
 
                 <button v-for="satuan in satuanOptions" :key="satuan.id" type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
+                  class="flex justify-between items-center px-3 py-2 rounded-md w-full text-body text-left transition"
                   :class="filterSatuan === satuan.id ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="setFilterSatuan(satuan.id); close()">
                   {{ satuan.name }}
-                  <Lucide v-if="filterSatuan === satuan.id" icon="Check" class="h-4 w-4" />
+                  <Lucide v-if="filterSatuan === satuan.id" icon="Check" class="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -249,8 +241,8 @@ async function submitDelete() {
           </template>
 
           <template #body>
-            <Table.Tr v-for="(item, idx) in ukurans" :key="item.id_ukuran" class="transition hover:bg-slate-50">
-              <Table.Td class="font-num text-center">
+            <Table.Tr v-for="(item, idx) in ukurans" :key="item.id_ukuran" class="hover:bg-slate-50 transition">
+              <Table.Td class="num-sm text-center">
                 {{ (currentPage - 1) * perPage + idx + 1 }}.
               </Table.Td>
               <Table.Td>
@@ -260,14 +252,14 @@ async function submitDelete() {
                 {{ item.satuan?.nama_satuan || '-' }}
               </Table.Td>
               <Table.Td class="text-center">
-                <div class="inline-flex items-center justify-center gap-2">
-                  <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <div class="inline-flex justify-center items-center gap-2">
+                  <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8"
                     @click.prevent="openEdit(item)" title="Edit">
-                    <Lucide icon="Edit" class="h-4 w-4" />
+                    <Lucide icon="Edit" class="w-4 h-4" />
                   </Button>
-                  <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
+                  <Button variant="soft-danger" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Hapus"
                     @click="confirmDelete(item.id_ukuran)">
-                    <Lucide icon="Trash2" class="h-4 w-4" />
+                    <Lucide icon="Trash2" class="w-4 h-4" />
                   </Button>
                 </div>
               </Table.Td>
@@ -276,11 +268,9 @@ async function submitDelete() {
         </DataList>
       </div>
 
-      <!-- Create Modal -->
       <UkuranFormModal :open="formModal" :mode="formMode" :item="selectedUkuran" @close="formModal = false"
         @success="handleFormSuccess" />
 
-      <!-- Delete Confirmation Modal -->
       <DeleteRecordDialog :open="deleteModal" title="Hapus Ukuran" :loading="deleteLoading" @close="deleteModal = false"
         @confirm="submitDelete" />
     </div>

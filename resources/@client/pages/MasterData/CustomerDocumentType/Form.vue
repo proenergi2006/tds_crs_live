@@ -188,7 +188,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="document-type-code" v-model="form.code" placeholder="mis. nib"
           :class="getFieldError('code') ? 'border-rose-500' : ''" />
-        <small v-if="getFieldError('code')" class="font-caption !text-rose-600">{{ getFieldError('code') }}</small>
+        <small v-if="getFieldError('code')" class="text-caption !text-rose-600">{{ getFieldError('code') }}</small>
       </div>
 
       <div>
@@ -197,7 +197,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="document-type-name" v-model="form.name" placeholder="mis. NIB"
           :class="getFieldError('name') ? 'border-rose-500' : ''" />
-        <small v-if="getFieldError('name')" class="font-caption !text-rose-600">{{ getFieldError('name') }}</small>
+        <small v-if="getFieldError('name')" class="text-caption !text-rose-600">{{ getFieldError('name') }}</small>
       </div>
 
       <div>
@@ -206,7 +206,7 @@ async function submitForm() {
           <FormSwitch>
             <FormSwitch.Input id="document-type-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="font-body">
+          <span class="text-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>

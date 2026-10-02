@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import { Menu } from '@/components/Base/Headless'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
@@ -60,8 +60,8 @@ function goToPage(page: number): void {
   fetchData(page)
 }
 
-function openDetail(id: number): void {
-  router.push({ name: 'po-customers-detail', params: { id } })
+function canEditRow(row: any): boolean {
+  return canManage.value && ['awaiting_process', 'blocked'].includes(row.status_key)
 }
 
 function goToCreate(): void {
@@ -93,22 +93,22 @@ function goToCreate(): void {
           <Table.Th>Nomor Penawaran</Table.Th>
           <Table.Th class="text-center">Volume / Harga</Table.Th>
           <Table.Th class="text-center">Disposisi</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
+          <Table.Th class="right-0 z-10 sticky bg-slate-50 text-center">Aksi</Table.Th>
         </template>
 
         <template #body>
-          <Table.Tr v-for="(row, idx) in poCustomers" :key="row.id_poc" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(row, idx) in poCustomers" :key="row.id_poc" class="group transition hover:bg-slate-50">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ row.nomor_poc || '-' }}</div>
+              <div class="text-body-strong">{{ row.nomor_poc || '-' }}</div>
               <div class="text-slate-500">{{ formatDate(row.tanggal_poc) }}</div>
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ row.customer?.customer_code || '-' }}</div>
+              <div class="text-body-strong">{{ row.customer?.customer_code || '-' }}</div>
               <div class="text-slate-500">{{ row.customer?.company_name || '-' }}</div>
             </Table.Td>
 
@@ -122,16 +122,30 @@ function goToCreate(): void {
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-3 py-1"
+              <span class="text-form-label inline-flex items-center rounded-full px-3 py-1"
                 :class="poCustomerStatusBadgeClass(row.status_key)">
                 {{ row.status_label }}
               </span>
             </Table.Td>
 
-            <Table.Td class="text-center">
-              <ExtendableButton variant="soft-dark" rounded label="Detail" @click="openDetail(row.id_poc)">
-                <Lucide icon="Eye" class="w-4 h-4" />
-              </ExtendableButton>
+            <Table.Td class="right-0 z-10 sticky bg-white group-hover:bg-slate-50 w-[80px] text-center">
+              <Menu>
+                <Menu.Button :as="Button" variant="outline-secondary" class="px-2 py-1">
+                  <Lucide icon="MoreVertical" class="w-4 h-4" />
+                </Menu.Button>
+                <Menu.Items class="w-52" placement="bottom-end">
+                  <Menu.Item :as="RouterLink" :to="{ name: 'po-customers-detail', params: { id: row.id_poc } }">
+                    <Lucide icon="Eye" class="mr-2 w-4 h-4" />
+                    Detail
+                  </Menu.Item>
+
+                  <Menu.Item v-if="canEditRow(row)" :as="RouterLink"
+                    :to="{ name: 'po-customers-edit', params: { id: row.id_poc } }">
+                    <Lucide icon="Pencil" class="mr-2 w-4 h-4" />
+                    Edit
+                  </Menu.Item>
+                </Menu.Items>
+              </Menu>
             </Table.Td>
           </Table.Tr>
         </template>

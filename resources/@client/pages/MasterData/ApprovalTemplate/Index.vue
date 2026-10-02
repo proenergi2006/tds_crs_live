@@ -27,14 +27,12 @@ const { success, error } = useNotification()
 const auth = useAuthStore()
 const router = useRouter()
 
-/* State: data & pagination */
 const allTemplates = ref<ApprovalTemplateRow[]>([])
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 const loading = ref(false)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
@@ -72,7 +70,6 @@ const templates = computed(() => {
   return filteredTemplates.value.slice(start, start + perPage.value)
 })
 
-/* Data */
 async function fetchData() {
   loading.value = true
 
@@ -97,7 +94,6 @@ function resetToFirstPage() {
   currentPage.value = 1
 }
 
-/* Form */
 function openCreate() {
   router.push({ name: 'approval-templates-create' })
 }
@@ -106,7 +102,6 @@ function openEdit(target: ApprovalTemplateRow) {
   router.push({ name: 'approval-templates-edit', params: { id: target.id_template } })
 }
 
-/* Delete */
 function confirmDelete(id: number) {
   deleteTarget.value = id
   deleteModal.value = true
@@ -131,8 +126,6 @@ async function submitDelete() {
     deleteModal.value = false
     success('Berhasil', 'Approval template berhasil dihapus.')
   } catch (e: any) {
-    // Backend mengembalikan 409 dengan pesan jelas kalau template masih
-    // punya riwayat document_approvals -- tampilkan apa adanya, bukan pesan generik.
     error(
       'Gagal menghapus',
       e.response?.data?.message ?? 'Terjadi kesalahan saat menghapus data.',
@@ -146,24 +139,22 @@ async function submitDelete() {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
-      <!-- Page Header -->
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Approval Template"
         description="Kelola urutan step & role approval yang dipakai alur verifikasi customer.">
         <template #action>
           <Button v-if="canManage" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-            <Lucide icon="Plus" class="h-4 w-4" />
+            <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Template
           </Button>
         </template>
       </PageHeader>
 
-      <!-- Data Table List -->
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="templates.length === 0" :colspan="5" :show-footer="true" :show-toolbar="true" :total="totalRecords"
         :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari kode / nama template..."
-        loading-text="Memuat data approval template..." empty-description="Belum ada approval template untuk ditampilkan."
-        @page-change="goToPage">
+        loading-text="Memuat data approval template..."
+        empty-description="Belum ada approval template untuk ditampilkan." @page-change="goToPage">
         <template #head>
           <Table.Th>Kode</Table.Th>
           <Table.Th>Nama Template</Table.Th>
@@ -173,31 +164,31 @@ async function submitDelete() {
         </template>
 
         <template #body>
-          <Table.Tr v-for="item in templates" :key="item.id_template" class="transition hover:bg-slate-50">
-            <Table.Td class="font-strong">
+          <Table.Tr v-for="item in templates" :key="item.id_template" class="hover:bg-slate-50 transition">
+            <Table.Td class="text-body-strong">
               {{ item.code }}
             </Table.Td>
             <Table.Td>
               {{ item.name }}
             </Table.Td>
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ item.steps_count }}
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
+              <span class="inline-flex px-3 py-1 rounded-full text-form-label"
                 :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                 {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none"
-                  @click="openEdit(item)" title="Edit">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+              <div class="inline-flex justify-center items-center gap-2">
+                <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" @click="openEdit(item)"
+                  title="Edit">
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </Button>
-                <Button v-if="canManage" variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <Button v-if="canManage" variant="soft-danger" rounded class="!shadow-none !p-0 !w-8 !h-8"
                   @click="confirmDelete(item.id_template)" title="Hapus">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
+                  <Lucide icon="Trash2" class="w-4 h-4" />
                 </Button>
               </div>
             </Table.Td>
@@ -205,7 +196,6 @@ async function submitDelete() {
         </template>
       </DataList>
 
-      <!-- Delete Confirmation Modal -->
       <DeleteRecordDialog :open="deleteModal" title="Hapus Approval Template"
         description="Template yang masih punya riwayat siklus persetujuan tidak akan bisa dihapus."
         :loading="deleteLoading" @close="deleteModal = false" @confirm="submitDelete" />

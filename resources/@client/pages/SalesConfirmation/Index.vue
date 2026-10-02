@@ -153,12 +153,12 @@ function rowBadgeClass(row: any): string {
 
         <template #body>
           <Table.Tr v-for="(row, idx) in salesConfirmations" :key="row.id_poc" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ row.customer?.customer_code || '-' }}</div>
+              <div class="text-body-strong">{{ row.customer?.customer_code || '-' }}</div>
               <div class="text-slate-500">{{ row.customer?.company_name || '-' }}</div>
             </Table.Td>
 
@@ -167,7 +167,7 @@ function rowBadgeClass(row: any): string {
             </Table.Td>
 
             <Table.Td class="whitespace-nowrap">
-              <div class="font-strong">{{ row.nomor_poc || '-' }}</div>
+              <div class="text-body-strong">{{ row.nomor_poc || '-' }}</div>
               <div class="text-slate-500">{{ formatDate(row.tanggal_poc) }}</div>
             </Table.Td>
 
@@ -177,7 +177,7 @@ function rowBadgeClass(row: any): string {
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-3 py-1"
+              <span class="text-form-label inline-flex items-center rounded-full px-3 py-1"
                 :class="rowBadgeClass(row)">
                 {{ rowBadgeLabel(row) }}
               </span>

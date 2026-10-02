@@ -216,7 +216,7 @@
                 <div class="sig-title">Marketing</div>
                 <table class="data-table" style="border-spacing: 0;">
                     <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: Robby Pratama P</td></tr>
+                    <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
                     <tr><td class="label">Date:</td></tr>
                 </table>
                 <div class="sig-line"></div>
@@ -232,11 +232,11 @@
                 <div class="sig-line"></div>
             </td>
             <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                <div style="font-size: 7.5pt; color: #64748b;">&nbsp;</div>
-                <div class="sig-title">Area Sales Manager</div>
+                <div style="font-size: 7.5pt; color: #64748b;">Approved by,</div>
+                <div class="sig-title">Supervisor</div>
                 <table class="data-table" style="border-spacing: 0;">
                     <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: Vica Krisdianatha</td></tr>
+                    <tr><td class="label" style="width: 30%;">Name: {{ $supervisorName }}</td></tr>
                     <tr><td class="label">Date:</td></tr>
                 </table>
                 <div class="sig-line"></div>

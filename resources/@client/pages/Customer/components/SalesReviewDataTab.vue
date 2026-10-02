@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
+import Alert from '@/components/Base/Alert'
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
@@ -23,10 +24,14 @@ interface ReviewAttachment {
   original_name: string
 }
 
-const props = defineProps<{
-  idCustomer: number
-  isUnderReview: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    idCustomer: number
+    isUnderReview: boolean
+    readonly?: boolean
+  }>(),
+  { readonly: false },
+)
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
 
@@ -40,7 +45,7 @@ const loading = ref(true)
 const saving = ref(false)
 const pendingFiles = ref<File | File[] | null>(null)
 
-const locked = computed<boolean>(() => props.isUnderReview)
+const locked = computed<boolean>(() => props.isUnderReview || props.readonly)
 
 const existingAttachmentFiles = computed(() =>
   attachments.value.map((a, index) => ({ id: index, name: a.original_name, url: a.url })),
@@ -144,17 +149,18 @@ onMounted(fetchReview)
 <template>
   <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[220px] text-slate-500">
     <Lucide icon="Loader2" class="w-6 h-6 animate-spin" />
-    <span class="font-body">Memuat Sales Review...</span>
+    <span class="text-body">Memuat Sales Review...</span>
   </div>
 
   <div v-else class="space-y-4">
-    <p v-if="locked" class="bg-amber-50 px-3 py-2.5 border border-amber-200 rounded-lg font-body !text-amber-700">
+    <Alert v-if="props.isUnderReview" variant="soft-warning">
       Tab ini terkunci, verifikasi sedang berjalan.
-    </p>
+    </Alert>
 
     <div class="items-start gap-4 grid grid-cols-1 lg:grid-cols-3">
-      <CardSection class="lg:col-span-2" title="Pertanyaan" description="Jawaban Marketing untuk 14 pertanyaan review KYC."
-        icon="ClipboardEdit" icon-class="bg-primary/10 text-primary">
+      <CardSection class="lg:col-span-2" title="Pertanyaan"
+        description="Jawaban Marketing untuk 14 pertanyaan review KYC." icon="ClipboardEdit"
+        icon-class="bg-primary/10 text-primary">
         <div class="overflow-x-auto">
           <Table bordered>
             <Table.Thead>
@@ -179,24 +185,39 @@ onMounted(fetchReview)
       </CardSection>
 
       <div class="space-y-4">
-        <CardSection title="Notes" description="Detail informasi tambahan tentang customer."
-          icon="FileText" icon-class="bg-primary/10 text-primary">
+        <CardSection title="Notes" description="Detail informasi tambahan tentang customer." icon="FileText"
+          icon-class="bg-primary/10 text-primary">
           <FormTextarea v-model="notes" :disabled="locked" rows="6" :auto-resize="true"
             placeholder="Narasi hubungan customer, riwayat bisnis, dsb." />
         </CardSection>
 
-        <CardSection title="Lampiran" description="Dokumen pendukung Sales Review."
-          icon="Paperclip" icon-class="bg-primary/10 text-primary">
-          <FileUploadField :model-value="pendingFiles" multiple :existing-files="existingAttachmentFiles" :disabled="locked"
-            accept=".jpg,.jpeg,.png,.pdf,.zip,.rar" :max-size-mb="10" choose-text="Pilih lampiran"
+        <CardSection title="Lampiran" description="Dokumen pendukung Sales Review." icon="Paperclip"
+          icon-class="bg-primary/10 text-primary">
+          <ul v-if="props.readonly" class="space-y-2">
+            <li v-for="file in existingAttachmentFiles" :key="file.id"
+              class="flex items-center gap-3 bg-slate-50 px-3 py-2 border border-slate-200 rounded-lg">
+              <Lucide icon="FileText" class="w-5 h-5 text-slate-500 shrink-0" />
+              <a :href="file.url" target="_blank"
+                class="block flex-1 min-w-0 text-body !text-primary underline truncate">
+                {{ file.name }}
+              </a>
+            </li>
+            <li v-if="!existingAttachmentFiles.length"
+              class="bg-slate-50 px-3 py-3 border border-slate-200 border-dashed rounded-lg text-body">
+              Belum ada lampiran diunggah
+            </li>
+          </ul>
+          <FileUploadField v-else :model-value="pendingFiles" multiple :existing-files="existingAttachmentFiles"
+            :disabled="locked" accept=".jpg,.jpeg,.png,.pdf,.zip,.rar" :max-size-mb="10" choose-text="Pilih lampiran"
             empty-text="Belum ada lampiran diunggah" @update:model-value="handleFilesSelected"
             @remove-existing="handleRemoveExisting" @error="(msg: string) => notifyError('Gagal', msg)" />
         </CardSection>
 
         <div class="flex justify-between items-center gap-3 bg-white px-5 py-4 border border-slate-200 rounded-xl">
-          <span v-if="reviewedAt" class="font-caption">Terakhir disimpan {{ formatReviewedAt(reviewedAt) }}</span>
+          <span v-if="reviewedAt" class="text-caption">Terakhir disimpan {{ formatReviewedAt(reviewedAt) }}</span>
           <span v-else />
-          <Button variant="primary" class="inline-flex items-center gap-2" :disabled="locked || saving" @click="saveReview">
+          <Button v-if="!props.readonly" variant="primary" class="inline-flex items-center gap-2"
+            :disabled="locked || saving" @click="saveReview">
             <Lucide v-if="saving" icon="Loader2" class="w-4 h-4 animate-spin" />
             Simpan Review
           </Button>

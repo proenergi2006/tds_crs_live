@@ -21,13 +21,13 @@ watch(() => props.form.payment.term, (val) => {
 
 <template>
   <div class="space-y-6">
-    <h2 class="font-header text-xl">Payment Info</h2>
-    <p class="font-caption">Lengkapi metode dan termin pembayaran, serta data rekening bank yang digunakan.</p>
+    <h2 class="text-section-title text-xl">Payment Info</h2>
+    <p class="text-caption">Lengkapi metode dan termin pembayaran, serta data rekening bank yang digunakan.</p>
 
     <div class="grid grid-cols-2 gap-6">
       <!-- Payment Method -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-3 border-b border-slate-100 pb-2">PAYMENT METHOD</div>
+        <div class="text-overline mb-3 border-b border-slate-100 pb-2">PAYMENT METHOD</div>
         <div class="space-y-2">
           <FormCheck v-for="(opt, idx) in paymentMethodOptions" :key="opt">
             <FormCheck.Input :id="'payment-method-' + idx" type="radio" :value="opt" v-model="form.payment.method" />
@@ -45,7 +45,7 @@ watch(() => props.form.payment.term, (val) => {
 
       <!-- Payment Term -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-3 border-b border-slate-100 pb-2">PAYMENT TERM</div>
+        <div class="text-overline mb-3 border-b border-slate-100 pb-2">PAYMENT TERM</div>
         <div class="space-y-2">
           <FormCheck v-for="opt in paymentTermOptions" :key="opt.code">
             <FormCheck.Input :id="'payment-term-' + opt.code" type="radio" :value="opt.code"
@@ -56,14 +56,14 @@ watch(() => props.form.payment.term, (val) => {
 
         <div v-if="form.payment.term === 'CREDIT'" class="mt-4 grid gap-4 md:grid-cols-2">
           <div>
-            <FormLabel class="font-label !mb-1 block">Term Days</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Term Days</FormLabel>
             <FormInput v-model="form.payment.term_days" type="number" min="0"
               :class="errors['payment.term_days'] ? 'input-error' : ''" />
             <small v-if="errors['payment.term_days']" class="block input-error-text">{{ errors['payment.term_days']
             }}</small>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Term Basis</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Term Basis</FormLabel>
             <FormSelect v-model="form.payment.term_basis" :class="errors['payment.term_basis'] ? 'input-error' : ''">
               <option value="">Select one</option>
               <option v-for="opt in paymentTermBasisOptions" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
@@ -77,23 +77,23 @@ watch(() => props.form.payment.term, (val) => {
 
     <!-- Bank -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
-      <div class="font-section mb-1 border-b border-slate-100 pb-2">BANK</div>
-      <p class="font-caption mb-3">Rekening bank yang digunakan perusahaan untuk menerima pembayaran/refund.</p>
+      <div class="text-overline mb-1 border-b border-slate-100 pb-2">BANK</div>
+      <p class="text-caption mb-3">Rekening bank yang digunakan perusahaan untuk menerima pembayaran/refund.</p>
       <div class="grid gap-4 md:grid-cols-3">
         <div>
-          <FormLabel class="font-label !mb-1 block">Bank Name</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Bank Name</FormLabel>
           <FormInput v-model="form.payment.bank_name" type="text" placeholder="e.g. Bank Mandiri" />
         </div>
         <div>
-          <FormLabel class="font-label !mb-1 block">Account Number</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Account Number</FormLabel>
           <FormInput v-model="form.payment.account_number" type="text" placeholder="e.g. 1234567890" />
         </div>
         <div>
-          <FormLabel class="font-label !mb-1 block">Currency</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Currency</FormLabel>
           <FormInput :model-value="form.payment.currency" type="text" disabled />
         </div>
         <div class="md:col-span-3">
-          <FormLabel class="font-label !mb-1 block">Bank Address</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Bank Address</FormLabel>
           <FormTextarea v-model="form.payment.bank_address" rows="3" placeholder="Alamat kantor cabang bank" />
         </div>
       </div>
@@ -102,8 +102,8 @@ watch(() => props.form.payment.term, (val) => {
     <div class="grid grid-cols-2 gap-6">
       <!-- Credit Facility -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-2">Have Credit Facility or Bank Loan?</div>
-        <p class="font-caption mb-3">Informasi ini membantu proses evaluasi kredit oleh tim finance kami.</p>
+        <div class="text-overline mb-2">Have Credit Facility or Bank Loan?</div>
+        <p class="text-caption mb-3">Informasi ini membantu proses evaluasi kredit oleh tim finance kami.</p>
         <div class="grid max-w-xs grid-cols-2 gap-3">
           <div class="cursor-pointer rounded-lg border py-2 text-center transition-colors"
             :class="form.payment.has_credit === true ? 'border-2 border-primary bg-primary/5 font-semibold text-primary' : 'border-gray-200 hover:border-primary/30'"
@@ -127,7 +127,7 @@ watch(() => props.form.payment.term, (val) => {
           <FormCheck.Label htmlFor="invoice-tax">Tax Invoice (Faktur Pajak)</FormCheck.Label>
         </FormCheck>
 
-        <FormLabel class="font-label !mb-1 block">Remarks</FormLabel>
+        <FormLabel class="text-form-label !mb-1 block">Remarks</FormLabel>
         <FormTextarea v-model="form.payment.note" rows="4"
           placeholder="Catatan tambahan terkait pembayaran (optional)" />
       </div>

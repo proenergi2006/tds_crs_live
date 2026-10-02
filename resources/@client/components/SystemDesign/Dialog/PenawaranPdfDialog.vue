@@ -47,8 +47,8 @@ function submit() {
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Lucide icon="Printer" class="h-8 w-8" />
           </div>
-          <h3 class="font-header mt-5">Cetak PDF Penawaran</h3>
-          <p class="font-body mt-2">Pilih bahasa dan format harga sebelum mencetak.</p>
+          <h3 class="text-section-title mt-5">Cetak PDF Penawaran</h3>
+          <p class="text-body mt-2">Pilih bahasa dan format harga sebelum mencetak.</p>
         </div>
 
         <div class="mt-6 space-y-5 text-left">

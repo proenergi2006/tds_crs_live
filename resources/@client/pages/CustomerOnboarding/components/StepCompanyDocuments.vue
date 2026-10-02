@@ -105,12 +105,12 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
 
 <template>
   <div class="space-y-6">
-    <h2 class="font-header text-xl">Document Attachments</h2>
-    <p class="font-caption">Upload dokumen legalitas perusahaan berikut untuk kelengkapan proses verifikasi KYC.</p>
+    <h2 class="text-section-title text-xl">Document Attachments</h2>
+    <p class="text-caption">Upload dokumen legalitas perusahaan berikut untuk kelengkapan proses verifikasi KYC.</p>
 
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="mb-4 flex items-center justify-between gap-4">
-        <FormLabel class="font-label !mb-0 block">Dokumen Perusahaan</FormLabel>
+        <FormLabel class="text-form-label !mb-0 block">Dokumen Perusahaan</FormLabel>
         <Button type="button" size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
           @click="addDokumenLainnyaRow">
           <Lucide icon="Plus" class="h-4 w-4" />
@@ -122,18 +122,18 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
         <table class="w-full min-w-[640px] divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-12 px-3 py-2 font-label text-center">No</th>
-              <th class="px-3 py-2 font-label text-left">Nama Dokumen</th>
-              <th class="px-3 py-2 font-label text-left">Nomor Dokumen</th>
-              <th class="px-3 py-2 font-label text-left">File</th>
-              <th class="w-28 px-3 py-2 font-label text-center">Aksi</th>
+              <th class="w-12 px-3 py-2 text-form-label text-center">No</th>
+              <th class="px-3 py-2 text-form-label text-left">Nama Dokumen</th>
+              <th class="px-3 py-2 text-form-label text-left">Nomor Dokumen</th>
+              <th class="px-3 py-2 text-form-label text-left">File</th>
+              <th class="w-28 px-3 py-2 text-form-label text-center">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(doc, idx) in fixedDocuments" :key="doc.code" class="transition hover:bg-slate-50">
-              <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
-              <td class="px-3 py-2 font-body">
+              <td class="px-3 py-2 num-sm text-center">{{ idx + 1 }}.</td>
+              <td class="px-3 py-2 text-body">
                 {{ doc.label }}
                 <RequiredAsterisk v-if="doc.required" />
               </td>
@@ -145,17 +145,17 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
                 </small>
               </td>
               <td class="px-3 py-2">
-                <span v-if="form.documents[doc.code].file" class="font-body italic text-amber-600">
+                <span v-if="form.documents[doc.code].file" class="text-body italic text-amber-600">
                   {{ form.documents[doc.code].file?.name }}
                 </span>
                 <a v-else-if="existingDocuments?.[doc.code]?.[0]?.url" :href="existingDocuments[doc.code][0].url"
-                  target="_blank" class="font-body !text-primary underline">
+                  target="_blank" class="text-body !text-primary underline">
                   {{ existingDocuments[doc.code][0].name }}
                 </a>
-                <span v-else-if="existingDocuments?.[doc.code]?.[0]" class="font-body">
+                <span v-else-if="existingDocuments?.[doc.code]?.[0]" class="text-body">
                   {{ existingDocuments[doc.code][0].name }}
                 </span>
-                <span v-else class="font-body text-slate-400">Belum ada file</span>
+                <span v-else class="text-body text-slate-400">Belum ada file</span>
                 <small v-if="fixedDocFileError(doc.code)" class="block input-error-text">
                   {{ fixedDocFileError(doc.code) }}
                 </small>
@@ -170,14 +170,14 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
             </tr>
 
             <tr v-for="(doc, docIdx) in existingDocuments?.dokumen_lainnya" :key="doc.id ?? doc.name">
-              <td class="px-3 py-2 font-num text-center">{{ fixedDocuments.length + docIdx + 1 }}.</td>
-              <td class="px-3 py-2 font-body">{{ doc.label || doc.name }}</td>
-              <td class="px-3 py-2 font-body">-</td>
+              <td class="px-3 py-2 num-sm text-center">{{ fixedDocuments.length + docIdx + 1 }}.</td>
+              <td class="px-3 py-2 text-body">{{ doc.label || doc.name }}</td>
+              <td class="px-3 py-2 text-body">-</td>
               <td class="px-3 py-2">
-                <a v-if="doc.url" :href="doc.url" target="_blank" class="font-body !text-primary underline">
+                <a v-if="doc.url" :href="doc.url" target="_blank" class="text-body !text-primary underline">
                   {{ doc.name }}
                 </a>
-                <span v-else class="font-body">{{ doc.name }}</span>
+                <span v-else class="text-body">{{ doc.name }}</span>
               </td>
               <td class="px-3 py-2">
                 <div class="flex items-center justify-center gap-1.5">
@@ -195,7 +195,7 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
             </tr>
 
             <tr v-for="(item, idx) in form.documents.dokumen_lainnya" :key="idx" class="transition hover:bg-slate-50">
-              <td class="px-3 py-2 font-num text-center">
+              <td class="px-3 py-2 num-sm text-center">
                 {{ fixedDocuments.length + (existingDocuments?.dokumen_lainnya.length ?? 0) + idx + 1 }}.
               </td>
               <td class="px-3 py-2">
@@ -205,10 +205,10 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
                   {{ errors[`documents.dokumen_lainnya.${idx}.label`] }}
                 </small>
               </td>
-              <td class="px-3 py-2 font-body">-</td>
+              <td class="px-3 py-2 text-body">-</td>
               <td class="px-3 py-2">
-                <span v-if="item.file" class="font-body">{{ item.file.name }}</span>
-                <span v-else class="font-body text-slate-400">Belum ada file</span>
+                <span v-if="item.file" class="text-body">{{ item.file.name }}</span>
+                <span v-else class="text-body text-slate-400">Belum ada file</span>
                 <small v-if="errors[`documents.dokumen_lainnya.${idx}.file`]" class="block input-error-text">
                   {{ errors[`documents.dokumen_lainnya.${idx}.file`] }}
                 </small>
@@ -237,7 +237,7 @@ function replaceExistingDokumenLainnya(idx: number, doc: OnboardingExistingDocum
         @change="handleDokumenLainnyaFileSelected" />
     </div>
 
-    <p class="font-caption">
+    <p class="text-caption">
       * Max size 5MB per file. Ekstensi yang diizinkan: jpg, jpeg, png, pdf, zip, rar.
     </p>
   </div>

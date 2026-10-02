@@ -4,14 +4,18 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 import Button from '@/components/Base/Button'
+import { Tab } from '@/components/Base/Headless'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
-import { FormLabel, FormTextarea } from '@/components/Base/Form'
+import { FormLabel, FormSelect, FormTextarea } from '@/components/Base/Form'
+import Badge from '@/components/SystemDesign/Data/Badge.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
+import { createResourceApi } from '@/utils/resourceApi'
 import { formatDate, formatDateTime, formatNumber } from '@/utils/format'
 
 const route = useRoute()
@@ -27,6 +31,7 @@ const timeline = ref<any[]>([])
 const timelineError = ref(false)
 const wilayahAngkuts = ref<any[]>([])
 const decisionMode = ref<'approve' | 'reject'>('approve')
+const confirmedWilOa = ref<number | string>('')
 const note = ref('')
 const submitting = ref(false)
 const confirmOpen = ref(false)
@@ -50,11 +55,42 @@ const wilayahAngkutName = computed<string>(() => {
   const id = detail.value?.id_wil_oa
   if (id === null || id === undefined || id === '') return '-'
   const found = wilayahAngkuts.value.find((w: any) => String(w.id) === String(id))
-  return found?.destinasi ?? `#${id}`
+  return found?.name ?? `#${id}`
+})
+const confirmedWilOaName = computed<string>(() => {
+  if (!confirmedWilOa.value) return '-'
+  const found = wilayahAngkuts.value.find((w: any) => String(w.id) === String(confirmedWilOa.value))
+  return found?.name ?? `#${confirmedWilOa.value}`
 })
 const decisionSubmitDisabled = computed<boolean>(
-  () => submitting.value || (decisionMode.value === 'reject' && !note.value.trim()),
+  () => submitting.value
+    || (decisionMode.value === 'reject' && !note.value.trim())
+    || (decisionMode.value === 'approve' && !confirmedWilOa.value),
 )
+
+const PHOTO_CATEGORIES = [
+  { field: 'road_condition_photos', label: 'Foto Kondisi Jalan Menuju Lokasi' },
+  { field: 'site_layout_photos', label: 'Foto Layout Site/Pabrik' },
+  { field: 'unloading_layout_photos', label: 'Foto Layout Area Unloading' },
+  { field: 'storage_facility_photos', label: 'Foto Fasilitas Penyimpanan' },
+  { field: 'measurement_evidence_photos', label: 'Foto Alat Ukur' },
+  { field: 'vessel_layout_photos', label: 'Foto Layout Vessel/Jetty' },
+  { field: 'company_office_photos', label: 'Foto Kantor & Gerbang Perusahaan' },
+  { field: 'additional_photos', label: 'Foto Tambahan' },
+] as const
+
+const photoCategoriesWithFiles = computed(() =>
+  PHOTO_CATEGORIES
+    .map(c => ({ ...c, files: detail.value?.photos?.[c.field] ?? [] }))
+    .filter(c => c.files.length > 0),
+)
+
+const TAB_ITEMS = [
+  { label: 'Overview' },
+  { label: 'Logistic Info' },
+  { label: 'Vessel Info' },
+  { label: 'Evidence' },
+]
 
 onMounted(async () => {
   await fetchDetail()
@@ -68,6 +104,7 @@ async function fetchDetail(): Promise<void> {
   try {
     const { data } = await axios.get(`/api/review/lcr-sites/${idLcr}`)
     detail.value = data
+    confirmedWilOa.value = data.id_wil_oa ?? ''
     bootstrapError.value = null
   } catch (e: any) {
     bootstrapError.value = e.response?.data?.message ?? 'Gagal memuat detail LCR.'
@@ -90,8 +127,8 @@ async function fetchTimeline(): Promise<void> {
 
 async function fetchWilayahAngkuts(): Promise<void> {
   try {
-    const { data } = await axios.get('/api/wilayah-angkuts')
-    wilayahAngkuts.value = data?.data ?? data ?? []
+    const { data } = await createResourceApi('/transport-areas').getAll({ as_list: true })
+    wilayahAngkuts.value = data.data
   } catch {
     wilayahAngkuts.value = []
   }
@@ -103,6 +140,7 @@ async function submitDecision(): Promise<void> {
     await axios.patch(`/api/review/lcr-sites/${idLcr}/decision`, {
       decision: decisionMode.value,
       note: note.value.trim() || null,
+      id_wil_oa: decisionMode.value === 'approve' ? confirmedWilOa.value : null,
     })
     success('Berhasil', decisionMode.value === 'approve' ? 'Keputusan approve tersimpan.' : 'Keputusan reject tersimpan.')
     router.push({ name: 'logistik-lcrs' })
@@ -149,18 +187,11 @@ function goBack(): void {
   router.back()
 }
 
-function approvalBadgeClass(status?: string | null): string {
-  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'rejected') return 'bg-rose-100 text-rose-700'
-  return 'bg-slate-100 text-slate-700'
-}
-
-function stepBadgeClass(status?: string | null): string {
-  if (status === 'pending') return 'bg-amber-100 text-amber-700'
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'rejected') return 'bg-rose-100 text-rose-700'
-  return 'bg-slate-100 text-slate-700'
+function statusBadgeVariant(status?: string | null): 'soft-pending' | 'soft-success' | 'soft-danger' | 'soft-dark' {
+  if (status === 'in_progress' || status === 'pending') return 'soft-pending'
+  if (status === 'approved') return 'soft-success'
+  if (status === 'rejected') return 'soft-danger'
+  return 'soft-dark'
 }
 
 function stepStatusLabel(status?: string | null): string {
@@ -179,6 +210,10 @@ function methodChips(labels?: string[] | null, other?: string | null): string[] 
 function num(value: unknown): string {
   return value === null || value === undefined || value === '' ? '-' : formatNumber(value as number | string)
 }
+
+function rawText(value: unknown): string {
+  return value === null || value === undefined || String(value).trim() === '' ? '-' : String(value)
+}
 </script>
 
 <template>
@@ -186,394 +221,562 @@ function num(value: unknown): string {
     :error="bootstrapError">
     <template #action>
       <Button variant="outline-secondary" @click="goBack">
-        <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+        <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
         Kembali
       </Button>
     </template>
 
-    <div v-if="!loading && detail" class="space-y-6">
-      <CardSection title="Identitas & Info Umum" icon="MapPin">
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Nama Site</span>
-            <span class="font-strong text-right">{{ detail.site_name || '-' }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Tanggal Survei</span>
-            <span class="font-strong text-right">{{ formatDate(detail.survey_date) }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Surveyor</span>
-            <span class="font-strong text-right">{{ detail.surveyor_names || '-' }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Jenis Usaha Site</span>
-            <span class="font-strong text-right">
-              {{ detail.site_business_type || '-'
-              }}<template v-if="detail.site_business_type_other"> &mdash; {{ detail.site_business_type_other }}</template>
-            </span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Lingkungan Site</span>
-            <span class="font-strong text-right">
-              {{ detail.site_environment_label || '-'
-              }}<template v-if="detail.site_environment_other"> &mdash; {{ detail.site_environment_other }}</template>
-            </span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Kompetitor</span>
-            <span class="font-strong text-right">{{ detail.competitors || '-' }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Jam Operasional</span>
-            <span class="font-strong text-right">{{ detail.operating_hours || '-' }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Wilayah Angkut</span>
-            <span class="font-strong text-right">{{ wilayahAngkutName }}</span>
-          </div>
-        </dl>
+    <div v-if="!loading && detail">
+      <Tab.Group>
+        <Tab.List variant="link-tabs" class="gap-1 border-slate-200 border-b">
+          <Tab v-for="t in TAB_ITEMS" :key="t.label" :full-width="false" v-slot="{ selected }">
+            <Tab.Button class="flex items-center gap-2 px-4 py-2.5 text-sm" :class="selected
+              ? 'text-primary border-b-primary font-medium'
+              : 'text-slate-500 border-b-transparent hover:text-slate-700 hover:border-b-slate-300'">
+              <span>{{ t.label }}</span>
+            </Tab.Button>
+          </Tab>
+        </Tab.List>
 
-        <div class="mt-3 space-y-3">
-          <div>
-            <div class="font-label">Catatan Lingkungan Site</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.site_environment_notes || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label">Catatan Survei</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.survey_notes || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label mb-1">Volume Produk</div>
-            <div v-if="Array.isArray(detail.product_volume) && detail.product_volume.length" class="overflow-x-auto">
-              <Table bordered sm class="font-body">
-                <Table.Tbody class="bg-white">
-                  <Table.Tr v-for="(item, i) in detail.product_volume" :key="i">
-                    <Table.Td v-for="[k, v] in Object.entries(item ?? {})" :key="k">
-                      <span class="font-label block text-slate-500">{{ k }}</span>
-                      <span class="font-strong">{{ v ?? '-' }}</span>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </div>
-            <div v-else class="font-body">-</div>
-          </div>
-        </div>
-      </CardSection>
+        <Tab.Panels class="mt-4">
+          <Tab.Panel>
+            <div class="space-y-6 p-6 box">
+              <div class="gap-4 grid grid-cols-2">
+                <div class="space-y-4">
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Identitas Umum
+                    </h3>
+                    <div class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                      <div class="sm:col-span-2">
+                        <div class="text-form-label">Wilayah Angkut</div>
+                        <div class="mt-1 text-body-strong">{{ wilayahAngkutName }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Tanggal Survei</div>
+                        <div class="mt-1 text-body-strong">{{ formatDate(detail.survey_date) }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Surveyor</div>
+                        <div class="mt-1 text-body-strong">{{ detail.surveyor_names || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
 
-      <CardSection title="Akses & Rute" icon="Navigation">
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Kapasitas Truk Maks (Min)</span>
-            <span class="font-strong text-right">{{ num(detail.max_truck_capacity_min) }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Kapasitas Truk Maks (Maks)</span>
-            <span class="font-strong text-right">{{ num(detail.max_truck_capacity_max) }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Jarak dari Depot</span>
-            <span class="font-strong text-right">{{ num(detail.distance_from_depot) }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Volume Kirim Minimum</span>
-            <span class="font-strong text-right">{{ num(detail.min_vol_kirim) }}</span>
-          </div>
-        </dl>
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Kontak Site
+                    </h3>
+                    <div v-if="detail.contact" class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                      <div>
+                        <div class="text-form-label">Nama</div>
+                        <div class="mt-1 text-body-strong">{{ detail.contact.full_name || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Jabatan</div>
+                        <div class="mt-1 text-body-strong">{{ detail.contact.position || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Mobile</div>
+                        <div class="mt-1 text-body-strong">{{ detail.contact.phone || detail.contact.mobile || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Email</div>
+                        <div class="mt-1 text-body-strong">{{ detail.contact.email || '-' }}</div>
+                      </div>
+                    </div>
+                    <div v-else class="text-body text-slate-500">Belum ada kontak site.</div>
+                  </div>
 
-        <div class="mt-3 space-y-3">
-          <div>
-            <div class="font-label">Rute Lokasi</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.rute_lokasi || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label">Catatan Lokasi</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.note_lokasi || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label">Catatan Akses</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.access_notes || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label mb-1">Biaya Rute</div>
-            <div v-if="Array.isArray(detail.route_costs) && detail.route_costs.length" class="overflow-x-auto">
-              <Table bordered sm class="font-body">
-                <Table.Tbody class="bg-white">
-                  <Table.Tr v-for="(item, i) in detail.route_costs" :key="i">
-                    <Table.Td v-for="[k, v] in Object.entries(item ?? {})" :key="k">
-                      <span class="font-label block text-slate-500">{{ k }}</span>
-                      <span class="font-strong">{{ v ?? '-' }}</span>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </div>
-            <div v-else class="font-body">-</div>
-          </div>
-        </div>
-      </CardSection>
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Lokasi
+                    </h3>
+                    <div class="gap-4 grid">
+                      <div>
+                        <div class="text-form-label">Alamat</div>
+                        <div class="mt-1 text-body-strong">
+                          {{ [detail.address?.address_line, detail.address?.village?.name,
+                          detail.address?.district?.name,
+                          detail.address?.regency?.name, detail.address?.province?.name,
+                          detail.address?.postal_code].filter(Boolean).join(', ') || '-' }}
+                        </div>
 
-      <CardSection title="Layout & Unloading Truk" icon="Truck">
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Metode Unloading</span>
-            <span class="font-strong text-right">{{ detail.unloading_method || '-' }}</span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Maks Truk / Hari</span>
-            <span class="font-strong text-right">{{ num(detail.max_trucks_per_day) }}</span>
-          </div>
-        </dl>
+                        <div class="gap-x-6 gap-y-3 grid grid-cols-2 mt-3">
+                          <div>
+                            <div class="text-form-label">Latitude</div>
+                            <div class="mt-1 text-body-strong">{{ detail.latitude_lokasi ?? '-' }}</div>
+                          </div>
+                          <div>
+                            <div class="text-form-label">Longitude</div>
+                            <div class="mt-1 text-body-strong">{{ detail.longitude_lokasi ?? '-' }}</div>
+                          </div>
+                        </div>
 
-        <div class="mt-3">
-          <div class="font-label">Catatan Unloading</div>
-          <div class="font-body mt-1 whitespace-pre-line">{{ detail.unloading_notes || '-' }}</div>
-        </div>
-      </CardSection>
+                        <a v-if="detail.link_google_maps" :href="detail.link_google_maps" target="_blank" rel="noopener"
+                          class="inline-flex items-center gap-2 mt-3 text-primary underline">
+                          <Lucide icon="Map" class="w-4 h-4" />
+                          Buka di Google Maps
+                        </a>
 
-      <CardSection title="Penyimpanan" icon="Package">
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Jenis Penyimpanan</span>
-            <span class="font-strong text-right">
-              {{ detail.storage_type_label || '-'
-              }}<template v-if="detail.storage_type_other"> &mdash; {{ detail.storage_type_other }}</template>
-            </span>
-          </div>
-          <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-            <span class="font-label">Kapasitas Penyimpanan</span>
-            <span class="font-strong text-right">{{ num(detail.storage_capacity) }}</span>
-          </div>
-        </dl>
+                        <div v-if="mapUrl" class="border border-slate-200 rounded-lg overflow-hidden">
+                          <iframe :src="mapUrl" class="w-full h-64 lg:h-full" loading="lazy"></iframe>
+                        </div>
+                        <div v-else
+                          class="flex justify-center items-center bg-slate-50 border border-slate-300 border-dashed rounded-lg h-64 lg:h-full text-body text-slate-500">
+                          Koordinat belum tersedia.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        <div class="mt-3">
-          <div class="font-label">Catatan Penyimpanan</div>
-          <div class="font-body mt-1 whitespace-pre-line">{{ detail.storage_notes || '-' }}</div>
-        </div>
-      </CardSection>
+                <div class="space-y-4">
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <div class="space-y-3">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Profil Bisnis & Operasional
+                      </h3>
+                      <div>
+                        <div class="text-form-label">Jenis Usaha</div>
+                        <div class="mt-1 text-body-strong">
+                          {{ detail.site_business_type || '-'
+                          }}<template v-if="detail.site_business_type_other"> &mdash; {{ detail.site_business_type_other
+                          }}</template>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Lingkungan</div>
+                        <div class="mt-1 text-body-strong">
+                          {{ detail.site_environment_label || '-'
+                          }}<template v-if="detail.site_environment_other"> &mdash; {{ detail.site_environment_other
+                          }}</template>
+                        </div>
+                      </div>
 
-      <CardSection title="Verifikasi Quality &amp; Quantity" icon="ClipboardCheck">
-        <div class="space-y-4">
-          <div>
-            <div class="font-label mb-1">Metode Pengecekan Quality</div>
-            <div
-              v-if="methodChips(detail.quality_checking_method_labels, detail.quality_checking_method_other).length"
-              class="flex flex-wrap gap-1.5">
-              <span
-                v-for="chip in methodChips(detail.quality_checking_method_labels, detail.quality_checking_method_other)"
-                :key="chip"
-                class="font-label inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">{{ chip }}</span>
-            </div>
-            <div v-else class="font-body">-</div>
-          </div>
-          <div>
-            <div class="font-label">Catatan Quality</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.quality_checking_notes || '-' }}</div>
-          </div>
-          <div>
-            <div class="font-label mb-1">Metode Pengecekan Quantity</div>
-            <div
-              v-if="methodChips(detail.quantity_checking_method_labels, detail.quantity_checking_method_other).length"
-              class="flex flex-wrap gap-1.5">
-              <span
-                v-for="chip in methodChips(detail.quantity_checking_method_labels, detail.quantity_checking_method_other)"
-                :key="chip"
-                class="font-label inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">{{ chip }}</span>
-            </div>
-            <div v-else class="font-body">-</div>
-          </div>
-          <div>
-            <div class="font-label">Catatan Quantity</div>
-            <div class="font-body mt-1 whitespace-pre-line">{{ detail.quantity_checking_notes || '-' }}</div>
-          </div>
-        </div>
-      </CardSection>
+                      <div>
+                        <div class="text-form-label">Catatan Survei</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.survey_notes || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Catatan Lingkungan</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.site_environment_notes || '-' }}
+                        </div>
+                      </div>
 
-      <CardSection title="Vessel / Jetty" icon="Anchor">
-        <div v-if="!supportsVessel" class="font-body text-slate-500">Site tidak mendukung pengiriman via vessel.</div>
+                      <div>
+                        <div class="text-form-label">Kompetitor</div>
+                        <div class="mt-1 text-body-strong">{{ detail.competitors || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Jam Operasional</div>
+                        <div class="mt-1 text-body-strong">{{ detail.operating_hours || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
 
-        <template v-else>
-          <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Jenis Vessel</span>
-              <span class="font-strong text-right">
-                {{ detail.vessel_type_label || '-'
-                }}<template v-if="detail.vessel_type_other"> &mdash; {{ detail.vessel_type_other }}</template>
-              </span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Kapasitas Kargo Vessel</span>
-              <span class="font-strong text-right">{{ num(detail.vessel_cargo_capacity) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Metode Unloading Vessel</span>
-              <span class="font-strong text-right">
-                {{ detail.vessel_unloading_method_label || '-'
-                }}<template v-if="detail.vessel_unloading_method_other"> &mdash; {{ detail.vessel_unloading_method_other }}</template>
-              </span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Jenis Jetty</span>
-              <span class="font-strong text-right">{{ detail.jetty_type || '-' }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Maks LOA</span>
-              <span class="font-strong text-right">{{ num(detail.max_loa) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Min PBL</span>
-              <span class="font-strong text-right">{{ num(detail.min_pbl) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Draft (LWS)</span>
-              <span class="font-strong text-right">{{ num(detail.draft_lws) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Kapasitas Jetty (DWT)</span>
-              <span class="font-strong text-right">{{ num(detail.jetty_capacity_dwt) }}</span>
-            </div>
-          </dl>
-
-          <div class="mt-3 space-y-4">
-            <div>
-              <div class="font-label mb-1">Metode Quantity Vessel</div>
-              <div
-                v-if="methodChips(detail.vessel_quantity_checking_method_labels, detail.vessel_quantity_checking_method_other).length"
-                class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="chip in methodChips(detail.vessel_quantity_checking_method_labels, detail.vessel_quantity_checking_method_other)"
-                  :key="chip"
-                  class="font-label inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">{{ chip }}</span>
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Kebutuhan Produk & Volume/Bulan
+                    </h3>
+                    <div v-if="Array.isArray(detail.product_volume) && detail.product_volume.length"
+                      class="border border-slate-200 rounded-lg overflow-x-auto">
+                      <Table bordered class="text-body">
+                        <Table.Thead class="bg-slate-50 text-form-label">
+                          <Table.Tr>
+                            <Table.Th>Produk</Table.Th>
+                            <Table.Th>Volume / Bulan</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody class="bg-white">
+                          <Table.Tr v-for="(item, i) in detail.product_volume" :key="i">
+                            <Table.Td class="text-body-strong">{{ item.produk || '-' }}</Table.Td>
+                            <Table.Td class="text-body-strong">{{ item.volume_bulan || '-' }}</Table.Td>
+                          </Table.Tr>
+                        </Table.Tbody>
+                      </Table>
+                    </div>
+                    <div v-else class="text-body">Belum ada data produk & volume.</div>
+                  </div>
+                </div>
               </div>
-              <div v-else class="font-body">-</div>
-              <div class="font-body mt-1 whitespace-pre-line text-slate-600">
-                {{ detail.vessel_quantity_checking_notes || '-' }}
+
+            </div>
+          </Tab.Panel>
+
+          <Tab.Panel>
+            <div class="space-y-6 p-6 box">
+              <div class="gap-4 grid grid-cols-2">
+                <div class="space-y-4">
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Kapasitas Transport
+                    </h3>
+                    <div class="gap-3 grid grid-cols-3">
+                      <div class="bg-slate-50 p-3 border border-slate-100 rounded-lg">
+                        <div class="text-caption text-slate-500">Kapasitas Truk</div>
+                        <div class="num-md">{{ num(detail.max_truck_capacity_min) }}&ndash;{{
+                          num(detail.max_truck_capacity_max) }}</div>
+                      </div>
+                      <div class="bg-slate-50 p-3 border border-slate-100 rounded-lg">
+                        <div class="text-caption text-slate-500">Volume Kirim Minimum</div>
+                        <div class="num-md">{{ num(detail.min_vol_kirim) }}</div>
+                      </div>
+                      <div class="bg-slate-50 p-3 border border-slate-100 rounded-lg">
+                        <div class="text-caption text-slate-500">Jarak dari Depot</div>
+                        <div class="num-md">{{ num(detail.distance_from_depot) }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Rute
+                    </h3>
+                    <div class="space-y-3">
+                      <div>
+                        <div class="text-form-label">Rute Lokasi</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.rute_lokasi || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Catatan Lokasi</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.note_lokasi || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Catatan Akses</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.access_notes || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Biaya Rute
+                    </h3>
+                    <div v-if="Array.isArray(detail.route_costs) && detail.route_costs.length"
+                      class="border border-slate-200 rounded-lg overflow-x-auto">
+                      <Table bordered class="text-body">
+                        <Table.Thead class="bg-slate-50 text-form-label">
+                          <Table.Tr>
+                            <Table.Th>Jenis Biaya</Table.Th>
+                            <Table.Th>Nominal</Table.Th>
+                            <Table.Th>Catatan</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody class="bg-white">
+                          <Table.Tr v-for="(item, i) in detail.route_costs" :key="i">
+                            <Table.Td class="text-body-strong">{{ item.cost_type || '-' }}</Table.Td>
+                            <Table.Td class="text-body-strong">{{ num(item.amount) }}</Table.Td>
+                            <Table.Td class="text-body-strong">{{ item.notes || '-' }}</Table.Td>
+                          </Table.Tr>
+                        </Table.Tbody>
+                      </Table>
+                    </div>
+                    <div v-else class="text-body">Belum ada data biaya rute.</div>
+                  </div>
+                </div>
+
+                <div class="space-y-4">
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Unloading
+                    </h3>
+                    <div class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                      <div>
+                        <div class="text-form-label">Metode Unloading</div>
+                        <div class="mt-1 text-body-strong">{{ detail.unloading_method || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Maks Truk / Hari</div>
+                        <div class="mt-1 text-body-strong">{{ num(detail.max_trucks_per_day) }}</div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <div class="text-form-label">Catatan Unloading</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.unloading_notes || '-' }}</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Penyimpanan
+                    </h3>
+                    <div class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                      <div>
+                        <div class="text-form-label">Jenis Penyimpanan</div>
+                        <div class="mt-1 text-body-strong">
+                          {{ detail.storage_type_label || '-'
+                          }}<template v-if="detail.storage_type_other"> &mdash; {{ detail.storage_type_other
+                          }}</template>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="text-form-label">Kapasitas Penyimpanan</div>
+                        <div class="mt-1 text-body-strong">{{ rawText(detail.storage_capacity) }}</div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <div class="text-form-label">Catatan Penyimpanan</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.storage_notes || '-' }}</div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Quality Check
+                    </h3>
+                    <div class="mb-1 text-form-label">Metode</div>
+                    <div
+                      v-if="methodChips(detail.quality_checking_method_labels, detail.quality_checking_method_other).length"
+                      class="flex flex-wrap gap-1.5">
+                      <Badge
+                        v-for="chip in methodChips(detail.quality_checking_method_labels, detail.quality_checking_method_other)"
+                        :key="chip" variant="soft-dark">{{ chip }}</Badge>
+                    </div>
+                    <div v-else class="text-body-strong">-</div>
+                    <div class="mt-3">
+                      <div class="text-form-label">Catatan</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.quality_checking_notes || '-' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 border border-slate-200 rounded-lg">
+                    <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                      <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Quantity Check
+                    </h3>
+                    <div class="mb-1 text-form-label">Metode</div>
+                    <div
+                      v-if="methodChips(detail.quantity_checking_method_labels, detail.quantity_checking_method_other).length"
+                      class="flex flex-wrap gap-1.5">
+                      <Badge
+                        v-for="chip in methodChips(detail.quantity_checking_method_labels, detail.quantity_checking_method_other)"
+                        :key="chip" variant="soft-dark">{{ chip }}</Badge>
+                    </div>
+                    <div v-else class="text-body-strong">-</div>
+                    <div class="mt-3">
+                      <div class="text-form-label">Catatan</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.quantity_checking_notes || '-' }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <div class="font-label mb-1">Metode Quality Vessel</div>
-              <div
-                v-if="methodChips(detail.vessel_quality_checking_method_labels, detail.vessel_quality_checking_method_other).length"
-                class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="chip in methodChips(detail.vessel_quality_checking_method_labels, detail.vessel_quality_checking_method_other)"
-                  :key="chip"
-                  class="font-label inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">{{ chip }}</span>
+          </Tab.Panel>
+
+          <Tab.Panel>
+            <div class="p-6 box">
+              <div v-if="!supportsVessel"
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Anchor" class="w-6 h-6 text-slate-400" />
+                <div class="text-body-strong">Vessel Delivery</div>
+                <div class="text-body text-slate-500">Tidak didukung di site ini.</div>
               </div>
-              <div v-else class="font-body">-</div>
-              <div class="font-body mt-1 whitespace-pre-line text-slate-600">
-                {{ detail.vessel_quality_checking_notes || '-' }}
+
+              <div v-else class="space-y-4">
+                <div class="gap-4 grid grid-cols-2">
+                  <div class="space-y-4">
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Vessel
+                      </h3>
+                      <div class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                        <div>
+                          <div class="text-form-label">Jenis Vessel</div>
+                          <div class="mt-1 text-body-strong">
+                            {{ detail.vessel_type_label || '-'
+                            }}<template v-if="detail.vessel_type_other"> &mdash; {{ detail.vessel_type_other
+                            }}</template>
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-form-label">Kapasitas Kargo</div>
+                          <div class="mt-1 text-body-strong">{{ rawText(detail.vessel_cargo_capacity) }}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Jetty
+                      </h3>
+                      <div class="gap-x-6 gap-y-3 grid grid-cols-1 sm:grid-cols-2">
+                        <div>
+                          <div class="text-form-label">Jenis Jetty</div>
+                          <div class="mt-1 text-body-strong">{{ detail.jetty_type || '-' }}</div>
+                        </div>
+                        <div>
+                          <div class="text-form-label">Maks LOA</div>
+                          <div class="mt-1 text-body-strong">{{ num(detail.max_loa) }}</div>
+                        </div>
+                        <div>
+                          <div class="text-form-label">Min PBL</div>
+                          <div class="mt-1 text-body-strong">{{ num(detail.min_pbl) }}</div>
+                        </div>
+                        <div>
+                          <div class="text-form-label">Draft (LWS)</div>
+                          <div class="mt-1 text-body-strong">{{ num(detail.draft_lws) }}</div>
+                        </div>
+                        <div class="sm:col-span-2">
+                          <div class="text-form-label">Kapasitas Jetty (DWT)</div>
+                          <div class="mt-1 text-body-strong">{{ num(detail.jetty_capacity_dwt) }}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Izin & Dokumen
+                      </h3>
+                      <div class="space-y-3">
+                        <div>
+                          <div class="text-form-label">Info Izin Jetty</div>
+                          <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.jetty_permit_info || '-' }}
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-form-label">Persyaratan Dokumen</div>
+                          <div class="mt-1 text-body-strong whitespace-pre-line">{{ detail.document_requirements || '-' }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="space-y-4">
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Vessel Handling
+                      </h3>
+                      <div class="text-form-label">Metode Unloading Vessel</div>
+                      <div class="mt-1 text-body-strong">
+                        {{ detail.vessel_unloading_method_label || '-'
+                        }}<template v-if="detail.vessel_unloading_method_other"> &mdash; {{
+                          detail.vessel_unloading_method_other }}</template>
+                      </div>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Vessel Quality Check
+                      </h3>
+                      <div class="mb-1 text-form-label">Metode</div>
+                      <div
+                        v-if="methodChips(detail.vessel_quality_checking_method_labels, detail.vessel_quality_checking_method_other).length"
+                        class="flex flex-wrap gap-1.5">
+                        <Badge
+                          v-for="chip in methodChips(detail.vessel_quality_checking_method_labels, detail.vessel_quality_checking_method_other)"
+                          :key="chip" variant="soft-dark">{{ chip }}</Badge>
+                      </div>
+                      <div v-else class="text-body-strong">-</div>
+                      <div class="mt-3">
+                        <div class="text-form-label">Catatan</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">
+                          {{ detail.vessel_quality_checking_notes || '-' }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                        <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Vessel Quantity Check
+                      </h3>
+                      <div class="mb-1 text-form-label">Metode</div>
+                      <div
+                        v-if="methodChips(detail.vessel_quantity_checking_method_labels, detail.vessel_quantity_checking_method_other).length"
+                        class="flex flex-wrap gap-1.5">
+                        <Badge
+                          v-for="chip in methodChips(detail.vessel_quantity_checking_method_labels, detail.vessel_quantity_checking_method_other)"
+                          :key="chip" variant="soft-dark">{{ chip }}</Badge>
+                      </div>
+                      <div v-else class="text-body-strong">-</div>
+                      <div class="mt-3">
+                        <div class="text-form-label">Catatan</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">
+                          {{ detail.vessel_quantity_checking_notes || '-' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="gap-4 grid grid-cols-2">
+                </div>
               </div>
             </div>
-            <div>
-              <div class="font-label">Info Izin Jetty</div>
-              <div class="font-body mt-1 whitespace-pre-line">{{ detail.jetty_permit_info || '-' }}</div>
-            </div>
-            <div>
-              <div class="font-label">Persyaratan Dokumen</div>
-              <div class="font-body mt-1 whitespace-pre-line">{{ detail.document_requirements || '-' }}</div>
-            </div>
-          </div>
-        </template>
-      </CardSection>
+          </Tab.Panel>
 
-      <CardSection title="Lokasi &amp; Koordinat" icon="Map">
-        <div class="space-y-3">
-          <div>
-            <div class="font-label">Alamat</div>
-            <div class="font-body mt-1">
-              {{ [detail.address?.address_line, detail.address?.village?.name, detail.address?.district?.name,
-                detail.address?.regency?.name, detail.address?.province?.name,
-                detail.address?.postal_code].filter(Boolean).join(', ') || '-' }}
+          <Tab.Panel>
+            <div class="p-6 box">
+              <div v-if="photoCategoriesWithFiles.length" class="gap-4 grid grid-cols-1 lg:grid-cols-2">
+                <div v-for="category in photoCategoriesWithFiles" :key="category.field"
+                  class="p-4 border border-slate-200 rounded-lg">
+                  <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
+                    <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />{{ category.label }}
+                  </h3>
+                  <div class="gap-3 grid grid-cols-2 sm:grid-cols-3">
+                    <a v-for="photo in category.files" :key="photo.id" :href="photo.url ?? undefined" target="_blank"
+                      rel="noopener" class="group block border border-slate-200 rounded-lg overflow-hidden">
+                      <img v-if="photo.url" :src="photo.url" :alt="photo.file_name"
+                        class="group-hover:opacity-90 w-full h-28 object-cover transition" />
+                      <div v-else class="flex justify-center items-center bg-slate-50 w-full h-28">
+                        <Lucide icon="FileWarning" class="w-6 h-6 text-slate-400" />
+                      </div>
+                      <div class="px-2 py-1.5">
+                        <div class="text-caption text-slate-600 truncate">{{ photo.file_name }}</div>
+                        <div v-if="photo.notes" class="text-caption text-slate-400 truncate">{{ photo.notes }}</div>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div v-else
+                class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
+                <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
+                <div class="text-body">Belum ada foto yang diunggah.</div>
+              </div>
             </div>
-          </div>
-
-          <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Latitude</span>
-              <span class="font-strong text-right">{{ detail.latitude_lokasi ?? '-' }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Longitude</span>
-              <span class="font-strong text-right">{{ detail.longitude_lokasi ?? '-' }}</span>
-            </div>
-            <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-              <span class="font-label">Link Google Maps</span>
-              <span class="font-strong text-right">
-                <a v-if="detail.link_google_maps" :href="detail.link_google_maps" target="_blank" rel="noopener"
-                  class="text-primary underline">Buka Peta</a>
-                <template v-else>-</template>
-              </span>
-            </div>
-          </dl>
-
-          <div v-if="mapUrl" class="overflow-hidden rounded-lg border border-slate-200">
-            <iframe :src="mapUrl" class="h-72 w-full" loading="lazy"></iframe>
-          </div>
-        </div>
-      </CardSection>
-
-      <CardSection title="Kontak Site" icon="Users">
-        <div v-if="Array.isArray(detail.contacts) && detail.contacts.length" class="overflow-x-auto">
-          <Table bordered sm class="font-body">
-            <Table.Thead class="bg-slate-50">
-              <Table.Th class="font-label">Nama</Table.Th>
-              <Table.Th class="font-label">Jabatan</Table.Th>
-              <Table.Th class="font-label">Telepon</Table.Th>
-              <Table.Th class="font-label">Mobile</Table.Th>
-              <Table.Th class="font-label">Email</Table.Th>
-            </Table.Thead>
-            <Table.Tbody class="bg-white">
-              <Table.Tr v-for="c in detail.contacts" :key="c.id_contact ?? c.email ?? c.full_name">
-                <Table.Td class="font-strong">{{ c.full_name || '-' }}</Table.Td>
-                <Table.Td>{{ c.position || '-' }}</Table.Td>
-                <Table.Td>{{ c.phone || '-' }}</Table.Td>
-                <Table.Td>{{ c.mobile || '-' }}</Table.Td>
-                <Table.Td>{{ c.email || '-' }}</Table.Td>
-              </Table.Tr>
-            </Table.Tbody>
-          </Table>
-        </div>
-        <div v-else
-          class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-          <Lucide icon="Inbox" class="h-6 w-6 text-slate-400" />
-          <div class="font-body">Belum ada kontak site.</div>
-        </div>
-      </CardSection>
+          </Tab.Panel>
+        </Tab.Panels>
+      </Tab.Group>
     </div>
 
     <template #sidebar>
       <CardSection v-if="detail" title="Status Approval" icon="ShieldCheck">
         <div class="space-y-4">
-          <div class="flex items-center gap-2">
-            <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-              :class="approvalBadgeClass(detail.approval?.status)">
-              {{ detail.approval?.status_label ?? 'Belum ada approval' }}
-            </span>
-            <span v-if="isInProgress" class="font-caption text-slate-500">
-              Langkah {{ detail.approval.current_step_order }}
-            </span>
+          <div>
+            <div class="mb-1.5 text-overline text-slate-400">Status Saat Ini</div>
+            <div class="flex items-center gap-2">
+              <Badge :variant="statusBadgeVariant(detail.approval?.status)">
+                {{ detail.approval?.status_label ?? 'Belum ada approval' }}
+              </Badge>
+              <span v-if="isInProgress" class="text-caption text-slate-500">
+                Langkah {{ detail.approval.current_step_order }}
+              </span>
+            </div>
           </div>
 
-          <div class="border-t border-slate-100 pt-3">
-            <div v-if="timelineError" class="font-body text-slate-500">Riwayat approval tidak tersedia.</div>
-            <div v-else-if="!timeline.length" class="font-body text-slate-500">Belum ada riwayat approval.</div>
-            <div v-else class="space-y-4">
-              <div v-for="cycle in timeline" :key="cycle.id_approval" class="rounded-lg border border-slate-200 p-3">
+          <div class="pt-3 border-slate-100 border-t">
+            <div class="mb-2 text-overline text-slate-400">Riwayat Review</div>
+            <div v-if="timelineError" class="text-body text-slate-500">Riwayat approval tidak tersedia.</div>
+            <div v-else-if="!timeline.length" class="text-body text-slate-500">Belum ada riwayat approval.</div>
+            <div v-else class="space-y-3">
+              <div v-for="cycle in timeline" :key="cycle.id_approval"
+                class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
                 <div class="space-y-3">
                   <div v-for="step in cycle.steps" :key="step.step_order"
-                    class="border-b border-slate-100 pb-2 last:border-0 last:pb-0">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="font-strong">{{ step.step_name || `Langkah ${step.step_order}` }}</span>
-                      <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-                        :class="stepBadgeClass(step.status)">{{ stepStatusLabel(step.status) }}</span>
+                    class="pb-2 last:pb-0 border-slate-200 last:border-0 border-b">
+                    <div class="flex justify-between items-center gap-2">
+                      <span class="text-body-strong text-slate-600">{{ step.step_name || `Langkah ${step.step_order}`
+                      }}</span>
+                      <Badge :variant="statusBadgeVariant(step.status)">{{ stepStatusLabel(step.status) }}</Badge>
                     </div>
-                    <div class="font-caption text-slate-500">
+                    <div class="text-caption text-slate-500">
                       {{ step.actor_name ?? '-' }} · {{ formatDateTime(step.acted_at) ?? '-' }}
                     </div>
                     <div v-if="step.decision_note"
-                      class="font-body mt-1 border-l-2 border-slate-200 pl-2 text-slate-600">
+                      class="mt-1 pl-2 border-slate-300 border-l-2 text-body text-slate-500">
                       {{ step.decision_note }}
                     </div>
                   </div>
@@ -587,15 +790,28 @@ function num(value: unknown): string {
       <CardSection v-if="isInProgress" title="Keputusan" icon="Gavel">
         <div class="space-y-3">
           <div class="flex gap-2">
-            <Button type="button" class="flex-1 items-center justify-center gap-2"
-              :variant="decisionMode === 'approve' ? 'primary' : 'outline-secondary'"
-              @click="decisionMode = 'approve'">
+            <Button type="button" class="flex-1 justify-center items-center gap-2"
+              :variant="decisionMode === 'approve' ? 'primary' : 'outline-secondary'" @click="decisionMode = 'approve'">
               Approve
             </Button>
-            <Button type="button" class="flex-1 items-center justify-center gap-2"
+            <Button type="button" class="flex-1 justify-center items-center gap-2"
               :variant="decisionMode === 'reject' ? 'danger' : 'outline-secondary'" @click="decisionMode = 'reject'">
               Reject
             </Button>
+          </div>
+
+          <div v-if="decisionMode === 'approve'">
+            <FormLabel>
+              Konfirmasi Wilayah Angkut
+              <RequiredAsterisk />
+            </FormLabel>
+            <FormSelect v-model="confirmedWilOa" :disabled="submitting">
+              <option value="">-- Pilih Wilayah --</option>
+              <option v-for="w in wilayahAngkuts" :key="w.id" :value="w.id">{{ w.name }}</option>
+            </FormSelect>
+            <small class="block mt-1 text-caption text-slate-500">
+              Diisi Marketing: <strong>{{ wilayahAngkutName }}</strong>. Ubah kalau dirasa kurang sesuai.
+            </small>
           </div>
 
           <div>
@@ -603,10 +819,10 @@ function num(value: unknown): string {
             <FormTextarea v-model="note" rows="3" :disabled="submitting" />
           </div>
 
-          <Button class="inline-flex w-full items-center justify-center gap-2"
+          <Button class="inline-flex justify-center items-center gap-2 w-full"
             :variant="decisionMode === 'approve' ? 'primary' : 'danger'" :disabled="decisionSubmitDisabled"
             @click="confirmOpen = true">
-            <Lucide icon="Send" class="h-4 w-4" />
+            <Lucide icon="Send" class="w-4 h-4" />
             Ajukan Keputusan
           </Button>
         </div>
@@ -614,10 +830,10 @@ function num(value: unknown): string {
 
       <CardSection v-if="isDecided" title="Buka Ulang Keputusan" icon="RotateCcw">
         <div class="space-y-3">
-          <p class="font-body">Memulai siklus review baru; status kembali ke Menunggu.</p>
-          <Button variant="outline-secondary" class="inline-flex w-full items-center justify-center gap-2"
+          <p class="text-body">Memulai siklus review baru; status kembali ke Menunggu.</p>
+          <Button variant="outline-secondary" class="inline-flex justify-center items-center gap-2 w-full"
             @click="confirmResetOpen = true">
-            <Lucide icon="RotateCcw" class="h-4 w-4" />
+            <Lucide icon="RotateCcw" class="w-4 h-4" />
             Reset Keputusan
           </Button>
         </div>
@@ -626,9 +842,8 @@ function num(value: unknown): string {
   </FormPage>
 
   <ConfirmDialog :open="confirmOpen"
-    :title="decisionMode === 'approve' ? 'Setujui LCR site ini?' : 'Tolak LCR site ini?'"
-    :description="decisionMode === 'approve'
-      ? 'Site akan dinyatakan lolos verifikasi Logistik.'
+    :title="decisionMode === 'approve' ? 'Setujui LCR site ini?' : 'Tolak LCR site ini?'" :description="decisionMode === 'approve'
+      ? `Site akan dinyatakan lolos verifikasi Logistik dengan wilayah angkut final: ${confirmedWilOaName}.`
       : 'Alasan penolakan akan tercatat di riwayat approval.'"
     :confirm-text="decisionMode === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak'"
     :icon="decisionMode === 'approve' ? 'Check' : 'X'"
@@ -638,6 +853,6 @@ function num(value: unknown): string {
 
   <ConfirmDialog :open="confirmResetOpen" title="Buka ulang review LCR ini?"
     description="Siklus approval baru akan dimulai." confirm-text="Ya, Buka Ulang" icon="RotateCcw"
-    icon-class="bg-amber-100 text-amber-600" variant="warning" :loading="submitting"
-    @close="confirmResetOpen = false" @confirm="resetDecision" />
+    icon-class="bg-amber-100 text-amber-600" variant="warning" :loading="submitting" @close="confirmResetOpen = false"
+    @confirm="resetDecision" />
 </template>

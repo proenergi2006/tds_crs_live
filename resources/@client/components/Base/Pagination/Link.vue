@@ -11,7 +11,7 @@ export interface LinkProps extends /* @vue-ignore */ LiHTMLAttributes {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { computed, type LiHTMLAttributes, useAttrs } from "vue";
 import Button from "../Button";
 

@@ -316,16 +316,16 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($site->contacts as $c)
+                @if ($site->contact)
                     <tr>
-                        <td>{{ $dash($c->full_name) }}</td>
-                        <td>{{ $dash($c->position) }}</td>
-                        <td>{{ $dash($c->mobile) }}</td>
-                        <td>{{ $dash($c->email) }}</td>
+                        <td>{{ $dash($site->contact->full_name) }}</td>
+                        <td>{{ $dash($site->contact->position) }}</td>
+                        <td>{{ $dash($site->contact->mobile) }}</td>
+                        <td>{{ $dash($site->contact->email) }}</td>
                     </tr>
-                @empty
+                @else
                     <tr><td colspan="4" class="muted">Belum ada PIC tercatat.</td></tr>
-                @endforelse
+                @endif
             </tbody>
         </table>
     </div>
@@ -573,11 +573,11 @@
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
                 <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                    <div style="font-size: 7.5pt; color: #64748b;">Fill by,</div>
+                    <div style="font-size: 7.5pt; color: #64748b;">Proposed by,</div>
                     <div class="sig-title">Marketing</div>
                     <table class="data-table" style="border-spacing: 0;">
                         <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name:</td></tr>
+                        <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
                         <tr><td class="label">Date:</td></tr>
                     </table>
                     <div class="sig-line"></div>
@@ -587,17 +587,17 @@
                     <div class="sig-title">Logistik</div>
                     <table class="data-table" style="border-spacing: 0;">
                         <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name:</td></tr>
+                        <tr><td class="label" style="width: 30%;">Name: {{ $logisticsReviewerBySite[$site->id_lcr] ?? '-' }}</td></tr>
                         <tr><td class="label">Date:</td></tr>
                     </table>
                     <div class="sig-line"></div>
                 </td>
                 <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                    <div style="font-size: 7.5pt; color: #64748b;">&nbsp;</div>
-                    <div class="sig-title">Sales Area Manager</div>
+                    <div style="font-size: 7.5pt; color: #64748b;">Approved by,</div>
+                    <div class="sig-title">Supervisor</div>
                     <table class="data-table" style="border-spacing: 0;">
                         <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name: Robby Pratama P</td></tr>
+                        <tr><td class="label" style="width: 30%;">Name: {{ $supervisorName }}</td></tr>
                         <tr><td class="label">Date:</td></tr>
                     </table>
                     <div class="sig-line"></div>

@@ -2,7 +2,7 @@
 import "@/assets/css/vendors/simplebar.css";
 import "@/assets/css/components/mobile-menu.css";
 import { useRoute, useRouter } from "vue-router";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import defaultLogoUrl from "@/assets/images/logo.png";
 import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import Lucide from "@/components/Base/Lucide";

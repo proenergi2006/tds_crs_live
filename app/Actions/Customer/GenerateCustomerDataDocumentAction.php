@@ -10,7 +10,7 @@ class GenerateCustomerDataDocumentAction
     public function execute(Customer $customer): array
     {
         $customer->load([
-            'user',
+            'user:id,name',
             'addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village',
             'contacts',
             'payment',
@@ -28,8 +28,9 @@ class GenerateCustomerDataDocumentAction
             fn ($a) => in_array($a->address_type, [CustomerAddressType::HeadOffice, CustomerAddressType::RegisteredNpwp, CustomerAddressType::SiteAddress], true)
         );
 
-        $contactsByType = collect(['other' => $customer->contacts]);
+        $contacts = $customer->contacts->whereNull('id_lcr')->values();
+        $marketingName = $customer->user?->name ?? '-';
 
-        return compact('customer', 'headOfficeAddress', 'npwpAddress', 'otherAddresses', 'contactsByType');
+        return compact('customer', 'headOfficeAddress', 'npwpAddress', 'otherAddresses', 'contacts', 'marketingName');
     }
 }

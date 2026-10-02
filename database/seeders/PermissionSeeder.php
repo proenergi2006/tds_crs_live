@@ -269,6 +269,12 @@ class PermissionSeeder extends Seeder
             'roles'       => [7],
         ],
         [
+            'name'        => 'logistik.master.consume',
+            'module'      => 'logistik',
+            'description' => 'Baca master logistik untuk form Penawaran (Marketing/KAE): daftar Transporter, Transport Area, Volume & lookup tarif — tanpa CRUD & tanpa dokumen',
+            'roles'       => [4, 6, 12, 13, 14],
+        ],
+        [
             'name'        => 'logistik.delivery-plan.view',
             'module'      => 'logistik',
             'description' => 'Lihat dan kelola Delivery Plan (Logistik HO)',

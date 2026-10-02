@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLogisticDocuments;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Personnel extends Model
 {
+    use HasLogisticDocuments;
+
     protected $fillable = [
-        'id_transportir',
-        'nama',
+        'transporter_id',
+        'name',
         'photo',
-        'nama_dokumen',
-        'masa_berlaku',
-        'lampiran',
         'is_active',
         'created_by',
         'updated_by',
@@ -20,11 +21,10 @@ class Personnel extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'masa_berlaku' => 'date',
     ];
 
-    public function transportir()
+    public function transporter(): BelongsTo
     {
-        return $this->belongsTo(Transportir::class, 'id_transportir');
+        return $this->belongsTo(Transporter::class);
     }
 }

@@ -218,14 +218,14 @@ function handleClose() {
                 <FormLabel htmlFor="settings-profil-nama">Nama Lengkap</FormLabel>
                 <FormInput id="settings-profil-nama" type="text" v-model="profileForm.name"
                   :class="getProfileFieldError('name') ? 'border-rose-500' : ''" />
-                <small v-if="getProfileFieldError('name')" class="font-caption !text-rose-600">{{
+                <small v-if="getProfileFieldError('name')" class="text-caption !text-rose-600">{{
                   getProfileFieldError('name') }}</small>
               </div>
               <div>
                 <FormLabel htmlFor="settings-profil-telepon">No Telepon</FormLabel>
                 <FormInput id="settings-profil-telepon" type="text" v-model="profileForm.no_telepon"
                   :class="getProfileFieldError('no_telepon') ? 'border-rose-500' : ''" />
-                <small v-if="getProfileFieldError('no_telepon')" class="font-caption !text-rose-600">{{
+                <small v-if="getProfileFieldError('no_telepon')" class="text-caption !text-rose-600">{{
                   getProfileFieldError('no_telepon') }}</small>
               </div>
               <div>
@@ -252,7 +252,7 @@ function handleClose() {
                 <FormInput id="settings-akun-old-password" type="password" placeholder="Masukkan password lama"
                   v-model="passwordForm.current_password"
                   :class="getPasswordFieldError('current_password') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('current_password')" class="font-caption !text-rose-600">{{
+                <small v-if="getPasswordFieldError('current_password')" class="text-caption !text-rose-600">{{
                   getPasswordFieldError('current_password') }}</small>
               </div>
               <div>
@@ -260,7 +260,7 @@ function handleClose() {
                 <FormInput id="settings-akun-new-password" type="password" placeholder="Masukkan password baru"
                   v-model="passwordForm.password"
                   :class="getPasswordFieldError('password') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('password')" class="font-caption !text-rose-600">{{
+                <small v-if="getPasswordFieldError('password')" class="text-caption !text-rose-600">{{
                   getPasswordFieldError('password') }}</small>
               </div>
               <div>
@@ -268,7 +268,7 @@ function handleClose() {
                 <FormInput id="settings-akun-confirm-password" type="password" placeholder="Ulangi password baru"
                   v-model="passwordForm.password_confirmation"
                   :class="getPasswordFieldError('password_confirmation') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('password_confirmation')" class="font-caption !text-rose-600">{{
+                <small v-if="getPasswordFieldError('password_confirmation')" class="text-caption !text-rose-600">{{
                   getPasswordFieldError('password_confirmation') }}</small>
               </div>
             </div>

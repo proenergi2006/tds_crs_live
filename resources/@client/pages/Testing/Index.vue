@@ -1,8 +1,4 @@
 <script setup lang="ts">
-/* Section: static demo data — content copied from Verification/Penawaran/Detail,
-   stripped of all frontend logic. Purpose is to showcase the global typography
-   classes (font-display, font-header, font-body, ...). */
-
 import Button from '@/components/Base/Button';
 import Lucide from '@/components/Base/Lucide';
 import Table from '@/components/Base/Table';
@@ -57,8 +53,6 @@ const items = [
   { name: 'Batu Screening', jenis: 'Agregat', ukuran: '5-10 mm / Ton', persen: '15', volume: '1.500' },
 ];
 
-/* Section: Stepper component demo — SystemDesign/Stepper, horizontal & vertical,
-   variasi jumlah step untuk uji koneksi connector-based architecture. */
 function buildSteps(count: number, activeIndex: number): StepItem[] {
   return Array.from({ length: count }, (_, i): StepItem => ({
     title: `Step ${i + 1}`,
@@ -105,29 +99,26 @@ const approvalSteps = [
   { title: 'Approved OM', description: 'Disetujui Operations Manager. Penawaran final.', state: 'pending', timestamp: '' },
 ];
 
-/* Section: type scale legend — name + sample for every typography class. */
 const typeScale = [
-  { cls: 'font-display', role: 'Judul halaman / hero', sample: 'Detail Penawaran' },
-  { cls: 'font-header', role: 'Judul kartu / section', sample: 'Informasi Umum' },
-  { cls: 'font-section', role: 'Judul sub-grup dalam kartu', sample: 'Ketentuan Transaksi' },
-  { cls: 'font-eyebrow', role: 'Overline di atas judul', sample: 'Modul Penawaran' },
-  { cls: 'font-label', role: 'Label field / kolom', sample: 'Tipe Pembayaran' },
-  { cls: 'font-lead', role: 'Paragraf pendukung judul', sample: 'Informasi lengkap penawaran beserta rincian harga.' },
-  { cls: 'font-body', role: 'Paragraf / teks tabel default', sample: 'Penawaran ini berlaku selama periode yang tercantum.' },
-  { cls: 'font-strong', role: 'Nilai yang ditekankan', sample: 'PT Batu Makmur Sentosa' },
-  { cls: 'font-caption', role: 'Metadata samar', sample: 'Terakhir diperbarui 23 Jun 2026' },
+  { cls: 'text-screen-title', role: 'Judul halaman / hero', sample: 'Detail Penawaran' },
+  { cls: 'text-section-title', role: 'Judul kartu / section', sample: 'Informasi Umum' },
+  { cls: 'text-overline', role: 'Judul sub-grup dalam kartu', sample: 'Ketentuan Transaksi' },
+  { cls: 'text-overline', role: 'Overline di atas judul', sample: 'Modul Penawaran' },
+  { cls: 'text-form-label', role: 'Label field / kolom', sample: 'Tipe Pembayaran' },
+  { cls: 'text-body-lg', role: 'Paragraf pendukung judul', sample: 'Informasi lengkap penawaran beserta rincian harga.' },
+  { cls: 'text-body', role: 'Paragraf / teks tabel default', sample: 'Penawaran ini berlaku selama periode yang tercantum.' },
+  { cls: 'text-body-strong', role: 'Nilai yang ditekankan', sample: 'PT Batu Makmur Sentosa' },
+  { cls: 'text-caption', role: 'Metadata samar', sample: 'Terakhir diperbarui 23 Jun 2026' },
 ];
 
-/* Section: numeric scale — Barlow Condensed + tabular figures, kecil sampai display. */
 const numericScale = [
-  { cls: 'font-num-sm', role: 'Tabel padat / hitungan inline', sample: '1.250' },
-  { cls: 'font-num', role: 'Angka / nominal default', sample: 'Rp. 9.800.000' },
-  { cls: 'font-num-lg', role: 'Nilai yang ditekankan (kartu)', sample: 'Rp. 105.394.500' },
-  { cls: 'font-num-display', role: 'Angka statistik / KPI', sample: '1.284' },
-  { cls: 'font-num-display-lg', role: 'Metrik hero', sample: '98,6%' },
+  { cls: 'num-micro', role: 'Tabel padat / hitungan inline', sample: '1.250' },
+  { cls: 'num-sm', role: 'Angka / nominal default', sample: 'Rp. 9.800.000' },
+  { cls: 'num-md', role: 'Nilai yang ditekankan (kartu)', sample: 'Rp. 105.394.500' },
+  { cls: 'num-lg', role: 'Angka statistik / KPI', sample: '1.284' },
+  { cls: 'num-display', role: 'Metrik hero', sample: '98,6%' },
 ];
 
-/* Section: KPI stat cards — konteks nyata pemakaian angka display. */
 const stats = [
   { label: 'Total Penawaran', value: '1.284', delta: '+12% bln ini', icon: 'FileText', tone: 'text-indigo-600 bg-indigo-100' },
   { label: 'Nilai Disetujui', value: 'Rp. 4,2 M', delta: '+8% bln ini', icon: 'Wallet', tone: 'text-emerald-600 bg-emerald-100' },
@@ -137,98 +128,93 @@ const stats = [
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-x flex flex-col gap-6">
+    <div class="flex flex-col gap-6 intro-x">
 
-      <!-- TYPE SCALE LEGEND -->
-      <section class="rounded-lg bg-white p-6 shadow-sm">
-        <h2 class="font-header">Skala Typography</h2>
-        <p class="font-body mt-1">
+      <section class="bg-white shadow-sm p-6 rounded-lg">
+        <h2 class="text-section-title">Skala Typography</h2>
+        <p class="mt-1 text-body">
           Setiap baris memakai class-nya sendiri. Nama class ditandai di kanan.
         </p>
 
         <div class="mt-5 divide-y divide-slate-100">
           <div v-for="t in typeScale" :key="t.cls"
-            class="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            class="flex sm:flex-row flex-col sm:justify-between sm:items-center gap-1 sm:gap-6 py-3">
             <div :class="t.cls">{{ t.sample }}</div>
-            <div class="flex shrink-0 items-center gap-2">
-              <span class="font-caption hidden sm:inline">{{ t.role }}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="hidden sm:inline text-caption">{{ t.role }}</span>
               <code class="cls-tag">.{{ t.cls }}</code>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- KPI STAT CARDS — angka display dalam konteks -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div v-for="s in stats" :key="s.label" class="rounded-lg bg-white p-5 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-label">{{ s.label }}</span>
-            <div class="flex h-9 w-9 items-center justify-center rounded-full" :class="s.tone">
-              <Lucide :icon="(s.icon as any)" class="h-4 w-4" />
+      <div class="gap-4 grid grid-cols-1 sm:grid-cols-3">
+        <div v-for="s in stats" :key="s.label" class="bg-white shadow-sm p-5 rounded-lg">
+          <div class="flex justify-between items-center">
+            <span class="text-form-label">{{ s.label }}</span>
+            <div class="flex justify-center items-center rounded-full w-9 h-9" :class="s.tone">
+              <Lucide :icon="(s.icon as any)" class="w-4 h-4" />
             </div>
           </div>
-          <div class="font-num-display mt-3">{{ s.value }}</div>
-          <div class="font-caption mt-1">{{ s.delta }}</div>
+          <div class="mt-3 num-lg">{{ s.value }}</div>
+          <div class="mt-1 text-caption">{{ s.delta }}</div>
         </div>
       </div>
 
-      <!-- NUMERIC SCALE LEGEND -->
-      <section class="rounded-lg bg-white p-6 shadow-sm">
-        <h2 class="font-header">Skala Angka</h2>
-        <p class="font-body mt-1">
-          Khusus figur: Barlow Condensed dengan <em>tabular figures</em> agar rata di kolom.
+      <section class="bg-white shadow-sm p-6 rounded-lg">
+        <h2 class="text-section-title">Skala Angka</h2>
+        <p class="mt-1 text-body">
+          Khusus figur: Lexend dengan <em>tabular figures</em> agar rata di kolom.
         </p>
 
         <div class="mt-5 divide-y divide-slate-100">
           <div v-for="n in numericScale" :key="n.cls"
-            class="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            class="flex sm:flex-row flex-col sm:justify-between sm:items-center gap-1 sm:gap-6 py-3">
             <div :class="n.cls">{{ n.sample }}</div>
-            <div class="flex shrink-0 items-center gap-2">
-              <span class="font-caption hidden sm:inline">{{ n.role }}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="hidden sm:inline text-caption">{{ n.role }}</span>
               <code class="cls-tag">.{{ n.cls }}</code>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- STEPPER DEMO — SystemDesign/Stepper, horizontal & vertical, berbagai jumlah step -->
-      <section class="rounded-lg bg-white p-6 shadow-sm">
-        <h2 class="font-header">Stepper Component</h2>
-        <p class="font-body mt-1">
+      <section class="bg-white shadow-sm p-6 rounded-lg">
+        <h2 class="text-section-title">Stepper Component</h2>
+        <p class="mt-1 text-body">
           <code class="cls-tag">SystemDesign/Stepper</code> — arsitektur connector-based, horizontal & vertical
           memakai layout flex yang sama, otomatis menyesuaikan jumlah step.
         </p>
 
-        <div class="mt-6 flex flex-col gap-8">
-          <div v-for="demo in stepperDemos" :key="demo.label"
-            class="rounded-xl border border-slate-200 p-5">
-            <h3 class="font-section mb-4">{{ demo.label }} <span class="font-caption">({{ demo.steps.length }} step)</span></h3>
+        <div class="flex flex-col gap-8 mt-6">
+          <div v-for="demo in stepperDemos" :key="demo.label" class="p-5 border border-slate-200 rounded-xl">
+            <h3 class="mb-4 text-overline">{{ demo.label }} <span class="text-caption">({{ demo.steps.length }}
+                step)</span></h3>
 
-            <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div class="gap-8 grid grid-cols-1 lg:grid-cols-2">
               <div>
-                <p class="font-label mb-3">Horizontal</p>
-                <div class="overflow-x-auto rounded-lg bg-slate-50 p-4">
+                <p class="mb-3 text-form-label">Horizontal</p>
+                <div class="bg-slate-50 p-4 rounded-lg overflow-x-auto">
                   <div class="min-w-[560px]">
                     <Stepper :steps="demo.steps" direction="horizontal" size="sm" show-label />
                   </div>
                 </div>
               </div>
               <div>
-                <p class="font-label mb-3">Vertical</p>
-                <div class="rounded-lg bg-slate-50 p-4">
+                <p class="mb-3 text-form-label">Vertical</p>
+                <div class="bg-slate-50 p-4 rounded-lg">
                   <Stepper :steps="demo.steps" direction="vertical" size="sm" show-label />
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Variasi ukuran (size) pakai contoh 3-step -->
-          <div class="rounded-xl border border-slate-200 p-5">
-            <h3 class="font-section mb-4">Variasi Ukuran <span class="font-caption">(sm / md / lg)</span></h3>
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div class="p-5 border border-slate-200 rounded-xl">
+            <h3 class="mb-4 text-overline">Variasi Ukuran <span class="text-caption">(sm / md / lg)</span></h3>
+            <div class="gap-6 grid grid-cols-1 lg:grid-cols-3">
               <div v-for="s in (['sm', 'md', 'lg'] as const)" :key="s">
-                <p class="font-label mb-3">size="{{ s }}"</p>
-                <div class="rounded-lg bg-slate-50 p-4">
+                <p class="mb-3 text-form-label">size="{{ s }}"</p>
+                <div class="bg-slate-50 p-4 rounded-lg">
                   <Stepper :steps="stepperDemos[1].steps" direction="vertical" :size="s" show-status-badge />
                 </div>
               </div>
@@ -237,157 +223,150 @@ const stats = [
         </div>
       </section>
 
-      <!-- HEADER -->
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <p class="font-eyebrow">Modul Penawaran <code class="cls-tag">.font-eyebrow</code></p>
-          <h1 class="font-display mt-1">Detail Penawaran <code class="cls-tag">.font-display</code></h1>
-          <p class="font-lead mt-1">
-            Informasi lengkap penawaran <code>PNW/2026/06/0012</code> <code class="cls-tag">.font-lead</code>
+          <p class="text-overline">Modul Penawaran <code class="cls-tag">.text-overline</code></p>
+          <h1 class="mt-1 text-screen-title">Detail Penawaran <code class="cls-tag">.text-screen-title</code></h1>
+          <p class="mt-1 text-body-lg">
+            Informasi lengkap penawaran <code>PNW/2026/06/0012</code> <code class="cls-tag">.text-body-lg</code>
           </p>
         </div>
         <Button variant="outline-secondary">
-          <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+          <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
           Kembali
         </Button>
       </div>
 
-      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div class="gap-6 grid grid-cols-1 xl:grid-cols-3">
 
-        <!-- KIRI -->
         <div class="space-y-6 xl:col-span-2">
 
-          <!-- Informasi Harga Produk -->
-          <section class="rounded-lg bg-white shadow-sm">
+          <section class="bg-white shadow-sm rounded-lg">
             <div class="flex items-center gap-3 p-6">
               <div
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                <Lucide icon="Tag" class="h-5 w-5" />
+                class="flex justify-center items-center bg-indigo-100 rounded-full w-11 h-11 text-indigo-600 shrink-0">
+                <Lucide icon="Tag" class="w-5 h-5" />
               </div>
               <div class="flex items-center gap-2">
-                <h2 class="font-header">Informasi Harga Produk</h2>
-                <code class="cls-tag">.font-header</code>
+                <h2 class="text-section-title">Informasi Harga Produk</h2>
+                <code class="cls-tag">.text-section-title</code>
               </div>
             </div>
             <hr class="mb-4" />
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 px-6 pb-6 sm:grid-cols-2 lg:grid-cols-3">
+            <dl class="gap-x-8 gap-y-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6 pb-6">
               <div v-for="(f, i) in hargaProdukFields" :key="f.label">
-                <dt class="font-label">
+                <dt class="text-form-label">
                   {{ f.label }}
-                  <code v-if="i === 0" class="cls-tag">.font-label</code>
+                  <code v-if="i === 0" class="cls-tag">.text-form-label</code>
                 </dt>
-                <dd class="font-strong mt-1">
+                <dd class="mt-1 text-body-strong">
                   {{ f.value }}
-                  <code v-if="i === 0" class="cls-tag">.font-strong</code>
+                  <code v-if="i === 0" class="cls-tag">.text-body-strong</code>
                 </dd>
               </div>
             </dl>
           </section>
 
-          <!-- Informasi Umum -->
-          <section class="rounded-lg bg-white shadow-sm">
+          <section class="bg-white shadow-sm rounded-lg">
             <div class="flex items-center gap-3 p-6">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Lucide icon="FileText" class="h-5 w-5" />
+              <div class="flex justify-center items-center bg-primary/10 rounded-full w-11 h-11 text-primary shrink-0">
+                <Lucide icon="FileText" class="w-5 h-5" />
               </div>
-              <h2 class="font-header">Informasi Umum</h2>
+              <h2 class="text-section-title">Informasi Umum</h2>
             </div>
             <hr class="mb-4" />
             <div class="space-y-6 px-6 pb-6">
               <div v-for="(group, gi) in infoGroups" :key="group.label"
                 :class="gi > 0 ? 'border-t border-slate-100 pt-6' : ''">
-                <h3 class="font-section mb-4 flex items-center gap-2">
+                <h3 class="flex items-center gap-2 mb-4 text-overline">
                   {{ group.label }}
-                  <code v-if="gi === 0" class="cls-tag">.font-section</code>
+                  <code v-if="gi === 0" class="cls-tag">.text-overline</code>
                 </h3>
-                <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                <dl class="gap-x-8 gap-y-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   <div v-for="f in group.fields" :key="f.label" :class="(f as any).span === 2 ? 'sm:col-span-2' : ''">
-                    <dt class="font-label">{{ f.label }}</dt>
-                    <dd class="font-strong mt-1 whitespace-pre-line">{{ f.value }}</dd>
+                    <dt class="text-form-label">{{ f.label }}</dt>
+                    <dd class="mt-1 text-body-strong whitespace-pre-line">{{ f.value }}</dd>
                   </div>
                 </dl>
               </div>
             </div>
           </section>
 
-          <!-- Rincian Harga -->
-          <section class="rounded-lg bg-white shadow-sm">
+          <section class="bg-white shadow-sm rounded-lg">
             <div class="flex items-center gap-3 p-6">
               <div
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <Lucide icon="Wallet" class="h-5 w-5" />
+                class="flex justify-center items-center bg-emerald-100 rounded-full w-11 h-11 text-emerald-600 shrink-0">
+                <Lucide icon="Wallet" class="w-5 h-5" />
               </div>
-              <h2 class="font-header">Rincian Harga</h2>
+              <h2 class="text-section-title">Rincian Harga</h2>
             </div>
             <hr class="mb-4" />
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 px-6 pb-6 sm:grid-cols-2 lg:grid-cols-3">
+            <dl class="gap-x-8 gap-y-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6 pb-6">
               <div v-for="(f, i) in hargaFields" :key="f.label">
-                <dt class="font-label">{{ f.label }}</dt>
-                <dd class="font-num mt-1"
+                <dt class="text-form-label">{{ f.label }}</dt>
+                <dd class="mt-1 num-sm"
                   :class="f.tone === 'red' ? '!text-red-600' : f.tone === 'green' ? '!text-emerald-600' : ''">
                   {{ f.value }}
-                  <code v-if="i === 0" class="cls-tag">.font-num</code>
+                  <code v-if="i === 0" class="cls-tag">.num-sm</code>
                 </dd>
               </div>
             </dl>
           </section>
 
-          <!-- Rincian Item -->
-          <section class="rounded-lg bg-white shadow-sm">
+          <section class="bg-white shadow-sm rounded-lg">
             <div class="flex items-center gap-3 p-6">
               <div
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                <Lucide icon="Boxes" class="h-5 w-5" />
+                class="flex justify-center items-center bg-indigo-100 rounded-full w-11 h-11 text-indigo-600 shrink-0">
+                <Lucide icon="Boxes" class="w-5 h-5" />
               </div>
-              <h2 class="font-header">Rincian Item</h2>
+              <h2 class="text-section-title">Rincian Item</h2>
             </div>
             <hr class="mb-4" />
             <div class="px-6 pb-6">
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th class="font-label">Produk</Table.Th>
-                    <Table.Th class="font-label w-28 text-right">Persen</Table.Th>
-                    <Table.Th class="font-label w-40 text-right">Volume</Table.Th>
+                    <Table.Th class="text-form-label">Produk</Table.Th>
+                    <Table.Th class="w-28 text-form-label text-right">Persen</Table.Th>
+                    <Table.Th class="w-40 text-form-label text-right">Volume</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  <Table.Tr v-for="item in items" :key="item.name" class="transition hover:bg-slate-50">
+                  <Table.Tr v-for="item in items" :key="item.name" class="hover:bg-slate-50 transition">
                     <Table.Td>
-                      <div class="font-strong">{{ item.name }}</div>
-                      <div class="font-caption mt-0.5">
+                      <div class="text-body-strong">{{ item.name }}</div>
+                      <div class="mt-0.5 text-caption">
                         {{ item.jenis }} <span class="mx-1">·</span> {{ item.ukuran }}
                       </div>
                     </Table.Td>
-                    <Table.Td class="font-num-sm text-right">{{ item.persen }}%</Table.Td>
-                    <Table.Td class="font-num text-right">{{ item.volume }}</Table.Td>
+                    <Table.Td class="num-micro text-right">{{ item.persen }}%</Table.Td>
+                    <Table.Td class="num-sm text-right">{{ item.volume }}</Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
             </div>
           </section>
 
-          <!-- Catatan & Keterangan -->
-          <section class="rounded-lg bg-white shadow-sm">
+          <section class="bg-white shadow-sm rounded-lg">
             <div class="flex items-center gap-3 p-6">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <Lucide icon="StickyNote" class="h-5 w-5" />
+              <div class="flex justify-center items-center bg-amber-100 rounded-full w-11 h-11 text-amber-600 shrink-0">
+                <Lucide icon="StickyNote" class="w-5 h-5" />
               </div>
-              <h2 class="font-header">Catatan &amp; Keterangan</h2>
+              <h2 class="text-section-title">Catatan &amp; Keterangan</h2>
             </div>
             <hr class="mb-4" />
-            <div class="grid grid-cols-1 gap-6 px-6 pb-6 lg:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-section">Keterangan</div>
-                <p class="font-body mt-1 whitespace-pre-line">
+            <div class="gap-6 grid grid-cols-1 lg:grid-cols-2 px-6 pb-6">
+              <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                <div class="text-overline">Keterangan</div>
+                <p class="mt-1 text-body whitespace-pre-line">
                   Penawaran ini berlaku selama periode yang tercantum dan dapat ditinjau ulang jika
                   terjadi perubahan harga dasar produk.
-                  <code class="cls-tag">.font-body</code>
+                  <code class="cls-tag">.text-body</code>
                 </p>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="font-section">Syarat &amp; Ketentuan</div>
-                <p class="font-body mt-1 whitespace-pre-line">
+              <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                <div class="text-overline">Syarat &amp; Ketentuan</div>
+                <p class="mt-1 text-body whitespace-pre-line">
                   Harga belum termasuk biaya bongkar di lokasi tujuan. Toleransi penyusutan mengikuti
                   ketentuan yang disepakati kedua belah pihak.
                 </p>
@@ -397,56 +376,53 @@ const stats = [
 
         </div>
 
-        <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
-          <div class="sticky top-6 space-y-4">
+          <div class="top-6 sticky space-y-4">
 
-            <!-- Status Penawaran -->
-            <section class="rounded-lg bg-white shadow-sm">
+            <section class="bg-white shadow-sm rounded-lg">
               <div class="flex items-center gap-3 p-6">
                 <div
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-                  <Lucide icon="ShieldCheck" class="h-5 w-5" />
+                  class="flex justify-center items-center bg-success/10 rounded-full w-11 h-11 text-success shrink-0">
+                  <Lucide icon="ShieldCheck" class="w-5 h-5" />
                 </div>
-                <h2 class="font-header">Status Penawaran</h2>
+                <h2 class="text-section-title">Status Penawaran</h2>
               </div>
               <hr class="mb-4" />
               <ol class="space-y-5 px-6 pb-6">
                 <li v-for="step in approvalSteps" :key="step.title" class="flex gap-3">
-                  <div class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" :class="step.state === 'completed' ? 'bg-emerald-100 text-emerald-600'
+                  <div class="flex justify-center items-center mt-0.5 rounded-full w-6 h-6 shrink-0" :class="step.state === 'completed' ? 'bg-emerald-100 text-emerald-600'
                     : step.state === 'active' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'">
-                    <Lucide :icon="step.state === 'completed' ? 'Check' : 'Circle'" class="h-3.5 w-3.5" />
+                    <Lucide :icon="step.state === 'completed' ? 'Check' : 'Circle'" class="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div class="font-section !tracking-wide">{{ step.title }}</div>
-                    <p class="font-body mt-0.5">{{ step.description }}</p>
-                    <p v-if="step.timestamp" class="font-caption mt-0.5">{{ step.timestamp }}</p>
+                    <div class="text-overline !tracking-wide">{{ step.title }}</div>
+                    <p class="mt-0.5 text-body">{{ step.description }}</p>
+                    <p v-if="step.timestamp" class="mt-0.5 text-caption">{{ step.timestamp }}</p>
                   </div>
                 </li>
               </ol>
             </section>
 
-            <!-- Catatan Verifikasi -->
-            <section class="rounded-lg bg-white shadow-sm">
+            <section class="bg-white shadow-sm rounded-lg">
               <div class="flex items-center gap-3 p-6">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                  <Lucide icon="MessageSquare" class="h-5 w-5" />
+                <div class="flex justify-center items-center bg-blue-100 rounded-full w-11 h-11 text-blue-600 shrink-0">
+                  <Lucide icon="MessageSquare" class="w-5 h-5" />
                 </div>
-                <h2 class="font-header">Catatan Verifikasi</h2>
+                <h2 class="text-section-title">Catatan Verifikasi</h2>
               </div>
               <hr class="mb-4" />
               <div class="space-y-3 px-6 pb-6">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div class="font-section">Catatan Verifikasi BM</div>
-                  <p class="font-body mt-1 whitespace-pre-line">Harga sudah sesuai price list periode berjalan.</p>
+                <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                  <div class="text-overline">Catatan Verifikasi BM</div>
+                  <p class="mt-1 text-body whitespace-pre-line">Harga sudah sesuai price list periode berjalan.</p>
                 </div>
                 <div class="flex flex-row gap-2">
-                  <Button variant="danger" class="inline-flex w-full items-center justify-center gap-2">
-                    <Lucide icon="X" class="h-4 w-4" />
+                  <Button variant="danger" class="inline-flex justify-center items-center gap-2 w-full">
+                    <Lucide icon="X" class="w-4 h-4" />
                     Tolak
                   </Button>
-                  <Button variant="primary" class="inline-flex w-full items-center justify-center gap-2">
-                    <Lucide icon="Check" class="h-4 w-4" />
+                  <Button variant="primary" class="inline-flex justify-center items-center gap-2 w-full">
+                    <Lucide icon="Check" class="w-4 h-4" />
                     Setujui
                   </Button>
                 </div>
@@ -462,7 +438,6 @@ const stats = [
 </template>
 
 <style scoped>
-/* Small monospace chip used to highlight which typography class an element uses. */
 .cls-tag {
   display: inline-block;
   margin-left: 0.375rem;

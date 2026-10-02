@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Actions\PoCustomer\ProcessSalesConfirmationGateAction;
+use App\Actions\PoCustomer\UpdatePoCustomerAction;
+use App\Actions\SalesConfirmation\BuildSalesConfirmationDetailAction;
 use App\Actions\SalesConfirmation\DecideSalesConfirmationAction;
+use App\Actions\SalesConfirmation\ReturnPoCustomerToMarketingAction;
 use App\Actions\SalesConfirmation\SaveSalesConfirmationAction;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Http\Requests\PoCustomer\UpdatePoCustomerRequest;
 use App\Http\Requests\SalesConfirmation\DecideSalesConfirmationRequest;
 use App\Http\Requests\SalesConfirmation\SaveSalesConfirmationRequest;
 use App\Models\PoCustomer;
@@ -124,8 +128,40 @@ class PoCustomerController extends Controller
 
 
 
-    public function show(int $id): \Illuminate\Http\JsonResponse
+    public function update(UpdatePoCustomerRequest $request, int $id, UpdatePoCustomerAction $action): \Illuminate\Http\JsonResponse
     {
+        if ($request->user()->cant('penawaran.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $po = PoCustomer::findOrFail($id);
+
+        if ($po->is_locked) {
+            return response()->json(['message' => 'PO Customer tidak bisa diubah karena sudah masuk proses Sales Confirmation.'], 409);
+        }
+
+        $po = $action->execute(
+            $po,
+            $request->validated(),
+            $request->file('lampiran_poc'),
+            $request->user()->name ?? 'system',
+            $request->ip()
+        );
+
+        $po->setAttribute('status_key', $po->status_key);
+        $po->setAttribute('status_label', $po->status_label);
+        $po->setAttribute('is_locked', $po->is_locked);
+
+        return response()->json(['success' => true, 'data' => $po]);
+    }
+
+    public function show(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        if ($user->cant('penawaran.viewAny') && $user->cant('penawaran.manage') && $user->cant('sales-confirmation.manage')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $po = PoCustomer::with([
             'customer',
             'penawaran.items.produk.jenis',
@@ -244,7 +280,7 @@ class PoCustomerController extends Controller
     }
 
 
-public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
+public function showSalesConfirmation(int $idPoc, BuildSalesConfirmationDetailAction $detailAction): \Illuminate\Http\JsonResponse
 {
     if (auth()->user()->cant('sales-confirmation.manage')) {
         return response()->json(['message' => 'Forbidden'], 403);
@@ -275,6 +311,9 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
         ?? $po->penawaran?->created_by
         ?? ($po->created_by ?? '-');
 
+    $totalAr = (float) ($arnya?->total_ar ?? 0);
+    $detail  = $detailAction->execute($po, $totalAr);
+
     return response()->json([
         'poc' => [
             'id_poc'           => $po->id_poc,
@@ -286,6 +325,7 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
             'tipe_bayar'       => $po->tipe_bayar?->value,
             'tipe_bayar_label' => $po->tipe_bayar?->label(),
             'termin_hari'      => $po->termin_hari,
+            ...$detail['poc'],
         ],
         'customer' => [
             'id_customer'   => $po->customer?->id_customer,
@@ -296,7 +336,9 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
         'penawaran' => [
             'nomor_penawaran' => $po->penawaran?->nomor_penawaran ?? '-',
             'marketing_name'  => $marketing,
+            ...$detail['penawaran'],
         ],
+        'credit' => $detail['credit'],
         'arnya' => [
             'id_arnya'            => $arnya?->id_arnya,
             'id_customer'         => $po->id_customer,
@@ -326,6 +368,7 @@ public function showSalesConfirmation(int $idPoc): \Illuminate\Http\JsonResponse
             'adm_summary'     => $apr->adm_summary,
             'adm_result_date' => $apr->adm_result_date,
             'adm_pic'         => $apr->adm_pic,
+            'adm_attachments' => \App\Support\PublicAttachmentFormatter::format($apr->adm_attachments),
         ] : null,
         'bm_approval' => $this->formatBmApproval($sc),
     ]);
@@ -354,7 +397,13 @@ public function saveSalesConfirmation(SaveSalesConfirmationRequest $request, int
         return response()->json(['message' => 'Sales Confirmation ini sudah dikonfirmasi.'], 409);
     }
 
-    $sc = $action->execute($po, $request->validated(), $request->user()->name ?? 'system');
+    $sc = $action->execute(
+        $po,
+        $request->validated(),
+        $request->user()->name ?? 'system',
+        $request->file('attachments', []),
+        $request->input('removed_attachments', [])
+    );
 
     return response()->json(['success' => true, 'id_sales_confirmation' => $sc->id]);
 }
@@ -387,6 +436,38 @@ public function decideSalesConfirmationBm(DecideSalesConfirmationRequest $reques
     $sc = $action->execute($sc, $status, $user->id, $request->validated()['note'] ?? null, $user->name ?? 'system');
 
     return response()->json(['success' => true, 'disposisi' => Str::snake($sc->disposisi->name)]);
+}
+
+public function returnSalesConfirmationToMarketing(Request $request, int $idPoc, ReturnPoCustomerToMarketingAction $action): \Illuminate\Http\JsonResponse
+{
+    $user = $request->user();
+    if ($user->cant('sales-confirmation.manage') || (int) $user->primary_role_id !== self::ROLE_ADMIN_FINANCE) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    $po = PoCustomer::findOrFail($idPoc);
+
+    if ($po->sc_process_state !== PoCustomerScProcessState::Cleared) {
+        return response()->json(['message' => 'PO Customer belum lolos gerbang Sales Confirmation.'], 409);
+    }
+
+    $sc = SalesConfirmation::where('po_customer_id', $po->id_poc)->first();
+
+    if ($sc?->disposisi === SalesConfirmationStatus::PendingBm) {
+        return response()->json(['message' => 'Sales Confirmation sedang menunggu keputusan BM.'], 409);
+    }
+
+    if ($sc?->disposisi === SalesConfirmationStatus::Confirmed) {
+        return response()->json(['message' => 'Sales Confirmation sudah dikonfirmasi.'], 409);
+    }
+
+    $po = $action->execute($po, $user->name ?? 'system', $request->ip());
+
+    return response()->json([
+        'success'      => true,
+        'status_key'   => $po->status_key,
+        'status_label' => $po->status_label,
+    ]);
 }
 
 public function processSalesConfirmation(Request $request, int $idPoc, ProcessSalesConfirmationGateAction $action): \Illuminate\Http\JsonResponse

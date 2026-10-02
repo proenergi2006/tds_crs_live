@@ -135,8 +135,8 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
 <template>
   <div class="space-y-6">
-    <h2 class="font-header text-xl">Company Information</h2>
-    <p class="font-caption">
+    <h2 class="text-section-title text-xl">Company Information</h2>
+    <p class="text-caption">
       Lengkapi identitas dan alamat perusahaan sesuai dokumen resmi (KTP/Akta, NPWP). Data ini akan digunakan sebagai
       acuan proses verifikasi KYC.
     </p>
@@ -144,32 +144,32 @@ watch(npwpSameAsHeadOffice, (checked) => {
     <!-- Identity dasar -->
     <div class="space-y-4 rounded-lg bg-white p-6 shadow-sm">
       <div>
-        <FormLabel class="font-label !mb-1 block">Full Registered Company Name
+        <FormLabel class="text-form-label !mb-1 block">Full Registered Company Name
           <RequiredAsterisk />
         </FormLabel>
         <FormInput v-model="form.identity.company_name" type="text" placeholder="e.g. PT Contoh Sejahtera Abadi"
           readonly :class="errors['identity.company_name'] ? 'input-error' : ''" />
         <small v-if="errors['identity.company_name']" class="block input-error-text">{{ errors['identity.company_name']
         }}</small>
-        <p class="font-caption mt-1">
+        <p class="text-caption mt-1">
           Nama perusahaan mengikuti data yang sudah terdaftar, tidak dapat diubah di sini.
         </p>
       </div>
 
       <div>
-        <FormLabel class="font-label !mb-1 block">Holding (if any)</FormLabel>
+        <FormLabel class="text-form-label !mb-1 block">Holding (if any)</FormLabel>
         <FormInput v-model="form.identity.parent_company" type="text" placeholder="e.g. PT Induk Group (optional)" />
       </div>
     </div>
 
     <!-- Head Office Address -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
-      <div class="font-section mb-1 border-b border-slate-100 pb-2">HEAD OFFICE ADDRESS</div>
-      <p class="font-caption mb-3">Alamat kantor pusat yang aktif saat ini beroperasi.</p>
+      <div class="text-overline mb-1 border-b border-slate-100 pb-2">HEAD OFFICE ADDRESS</div>
+      <p class="text-caption mb-3">Alamat kantor pusat yang aktif saat ini beroperasi.</p>
 
       <div class="space-y-4">
         <div>
-          <FormLabel class="font-label !mb-1 block">Address
+          <FormLabel class="text-form-label !mb-1 block">Address
             <RequiredAsterisk />
           </FormLabel>
           <FormTextarea v-model="form.identity.company_address" rows="3"
@@ -181,7 +181,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <FormLabel class="font-label !mb-1 block">Province</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Province</FormLabel>
             <TomSelect :model-value="form.identity.province_id ?? ''" class="w-full" :options="regionSelectOptions"
               :class="errors['identity.province_id'] ? 'input-error' : ''"
               @update:model-value="onHeadOfficeProvinceChange">
@@ -192,7 +192,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
               errors['identity.province_id'] }}</small>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Regency</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Regency</FormLabel>
             <TomSelect :key="String(!!form.identity.province_id)" :model-value="form.identity.regency_id ?? ''"
               class="w-full" :options="regionSelectOptions" :class="errors['identity.regency_id'] ? 'input-error' : ''"
               @update:model-value="onHeadOfficeRegencyChange">
@@ -205,7 +205,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
               }}</small>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">District</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">District</FormLabel>
             <TomSelect :key="String(!!form.identity.regency_id)" :model-value="form.identity.district_id ?? ''"
               class="w-full" :options="regionSelectOptions" @update:model-value="onHeadOfficeDistrictChange">
               <option value="">{{ form.identity.regency_id ? 'Cari Kecamatan' : '-- Pilih Kabupaten/Kota dulu --' }}
@@ -214,7 +214,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
             </TomSelect>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Village</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Village</FormLabel>
             <TomSelect :key="String(!!form.identity.district_id)" :model-value="form.identity.village_id ?? ''"
               class="w-full" :options="regionSelectOptions" @update:model-value="onHeadOfficeVillageChange">
               <option value="">{{ form.identity.district_id ? 'Cari Kelurahan/Desa' : '-- Pilih Kecamatan dulu --' }}
@@ -226,19 +226,19 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <FormLabel class="font-label !mb-1 block">Postal Code</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Postal Code</FormLabel>
             <FormInput v-model="form.identity.postal_code" type="text" placeholder="e.g. 12345" />
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Phone</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Phone</FormLabel>
             <FormInput v-model="form.identity.phone" type="text" placeholder="e.g. 021-1234567" />
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Fax</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Fax</FormLabel>
             <FormInput v-model="form.identity.fax" type="text" placeholder="e.g. 021-1234568 (optional)" />
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Email</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Email</FormLabel>
             <FormInput v-model="form.identity.email" type="email" placeholder="e.g. finance@company.com"
               :class="errors['identity.email'] ? 'input-error' : ''" />
             <small v-if="errors['identity.email']" class="block input-error-text">{{ errors['identity.email']
@@ -247,7 +247,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
         </div>
 
         <div>
-          <FormLabel class="font-label !mb-1 block">Website</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Website</FormLabel>
           <FormInput v-model="form.identity.website" type="text"
             placeholder="e.g. https://www.company.com (optional)" />
         </div>
@@ -256,8 +256,8 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
     <!-- NPWP Address -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
-      <div class="font-section mb-1 border-b border-slate-100 pb-2">NPWP ADDRESS (REGISTERED)</div>
-      <p class="font-caption mb-3">Alamat sesuai yang tertera di kartu/dokumen NPWP perusahaan.</p>
+      <div class="text-overline mb-1 border-b border-slate-100 pb-2">NPWP ADDRESS (REGISTERED)</div>
+      <p class="text-caption mb-3">Alamat sesuai yang tertera di kartu/dokumen NPWP perusahaan.</p>
 
       <FormCheck class="mb-4">
         <FormCheck.Input id="npwp-same-as-head-office" type="checkbox" v-model="npwpSameAsHeadOffice" />
@@ -266,7 +266,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
       <div v-if="!npwpSameAsHeadOffice" class="space-y-4">
         <div>
-          <FormLabel class="font-label !mb-1 block">Address</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Address</FormLabel>
           <FormTextarea v-model="form.registered_address.address_line" rows="3" placeholder="Alamat sesuai dokumen NPWP"
             :class="errors['registered_address.address_line'] ? 'input-error' : ''" />
           <small v-if="errors['registered_address.address_line']" class="block input-error-text">{{
@@ -275,7 +275,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <FormLabel class="font-label !mb-1 block">Province</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Province</FormLabel>
             <TomSelect :model-value="form.registered_address.province_id ?? ''" class="w-full"
               :options="regionSelectOptions" @update:model-value="onNpwpProvinceChange">
               <option value="">Cari Provinsi</option>
@@ -283,7 +283,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
             </TomSelect>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Regency</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Regency</FormLabel>
             <TomSelect :key="String(!!form.registered_address.province_id)"
               :model-value="form.registered_address.regency_id ?? ''" class="w-full" :options="regionSelectOptions"
               @update:model-value="onNpwpRegencyChange">
@@ -294,7 +294,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
             </TomSelect>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">District</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">District</FormLabel>
             <TomSelect :key="String(!!form.registered_address.regency_id)"
               :model-value="form.registered_address.district_id ?? ''" class="w-full" :options="regionSelectOptions"
               @update:model-value="onNpwpDistrictChange">
@@ -305,7 +305,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
             </TomSelect>
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Village</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Village</FormLabel>
             <TomSelect :key="String(!!form.registered_address.district_id)"
               :model-value="form.registered_address.village_id ?? ''" class="w-full" :options="regionSelectOptions"
               @update:model-value="onNpwpVillageChange">
@@ -318,7 +318,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
         </div>
 
         <div class="max-w-xs">
-          <FormLabel class="font-label !mb-1 block">Postal Code</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Postal Code</FormLabel>
           <FormInput v-model="form.registered_address.postal_code" type="text" placeholder="e.g. 12345" />
         </div>
       </div>
@@ -327,7 +327,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
     <!-- Type of Business + Ownership -->
     <div class="grid gap-6 md:grid-cols-3">
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-3 border-b border-slate-100 pb-2">TYPE OF BUSINESS</div>
+        <div class="text-overline mb-3 border-b border-slate-100 pb-2">TYPE OF BUSINESS</div>
         <div class="space-y-2">
           <FormCheck v-for="(opt, idx) in typeBusinessOptions" :key="opt">
             <FormCheck.Input :id="'business-type-' + idx" type="radio" :value="opt"
@@ -345,7 +345,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
 
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-3 border-b border-slate-100 pb-2">OWNERSHIP</div>
+        <div class="text-overline mb-3 border-b border-slate-100 pb-2">OWNERSHIP</div>
         <div class="space-y-2">
           <FormCheck v-for="(opt, idx) in ownershipOptions" :key="opt">
             <FormCheck.Input :id="'ownership-' + idx" type="radio" :value="opt"
@@ -362,7 +362,7 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
 
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-3 border-b border-slate-100 pb-2">INCOTERMS</div>
+        <div class="text-overline mb-3 border-b border-slate-100 pb-2">INCOTERMS</div>
         <div class="space-y-2">
           <FormCheck v-for="(opt, idx) in incoTermsOptions" :key="opt.code">
             <FormCheck.Input :id="'inco-terms-' + idx" type="radio" :value="opt.code"
@@ -381,39 +381,39 @@ watch(npwpSameAsHeadOffice, (checked) => {
 
     <!-- PIC Invoice -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
-      <div class="font-section mb-1 border-b border-slate-100 pb-2">PIC INVOICE (KONTAK FINANCE)</div>
+      <div class="text-overline mb-1 border-b border-slate-100 pb-2">PIC INVOICE (KONTAK FINANCE)</div>
       <div class="mb-3 mt-3 flex items-center justify-between gap-4">
-        <p class="font-caption">Kontak yang bisa dihubungi terkait proses invoice dan pembayaran.</p>
+        <p class="text-caption">Kontak yang bisa dihubungi terkait proses invoice dan pembayaran.</p>
         <Button type="button" size="sm" variant="outline-primary" class="inline-flex items-center gap-2"
           @click="addContact">
           <Lucide icon="Plus" class="h-4 w-4" />
           Tambah
         </Button>
       </div>
-      <p class="font-caption mt-1">Isi minimal salah satu dari Telepon, Mobile, atau Email.</p>
+      <p class="text-caption mt-1">Isi minimal salah satu dari Telepon, Mobile, atau Email.</p>
       <small v-if="errors['contacts']" class="mb-2 block input-error-text">{{ errors['contacts'] }}</small>
 
       <div class="overflow-x-auto rounded-xl border border-slate-200">
         <table class="w-full min-w-[880px] divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-12 px-3 py-2 font-label text-center">No</th>
-              <th class="px-3 py-2 font-label text-left">Name
+              <th class="w-12 px-3 py-2 text-form-label text-center">No</th>
+              <th class="px-3 py-2 text-form-label text-left">Name
                 <RequiredAsterisk />
               </th>
-              <th class="px-3 py-2 font-label text-left">Division/Bagian
+              <th class="px-3 py-2 text-form-label text-left">Division/Bagian
                 <RequiredAsterisk />
               </th>
-              <th class="px-3 py-2 font-label text-left">Phone</th>
-              <th class="px-3 py-2 font-label text-left">Mobile</th>
-              <th class="px-3 py-2 font-label text-left">Email</th>
-              <th class="w-16 px-3 py-2 font-label text-center">Aksi</th>
+              <th class="px-3 py-2 text-form-label text-left">Phone</th>
+              <th class="px-3 py-2 text-form-label text-left">Mobile</th>
+              <th class="px-3 py-2 text-form-label text-left">Email</th>
+              <th class="w-16 px-3 py-2 text-form-label text-center">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-for="(contact, idx) in form.contacts" :key="idx" class="transition hover:bg-slate-50">
-              <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+              <td class="px-3 py-2 num-sm text-center">{{ idx + 1 }}.</td>
               <td class="px-3 py-2">
                 <FormInput v-model="contact.full_name" type="text" placeholder="Nama lengkap PIC Finance"
                   :class="errors[`contacts.${idx}.full_name`] ? 'input-error' : ''" />

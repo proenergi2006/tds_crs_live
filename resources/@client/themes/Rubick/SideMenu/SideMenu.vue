@@ -35,12 +35,10 @@ const authStore = useAuthStore();
 const menu = computed(() => nestedMenu(menuStore.menu("side-menu"), route));
 const windowWidth = ref(window.innerWidth);
 
-// Manual user preference — persisted to localStorage
 const userCollapsedPref = ref(
   localStorage.getItem("rubick-sidebar-collapsed") === "true"
 );
 
-// Auto-collapse below xl (< 1280px); at xl+ use the user's stored preference
 const isSidebarCollapsed = computed(
   () => windowWidth.value < 1280 || userCollapsedPref.value
 );
@@ -49,14 +47,14 @@ const user = computed(() => authStore.user);
 
 const badgeStore = useApprovalBadgeStore();
 
-// "Verifikasi" itu sentinel khusus buat grand total, bukan masuk breakdown biasa
+const GRAND_TOTAL_BADGE_KEY = 'Verifikasi';
+
 const getMenuBadge = (badgeKey?: string): number => {
   if (!badgeKey) return 0;
-  if (badgeKey === 'Verifikasi') return badgeStore.total;
+  if (badgeKey === GRAND_TOTAL_BADGE_KEY) return badgeStore.total;
   return badgeStore.breakdown[badgeKey] ?? 0;
 };
 
-// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() => {
   return user.value?.brand === 'proenergi';
 });
@@ -140,28 +138,28 @@ onUnmounted(() => {
 
 <template>
   <div :class="[
-    'rubick px-2 py-2 sm:py-4 sm:px-4 h-screen overflow-hidden',
+    'rubick p-2 h-screen overflow-hidden',
     'before:content-[\'\'] before:bg-gradient-to-b before:from-theme-1 before:to-theme-2 dark:before:from-darkmode-800 dark:before:to-darkmode-800 before:fixed before:inset-0 before:z-[-1]',
   ]">
     <MobileMenu />
-    <div class="pt-[4.7rem] flex md:pt-0 h-full">
+    <div class="flex pt-[4.7rem] md:pt-0 h-full">
       <nav :class="[
         'side-nav hidden w-[80px] md:flex flex-col xl:w-[230px] h-full',
         isSidebarCollapsed ? 'side-nav--collapsed' : '',
       ]">
         <div class="side-nav__brand intro-x" :class="isSidebarCollapsed ? 'pl-7' : 'px-5'">
-          <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex min-w-0 items-center gap-3">
+          <RouterLink :to="{ name: 'dashboard-overview-1' }" class="flex items-center gap-3 min-w-0">
             <div class="side-nav__brand-tile shrink-0">
               <img alt="Application Logo" class="w-8 h-8 object-contain" :src="currentLogo" />
             </div>
-            <div class="hidden min-w-0 flex-col leading-tight xl:flex" :class="isSidebarCollapsed && 'xl:hidden'">
+            <div class="hidden xl:flex flex-col min-w-0 leading-tight" :class="isSidebarCollapsed && 'xl:hidden'">
               <span class="font-semibold truncate" :class="isAgenRole
                 ? 'bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent'
                 : 'text-white'
                 ">
                 {{ appName }}
               </span>
-              <span class="side-nav__brand-subtitle truncate">Crushed Stone</span>
+              <span class="truncate side-nav__brand-subtitle">Crushed Stone</span>
             </div>
           </RouterLink>
         </div>
@@ -241,7 +239,7 @@ onUnmounted(() => {
                       <Lucide :icon="subMenu.icon" />
                       <span>{{ subMenu.title }}</span>
                       <span v-if="getMenuBadge(subMenu.badgeKey) > 0"
-                        class="ml-auto text-[10px] font-semibold bg-emerald-800 text-white rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                        class="bg-emerald-800 ml-auto px-1.5 rounded-full min-w-[18px] font-semibold text-[10px] text-white text-center leading-5">
                         {{ getMenuBadge(subMenu.badgeKey) }}
                       </span>
                     </a>
@@ -279,7 +277,7 @@ onUnmounted(() => {
                         <div class="side-menu__title">
                           {{ subMenu.title }}
                           <span v-if="getMenuBadge(subMenu.badgeKey) > 0"
-                            class="ml-auto mr-[10px] shrink-0 text-[10px] font-semibold bg-white text-emerald-700 rounded-full px-1.5 leading-5 min-w-[18px] text-center">
+                            class="bg-white mr-[10px] ml-auto px-1.5 rounded-full min-w-[18px] font-semibold text-[10px] text-emerald-700 text-center leading-5 shrink-0">
                             {{ getMenuBadge(subMenu.badgeKey) }}
                           </span>
                           <div v-if="subMenu.subMenu" :class="[
@@ -336,12 +334,11 @@ onUnmounted(() => {
         </div>
       </nav>
       <div
-        class="md:max-w-auto min-w-0 max-w-full flex-1 rounded-[30px] bg-slate-100 before:block before:h-px before:w-full before:content-[''] dark:bg-darkmode-700 flex flex-col overflow-hidden">
-        <!-- TopBar di LUAR area scroll: tetap diam di atas, hanya konten yang scroll. -->
+        class="before:block flex flex-col flex-1 bg-slate-100 dark:bg-darkmode-700 rounded-xl before:w-full min-w-0 max-w-full md:max-w-auto before:h-px overflow-hidden before:content-['']">
         <div class="z-[51]">
           <TopBar :is-sidebar-collapsed="isSidebarCollapsed" @toggle-sidebar-collapse="toggleSidebarCollapse" />
         </div>
-        <div ref="contentScrollRef" class="content-area-scroll flex-1 overflow-y-auto">
+        <div ref="contentScrollRef" class="flex-1 overflow-y-auto content-area-scroll">
           <RouterView />
         </div>
       </div>

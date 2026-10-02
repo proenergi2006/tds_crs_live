@@ -126,31 +126,31 @@ function statusBadgeClass(status?: string) {
 
         <template #body>
           <Table.Tr v-for="(row, idx) in rows" :key="row.id_verification" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-caption text-slate-500">{{ row.customer?.customer_code || '-' }}</div>
-              <div class="font-strong">{{ row.customer?.company_name || '-' }}</div>
+              <div class="text-caption text-slate-500">{{ row.customer?.customer_code || '-' }}</div>
+              <div class="text-body-strong">{{ row.customer?.company_name || '-' }}</div>
             </Table.Td>
 
             <Table.Td>
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
+              <span class="text-form-label inline-flex items-center rounded-full px-2.5 py-0.5"
                 :class="statusBadgeClass(row.status)">
                 {{ row.status_label }}
               </span>
             </Table.Td>
 
             <Table.Td>
-              <div class="font-body">{{ formatDateTime(row.submitted_at) ?? '-' }}</div>
-              <div class="font-caption text-slate-500">{{ row.submitted_by?.name ?? '-' }}</div>
+              <div class="text-body">{{ formatDateTime(row.submitted_at) ?? '-' }}</div>
+              <div class="text-caption text-slate-500">{{ row.submitted_by?.name ?? '-' }}</div>
             </Table.Td>
 
             <Table.Td>
               <template v-if="row.reviewed_at">
-                <div class="font-body">{{ formatDateTime(row.reviewed_at) }}</div>
-                <div class="font-caption text-slate-500">{{ row.reviewed_by?.name ?? '-' }}</div>
+                <div class="text-body">{{ formatDateTime(row.reviewed_at) }}</div>
+                <div class="text-caption text-slate-500">{{ row.reviewed_by?.name ?? '-' }}</div>
               </template>
               <template v-else>-</template>
             </Table.Td>

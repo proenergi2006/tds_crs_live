@@ -100,7 +100,7 @@ function wilayahLabel(w: any) {
   const parts = [
     w.province?.name || w.provinsi?.nama_provinsi,
     w.regency?.name || w.kabupaten?.nama_kabupaten,
-    w.destinasi,
+    w.name,
   ].filter(Boolean)
   return parts.length ? parts.join(' - ') : null
 }
@@ -204,92 +204,93 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-x flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-x">
 
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <h2 class="font-display">{{ config.title }}</h2>
-          <p class="font-lead mt-1">
+          <h2 class="text-screen-title">{{ config.title }}</h2>
+          <p class="mt-1 text-body-lg">
             Informasi lengkap penawaran dan status verifikasi.
           </p>
         </div>
         <Button variant="outline-secondary" @click="goBack">
-          <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+          <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
           Kembali
         </Button>
       </div>
 
-      <div v-if="loading" class="flex min-h-[320px] items-center justify-center gap-3 text-slate-500">
-        <Lucide icon="Loader" class="h-6 w-6 animate-spin" />
-        <span class="font-body">Memuat data penawaran...</span>
+      <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[320px] text-slate-500">
+        <Lucide icon="Loader" class="w-6 h-6 animate-spin" />
+        <span class="text-body">Memuat data penawaran...</span>
       </div>
 
-      <div v-else-if="notFound" class="flex min-h-[320px] flex-col items-center justify-center gap-2 text-center">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
-          <Lucide icon="AlertTriangle" class="h-7 w-7 text-rose-500" />
+      <div v-else-if="notFound" class="flex flex-col justify-center items-center gap-2 min-h-[320px] text-center">
+        <div class="flex justify-center items-center bg-rose-50 rounded-full w-14 h-14">
+          <Lucide icon="AlertTriangle" class="w-7 h-7 text-rose-500" />
         </div>
-        <h3 class="font-header">Data penawaran tidak ditemukan</h3>
-        <p class="font-body">Silakan kembali ke halaman sebelumnya.</p>
+        <h3 class="text-section-title">Data penawaran tidak ditemukan</h3>
+        <p class="text-body">Silakan kembali ke halaman sebelumnya.</p>
       </div>
 
-      <div v-else class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div v-else class="gap-6 grid grid-cols-1 xl:grid-cols-3">
 
         <div class="space-y-6 xl:col-span-2">
 
           <CardSection title="Informasi Penawaran" description="Identitas dokumen dan kontak tujuan" icon="FileText">
-            <div class="grid grid-cols-12 gap-4">
+            <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-5">
                 <div class="space-y-3">
                   <div>
-                    <div class="font-label">Nomor Penawaran</div>
+                    <div class="text-form-label">Nomor Penawaran</div>
                     <div
-                      class="font-strong mt-1 whitespace-pre-line text-danger border border-danger/20 rounded px-2 py-1 inline-block bg-danger/5 text-xs">
+                      class="inline-block bg-danger/5 mt-1 px-2 py-1 border border-danger/20 rounded text-body-strong text-danger text-xs whitespace-pre-line">
                       {{ dash(penawaran.nomor_penawaran) }}
                     </div>
                   </div>
                   <div>
-                    <div class="font-label">Masa Berlaku</div>
-                    <div class="font-strong mt-1">
+                    <div class="text-form-label">Masa Berlaku</div>
+                    <div class="mt-1 text-body-strong">
                       {{ penawaran.masa_berlaku ? `${formatDate(penawaran.masa_berlaku)} –
                       ${formatDate(penawaran.sampai_dengan)}` : '-' }}
                     </div>
                   </div>
                   <div>
-                    <div class="font-label">Customer</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.customer?.company_name) }}
+                    <div class="text-form-label">Customer</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.customer?.company_name) }}
                     </div>
                   </div>
                   <div>
-                    <div class="font-label">Cabang</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.cabang?.nama_cabang) }}</div>
+                    <div class="text-form-label">Cabang</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.cabang?.nama_cabang) }}</div>
                   </div>
                 </div>
               </div>
 
               <div class="col-span-12 md:col-span-7">
-                <div class="font-label mx-2 mb-1">Kontak Tujuan</div>
+                <div class="mx-2 mb-1 text-form-label">Kontak Tujuan</div>
                 <div>
-                  <div class="rounded-xl border border-slate-200 px-4 py-3">
-                    <div class="grid grid-cols-12 gap-4">
+                  <div class="px-4 py-3 border border-slate-200 rounded-xl">
+                    <div class="gap-4 grid grid-cols-12">
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Kepada (Perusahaan / Dept.)</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.customer?.company_name) }}</div>
+                        <div class="text-form-label">Kepada (Perusahaan / Dept.)</div>
+                        <div class="mt-1 text-body-strong">{{ dash(penawaran.customer?.company_name) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Nama (UP.)</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.full_name) }}</div>
+                        <div class="text-form-label">Nama (UP.)</div>
+                        <div class="mt-1 text-body-strong">{{ dash(penawaran.customer_contact?.full_name) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Jabatan</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.position) }}</div>
+                        <div class="text-form-label">Jabatan</div>
+                        <div class="mt-1 text-body-strong">{{ dash(penawaran.customer_contact?.position) }}</div>
                       </div>
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Telepon</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.customer_contact?.mobile) }}</div>
+                        <div class="text-form-label">Telepon</div>
+                        <div class="mt-1 text-body-strong">{{ dash(penawaran.customer_contact?.mobile) }}</div>
                       </div>
                       <div class="col-span-12">
-                        <div class="font-label">Alamat</div>
-                        <div class="font-strong mt-1">{{ dash(penawaran.customer?.head_office_address?.address_line) }}</div>
+                        <div class="text-form-label">Alamat</div>
+                        <div class="mt-1 text-body-strong">{{ dash(penawaran.customer?.head_office_address?.address_line) }}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -301,71 +302,71 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
           <CardSection title="Detail Pengiriman & Daftar Produk"
             description="Instrumen pengiriman, tujuan kirim dan daftar produk penawaran" icon="Boxes"
             icon-class="bg-indigo-100 text-indigo-600">
-            <div class="grid grid-cols-12 gap-4">
+            <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-6">
-                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-                  <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
+                  <div class="gap-4 grid grid-cols-2">
                     <div>
-                      <div class="font-label">Tipe Pengiriman</div>
-                      <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
+                      <div class="text-form-label">Tipe Pengiriman</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
                     </div>
                     <div>
-                      <div class="font-label">Metode</div>
-                      <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                      <div class="text-form-label">Metode</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
                     </div>
                   </div>
 
-                  <div v-if="showOngkosKapal" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-label mb-2">Ongkos Kapal</div>
-                    <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
+                  <div v-if="showOngkosKapal" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
+                    <div class="mb-2 text-form-label">Ongkos Kapal</div>
+                    <div v-if="ongkosKapal.length === 0" class="text-caption text-slate-500">
                       Belum ada data ongkos kapal.
                     </div>
                     <div v-for="oa in ongkosKapal" :key="oa.id"
-                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-2 gap-4">
+                      class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
+                      <div class="gap-4 grid grid-cols-2">
                         <div>
-                          <div class="font-label">Transportir</div>
-                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="text-form-label">Transportir</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.transportir?.company_name) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Wilayah Angkut</div>
-                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="text-form-label">Wilayah Angkut</div>
+                          <div class="mt-1 text-body-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Volume</div>
-                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="text-form-label">Volume</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Ongkos</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="text-form-label">Ongkos</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div v-if="showOngkosTruck" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-label mb-2">Ongkos Truck</div>
-                    <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
+                  <div v-if="showOngkosTruck" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
+                    <div class="mb-2 text-form-label">Ongkos Truck</div>
+                    <div v-if="ongkosTruck.length === 0" class="text-caption text-slate-500">
                       Belum ada data ongkos truck.
                     </div>
                     <div v-for="oa in ongkosTruck" :key="oa.id"
-                      class="rounded-xl border border-slate-200 px-4 py-3 mb-2 last:mb-0 bg-white">
-                      <div class="grid grid-cols-2 gap-4">
+                      class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
+                      <div class="gap-4 grid grid-cols-2">
                         <div>
-                          <div class="font-label">Transportir</div>
-                          <div class="font-strong mt-1">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="text-form-label">Transportir</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.transportir?.company_name) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Wilayah Angkut</div>
-                          <div class="font-strong mt-1">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="text-form-label">Wilayah Angkut</div>
+                          <div class="mt-1 text-body-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Volume</div>
-                          <div class="font-strong mt-1">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="text-form-label">Volume</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Ongkos</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="text-form-label">Ongkos</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
@@ -374,21 +375,21 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               </div>
 
               <div class="col-span-12 md:col-span-6">
-                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                   <div>
-                    <div class="font-label">Lokasi Pengiriman</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
+                    <div class="text-form-label">Lokasi Pengiriman</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
                   </div>
                   <div>
-                    <div class="font-label">Titik Serah Terima & T&C Bongkar</div>
-                    <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
+                    <div class="text-form-label">Titik Serah Terima & T&C Bongkar</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="rounded-xl">
-              <Table bordered sm class="font-body mt-4">
+              <Table bordered sm class="mt-4 text-body">
                 <Table.Thead class="bg-slate-50">
                   <Table.Th>Produk</Table.Th>
                   <Table.Th class="w-40">Source</Table.Th>
@@ -399,18 +400,18 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                 <Table.Tbody class="bg-white">
                   <Table.Tr v-for="item in items" :key="item.id_penawaran_item">
                     <Table.Td>
-                      <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                      <div class="font-caption mt-0.5">
+                      <div class="text-body-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                      <div class="mt-0.5 text-caption">
                         {{ item.produk?.jenis?.nama || '-' }}
                         <span class="mx-1">·</span>
                         {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || ''
                         }}
                       </div>
                     </Table.Td>
-                    <Table.Td class="font-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.persen) }}%</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">
+                    <Table.Td class="text-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.persen) }}%</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">
                       <span v-if="item.price_list != null">{{ formatCurrency(item.price_list) }}</span>
                       <span v-else class="text-slate-400" title="Harga tidak tersedia untuk periode/cabang ini">—</span>
                     </Table.Td>
@@ -422,39 +423,39 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
           <CardSection title="Rincian Harga" description="Komponen harga penawaran" icon="Wallet"
             icon-class="bg-emerald-100 text-emerald-600">
-            <div class="grid grid-cols-2 gap-6">
+            <div class="gap-6 grid grid-cols-2">
               <dl class="flex flex-col gap-4">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
                   <div class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="font-label">Harga Dasar</dt>
-                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(penawaran.harga_dasar) }}
+                    <dt class="text-form-label">Harga Dasar</dt>
+                    <dd class="mt-1 num-md text-lg">{{ formatCurrency(penawaran.harga_dasar) }}
                     </dd>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="font-label">OAT per Volume</dt>
-                    <div class="font-num-lg text-lg mt-1">{{ formatCurrency(penawaran.oat) }}</div>
+                    <dt class="text-form-label">OAT per Volume</dt>
+                    <div class="mt-1 num-md text-lg">{{ formatCurrency(penawaran.oat) }}</div>
                   </div>
                 </div>
-                <div class="grow bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Subtotal (DPP) Harga Dasar</dt>
-                  <dd class="font-num-lg text-xl mt-1">{{ formatCurrency(dppHargaDasar) }}</dd>
+                <div class="bg-slate-100 p-4 rounded-lg text-right grow">
+                  <dt class="text-form-label">Subtotal (DPP) Harga Dasar</dt>
+                  <dd class="mt-1 num-md text-xl">{{ formatCurrency(dppHargaDasar) }}</dd>
                 </div>
-                <div class="grow bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">PPN (11%) Harga Dasar</dt>
-                  <dd class="font-num-lg text-xl mt-1">{{ formatCurrency(penawaran.ppn_harga_dasar) }}
+                <div class="bg-slate-100 p-4 rounded-lg text-right grow">
+                  <dt class="text-form-label">PPN (11%) Harga Dasar</dt>
+                  <dd class="mt-1 num-md text-xl">{{ formatCurrency(penawaran.ppn_harga_dasar) }}
                   </dd>
                 </div>
-                <div class="grow bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="font-label">Total Harga Dasar</dt>
-                  <dd class="font-num-lg text-xl mt-1 text-success">{{
+                <div class="bg-slate-100 p-4 rounded-lg text-right grow">
+                  <dt class="text-form-label">Total Harga Dasar</dt>
+                  <dd class="mt-1 num-md text-success text-xl">{{
                     formatCurrency(penawaran.grand_total_harga_dasar)
-                  }}</dd>
+                    }}</dd>
                 </div>
               </dl>
 
               <div>
-                <div class="font-display text-right">Grand Total</div>
-                <div class="font-body text-right">Perhitungan harga penawaran
+                <div class="text-screen-title text-right">Grand Total</div>
+                <div class="text-body text-right">Perhitungan harga penawaran
                   berdasarkan<br />harga dasar
                   dan
                   volume
@@ -462,116 +463,117 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
 
                 <div class="flex flex-col gap-4 mt-[17px]">
                   <div class="bg-green-50 p-4 rounded-lg text-right">
-                    <div class="font-section">Subtotal (DPP) Penawaran Final</div>
-                    <div class="font-num-lg text-xl mt-1">{{ formatCurrency(subTotalFinal) }}
+                    <div class="text-overline">Subtotal (DPP) Penawaran Final</div>
+                    <div class="mt-1 num-md text-xl">{{ formatCurrency(subTotalFinal) }}
                     </div>
                   </div>
                   <div class="bg-green-50 p-4 rounded-lg text-right">
-                    <div class="font-section">PPN (11%) Penawaran Final</div>
-                    <div class="font-num-lg text-xl mt-1">{{ formatCurrency(ppnFinal) }}
+                    <div class="text-overline">PPN (11%) Penawaran Final</div>
+                    <div class="mt-1 num-md text-xl">{{ formatCurrency(ppnFinal) }}
                     </div>
                   </div>
                   <div class="bg-green-50 p-4 rounded-lg text-right">
-                    <div class="font-section">Total Penawaran Final</div>
-                    <div class="font-num-lg text-xl mt-1 text-success">{{ formatCurrency(totalFinal) }}
+                    <div class="text-overline">Total Penawaran Final</div>
+                    <div class="mt-1 num-md text-success text-xl">{{ formatCurrency(totalFinal) }}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div v-if="config.showMarginSection" class="mt-6 border-t border-slate-100 pt-5">
-              <h4 class="font-section mb-3">Analisa Margin</h4>
+            <div v-if="config.showMarginSection" class="mt-6 pt-5 border-slate-100 border-t">
+              <h4 class="mb-3 text-overline">Analisa Margin</h4>
               <div v-if="hasIncompleteCogs"
-                class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md font-body !text-amber-700">
+                class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md text-body !text-amber-700">
                 Data COGS tidak lengkap untuk sebagian item — margin tidak dihitung
               </div>
               <template v-else>
-                <dl class="grid grid-cols-3 gap-4">
+                <dl class="gap-4 grid grid-cols-3">
                   <div v-if="config.showCogsRow" class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="font-label">Harga COGS<template v-if="isMultiProduct"> (Weighted-Average)</template></dt>
-                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(cogs) }}</dd>
+                    <dt class="text-form-label">Harga COGS<template v-if="isMultiProduct"> (Weighted-Average)</template>
+                    </dt>
+                    <dd class="mt-1 num-md text-lg">{{ formatCurrency(cogs) }}</dd>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="font-label">Margin Harga Dasar terhadap COGS</dt>
-                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
+                    <dt class="text-form-label">Margin Harga Dasar terhadap COGS</dt>
+                    <dd class="mt-1 num-md text-lg">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
                     </dd>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="font-label">Total Estimasi Gross Profit</dt>
-                    <dd class="font-num-lg text-lg mt-1">{{ formatCurrency(totalGrossProfit) }}</dd>
+                    <dt class="text-form-label">Total Estimasi Gross Profit</dt>
+                    <dd class="mt-1 num-md text-lg">{{ formatCurrency(totalGrossProfit) }}</dd>
                   </div>
                 </dl>
-                <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 italic font-caption text-slate-500">
+                <div v-if="config.showCogsRow && isMultiProduct" class="mt-2 text-caption text-slate-500 italic">
                   *Weighted-Average
                   dihitung berdasarkan bobot (persen) tiap produk dalam penawaran ini.</div>
-                <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 italic font-caption text-slate-500">{{
+                <div v-if="config.showCogsRow && cogsBasisNote" class="mt-1 text-caption text-slate-500 italic">{{
                   cogsBasisNote }}
                 </div>
               </template>
             </div>
           </CardSection>
 
-          <div class="flex flex-col gap-6 xl:flex-row">
+          <div class="flex xl:flex-row flex-col gap-6">
             <div class="flex-1">
 
               <CardSection title="Pembayaran & Lainnya" description="Ketentuan pembayaran dan toleransi" icon="Wallet"
                 icon-class="bg-amber-100 text-amber-600">
-                <div class="grid grid-cols-12 gap-4">
+                <div class="gap-4 grid grid-cols-12">
                   <div class="col-span-12 md:col-span-6">
-                    <div class="rounded-xl border border-slate-200 p-4 space-y-3">
-                      <div class="grid grid-cols-12 gap-4">
+                    <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
+                      <div class="gap-4 grid grid-cols-12">
                         <div class="col-span-12" :class="isProenergi ? 'md:col-span-6' : ''">
-                          <div class="font-label">Tipe Pembayaran</div>
-                          <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.tipe_pembayaran) }}</div>
+                          <div class="text-form-label">Tipe Pembayaran</div>
+                          <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.tipe_pembayaran) }}</div>
                         </div>
                       </div>
 
                       <div v-if="penawaran.tipe_pembayaran === 'CUSTOM'"
-                        class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <h4 class="font-section mb-3">Detail Pembayaran Custom</h4>
+                        class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
+                        <h4 class="mb-3 text-overline">Detail Pembayaran Custom</h4>
                         <div class="flex flex-col gap-4">
                           <div>
-                            <div class="font-label">Down Payment (%)</div>
-                            <div class="font-strong mt-1">{{ formatNumber(penawaran.dp_persen) }}%</div>
+                            <div class="text-form-label">Down Payment (%)</div>
+                            <div class="mt-1 text-body-strong">{{ formatNumber(penawaran.dp_persen) }}%</div>
                           </div>
 
                           <div>
-                            <div class="font-label">Repayment</div>
-                            <div class="font-strong mt-1">{{ formatNumber(penawaran.repayment_persen) }}% after {{
+                            <div class="text-form-label">Repayment</div>
+                            <div class="mt-1 text-body-strong">{{ formatNumber(penawaran.repayment_persen) }}% after {{
                               formatNumber(penawaran.repayment_hari) }} days</div>
                           </div>
                         </div>
                       </div>
 
                       <div>
-                        <div class="font-label">Metode Pemesanan</div>
-                        <div class="font-strong mt-1 whitespace-pre-line">{{ dash(penawaran.order_method) }}</div>
+                        <div class="text-form-label">Metode Pemesanan</div>
+                        <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.order_method) }}</div>
                       </div>
                     </div>
                   </div>
 
                   <div class="col-span-12 md:col-span-6">
-                    <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                       <div class="flex flex-col gap-4">
                         <div>
-                          <div class="font-label">Toleransi Penyusutan</div>
-                          <div class="font-strong mt-1">{{ formatNumber(penawaran.toleransi_penyusutan) }}%</div>
+                          <div class="text-form-label">Toleransi Penyusutan</div>
+                          <div class="mt-1 text-body-strong">{{ formatNumber(penawaran.toleransi_penyusutan) }}%</div>
                         </div>
 
                         <div>
-                          <div class="font-label">Abrasi</div>
-                          <div class="font-strong mt-1">{{ dash(penawaran.abrasi) }}</div>
+                          <div class="text-form-label">Abrasi</div>
+                          <div class="mt-1 text-body-strong">{{ dash(penawaran.abrasi) }}</div>
                         </div>
 
                         <div>
-                          <div class="font-label">Refund / Volume</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(penawaran.refund) }}</div>
+                          <div class="text-form-label">Refund / Volume</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(penawaran.refund) }}</div>
                         </div>
 
                         <div>
-                          <div class="font-label">Other Cost</div>
-                          <div class="font-strong mt-1">{{ formatCurrency(penawaran.other_cost) }}</div>
+                          <div class="text-form-label">Other Cost</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(penawaran.other_cost) }}</div>
                         </div>
                       </div>
                     </div>
@@ -583,13 +585,13 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
             <div class="flex-1">
               <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
                 <div class="flex flex-col gap-4">
-                  <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div class="font-label">Catatan</div>
-                    <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
+                  <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                    <div class="text-form-label">Catatan</div>
+                    <p class="mt-1 text-body whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
                   </div>
-                  <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div class="font-label">Syarat & Ketentuan</div>
-                    <p class="font-body mt-1 whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
+                  <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
+                    <div class="text-form-label">Syarat & Ketentuan</div>
+                    <p class="mt-1 text-body whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
                   </div>
                 </div>
               </CardSection>
@@ -600,23 +602,23 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
         </div>
 
         <div class="xl:col-span-1">
-          <div class="sticky top-6 space-y-4">
+          <div class="top-6 sticky space-y-4">
             <CardSection title="Status Penawaran" description="Tahapan persetujuan penawaran" icon="ShieldCheck"
               icon-class="bg-success/10 text-success">
               <div class="space-y-5 px-2">
                 <div class="space-y-6">
                   <div v-for="(attempt, idx) in approvalAttempts" :key="idx" class="space-y-3">
                     <span v-if="attempt.label"
-                      class="font-label inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">
+                      class="inline-flex items-center bg-slate-50 px-3 py-1 border border-slate-200 rounded-full w-fit text-form-label text-slate-500">
                       {{ attempt.label }}
                     </span>
                     <Stepper :steps="attempt.steps" direction="vertical" />
                   </div>
                 </div>
 
-                <Button variant="outline-primary"
-                  class="inline-flex w-full items-center justify-center gap-2" @click="previewLangDialogOpen = true">
-                  <Lucide icon="Printer" class="h-4 w-4" />
+                <Button variant="outline-primary" class="inline-flex justify-center items-center gap-2 w-full"
+                  @click="previewLangDialogOpen = true">
+                  <Lucide icon="Printer" class="w-4 h-4" />
                   Preview PDF
                 </Button>
               </div>
@@ -626,14 +628,14 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
               icon="CheckCircle" icon-class="bg-blue-100 text-blue-600">
               <div class="space-y-3">
                 <div class="flex flex-row gap-2">
-                  <Button variant="danger" class="inline-flex w-full items-center justify-center gap-2"
+                  <Button variant="danger" class="inline-flex justify-center items-center gap-2 w-full"
                     @click="tolakDialogOpen = true">
-                    <Lucide icon="X" class="h-4 w-4" />
+                    <Lucide icon="X" class="w-4 h-4" />
                     Tolak
                   </Button>
-                  <Button variant="primary" class="inline-flex w-full items-center justify-center gap-2"
+                  <Button variant="primary" class="inline-flex justify-center items-center gap-2 w-full"
                     @click="verifikasiDialogOpen = true">
-                    <Lucide icon="Check" class="h-4 w-4" />
+                    <Lucide icon="Check" class="w-4 h-4" />
                     Setujui
                   </Button>
                 </div>

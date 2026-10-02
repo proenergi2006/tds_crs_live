@@ -33,6 +33,13 @@ export interface NewFreeFormRow {
   error: string
 }
 
+export interface FinanceAttachment {
+  path: string
+  original_name: string
+  url: string | null
+  size_bytes: number | null
+}
+
 export interface CustomerContactRecord {
   id: number
   id_customer: number

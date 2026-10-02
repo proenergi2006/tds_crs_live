@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Actions\Customer\SubmitCustomerOnboardingAction;
 use App\Enums\CustomerAddressType;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\SubmitCustomerOnboardingRequest;
 use App\Models\Customer;
 use App\Models\CustomerContact;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class CustomerOnboardingController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     private const REQUIRED_ONBOARDING_DOCUMENT_CODES = ['nib', 'npwp'];
 
     public function show(string $token)
@@ -34,7 +37,7 @@ class CustomerOnboardingController extends Controller
             ->values()
             ->all();
 
-        $isLocked = $customer->isUnderReview();
+        $isLocked = $customer->isEditLocked();
         $isExpired = $customer->token_expired_at !== null && $customer->token_expired_at->lte(now());
         $status = $isLocked ? 'used' : ($isExpired ? 'expired' : 'active');
 
@@ -135,7 +138,7 @@ class CustomerOnboardingController extends Controller
     {
         $customer = Customer::where('onboarding_token', $token)->firstOrFail();
 
-        if ($customer->isUnderReview()) {
+        if ($customer->isEditLocked()) {
             return response()->json(['message' => 'Data onboarding ini sudah masuk proses verifikasi dan tidak bisa diubah lagi.'], 409);
         }
 

@@ -119,17 +119,17 @@ onMounted(async () => {
         icon-class="bg-primary/10 text-primary">
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <div class="font-label">Total</div>
-            <div class="font-num-display-lg mt-1">{{ loading || !summary ? '-' : summary.customers.total }}</div>
+            <div class="text-form-label">Total</div>
+            <div class="num-display mt-1">{{ loading || !summary ? '-' : summary.customers.total }}</div>
           </div>
           <div>
-            <div class="font-label">Verified</div>
-            <div class="font-num-display-lg mt-1 !text-emerald-600">{{ loading || !summary ? '-' :
+            <div class="text-form-label">Verified</div>
+            <div class="num-display mt-1 !text-emerald-600">{{ loading || !summary ? '-' :
               summary.customers.verified }}</div>
           </div>
           <div>
-            <div class="font-label">Unverified</div>
-            <div class="font-num-display-lg mt-1 !text-amber-600">{{ loading || !summary ? '-' :
+            <div class="text-form-label">Unverified</div>
+            <div class="num-display mt-1 !text-amber-600">{{ loading || !summary ? '-' :
               summary.customers.unverified }}</div>
           </div>
         </div>
@@ -139,17 +139,17 @@ onMounted(async () => {
         icon-class="bg-emerald-100 text-emerald-600">
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <div class="font-label">Total</div>
-            <div class="font-num-display-lg mt-1">{{ loading || !summary ? '-' : summary.penawarans.total }}</div>
+            <div class="text-form-label">Total</div>
+            <div class="num-display mt-1">{{ loading || !summary ? '-' : summary.penawarans.total }}</div>
           </div>
           <div>
-            <div class="font-label">Approved</div>
-            <div class="font-num-display-lg mt-1 !text-emerald-600">{{ loading || !summary ? '-' :
+            <div class="text-form-label">Approved</div>
+            <div class="num-display mt-1 !text-emerald-600">{{ loading || !summary ? '-' :
               summary.penawarans.approved }}</div>
           </div>
           <div>
-            <div class="font-label">Unapproved</div>
-            <div class="font-num-display-lg mt-1 !text-amber-600">{{ loading || !summary ? '-' :
+            <div class="text-form-label">Unapproved</div>
+            <div class="num-display mt-1 !text-amber-600">{{ loading || !summary ? '-' :
               summary.penawarans.unapproved }}</div>
           </div>
         </div>
@@ -165,8 +165,8 @@ onMounted(async () => {
               <Lucide :icon="action.icon" class="h-5 w-5" />
             </div>
             <div>
-              <div class="font-strong">{{ action.label }}</div>
-              <div class="font-caption mt-0.5">{{ action.description }}</div>
+              <div class="text-body-strong">{{ action.label }}</div>
+              <div class="text-caption mt-0.5">{{ action.description }}</div>
             </div>
           </button>
         </div>
@@ -177,7 +177,7 @@ onMounted(async () => {
     <CardSection title="Aktivitas Terbaru" description="Aktivitas customer & quotation terakhir" icon="History"
       icon-class="bg-slate-100 text-slate-600">
       <div v-if="!loading && !recentActivities.length" class="py-3 text-center">
-        <div class="font-caption">Belum ada aktivitas terbaru.</div>
+        <div class="text-caption">Belum ada aktivitas terbaru.</div>
       </div>
       <div v-else class="divide-y divide-slate-100">
         <div v-for="(activity, idx) in recentActivities" :key="idx"
@@ -187,9 +187,9 @@ onMounted(async () => {
             <Lucide :icon="activityIcon(activity.type).icon" class="h-4 w-4" />
           </div>
           <div class="flex-1">
-            <div class="font-body">{{ activity.label }}</div>
+            <div class="text-body">{{ activity.label }}</div>
           </div>
-          <div class="font-caption shrink-0">{{ formatRelativeTime(activity.occurred_at) }}</div>
+          <div class="text-caption shrink-0">{{ formatRelativeTime(activity.occurred_at) }}</div>
         </div>
       </div>
     </CardSection>
