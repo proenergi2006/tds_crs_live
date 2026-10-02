@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\PenawaranBrand;
 use App\Enums\PenawaranDisposisi;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -126,5 +128,33 @@ class Penawaran extends Model
     public function getDisposisiLabelAttribute(): ?string
     {
         return $this->disposisi_penawaran?->label();
+    }
+
+    public function scopeValidOn(Builder $query, Carbon|string $date): Builder
+    {
+        $day = Carbon::parse($date)->toDateString();
+
+        return $query->whereDate('masa_berlaku', '<=', $day)
+            ->whereDate('sampai_dengan', '>=', $day);
+    }
+
+    public function isValidOn(Carbon|string $date): bool
+    {
+        if (! $this->masa_berlaku || ! $this->sampai_dengan) {
+            return false;
+        }
+
+        $day = Carbon::parse($date)->toDateString();
+
+        return Carbon::parse($this->masa_berlaku)->toDateString() <= $day
+            && Carbon::parse($this->sampai_dengan)->toDateString() >= $day;
+    }
+
+    public function validityPeriodLabel(): string
+    {
+        $from = $this->masa_berlaku ? Carbon::parse($this->masa_berlaku)->format('d/m/Y') : '-';
+        $to = $this->sampai_dengan ? Carbon::parse($this->sampai_dengan)->format('d/m/Y') : '-';
+
+        return "{$from} – {$to}";
     }
 }

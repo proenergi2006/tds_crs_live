@@ -1,5 +1,26 @@
 /* Format tanggal & waktu dengan locale id-ID, dipakai lintas halaman SystemDesign. */
 
+/** Kunci tanggal "YYYY-MM-DD" tanpa jam/zona; mengembalikan "" jika kosong. */
+export function toDateKey(value?: string | null): string {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+/** Tanggal hari ini (zona lokal) sebagai "YYYY-MM-DD". */
+export function todayDateKey(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Rentang "dd/mm/YYYY – dd/mm/YYYY" dari dua tanggal; "-" bagi sisi kosong. */
+export function formatDateRangeShort(from?: string | null, to?: string | null): string {
+  const fmt = (v?: string | null) => {
+    const k = toDateKey(v);
+    return k ? `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}` : "-";
+  };
+  return `${fmt(from)} – ${fmt(to)}`;
+}
+
 /** Tanggal panjang, mis. "22 Juni 2026". Mengembalikan "-" jika kosong. */
 export function formatDate(value?: string | null): string {
   return value

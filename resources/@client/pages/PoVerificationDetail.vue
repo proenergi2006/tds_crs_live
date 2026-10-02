@@ -30,12 +30,12 @@ const termsList = computed<string[]>(() => {
     try {
       const j = JSON.parse(raw);
       if (Array.isArray(j)) return j.filter(Boolean);
-    } catch {}
+    } catch { }
     // fallback: pecah per baris
     return raw.replace(/\r\n/g, '\n')
-              .split('\n')
-              .map(s => s.trim())
-              .filter(Boolean);
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
   }
   return [];
 });
@@ -60,7 +60,7 @@ async function submit(action: 'approve' | 'reject') {
   try {
     const summaryToSend =
       userRoleId.value === 2 ? ceoSummary.value :
-      userRoleId.value === 3 ? cfoSummary.value : '';
+        userRoleId.value === 3 ? cfoSummary.value : '';
 
     await axios.post(
       `/api/po-verification/${id}`,
@@ -86,7 +86,7 @@ function formatDate(d: string) {
     : '-';
 }
 
-function formatCurrency(v: number|string = 0) {
+function formatCurrency(v: number | string = 0) {
   const n = typeof v === 'string' ? parseFloat(v) : v;
   return !isNaN(n) ? `Rp. ${n.toLocaleString('id-ID')}` : '-';
 }
@@ -96,8 +96,8 @@ onMounted(fetchPo);
 
 <template>
   <div class="p-6 intro-y">
-    <div v-if="!po.id_po" class="text-center py-10">
-      <svg class="animate-spin h-8 w-8 mx-auto" viewBox="0 0 24 24">
+    <div v-if="!po.id_po" class="py-10 text-center">
+      <svg class="mx-auto w-8 h-8 animate-spin" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
       </svg>
@@ -108,12 +108,12 @@ onMounted(fetchPo);
       <!-- Status -->
       <div class="flex items-center mb-4">
         <template v-if="po.cfo_result === 1">
-          <Lucide icon="CheckCircle" class="text-green-500 w-5 h-5 mr-2" />
-          <span class="text-green-500 font-medium">Verified</span>
+          <Lucide icon="CheckCircle" class="mr-2 w-5 h-5 text-green-500" />
+          <span class="font-medium text-green-500">Verified</span>
         </template>
         <template v-else-if="po.cfo_result === 2">
-          <Lucide icon="XCircle" class="text-red-500 w-5 h-5 mr-2" />
-          <span class="text-red-500 font-medium">Rejected</span>
+          <Lucide icon="XCircle" class="mr-2 w-5 h-5 text-red-500" />
+          <span class="font-medium text-red-500">Rejected</span>
         </template>
         <template v-else>
           <span class="text-gray-500">Pending Verification</span>
@@ -122,12 +122,12 @@ onMounted(fetchPo);
 
       <div class="flex items-center mb-4">
         <Button variant="outline-secondary" @click="goBack">Kembali</Button>
-        <h2 class="text-lg font-medium ml-4">Verifikasi PO {{ po.nomor_po }}</h2>
+        <h2 class="ml-4 font-medium text-lg">Verifikasi PO {{ po.nomor_po }}</h2>
       </div>
 
       <!-- PO Header -->
-      <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-2 gap-4 text-sm">
+      <div class="bg-white shadow mb-6 p-6 rounded-lg">
+        <div class="gap-4 grid grid-cols-2 text-sm">
           <div><strong>Nomor PO:</strong> {{ po.nomor_po }}</div>
           <div><strong>Tanggal:</strong> {{ formatDate(po.tanggal_inven) }}</div>
           <div><strong>Vendor:</strong> {{ po.vendor?.nama_vendor || '-' }}</div>
@@ -138,11 +138,11 @@ onMounted(fetchPo);
       </div>
 
       <!-- Produk -->
-      <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium mb-4">Rincian Produk</h3>
+      <div class="bg-white shadow mb-6 p-6 rounded-lg">
+        <h3 class="mb-4 font-medium text-lg">Rincian Produk</h3>
         <div class="overflow-x-auto">
-          <table class="min-w-full bg-white border">
-            <thead class="bg-slate-50 text-xs text-slate-600 uppercase">
+          <table class="bg-white border min-w-full">
+            <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
               <tr>
                 <th class="px-4 py-2 text-left">Produk</th>
                 <th class="px-4 py-2 text-right">Volume PO</th>
@@ -151,14 +151,14 @@ onMounted(fetchPo);
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in po.produks" :key="item.id_po_produk" class="border-t hover:bg-slate-50">
+              <tr v-for="item in po.produks" :key="item.id_po_produk" class="hover:bg-slate-50 border-t">
                 <td class="px-4 py-2">
                   {{ item.produk?.nama_produk || '-' }} - Jenis :
                   {{ item.produk?.jenis?.nama || '-' }}
                   ({{ item.produk?.ukuran?.nama_ukuran || '-' }}
                   {{ item.produk?.ukuran?.satuan?.nama_satuan || '-' }})
                 </td>
-                <td class="px-4 py-2 text-right">{{item.volume_po }}</td>
+                <td class="px-4 py-2 text-right">{{ item.volume_po }}</td>
                 <td class="px-4 py-2 text-right">{{ formatCurrency(item.harga_tebus) }}</td>
                 <td class="px-4 py-2 text-right">{{ formatCurrency(item.jumlah_harga) }}</td>
               </tr>
@@ -168,8 +168,8 @@ onMounted(fetchPo);
       </div>
 
       <!-- Total -->
-      <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-3 gap-4 text-sm">
+      <div class="bg-white shadow mb-6 p-6 rounded-lg">
+        <div class="gap-4 grid grid-cols-3 text-sm">
           <div><strong>Subtotal:</strong> {{ formatCurrency(po.subtotal) }}</div>
           <div><strong>PPN 11%:</strong> {{ formatCurrency(po.ppn11) }}</div>
           <div><strong>Total Order:</strong> {{ formatCurrency(po.total_order) }}</div>
@@ -177,85 +177,62 @@ onMounted(fetchPo);
       </div>
 
       <!-- =============== T&C (Syarat & Ketentuan) =============== -->
-      <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium">Syarat &amp; Ketentuan</h3>
-        
+      <div class="bg-white shadow mb-6 p-6 rounded-lg">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-medium text-lg">Syarat & Ketentuan</h3>
+
         </div>
 
         <!-- jika ada HTML full -->
-        <div v-if="po.terms_condition"
-             class="text-sm leading-relaxed space-y-2"
-             v-html="po.terms_condition">
+        <div v-if="po.terms_condition" class="space-y-2 text-sm leading-relaxed" v-html="po.terms_condition">
         </div>
 
         <!-- fallback: list dari teks per baris -->
-        <ol v-else-if="termsList.length" class="list-decimal pl-6 space-y-2 text-sm">
+        <ol v-else-if="termsList.length" class="space-y-2 pl-6 text-sm list-decimal">
           <li v-for="(t, i) in termsList" :key="i">{{ t }}</li>
         </ol>
 
         <div v-else class="text-slate-500 text-sm">
-          Tidak ada syarat &amp; ketentuan.
+          Tidak ada syarat & ketentuan.
         </div>
       </div>
       <!-- ======================================================== -->
 
       <!-- CFO Input -->
-      <div
-        v-if="userRoleId === 3 && po.disposisi_po === 1"
-        class="bg-white shadow rounded-lg p-6 mb-6"
-      >
-        <h3 class="text-lg font-medium mb-4">Ringkasan Verifikasi CFO</h3>
-        <textarea
-          v-model="cfoSummary"
-          rows="4"
-          class="w-full border rounded-md p-2 mb-4"
-          placeholder="Masukkan ringkasan verifikasi CFO..."
-        ></textarea>
+      <div v-if="userRoleId === 3 && po.disposisi_po === 1" class="bg-white shadow mb-6 p-6 rounded-lg">
+        <h3 class="mb-4 font-medium text-lg">Ringkasan Verifikasi CFO</h3>
+        <textarea v-model="cfoSummary" rows="4" class="mb-4 p-2 border rounded-md w-full"
+          placeholder="Masukkan ringkasan verifikasi CFO..."></textarea>
         <div class="flex space-x-4">
           <Button variant="success" @click="submit('approve')">Approve</Button>
-          <Button variant="danger"  @click="submit('reject')">Reject</Button>
+          <Button variant="danger" @click="submit('reject')">Reject</Button>
         </div>
       </div>
 
       <!-- CEO Input -->
-      <div
-        v-if="userRoleId === 2 && po.disposisi_po === 2 && po.cfo_result === 1"
-        class="bg-white shadow rounded-lg p-6 mb-6"
-      >
-        <h3 class="text-lg font-medium mb-4">Ringkasan Verifikasi CEO</h3>
-        <textarea
-          v-model="ceoSummary"
-          rows="4"
-          class="w-full border rounded-md p-2 mb-4"
-          placeholder="Masukkan ringkasan verifikasi CEO..."
-        ></textarea>
+      <div v-if="userRoleId === 2 && po.disposisi_po === 2 && po.cfo_result === 1"
+        class="bg-white shadow mb-6 p-6 rounded-lg">
+        <h3 class="mb-4 font-medium text-lg">Ringkasan Verifikasi CEO</h3>
+        <textarea v-model="ceoSummary" rows="4" class="mb-4 p-2 border rounded-md w-full"
+          placeholder="Masukkan ringkasan verifikasi CEO..."></textarea>
         <div class="flex space-x-4">
           <Button variant="success" @click="submit('approve')">Approve</Button>
-          <Button variant="danger"  @click="submit('reject')">Reject</Button>
+          <Button variant="danger" @click="submit('reject')">Reject</Button>
         </div>
       </div>
 
       <!-- CFO Read-only -->
-      <div v-if="po.cfo_summary" class="bg-white shadow rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium mb-4">Ringkasan Verifikasi CFO</h3>
-        <textarea
-          readonly
-          :value="po.cfo_summary"
-          rows="3"
-          class="w-full bg-gray-100 border rounded-md p-2 mb-4"
-        ></textarea>
+      <div v-if="po.cfo_summary" class="bg-white shadow mb-6 p-6 rounded-lg">
+        <h3 class="mb-4 font-medium text-lg">Ringkasan Verifikasi CFO</h3>
+        <textarea readonly :value="po.cfo_summary" rows="3"
+          class="bg-gray-100 mb-4 p-2 border rounded-md w-full"></textarea>
       </div>
 
       <!-- CEO Read-only -->
-      <div v-if="po.ceo_summary" class="bg-white shadow rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium mb-4">Ringkasan Verifikasi CEO</h3>
-        <textarea
-          readonly
-          :value="po.ceo_summary"
-          rows="3"
-          class="w-full bg-gray-100 border rounded-md p-2 mb-4"
-        ></textarea>
+      <div v-if="po.ceo_summary" class="bg-white shadow mb-6 p-6 rounded-lg">
+        <h3 class="mb-4 font-medium text-lg">Ringkasan Verifikasi CEO</h3>
+        <textarea readonly :value="po.ceo_summary" rows="3"
+          class="bg-gray-100 mb-4 p-2 border rounded-md w-full"></textarea>
       </div>
     </div>
   </div>

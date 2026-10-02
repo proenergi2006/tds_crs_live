@@ -112,6 +112,10 @@ class PenawaranController extends Controller
             $query->where('status', $status);
         }
 
+        if ($request->boolean('valid_today')) {
+            $query->validOn(now());
+        }
+
         $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);
         $paginator->through(fn ($penawaran) => (new PenawaranIndexResource($penawaran))->resolve());
 

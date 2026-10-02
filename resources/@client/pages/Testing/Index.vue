@@ -339,8 +339,8 @@ const stats = [
                         {{ item.jenis }} <span class="mx-1">·</span> {{ item.ukuran }}
                       </div>
                     </Table.Td>
-                    <Table.Td class="num-micro text-right">{{ item.persen }}%</Table.Td>
-                    <Table.Td class="num-sm text-right">{{ item.volume }}</Table.Td>
+                    <Table.Td class="text-right num-micro">{{ item.persen }}%</Table.Td>
+                    <Table.Td class="text-right num-sm">{{ item.volume }}</Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
@@ -352,7 +352,7 @@ const stats = [
               <div class="flex justify-center items-center bg-amber-100 rounded-full w-11 h-11 text-amber-600 shrink-0">
                 <Lucide icon="StickyNote" class="w-5 h-5" />
               </div>
-              <h2 class="text-section-title">Catatan &amp; Keterangan</h2>
+              <h2 class="text-section-title">Catatan & Keterangan</h2>
             </div>
             <hr class="mb-4" />
             <div class="gap-6 grid grid-cols-1 lg:grid-cols-2 px-6 pb-6">
@@ -365,7 +365,7 @@ const stats = [
                 </p>
               </div>
               <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
-                <div class="text-overline">Syarat &amp; Ketentuan</div>
+                <div class="text-overline">Syarat & Ketentuan</div>
                 <p class="mt-1 text-body whitespace-pre-line">
                   Harga belum termasuk biaya bongkar di lokasi tujuan. Toleransi penyusutan mengikuti
                   ketentuan yang disepakati kedua belah pihak.
