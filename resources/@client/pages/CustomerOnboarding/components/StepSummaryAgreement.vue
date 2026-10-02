@@ -212,11 +212,11 @@ const summarySections = computed(() => [
     <h2 class="text-section-title text-xl">Summary & Agreement</h2>
 
     <div class="space-y-5">
-      <div v-for="section in summarySections" :key="section.title" class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="text-overline mb-3 border-b border-slate-100 pb-2">{{ section.title }}</div>
-        <div class="grid gap-3 rounded bg-slate-50 p-4 md:grid-cols-2">
+      <div v-for="section in summarySections" :key="section.title" class="bg-white shadow-sm p-6 rounded-lg">
+        <div class="mb-3 pb-2 border-slate-100 border-b text-overline">{{ section.title }}</div>
+        <div class="gap-3 grid md:grid-cols-2 bg-slate-50 p-4 rounded">
           <div v-for="row in section.rows" :key="row.label"
-            class="flex justify-between gap-4 border-b border-slate-200 pb-1">
+            class="flex justify-between gap-4 pb-1 border-slate-200 border-b">
             <span class="text-form-label">{{ row.label }}</span>
             <span class="text-body-strong text-right">{{ row.value }}</span>
           </div>
@@ -224,25 +224,25 @@ const summarySections = computed(() => [
       </div>
     </div>
 
-    <div class="rounded-lg bg-white p-6 shadow-sm">
-      <div class="text-overline mb-3 border-b border-slate-100 pb-2">AGREEMENT</div>
+    <div class="bg-white shadow-sm p-6 rounded-lg">
+      <div class="mb-3 pb-2 border-slate-100 border-b text-overline">AGREEMENT</div>
 
       <div class="space-y-4">
         <div>
-          <FormLabel class="text-form-label !mb-1 block">Updated By
+          <FormLabel class="block !mb-1 text-form-label">Updated By
             <span class="ml-0.5 text-danger" aria-hidden="true">*</span>
           </FormLabel>
           <FormInput v-model="form.agreement.updated_by" type="text" placeholder="Nama pengisi form"
             :class="errors['agreement.updated_by'] ? 'input-error' : ''" />
           <small v-if="errors['agreement.updated_by']" class="block input-error-text">{{ errors['agreement.updated_by']
-          }}</small>
+            }}</small>
         </div>
 
         <div>
           <label class="inline-flex items-center gap-3">
             <input type="checkbox" v-model="form.agreement.agree" />
-            <span class="text-body cursor-pointer hover:underline">
-              Setujui Terms &amp; Conditions: saya menyatakan bahwa data di atas benar adanya.
+            <span class="text-body hover:underline cursor-pointer">
+              Setujui Terms & Conditions: saya menyatakan bahwa data di atas benar adanya.
             </span>
           </label>
           <small v-if="errors['agreement.agree']" class="block input-error-text">{{ errors['agreement.agree'] }}</small>

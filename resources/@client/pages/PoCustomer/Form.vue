@@ -10,6 +10,7 @@ import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
 import TippyContent from '@/components/Base/TippyContent'
 import TomSelect from '@/components/Base/TomSelect'
+import Alert from '@/components/Base/Alert'
 import { FormInput, FormLabel, FormSelect } from '@/components/Base/Form'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
@@ -18,7 +19,7 @@ import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateRangeShort, formatNumber, toDateKey, todayDateKey } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -68,6 +69,12 @@ const pageDescription = computed(() =>
     : 'Sumber harga dari Penawaran terpilih. Lengkapi detail PO untuk memproses.',
 )
 const isPoBlocked = computed(() => isEditMode.value && poRecord.value?.status_key === 'blocked')
+const validityRangeLabel = computed(() => formatDateRangeShort(form.masa_berlaku, form.sampai_dengan))
+const isPenawaranExpiredToday = computed(() => {
+  if (isEditMode.value || !form.id_penawaran || !form.masa_berlaku || !form.sampai_dengan) return false
+  const today = todayDateKey()
+  return today < toDateKey(form.masa_berlaku) || today > toDateKey(form.sampai_dengan)
+})
 
 const rules = {
   id_penawaran: { required: helpers.withMessage('Pilih Penawaran terlebih dahulu', required) },
@@ -81,7 +88,17 @@ const rules = {
     integer: helpers.withMessage('Termin harus berupa angka bulat', integer),
     minValue: helpers.withMessage('Termin harus lebih dari 0', minValue(1)),
   },
-  tanggal_po: { required: helpers.withMessage('Tanggal PO wajib diisi', required) },
+  tanggal_po: {
+    required: helpers.withMessage('Tanggal PO wajib diisi', required),
+    withinPenawaranValidity: helpers.withMessage(
+      () => `Tanggal PO harus berada dalam masa berlaku penawaran (${validityRangeLabel.value}).`,
+      (value: string) => {
+        if (!isEditMode.value || !value || !form.masa_berlaku || !form.sampai_dengan) return true
+        const day = toDateKey(value)
+        return day >= toDateKey(form.masa_berlaku) && day <= toDateKey(form.sampai_dengan)
+      },
+    ),
+  },
   tanggal_kirim: {
     required: helpers.withMessage('Tanggal pengiriman wajib diisi', required),
     notBeforeTanggalPo: helpers.withMessage(
@@ -169,7 +186,7 @@ function applyPoCustomerToForm() {
 async function fetchPenawaranOptions() {
   try {
     const { data } = await axios.get('/api/penawarans', {
-      params: { status: 'approved_om', per_page: 200 },
+      params: { status: 'approved_om', per_page: 200, valid_today: 1 },
     })
     penawaranOptions.value = (data.data ?? []).map((row: any) => ({
       id_penawaran: row.id_penawaran,
@@ -232,6 +249,8 @@ function onPenawaranSelected(value: string | string[]): void {
 
 async function submit() {
   formError.value = ''
+
+  if (isPenawaranExpiredToday.value) return
 
   const valid = await v$.value.$validate()
   if (!valid) return
@@ -477,13 +496,18 @@ function poVolumeForItem(it: any) {
             label="Lampiran Dokumen PO" accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="2"
             :hint="isEditMode ? 'Upload file baru untuk mengganti.' : 'Opsional. PDF, JPG, atau PNG maksimal 2MB.'" />
 
+          <Alert v-if="isPenawaranExpiredToday" variant="soft-warning" class="flex items-start gap-2">
+            <Lucide icon="AlertTriangle" class="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Penawaran ini tidak berlaku hari ini (masa berlaku {{ validityRangeLabel }}). PO tidak dapat dibuat.</span>
+          </Alert>
+
           <div v-if="isPoBlocked" class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-body text-amber-800">
             <Lucide icon="AlertTriangle" class="mt-0.5 h-4 w-4 shrink-0" />
             <span>PO ini di-block oleh gerbang kredit. Setelah disimpan, PO kembali ke status belum diproses dan perlu Proses SC ulang.</span>
           </div>
 
           <Button type="submit" variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
-            :disabled="pageLoading || submitting">
+            :disabled="pageLoading || submitting || isPenawaranExpiredToday">
             <Lucide v-if="pageLoading || submitting" icon="Loader2" class="h-4 w-4 animate-spin" />
             <Lucide v-else icon="Save" class="h-4 w-4" />
             Simpan

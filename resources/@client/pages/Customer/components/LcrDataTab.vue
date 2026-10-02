@@ -912,7 +912,7 @@ onMounted(() => {
 
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="(site, index) in sites" :key="site.id_lcr" class="hover:bg-slate-50 transition">
-              <td class="px-3 py-2 num-sm text-center">{{ index + 1 }}.</td>
+              <td class="px-3 py-2 text-center num-sm">{{ index + 1 }}.</td>
               <td class="px-3 py-2 text-body-strong">{{ site.site_name || '-' }}</td>
               <td class="px-3 py-2 max-w-xs text-body truncate">{{ site.address?.address_line || '-' }}</td>
               <td class="px-3 py-2 text-body">{{ site.survey_date || '-' }}</td>
@@ -986,7 +986,7 @@ onMounted(() => {
             <div class="col-span-9">
               <FormInput v-model="form.site_name" placeholder="cth. Gudang Site Cikarang"
                 :class="siteNameError ? 'border-rose-500' : ''" @blur="v$.site_name.$touch()" />
-              <small v-if="siteNameError" class="text-caption !text-rose-600">{{ siteNameError }}</small>
+              <small v-if="siteNameError" class="!text-rose-600 text-caption">{{ siteNameError }}</small>
             </div>
           </div>
 
@@ -1196,7 +1196,7 @@ onMounted(() => {
 
           <div class="items-start gap-4 grid grid-cols-12">
             <div class="flex flex-col items-start gap-2 col-span-3 pt-2 text-form-label">
-              <FormLabel>Produk &amp; Volume/Bulan</FormLabel>
+              <FormLabel>Produk & Volume/Bulan</FormLabel>
               <Button v-if="!readonly" size="sm" variant="outline-secondary" @click="addProductVolumeRow">
                 <Lucide icon="Plus" class="mr-1 w-4 h-4" /> Tambah
               </Button>
@@ -1757,7 +1757,7 @@ onMounted(() => {
 
             <div class="items-start gap-4 grid grid-cols-12">
               <label class="col-span-3 pt-2 text-form-label">
-                <FormLabel>Foto Kantor &amp; Gerbang Perusahaan</FormLabel>
+                <FormLabel>Foto Kantor & Gerbang Perusahaan</FormLabel>
               </label>
               <div class="col-span-9">
                 <ImageUploadField :model-value="photoModelValue('company_office_photos')" multiple with-caption

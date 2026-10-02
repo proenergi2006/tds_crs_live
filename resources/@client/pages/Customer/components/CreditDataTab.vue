@@ -179,7 +179,7 @@ function formatFileSize(bytes?: number | null): string {
 
     <div class="gap-6 grid grid-cols-1">
       <CardSection title="Credit Application"
-        description="Pengajuan limit kredit &amp; term of payment (TOP) untuk customer ini." icon="Wallet"
+        description="Pengajuan limit kredit & term of payment (TOP) untuk customer ini." icon="Wallet"
         icon-class="bg-emerald-100 text-emerald-600">
         <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[120px] text-slate-500">
           <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
@@ -267,7 +267,7 @@ function formatFileSize(bytes?: number | null): string {
             </h3>
             <RichTextField v-if="!locked" v-model="financialReview" :disabled="saving" />
             <template v-else>
-              <div v-if="financialReviewDisplay" class="text-body rich-text-content" v-html="financialReviewDisplay" />
+              <div v-if="financialReviewDisplay" class="rich-text-content text-body" v-html="financialReviewDisplay" />
               <div v-else class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg text-body">-</div>
             </template>
           </div>
@@ -277,7 +277,7 @@ function formatFileSize(bytes?: number | null): string {
               <Lucide icon="FileText" class="w-3.5 h-3.5 shrink-0" />Catatan Admin Finance
             </h3>
             <slot name="finance-notes">
-              <div v-if="props.latestApprovedVerification?.notes" class="text-body rich-text-content"
+              <div v-if="props.latestApprovedVerification?.notes" class="rich-text-content text-body"
                 v-html="props.latestApprovedVerification.notes" />
               <div v-else class="text-body">-</div>
               <ul v-if="props.latestApprovedVerification?.finance_attachments?.length" class="space-y-1 mt-2">
