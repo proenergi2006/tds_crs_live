@@ -51,6 +51,11 @@ class PoCustomerController extends Controller
 
         $query = PoCustomer::with(['customer:id_customer,customer_code,company_name', 'penawaran', 'salesConfirmation']);
 
+        $user = $request->user();
+        if ($user->cant('penawaran.viewAny') && $user->cant('sales-confirmation.manage')) {
+            $query->ownedBy($user);
+        }
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_poc', 'ilike', "%{$search}%");
@@ -88,7 +93,20 @@ class PoCustomerController extends Controller
         ]);
 
         $penawaran = Penawaran::find($validated['id_penawaran']);
-        if ($penawaran?->status !== self::PENAWARAN_STATUS_APPROVED_OM) {
+
+        if ((int) $penawaran->id_customer !== (int) $validated['id_customer']) {
+            throw ValidationException::withMessages([
+                'id_customer' => ['Customer tidak sesuai dengan penawaran.'],
+            ]);
+        }
+
+        if ($request->user()->cant('penawaran.viewAny') && (int) $penawaran->user_id !== (int) $request->user()->id) {
+            throw ValidationException::withMessages([
+                'id_penawaran' => ['Penawaran ini bukan milik Anda.'],
+            ]);
+        }
+
+        if ($penawaran->status !== self::PENAWARAN_STATUS_APPROVED_OM) {
             throw ValidationException::withMessages([
                 'id_penawaran' => ['PO Customer hanya bisa dibuat dari Penawaran yang sudah disetujui OM.'],
             ]);
@@ -142,7 +160,11 @@ class PoCustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $po = PoCustomer::findOrFail($id);
+        $po = PoCustomer::with('penawaran')->findOrFail($id);
+
+        if (! $po->isWritableBy($request->user())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         if ($po->is_locked) {
             return response()->json(['message' => 'PO Customer tidak bisa diubah karena sudah masuk proses Sales Confirmation.'], 409);
@@ -176,6 +198,11 @@ class PoCustomerController extends Controller
             'penawaran.items.produk.ukuran',
             'salesConfirmation',
         ])->findOrFail($id);
+
+        if (! $po->isReadableBy($user)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $po->append(['status_key', 'status_label', 'tipe_bayar_label']);
         return response()->json($po);
     }
@@ -186,7 +213,11 @@ class PoCustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $po = PoCustomer::findOrFail($id);
+        $po = PoCustomer::with('penawaran')->findOrFail($id);
+
+        if (! $po->isWritableBy(auth()->user())) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         if ($po->is_locked) {
             return response()->json(['message' => 'PO Customer tidak bisa dihapus karena sudah masuk proses Sales Confirmation.'], 409);
@@ -484,7 +515,11 @@ public function processSalesConfirmation(Request $request, int $idPoc, ProcessSa
         return response()->json(['message' => 'Forbidden'], 403);
     }
 
-    $po = PoCustomer::with(['customer.latestApprovedVerification', 'salesConfirmation'])->findOrFail($idPoc);
+    $po = PoCustomer::with(['customer.latestApprovedVerification', 'salesConfirmation', 'penawaran'])->findOrFail($idPoc);
+
+    if (! $po->isWritableBy($request->user())) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
 
     if ($po->sc_process_state === PoCustomerScProcessState::Cleared) {
         return response()->json(['message' => 'PO Customer sudah lolos gerbang Sales Confirmation.'], 409);
@@ -519,7 +554,11 @@ public function updateNomorPo(Request $r, $idPoc){
     }
 
     $r->validate(['nomor_poc' => 'required|string|max:50']);
-    $po = PoCustomer::findOrFail($idPoc);
+    $po = PoCustomer::with('penawaran')->findOrFail($idPoc);
+
+    if (! $po->isWritableBy($r->user())) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
 
     if ($po->is_locked) {
         return response()->json(['message' => 'Nomor PO tidak bisa diubah karena PO sudah masuk proses Sales Confirmation.'], 409);
