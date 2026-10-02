@@ -910,7 +910,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-                }}</small>
+              }}</small>
             </div>
 
             <div v-if="false">
@@ -944,7 +944,7 @@ function formatCurrency(v: number | string = 0) {
                 {{ selectedPeriodLabel }}
               </div>
 
-              <div v-else class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md text-body !text-amber-700">
+              <div v-else class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md !text-amber-700 text-body">
                 Belum ada periode harga aktif — hubungi Procurement.
               </div>
 
@@ -1011,7 +1011,8 @@ function formatCurrency(v: number | string = 0) {
 
               <div class="col-span-12">
                 <FormLabel>Alamat</FormLabel>
-                <div class="mt-1 text-body-strong whitespace-pre-line">{{ selectedCustomer?.company_address || '-' }}</div>
+                <div class="mt-1 text-body-strong whitespace-pre-line">{{ selectedCustomer?.company_address || '-' }}
+                </div>
               </div>
             </div>
           </div>
@@ -1036,7 +1037,7 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
                 fieldError('type_pengiriman')
-                }}</small>
+              }}</small>
             </div>
 
             <div>
@@ -1056,7 +1057,7 @@ function formatCurrency(v: number | string = 0) {
                 </template>
               </FormSelect>
               <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
-                }}</small>
+              }}</small>
             </div>
             <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
               class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
@@ -1158,8 +1159,8 @@ function formatCurrency(v: number | string = 0) {
       <hr class="my-4" />
 
       <div class="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
-        <p class="text-body !text-slate-500">
-          Item penawaran disusun lewat modal generator berdasarkan periode &amp; source harga.
+        <p class="!text-slate-500 text-body">
+          Item penawaran disusun lewat modal generator berdasarkan periode & source harga.
         </p>
         <Button type="button" variant="primary" class="inline-flex justify-center items-center gap-2 whitespace-nowrap"
           @click="openItemsModal">
@@ -1182,15 +1183,15 @@ function formatCurrency(v: number | string = 0) {
 
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="(item, idx) in form.items" :key="idx" class="hover:bg-slate-50 transition">
-              <td class="px-4 py-3 num-sm text-center">{{ idx + 1 }}.</td>
+              <td class="px-4 py-3 text-center num-sm">{{ idx + 1 }}.</td>
               <td class="px-4 py-3 text-body-strong">{{ produkLabel(item.id_produk) }}</td>
               <td class="px-4 py-3 text-body">{{ item.source_name || '-' }}</td>
-              <td class="px-4 py-3 num-sm text-right">{{ item.persen }}%</td>
-              <td class="px-4 py-3 num-sm text-right">{{ item.volume_order || 0 }}</td>
-              <td class="px-4 py-3 num-sm text-right">{{ formatCurrency(item.harga_price_list || 0) }}</td>
+              <td class="px-4 py-3 text-right num-sm">{{ item.persen }}%</td>
+              <td class="px-4 py-3 text-right num-sm">{{ item.volume_order || 0 }}</td>
+              <td class="px-4 py-3 text-right num-sm">{{ formatCurrency(item.harga_price_list || 0) }}</td>
             </tr>
             <tr v-if="form.items.length === 0">
-              <td colspan="6" class="px-4 py-10 text-body !text-slate-400 text-center">
+              <td colspan="6" class="px-4 py-10 !text-slate-400 text-body text-center">
                 Belum ada item. Klik "Susun Item Penawaran".
               </td>
             </tr>
@@ -1199,12 +1200,12 @@ function formatCurrency(v: number | string = 0) {
           <tfoot v-if="form.items.length" class="bg-slate-50 border-slate-200 border-t">
             <tr>
               <td class="px-4 py-3 text-body-strong text-right" colspan="3">Total</td>
-              <td class="px-4 py-3 num-sm text-right"
+              <td class="px-4 py-3 text-right num-sm"
                 :class="totalPersenNumber !== 100 ? 'text-red-600' : 'text-slate-800'">
                 {{ totalPersenDisplay }}%
               </td>
-              <td class="px-4 py-3 num-sm text-right">{{ totalVolume }}</td>
-              <td class="px-4 py-3 num-sm text-right">{{ formatCurrency(avgHargaPriceList) }}</td>
+              <td class="px-4 py-3 text-right num-sm">{{ totalVolume }}</td>
+              <td class="px-4 py-3 text-right num-sm">{{ formatCurrency(avgHargaPriceList) }}</td>
             </tr>
           </tfoot>
         </table>
@@ -1232,7 +1233,7 @@ function formatCurrency(v: number | string = 0) {
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
                   fieldError('tipe_pembayaran')
-                  }}</small>
+                }}</small>
               </div>
 
               <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
@@ -1264,7 +1265,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('dp_persen')" class="block input-error-text">{{
                       fieldError('dp_persen')
-                      }}</small>
+                    }}</small>
                   </div>
 
                   <div class="">
@@ -1280,7 +1281,7 @@ function formatCurrency(v: number | string = 0) {
                     </div>
                     <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                       fieldError('repayment_persen')
-                      }}</small>
+                    }}</small>
                   </div>
                 </div>
                 <p class="mt-2 text-caption">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.
@@ -1356,17 +1357,17 @@ function formatCurrency(v: number | string = 0) {
 
             <Table.Tr>
               <Table.Td colspan="2" class="text-body-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
-              <Table.Td class="num-md text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
+              <Table.Td class="text-right num-md">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
               <Table.Td colspan="2" class="text-body-strong text-right">PPN (11%)</Table.Td>
-              <Table.Td class="num-md text-right">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
+              <Table.Td class="text-right num-md">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
               <Table.Td colspan="2" class="text-section-title text-right">TOTAL</Table.Td>
-              <Table.Td class="num-md !text-emerald-700 text-right">{{
+              <Table.Td class="!text-emerald-700 text-right num-md">{{
                 formatCurrency(grandTotalHargaDasar) }}</Table.Td>
             </Table.Tr>
           </Table.Tbody>

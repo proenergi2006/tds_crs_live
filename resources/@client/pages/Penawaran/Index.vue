@@ -13,7 +13,7 @@ import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDia
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
-import { formatDate } from '@/utils/format'
+import { formatDate, toDateKey, todayDateKey } from '@/utils/format'
 import TippyContent from '@/components/Base/TippyContent'
 import { disposisiBadgeClass } from './status'
 
@@ -100,6 +100,14 @@ function goToPage(page: number) {
 
 function openCreate() {
   router.push({ name: cfg.value.createRoute })
+}
+
+function isValidToday(pen: { masa_berlaku?: string | null; sampai_dengan?: string | null }): boolean {
+  const from = toDateKey(pen.masa_berlaku)
+  const to = toDateKey(pen.sampai_dengan)
+  if (!from || !to) return true
+  const today = todayDateKey()
+  return from <= today && today <= to
 }
 
 function openCreateSalesOrder(id: number) {
@@ -259,7 +267,7 @@ function joinWithAmpersand(items: string[]): string {
                     Edit
                   </Menu.Item>
 
-                  <Menu.Item v-if="String(pen.disposisi_penawaran) === '4'"
+                  <Menu.Item v-if="String(pen.disposisi_penawaran) === '4' && isValidToday(pen)"
                     @click="openCreateSalesOrder(pen.id_penawaran)">
                     <Lucide icon="ShoppingCart" class="mr-2 w-4 h-4" />
                     Buat PO Customer
