@@ -9,7 +9,7 @@ use App\Models\Personnel;
 use App\Models\Transporter;
 use App\Models\Truck;
 use App\Models\Vessel;
-use App\Support\MasterLogistik\LogisticDocumentFileNamer;
+use App\Services\MasterLogistik\LogisticDocumentFileNamer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;

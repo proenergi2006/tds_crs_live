@@ -2,7 +2,7 @@
 
 namespace App\Actions\MasterLogistik;
 
-use App\Support\MasterLogistik\LogisticDocumentFileNamer;
+use App\Services\MasterLogistik\LogisticDocumentFileNamer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

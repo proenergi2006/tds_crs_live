@@ -19,7 +19,7 @@ const routes = [
     path: "/login",
     name: "login",
     meta: { title: "Login", guestOnly: true },
-    component: () => import("@/pages/Login.vue"),
+    component: () => import("@/pages/Auth/Login.vue"),
   },
 
   {
@@ -68,7 +68,7 @@ const routes = [
       {
         path: "users",
         name: "users",
-        component: () => import("@/pages/Users.vue"),
+        component: () => import("@/pages/User/Index.vue"),
         meta: { permission: "admin.users.manage" },
       },
       {
@@ -409,7 +409,7 @@ const routes = [
       {
         path: "/po-customer/create",
         name: "penawarans-po",
-        component: () => import("@/pages/PenawaranCustomerPO.vue"),
+        component: () => import("@/pages/PoCustomer/Form.vue"),
         meta: { permission: "penawaran.manage" },
       },
 
@@ -423,20 +423,20 @@ const routes = [
       {
         path: "/po-customers/:id/edit",
         name: "po-customers-edit",
-        component: () => import("@/pages/PenawaranCustomerPO.vue"),
+        component: () => import("@/pages/PoCustomer/Form.vue"),
         meta: { permission: "penawaran.manage", breadcrumbTitle: "Edit PO Customer" },
       },
 
       {
         path: "/logistik/lcrs",
         name: "logistik-lcrs",
-        component: () => import("@/pages/LogistikLcrList.vue"),
+        component: () => import("@/pages/Verification/Lcr/Index.vue"),
         meta: { permission: "logistik.lcr.verify" },
       },
       {
         path: "/logistik/lcrs/:id",
         name: "logistik-lcr-detail",
-        component: () => import("@/pages/LogistikLcrDetail.vue"),
+        component: () => import("@/pages/Verification/Lcr/Detail.vue"),
         props: true,
         meta: { permission: "logistik.lcr.verify" },
       },
@@ -449,13 +449,13 @@ const routes = [
       {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
-        component: () => import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
+        component: () => import("@/pages/Verification/Customer/Index.vue"),
         meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer/:id",
         name: "review-data-customer-admin-detail",
-        component: () => import("@/pages/CustomerVerification/AdminFinance/Verify.vue"),
+        component: () => import("@/pages/Verification/Customer/Detail.vue"),
         props: true,
         meta: { permission: "verification.customer" },
       },

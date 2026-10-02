@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\MasterLogistik;
+namespace App\Services\MasterLogistik;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;

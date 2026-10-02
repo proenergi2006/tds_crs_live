@@ -26,7 +26,7 @@ const deleteOpen = ref(false);
         <Alert variant="soft-warning">Periksa kembali data sebelum melanjutkan.</Alert>
         <Alert variant="soft-danger">Terjadi kesalahan saat memproses data.</Alert>
       </div>
-      <p class="mt-2 text-caption">Dipakai nyata di Customer/Form.vue dan CustomerVerification/AdminFinance/Verify.vue
+      <p class="mt-2 text-caption">Dipakai nyata di Customer/Form.vue dan Verification/Customer/Detail.vue
         untuk banner peringatan inline.</p>
     </div>
 
