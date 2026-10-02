@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\PoCustomerPaymentType;
 use App\Enums\PoCustomerScProcessState;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -63,6 +64,26 @@ class PoCustomer extends Model
     public function penawaran(): BelongsTo
     {
         return $this->belongsTo(Penawaran::class, 'id_penawaran', 'id_penawaran');
+    }
+
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('penawaran', fn (Builder $q) => $q->where('user_id', $user->id));
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return $this->penawaran !== null && (int) $this->penawaran->user_id === (int) $user->id;
+    }
+
+    public function isWritableBy(User $user): bool
+    {
+        return $user->can('penawaran.viewAny') || $this->isOwnedBy($user);
+    }
+
+    public function isReadableBy(User $user): bool
+    {
+        return $user->can('penawaran.viewAny') || $user->can('sales-confirmation.manage') || $this->isOwnedBy($user);
     }
 
     public function salesConfirmation(): HasOne

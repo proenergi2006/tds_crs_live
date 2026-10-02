@@ -3,6 +3,7 @@
 namespace App\Actions\PoCustomer;
 
 use App\Enums\PoCustomerScProcessState;
+use App\Models\Penawaran;
 use App\Models\PoCustomer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -15,6 +16,15 @@ class UpdatePoCustomerAction
         $data = Arr::except($validated, ['lampiran_poc']);
 
         $data['termin_hari'] = $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null;
+
+        if (isset($validated['id_penawaran']) && (int) $validated['id_penawaran'] !== (int) $po->id_penawaran) {
+            $penawaran = Penawaran::with('items')->findOrFail($validated['id_penawaran']);
+
+            $data['harga_poc'] = (float) ($penawaran->harga_dasar ?? 0) + (float) ($penawaran->oat ?? 0);
+            $data['produk_poc'] = $penawaran->items->first()?->id_produk;
+        } else {
+            unset($data['id_penawaran']);
+        }
 
         if ($lampiran) {
             if ($po->lampiran_poc && Storage::disk('public')->exists($po->lampiran_poc)) {
