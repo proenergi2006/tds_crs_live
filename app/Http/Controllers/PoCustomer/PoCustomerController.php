@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\PoCustomer;
+
+use App\Http\Controllers\Controller;
 
 use App\Actions\PoCustomer\ProcessSalesConfirmationGateAction;
 use App\Actions\PoCustomer\UpdatePoCustomerAction;
@@ -368,7 +370,7 @@ public function showSalesConfirmation(int $idPoc, BuildSalesConfirmationDetailAc
             'adm_summary'     => $apr->adm_summary,
             'adm_result_date' => $apr->adm_result_date,
             'adm_pic'         => $apr->adm_pic,
-            'adm_attachments' => \App\Support\PublicAttachmentFormatter::format($apr->adm_attachments),
+            'adm_attachments' => \App\Services\PublicAttachmentFormatter::format($apr->adm_attachments),
         ] : null,
         'bm_approval' => $this->formatBmApproval($sc),
     ]);

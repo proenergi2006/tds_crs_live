@@ -76,6 +76,6 @@ class CustomerVerification extends Model
 
     public function formatFinanceAttachments(): array
     {
-        return \App\Support\PublicAttachmentFormatter::format($this->finance_attachments);
+        return \App\Services\PublicAttachmentFormatter::format($this->finance_attachments);
     }
 }
