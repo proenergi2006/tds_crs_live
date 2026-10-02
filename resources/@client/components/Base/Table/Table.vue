@@ -14,7 +14,7 @@ export interface TableProps extends /* @vue-ignore */ TableHTMLAttributes {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { computed, type TableHTMLAttributes, useAttrs, provide } from "vue";
 
 export type ProvideTable = {

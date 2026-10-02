@@ -184,7 +184,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="edit-nama" v-model="form.nama_satuan" placeholder="Nama Satuan"
           :class="v$.nama_satuan.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.nama_satuan.$error" class="font-caption !text-rose-600">{{ getFieldError('nama_satuan') }}</small>
+        <small v-if="v$.nama_satuan.$error" class="text-caption !text-rose-600">{{ getFieldError('nama_satuan') }}</small>
       </div>
 
       <div>
@@ -198,14 +198,14 @@ async function submitForm() {
           <FormSwitch>
             <FormSwitch.Input id="edit-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="font-body">
+          <span class="text-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
       </div>
 
       <div v-if="props.mode === 'edit'">
-        <p class="font-caption text-right mt-6">
+        <p class="text-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

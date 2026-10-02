@@ -500,18 +500,18 @@ function cancel() {
     <template #header>
       <div class="gap-4 grid grid-cols-12">
         <div class="col-span-4">
-          <FormLabel class="block !mb-1 font-label">Periode Harga</FormLabel>
+          <FormLabel class="block !mb-1 text-form-label">Periode Harga</FormLabel>
           <DateRangeInline v-model="periodRange" :error="periodRangeError" :auto-default="false"
             :disabled="!canSetCogs" />
         </div>
 
         <div class="col-span-4">
-          <FormLabel class="block !mb-1 font-label">Catatan Periode</FormLabel>
+          <FormLabel class="block !mb-1 text-form-label">Catatan Periode</FormLabel>
           <FormTextarea v-model="period.notes" rows="4" placeholder="Catatan untuk periode ini (opsional)" />
         </div>
 
         <div class="col-span-4">
-          <FormLabel class="block !mb-1 font-label">Lampiran</FormLabel>
+          <FormLabel class="block !mb-1 text-form-label">Lampiran</FormLabel>
           <FileUploadField :model-value="newAttachments" multiple :existing-files="existingAttachmentsForUpload"
             accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="5" choose-text="Pilih lampiran" empty-text="Belum ada lampiran"
             @update:model-value="handleAttachmentsSelected" @remove-existing="handleRemoveExistingAttachment"
@@ -523,8 +523,8 @@ function cancel() {
     <div class="space-y-5">
       <div class="flex sm:flex-row flex-col sm:justify-between sm:items-center gap-3">
         <div>
-          <h3 class="font-header">Daftar Harga Produk</h3>
-          <p class="mt-1 font-body">
+          <h3 class="text-section-title">Daftar Harga Produk</h3>
+          <p class="mt-1 text-body">
             Semua baris akan memakai periode yang sama dari bagian atas.
           </p>
         </div>
@@ -534,7 +534,7 @@ function cancel() {
             <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Baris
           </Button>
-          <div class="mt-1 font-body">
+          <div class="mt-1 text-body">
             Tambahkan baris baru untuk input harga produk lain.
           </div>
         </div>
@@ -544,33 +544,33 @@ function cancel() {
         <table class="divide-y divide-slate-200 min-w-full">
           <thead class="bg-slate-50">
             <tr>
-              <th v-if="showRowNumber" class="px-4 py-3 w-14 font-label text-left">
+              <th v-if="showRowNumber" class="px-4 py-3 w-14 text-form-label text-left">
                 No
               </th>
-              <th class="px-4 py-3 font-label text-left">
+              <th class="px-4 py-3 text-form-label text-left">
                 Cabang
               </th>
-              <th class="px-4 py-3 font-label text-left">
+              <th class="px-4 py-3 text-form-label text-left">
                 Produk
               </th>
-              <th v-if="showCogsColumn" class="px-4 py-3 font-label text-right">
+              <th v-if="showCogsColumn" class="px-4 py-3 text-form-label text-right">
                 Harga COGS
                 <RequiredAsterisk v-if="!isReadonly('cogs_price')" />
               </th>
-              <th v-if="showMarginColumn" class="px-4 py-3 font-label text-right">
+              <th v-if="showMarginColumn" class="px-4 py-3 text-form-label text-right">
                 Margin
                 <RequiredAsterisk v-if="!isReadonly('margin_amount')" />
               </th>
-              <th v-if="showPriceListColumn" class="px-4 py-3 font-label text-left">
+              <th v-if="showPriceListColumn" class="px-4 py-3 text-form-label text-left">
                 Price List
               </th>
-              <th v-if="showApprovalColumn" class="px-4 py-3 font-label text-left">
+              <th v-if="showApprovalColumn" class="px-4 py-3 text-form-label text-left">
                 Harga Approval
               </th>
-              <th class="px-4 py-3 font-label text-left">
+              <th class="px-4 py-3 text-form-label text-left">
                 Catatan
               </th>
-              <th v-if="canAddRows" class="px-4 py-3 w-20 font-label text-center">
+              <th v-if="canAddRows" class="px-4 py-3 w-20 text-form-label text-center">
                 Aksi
               </th>
             </tr>
@@ -578,7 +578,7 @@ function cancel() {
 
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="(row, index) in rows" :key="index" class="hover:bg-slate-50 transition">
-              <td v-if="showRowNumber" class="px-4 py-3 font-num align-top">
+              <td v-if="showRowNumber" class="px-4 py-3 num-sm align-top">
                 {{ index + 1 }}.
               </td>
 
@@ -590,7 +590,7 @@ function cancel() {
                     {{ cabang.nama_cabang }}
                   </option>
                 </FormSelect>
-                <small v-if="getRowFieldError(index, 'branch_id')" class="font-caption !text-rose-600">
+                <small v-if="getRowFieldError(index, 'branch_id')" class="text-caption !text-rose-600">
                   {{ getRowFieldError(index, 'branch_id') }}
                 </small>
               </td>
@@ -603,7 +603,7 @@ function cancel() {
                     {{ produk.nama_produk }} ({{ produk.ukuran?.nama_ukuran }} {{ produk.ukuran?.satuan?.nama_satuan }})
                   </option>
                 </FormSelect>
-                <small v-if="getRowFieldError(index, 'product_id')" class="font-caption !text-rose-600">
+                <small v-if="getRowFieldError(index, 'product_id')" class="text-caption !text-rose-600">
                   {{ getRowFieldError(index, 'product_id') }}
                 </small>
               </td>
@@ -626,7 +626,7 @@ function cancel() {
                         <FormCheck.Label :htmlFor="`cogs-basis-franco-${index}`">Franco</FormCheck.Label>
                       </FormCheck>
                     </div>
-                    <small v-if="getRowFieldError(index, 'cogs_basis')" class="font-caption !text-rose-600">
+                    <small v-if="getRowFieldError(index, 'cogs_basis')" class="text-caption !text-rose-600">
                       {{ getRowFieldError(index, 'cogs_basis') }}
                     </small>
                   </div>
@@ -643,7 +643,7 @@ function cancel() {
                 <div class="space-y-2 min-w-[190px]">
                   <div v-if="visibleMoneyFields.includes('price_list')"
                     class="items-center gap-2 grid grid-cols-[42px_minmax(0,1fr)]">
-                    <span class="font-section">TDS</span>
+                    <span class="text-overline">TDS</span>
                     <div>
                       <CurrencyField :model-value="row.price_list" placeholder="0" readonly />
                     </div>
@@ -651,7 +651,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('price_list_pe')"
                     class="items-center gap-2 grid grid-cols-[42px_minmax(0,1fr)]">
-                    <span class="font-section">
+                    <span class="text-overline">
                       PE
                       <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
@@ -668,7 +668,7 @@ function cancel() {
                 <div class="space-y-2 min-w-[190px]">
                   <div v-if="visibleMoneyFields.includes('bm_price')"
                     class="items-center gap-2 grid grid-cols-[42px_minmax(0,1fr)]">
-                    <span class="font-section">
+                    <span class="text-overline">
                       BM
                       <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
@@ -681,7 +681,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('om_price')"
                     class="items-center gap-2 grid grid-cols-[42px_minmax(0,1fr)]">
-                    <span class="font-section">
+                    <span class="text-overline">
                       OM
                       <RequiredAsterisk v-if="canSetPriceList" />
                     </span>
@@ -694,7 +694,7 @@ function cancel() {
 
                   <div v-if="visibleMoneyFields.includes('ceo_price')"
                     class="items-center gap-2 grid grid-cols-[42px_minmax(0,1fr)]">
-                    <span class="font-section">
+                    <span class="text-overline">
                       CEO
                       <RequiredAsterisk v-if="canSetPriceList" />
                     </span>

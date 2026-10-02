@@ -441,8 +441,8 @@ function formatDateTime(dateStr: string | null) {
           <span class="inline-flex justify-center items-center bg-slate-100 rounded-full w-12 h-12 text-slate-400">
             <Lucide icon="CalendarDays" class="w-6 h-6" />
           </span>
-          <p class="font-strong">{{ emptyStateText.title }}</p>
-          <p class="font-body text-slate-500">
+          <p class="text-body-strong">{{ emptyStateText.title }}</p>
+          <p class="text-body text-slate-500">
             {{ emptyStateText.desc }}
             <template v-if="canManagePeriode"> Buat periode baru untuk mulai mengisi harga.</template>
           </p>
@@ -451,12 +451,12 @@ function formatDateTime(dateStr: string | null) {
         <template v-else>
           <div class="flex flex-col gap-3 p-4 box">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="font-header">{{ focusPeriode.label }}</span>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full font-label whitespace-nowrap"
+              <span class="text-section-title">{{ focusPeriode.label }}</span>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-form-label whitespace-nowrap"
                 :class="focusPeriode.category === 'active' ? 'bg-success/10 text-success' : 'bg-blue-50 text-blue-600'">
                 {{ TAB_META[focusPeriode.category].label }}
               </span>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full font-label whitespace-nowrap" :class="focusPeriode.status === 'lengkap'
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-form-label whitespace-nowrap" :class="focusPeriode.status === 'lengkap'
                 ? 'bg-success/10 text-success'
                 : 'bg-amber-100 text-amber-600'">
                 {{ focusPeriode.status === 'lengkap' ? 'Lengkap' : 'Belum Lengkap' }}
@@ -470,27 +470,27 @@ function formatDateTime(dateStr: string | null) {
 
             <div class="gap-3 grid grid-cols-1 sm:grid-cols-2">
               <div class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
-                <div class="flex items-center gap-1.5 mb-1 font-section text-slate-500">
+                <div class="flex items-center gap-1.5 mb-1 text-overline text-slate-500">
                   <Lucide icon="StickyNote" class="w-4 h-4" />
                   Catatan
                 </div>
-                <p class="font-body text-slate-700">
+                <p class="text-body text-slate-700">
                   {{ periodeDetailLoading ? 'Memuat...' : (periodeNotes || '-') }}
                 </p>
               </div>
               <div class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
-                <div class="flex items-center gap-1.5 mb-1 font-section text-slate-500">
+                <div class="flex items-center gap-1.5 mb-1 text-overline text-slate-500">
                   <Lucide icon="Paperclip" class="w-4 h-4" />
                   Lampiran
                 </div>
-                <div v-if="periodeDetailLoading" class="font-body text-slate-400">Memuat...</div>
-                <div v-else-if="periodeAttachments.length === 0" class="font-body text-slate-400">
+                <div v-if="periodeDetailLoading" class="text-body text-slate-400">Memuat...</div>
+                <div v-else-if="periodeAttachments.length === 0" class="text-body text-slate-400">
                   Belum ada lampiran
                 </div>
                 <ul v-else class="space-y-1">
                   <li v-for="(att, idx) in periodeAttachments" :key="idx">
                     <a :href="`/storage/${att.path}`" target="_blank" rel="noopener"
-                      class="flex items-center gap-1.5 font-body text-blue-600 hover:underline">
+                      class="flex items-center gap-1.5 text-body text-blue-600 hover:underline">
                       <Lucide icon="FileText" class="flex-shrink-0 w-3.5 h-3.5" />
                       <span class="flex-1 min-w-0 truncate">{{ att.original_filename }}</span>
                     </a>
@@ -501,10 +501,10 @@ function formatDateTime(dateStr: string | null) {
           </div>
 
           <div v-if="incompleteNotice"
-            class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg font-body text-amber-700">
+            class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-body text-amber-700">
             <Lucide icon="AlertTriangle" class="flex-shrink-0 mt-0.5 w-4 h-4" />
             <span>
-              <span class="font-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
+              <span class="text-body-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
                 produk</span>
               di periode ini belum lengkap — nilai yang ditandai merah (Margin, Price List, Approval BM/OM/CEO) masih
               perlu diisi agar periode siap dipakai.
@@ -540,32 +540,32 @@ function formatDateTime(dateStr: string | null) {
                   class="inline-flex flex-shrink-0 justify-center items-center bg-slate-100 rounded-lg w-8 h-8 text-slate-500">
                   <Lucide icon="CalendarDays" class="w-4 h-4" />
                 </span>
-                <span class="font-strong">{{ row.label }}</span>
+                <span class="text-body-strong">{{ row.label }}</span>
               </div>
             </Table.Td>
 
             <Table.Td>
               <div class="flex justify-between items-center gap-2">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full font-label whitespace-nowrap" :class="row.status === 'lengkap'
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-form-label whitespace-nowrap" :class="row.status === 'lengkap'
                   ? 'bg-success/10 text-success'
                   : 'bg-amber-100 text-amber-600'">
                   {{ row.status === 'lengkap' ? 'Lengkap' : 'Belum Lengkap' }}
                 </span>
-                <span v-if="row.status === 'belum_lengkap'" class="font-caption whitespace-nowrap">
+                <span v-if="row.status === 'belum_lengkap'" class="text-caption whitespace-nowrap">
                   ({{ row.jumlah_belum_lengkap }}/{{ row.jumlah_data }})
                 </span>
               </div>
             </Table.Td>
 
-            <Table.Td class="font-num text-right">
+            <Table.Td class="num-sm text-right">
               {{ row.jumlah_cabang }}
             </Table.Td>
 
-            <Table.Td class="font-num text-right">
+            <Table.Td class="num-sm text-right">
               {{ row.jumlah_data }}
             </Table.Td>
 
-            <Table.Td class="font-body">
+            <Table.Td class="text-body">
               {{ formatDateTime(row.terakhir_diupdate) }}
             </Table.Td>
 
@@ -587,11 +587,11 @@ function formatDateTime(dateStr: string | null) {
           <Slideover.Title class="p-5">
             <div class="flex flex-col gap-1 min-w-0">
               <div class="flex items-center gap-2">
-                <h2 class="font-header truncate">
+                <h2 class="text-section-title truncate">
                   {{ selectedPeriode?.label ?? '' }}
                 </h2>
                 <span v-if="selectedPeriode"
-                  class="inline-flex flex-shrink-0 items-center px-2 py-0.5 rounded-full font-label whitespace-nowrap"
+                  class="inline-flex flex-shrink-0 items-center px-2 py-0.5 rounded-full text-form-label whitespace-nowrap"
                   :class="selectedPeriode.category === 'active'
                     ? 'bg-success/10 text-success'
                     : selectedPeriode.category === 'upcoming'
@@ -600,7 +600,7 @@ function formatDateTime(dateStr: string | null) {
                   {{ TAB_META[selectedPeriode.category].label }}
                 </span>
                 <span v-if="selectedPeriode"
-                  class="inline-flex flex-shrink-0 items-center px-2 py-0.5 rounded-full font-label whitespace-nowrap"
+                  class="inline-flex flex-shrink-0 items-center px-2 py-0.5 rounded-full text-form-label whitespace-nowrap"
                   :class="selectedPeriode.status === 'lengkap'
                     ? 'bg-success/10 text-success'
                     : 'bg-amber-100 text-amber-600'">
@@ -612,7 +612,7 @@ function formatDateTime(dateStr: string | null) {
                   <Lucide icon="Pencil" class="w-4 h-4" />
                 </button>
               </div>
-              <p class="font-caption">
+              <p class="text-caption">
                 {{ selectedPeriode?.jumlah_data }} data · {{ selectedPeriode?.jumlah_cabang }} cabang
               </p>
             </div>
@@ -621,27 +621,27 @@ function formatDateTime(dateStr: string | null) {
           <Slideover.Description class="p-5">
             <div class="gap-3 grid grid-cols-1 sm:grid-cols-2 mb-4">
               <div class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
-                <div class="flex items-center gap-1.5 mb-1 font-section text-slate-500">
+                <div class="flex items-center gap-1.5 mb-1 text-overline text-slate-500">
                   <Lucide icon="StickyNote" class="w-4 h-4" />
                   Catatan
                 </div>
-                <p class="font-body text-slate-700">
+                <p class="text-body text-slate-700">
                   {{ periodeDetailLoading ? 'Memuat...' : (periodeNotes || '-') }}
                 </p>
               </div>
               <div class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
-                <div class="flex items-center gap-1.5 mb-1 font-section text-slate-500">
+                <div class="flex items-center gap-1.5 mb-1 text-overline text-slate-500">
                   <Lucide icon="Paperclip" class="w-4 h-4" />
                   Lampiran
                 </div>
-                <div v-if="periodeDetailLoading" class="font-body text-slate-400">Memuat...</div>
-                <div v-else-if="periodeAttachments.length === 0" class="font-body text-slate-400">
+                <div v-if="periodeDetailLoading" class="text-body text-slate-400">Memuat...</div>
+                <div v-else-if="periodeAttachments.length === 0" class="text-body text-slate-400">
                   Belum ada lampiran
                 </div>
                 <ul v-else class="space-y-1">
                   <li v-for="(att, idx) in periodeAttachments" :key="idx">
                     <a :href="`/storage/${att.path}`" target="_blank" rel="noopener"
-                      class="flex items-center gap-1.5 font-body text-blue-600 hover:underline">
+                      class="flex items-center gap-1.5 text-body text-blue-600 hover:underline">
                       <Lucide icon="FileText" class="flex-shrink-0 w-3.5 h-3.5" />
                       <span class="flex-1 min-w-0 truncate">{{ att.original_filename }}</span>
                     </a>
@@ -651,10 +651,10 @@ function formatDateTime(dateStr: string | null) {
             </div>
 
             <div v-if="incompleteNotice"
-              class="flex items-start gap-2 bg-amber-50 mb-4 px-4 py-3 border border-amber-200 rounded-lg font-body text-amber-700">
+              class="flex items-start gap-2 bg-amber-50 mb-4 px-4 py-3 border border-amber-200 rounded-lg text-body text-amber-700">
               <Lucide icon="AlertTriangle" class="flex-shrink-0 mt-0.5 w-4 h-4" />
               <span>
-                <span class="font-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
+                <span class="text-body-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
                   produk</span>
                 di periode ini belum lengkap — nilai yang ditandai merah masih perlu diisi.
               </span>

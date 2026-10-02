@@ -12,7 +12,7 @@ class SalesConfirmationApproval extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'id_sales','adm_result','adm_summary','adm_result_date','adm_pic',
+        'id_sales','adm_result','adm_summary','adm_attachments','adm_result_date','adm_pic',
         'bm_result','bm_summary','bm_result_date','bm_pic',
         'om_result','om_summary','om_result_date','om_pic',
         'mgr_result','mgr_summary','mgr_result_date','mgr_pic',
@@ -25,6 +25,7 @@ class SalesConfirmationApproval extends Model
         'om_result' => 'integer',
         'mgr_result' => 'integer',
         'cfo_result' => 'integer',
+        'adm_attachments' => 'array',
         'adm_result_date' => 'datetime',
         'bm_result_date' => 'datetime',
         'om_result_date' => 'datetime',

@@ -138,15 +138,15 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
         <template #filters="{ close }">
           <div class="space-y-4 p-1">
             <div>
-              <div class="font-section px-3 pb-2 pt-1">Tanggal Dari</div>
+              <div class="text-overline px-3 pb-2 pt-1">Tanggal Dari</div>
               <FormInput v-model="filterDateFrom" type="date" class="!box" />
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Tanggal Sampai</div>
+              <div class="text-overline px-3 pb-2">Tanggal Sampai</div>
               <FormInput v-model="filterDateTo" type="date" class="!box" />
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Terminal</div>
+              <div class="text-overline px-3 pb-2">Terminal</div>
               <FormSelect v-model="filterTerminal" class="!box">
                 <option value="">— Semua Terminal —</option>
                 <option v-for="t in terminals" :key="t.id_terminal" :value="t.id_terminal">
@@ -155,7 +155,7 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
               </FormSelect>
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Vendor</div>
+              <div class="text-overline px-3 pb-2">Vendor</div>
               <FormSelect v-model="filterVendor" class="!box">
                 <option value="">— Semua Vendor —</option>
                 <option v-for="v in vendors" :key="v.id_vendor" :value="v.id_vendor">
@@ -189,17 +189,17 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
 
         <template #body>
           <Table.Tr v-for="(po, idx) in vendorPos" :key="po.id_po" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (meta.current_page - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-strong">{{ po.nomor_po }}</div>
+              <div class="text-body-strong">{{ po.nomor_po }}</div>
             </Table.Td>
             <Table.Td class="whitespace-nowrap text-slate-700">{{ formatDate(po.tanggal_inven) }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.vendor?.nama_vendor || '-' }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.terminal?.nama_terminal || '-' }}</Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1" :class="statusBadgeClass(po.status_po)">
+              <span class="text-form-label inline-flex rounded-full px-3 py-1" :class="statusBadgeClass(po.status_po)">
                 {{ statusLabel(po.status_po) }}
               </span>
             </Table.Td>

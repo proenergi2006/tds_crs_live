@@ -159,11 +159,11 @@ function formatSize(bytes?: number) {
 <template>
   <div class="space-y-2">
     <div v-if="label || hint" class="flex flex-col gap-1">
-      <label v-if="label" class="font-strong">
+      <label v-if="label" class="text-body-strong">
         {{ label }}
       </label>
 
-      <p v-if="hint" class="font-caption">
+      <p v-if="hint" class="text-caption">
         {{ hint }}
       </p>
     </div>
@@ -185,7 +185,7 @@ function formatSize(bytes?: number) {
             :disabled="disabled" @change="onFileChange" />
         </div>
 
-        <div class="font-caption">
+        <div class="text-caption">
           {{ acceptedText }} - Maks {{ maxSizeMb }}MB
         </div>
       </div>
@@ -199,13 +199,13 @@ function formatSize(bytes?: number) {
 
           <div class="min-w-0 flex-1">
             <a v-if="file.url" :href="file.url" target="_blank"
-              class="block truncate font-body !text-primary underline">
+              class="block truncate text-body !text-primary underline">
               {{ file.name }}
             </a>
-            <p v-else class="truncate font-strong">
+            <p v-else class="truncate text-body-strong">
               {{ file.name }}
             </p>
-            <p class="font-caption">
+            <p class="text-caption">
               File tersimpan <span v-if="formatSize(file.size)">- {{ formatSize(file.size) }}</span>
             </p>
           </div>
@@ -224,10 +224,10 @@ function formatSize(bytes?: number) {
           </div>
 
           <div class="min-w-0 flex-1">
-            <p class="truncate font-strong">
+            <p class="truncate text-body-strong">
               {{ file.name }}
             </p>
-            <p class="font-caption">
+            <p class="text-caption">
               File baru <span v-if="formatSize(file.size)">- {{ formatSize(file.size) }}</span>
             </p>
           </div>
@@ -241,7 +241,7 @@ function formatSize(bytes?: number) {
       </div>
 
       <p v-else
-        class="font-body mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
+        class="text-body mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
         {{ emptyText }}
       </p>
     </div>

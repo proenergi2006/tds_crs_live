@@ -10,7 +10,7 @@ export interface FooterProps {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { useAttrs, computed } from "vue";
 
 const { as = "div" } = defineProps<FooterProps>();

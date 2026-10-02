@@ -122,7 +122,7 @@ function ukuranText(row: ProductPriceRow) {
     <template #filters>
       <div class="space-y-4 p-1">
         <div>
-          <div class="px-3 pt-1 pb-2 font-section">Cabang</div>
+          <div class="px-3 pt-1 pb-2 text-overline">Cabang</div>
           <FormSelect v-model="filterCabang">
             <option value="">Semua Cabang</option>
             <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="cabang.id_cabang">
@@ -131,7 +131,7 @@ function ukuranText(row: ProductPriceRow) {
           </FormSelect>
         </div>
         <div>
-          <div class="px-3 pb-2 font-section">Produk</div>
+          <div class="px-3 pb-2 text-overline">Produk</div>
           <FormSelect v-model="filterProduk">
             <option value="">Semua Produk</option>
             <option v-for="produk in produks" :key="produk.id_produk" :value="produk.id_produk">
@@ -169,74 +169,74 @@ function ukuranText(row: ProductPriceRow) {
 
     <template #body>
       <Table.Tr v-for="item in paginatedRows" :key="item.id" class="hover:bg-slate-50 transition">
-        <Table.Td class="font-body">
+        <Table.Td class="text-body">
           {{ item.branch?.name ?? '-' }}
         </Table.Td>
 
-        <Table.Td class="font-body">
+        <Table.Td class="text-body">
           <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
-            <span class="font-strong">{{ item.product?.nama_produk ?? '-' }}</span>
+            <span class="text-body-strong">{{ item.product?.nama_produk ?? '-' }}</span>
             <span v-if="ukuranText(item)"
-              class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md font-num text-slate-600 text-xs break-words whitespace-normal">
+              class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md num-sm text-slate-600 text-xs break-words whitespace-normal">
               {{ ukuranText(item) }}
             </span>
           </div>
         </Table.Td>
 
-        <Table.Td class="font-num font-strong text-base text-right" :class="zeroClass(item.cogs_price)">
+        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.cogs_price)">
           {{ formatNumber(item.cogs_price) }}
         </Table.Td>
 
-        <Table.Td class="font-num font-strong text-base text-right" :class="zeroClass(item.margin_amount)">
+        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.margin_amount)">
           {{ formatNumber(item.margin_amount) }}
         </Table.Td>
 
         <template v-if="view === 'ceo'">
-          <Table.Td class="font-num text-right">
+          <Table.Td class="num-sm text-right">
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="font-caption text-slate-400">TDS</span>
-              <span class="font-strong text-base" :class="zeroClass(item.price_list)">{{ formatNumber(item.price_list)
-                }}</span>
+              <span class="text-caption text-slate-400">TDS</span>
+              <span class="text-body-strong text-base" :class="zeroClass(item.price_list)">{{ formatNumber(item.price_list)
+              }}</span>
             </div>
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="font-caption text-slate-400">PE</span>
-              <span class="font-strong text-base" :class="zeroClass(item.price_list_pe)">{{
+              <span class="text-caption text-slate-400">PE</span>
+              <span class="text-body-strong text-base" :class="zeroClass(item.price_list_pe)">{{
                 formatNumber(item.price_list_pe) }}</span>
             </div>
           </Table.Td>
 
-          <Table.Td class="font-num text-right">
+          <Table.Td class="num-sm text-right">
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="font-caption text-slate-400">BM</span>
-              <span class="font-strong text-base" :class="zeroClass(item.bm_price)">{{ formatNumber(item.bm_price)
-                }}</span>
+              <span class="text-caption text-slate-400">BM</span>
+              <span class="text-body-strong text-base" :class="zeroClass(item.bm_price)">{{ formatNumber(item.bm_price)
+              }}</span>
             </div>
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="font-caption text-slate-400">OM</span>
-              <span class="font-strong text-base" :class="zeroClass(item.om_price)">{{ formatNumber(item.om_price)
-                }}</span>
+              <span class="text-caption text-slate-400">OM</span>
+              <span class="text-body-strong text-base" :class="zeroClass(item.om_price)">{{ formatNumber(item.om_price)
+              }}</span>
             </div>
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="font-caption text-slate-400">CEO</span>
-              <span class="font-strong text-base" :class="zeroClass(item.ceo_price)">{{ formatNumber(item.ceo_price)
-                }}</span>
+              <span class="text-caption text-slate-400">CEO</span>
+              <span class="text-body-strong text-base" :class="zeroClass(item.ceo_price)">{{ formatNumber(item.ceo_price)
+              }}</span>
             </div>
           </Table.Td>
         </template>
 
         <template v-else>
-          <Table.Td class="font-num font-strong text-base text-right" :class="zeroClass(item.price_list)">
+          <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.price_list)">
             {{ formatNumber(item.price_list) }}
           </Table.Td>
 
-          <Table.Td class="font-num font-strong text-base text-right" :class="zeroClass(item.price_list_pe)">
+          <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.price_list_pe)">
             {{ formatNumber(item.price_list_pe) }}
           </Table.Td>
         </template>
 
         <Table.Td class="text-center">
           <div class="inline-flex justify-center items-center gap-1.5">
-            <Button v-if="canEdit" variant="soft-pending" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
+            <Button v-if="canEdit" variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
               @click="emit('edit', item.id)">
               <Lucide icon="Edit" class="w-4 h-4" />
             </Button>

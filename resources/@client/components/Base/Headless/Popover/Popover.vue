@@ -12,7 +12,7 @@ export interface PopoverProps
 <script setup lang="ts">
 import { computed, provide, ref, useAttrs } from "vue";
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { Popover as HeadlessPopover } from "@headlessui/vue";
 import { PopoverTriggerKey } from "./context";
 

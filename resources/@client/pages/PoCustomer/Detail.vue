@@ -13,8 +13,6 @@ import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
 
-import { poCustomerStatusBadgeClass } from './status'
-
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -31,13 +29,19 @@ const canProcessSc = computed<boolean>(
   () => poCustomer.value?.status_key === 'awaiting_process' && auth.can('penawaran.manage'),
 )
 
+const canEditPo = computed<boolean>(
+  () =>
+    auth.can('penawaran.manage') &&
+    ['awaiting_process', 'blocked'].includes(poCustomer.value?.status_key),
+)
+
 const showGatePanel = computed<boolean>(
   () => canProcessSc.value || poCustomer.value?.status_key === 'blocked',
 )
 
 const gatePanelDescription = computed<string>(() =>
   poCustomer.value?.status_key === 'blocked'
-    ? 'PO ini sedang diproses oleh tim Finance untuk kelayakan kredit. Anda akan diberi tahu begitu bisa lanjut ke Sales Confirmation.'
+    ? 'PO ini di-block oleh gerbang kredit. Tim Finance dapat melakukan Unblock, atau Anda dapat mengedit PO (mis. volume/termin) lalu Proses SC ulang.'
     : 'Jalankan gerbang kredit untuk memeriksa headroom customer terhadap nilai order sebelum Sales Confirmation dibuat.',
 )
 
@@ -133,6 +137,10 @@ function goBackToIndex(): void {
   router.push({ name: 'po-customers-index' })
 }
 
+function goToEdit(): void {
+  router.push({ name: 'po-customers-edit', params: { id: idPoc } })
+}
+
 function poVolumeForItem(it: any): number {
   if (!poCustomer.value) return 0
   return Math.round((poCustomer.value.volume_poc ?? 0) * Number(it.persen ?? 0) / 100)
@@ -145,15 +153,15 @@ function poVolumeForItem(it: any): number {
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
           <div class="flex items-center gap-3">
-            <h2 class="font-display">Detail PO Customer</h2>
-            <span v-if="poCustomer" class="font-label inline-flex items-center rounded-full px-3 py-1"
-              :class="poCustomerStatusBadgeClass(poCustomer.status_key)">
-              {{ poCustomer.status_label }}
-            </span>
+            <h2 class="text-screen-title">Detail PO Customer</h2>
           </div>
-          <p class="mt-1 font-lead">Informasi lengkap PO Customer dan status Sales Confirmation-nya.</p>
+          <p class="mt-1 text-body-lg">Informasi lengkap PO Customer dan status Sales Confirmation-nya.</p>
         </div>
         <div class="flex items-center gap-2">
+          <Button v-if="canEditPo" variant="outline-secondary" @click="goToEdit">
+            <Lucide icon="Pencil" class="mr-2 h-4 w-4" />
+            Edit PO
+          </Button>
           <Button variant="outline-secondary" @click="goBackToIndex">
             <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
             Kembali
@@ -163,24 +171,24 @@ function poVolumeForItem(it: any): number {
 
       <div v-if="loading" class="flex min-h-[320px] items-center justify-center gap-3 text-slate-500">
         <Lucide icon="Loader2" class="h-6 w-6 animate-spin" />
-        <span class="font-body">Memuat data PO Customer...</span>
+        <span class="text-body">Memuat data PO Customer...</span>
       </div>
 
       <div v-else-if="!poCustomer" class="flex min-h-[320px] flex-col items-center justify-center gap-2 text-center">
         <div class="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
           <Lucide icon="AlertTriangle" class="h-7 w-7 text-rose-500" />
         </div>
-        <h3 class="font-header">PO Customer tidak ditemukan</h3>
-        <p class="font-body">Silakan kembali ke halaman sebelumnya.</p>
+        <h3 class="text-section-title">PO Customer tidak ditemukan</h3>
+        <p class="text-body">Silakan kembali ke halaman sebelumnya.</p>
       </div>
 
       <template v-else>
         <div class="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <div class="font-section">Total Nilai PO</div>
-              <div class="mt-1 font-num-display">{{ formatCurrency(totalNilaiPo) }}</div>
-              <div class="font-body text-xs">{{ formatCurrency(poCustomer.harga_poc) }} / m³</div>
+              <div class="text-overline">Total Nilai PO</div>
+              <div class="mt-1 num-lg">{{ formatCurrency(totalNilaiPo) }}</div>
+              <div class="text-body text-xs">{{ formatCurrency(poCustomer.harga_poc) }} / m³</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
               <Lucide icon="Banknote" class="h-4 w-4" />
@@ -189,9 +197,9 @@ function poVolumeForItem(it: any): number {
 
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <div class="font-section">Total Volume</div>
-              <div class="mt-1 font-num-display">{{ formatNumber(poCustomer.volume_poc) }} m³</div>
-              <div class="font-body text-xs">{{ penawaranItems.length }} Variasi Ukuran</div>
+              <div class="text-overline">Total Volume</div>
+              <div class="mt-1 num-lg">{{ formatNumber(poCustomer.volume_poc) }} m³</div>
+              <div class="text-body text-xs">{{ penawaranItems.length }} Variasi Ukuran</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
               <Lucide icon="Boxes" class="h-4 w-4" />
@@ -200,9 +208,9 @@ function poVolumeForItem(it: any): number {
 
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <div class="font-section">Term of Payment</div>
-              <div class="mt-1 font-num-display">{{ paymentDisplay }}</div>
-              <div class="font-body text-xs">{{ poCustomer.tipe_bayar === 'CREDIT' ? 'Sejak Invoice Diterbitkan' : 'Dibayar di muka / saat kirim' }}</div>
+              <div class="text-overline">Term of Payment</div>
+              <div class="mt-1 num-lg">{{ paymentDisplay }}</div>
+              <div class="text-body text-xs">{{ poCustomer.tipe_bayar === 'CREDIT' ? 'Sejak Invoice Diterbitkan' : 'Dibayar di muka / saat kirim' }}</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
               <Lucide icon="Clock" class="h-4 w-4" />
@@ -211,9 +219,9 @@ function poVolumeForItem(it: any): number {
 
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <div class="font-section">Target Pengiriman</div>
-              <div class="mt-1 font-num-display">{{ formatDate(poCustomer.supply_date) }}</div>
-              <div class="font-body text-xs">PO Date: {{ formatDate(poCustomer.tanggal_poc) }}</div>
+              <div class="text-overline">Target Pengiriman</div>
+              <div class="mt-1 num-lg">{{ formatDate(poCustomer.supply_date) }}</div>
+              <div class="text-body text-xs">PO Date: {{ formatDate(poCustomer.tanggal_poc) }}</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
               <Lucide icon="Calendar" class="h-4 w-4" />
@@ -229,44 +237,44 @@ function poVolumeForItem(it: any): number {
                 <div class="col-span-12 md:col-span-7">
                   <div class="space-y-3">
                     <div>
-                      <div class="font-label">Nomor PO Customer</div>
-                      <div class="mt-1 font-strong whitespace-pre-line">{{ poCustomer.nomor_poc || '-' }}</div>
+                      <div class="text-form-label">Nomor PO Customer</div>
+                      <div class="mt-1 text-body-strong whitespace-pre-line">{{ poCustomer.nomor_poc || '-' }}</div>
                     </div>
 
                     <div class="gap-4 grid grid-cols-2">
                       <div>
-                        <div class="font-label">Tanggal PO</div>
-                        <div class="mt-1 font-strong">{{ formatDate(poCustomer.tanggal_poc) }}</div>
+                        <div class="text-form-label">Tanggal PO</div>
+                        <div class="mt-1 text-body-strong">{{ formatDate(poCustomer.tanggal_poc) }}</div>
                       </div>
                       <div>
-                        <div class="font-label">Supply Date</div>
-                        <div class="mt-1 font-strong">{{ formatDate(poCustomer.supply_date) }}</div>
+                        <div class="text-form-label">Supply Date</div>
+                        <div class="mt-1 text-body-strong">{{ formatDate(poCustomer.supply_date) }}</div>
                       </div>
                     </div>
 
                     <div>
-                      <div class="font-label">Term of Payment</div>
-                      <div class="mt-1 font-strong">{{ paymentDisplay }}</div>
+                      <div class="text-form-label">Term of Payment</div>
+                      <div class="mt-1 text-body-strong">{{ paymentDisplay }}</div>
                     </div>
                   </div>
                 </div>
 
                 <div class="col-span-12 md:col-span-5">
-                  <div class="mx-2 mb-1 font-label">Customer & Penawaran</div>
+                  <div class="mx-2 mb-1 text-form-label">Customer & Penawaran</div>
                   <div class="px-4 py-3 border border-slate-200 rounded-xl">
                     <div class="gap-4 grid grid-cols-12">
                       <div class="col-span-12">
-                        <div class="font-label">Nama Perusahaan</div>
-                        <div class="mt-1 font-strong">{{ poCustomer.customer?.company_name || '-' }}</div>
+                        <div class="text-form-label">Nama Perusahaan</div>
+                        <div class="mt-1 text-body-strong">{{ poCustomer.customer?.company_name || '-' }}</div>
                       </div>
                       <div class="gap-4 grid grid-cols-2 col-span-12">
                         <div>
-                          <div class="font-label">Kode Customer</div>
-                          <div class="mt-1 font-strong">{{ poCustomer.customer?.customer_code || '-' }}</div>
+                          <div class="text-form-label">Kode Customer</div>
+                          <div class="mt-1 text-body-strong">{{ poCustomer.customer?.customer_code || '-' }}</div>
                         </div>
                         <div>
-                          <div class="font-label">Nomor Penawaran</div>
-                          <div class="mt-1 font-strong">{{ poCustomer.penawaran?.nomor_penawaran || '-' }}</div>
+                          <div class="text-form-label">Nomor Penawaran</div>
+                          <div class="mt-1 text-body-strong">{{ poCustomer.penawaran?.nomor_penawaran || '-' }}</div>
                         </div>
                       </div>
                     </div>
@@ -277,43 +285,37 @@ function poVolumeForItem(it: any): number {
 
             <CardSection title="Rincian Produk & Item PO" description="Breakdown rasio, volume, dan harga per item"
               icon="Layers" icon-class="bg-indigo-100 text-indigo-600">
-              <template v-if="poCustomer.produk_poc" #action>
-                <span class="bg-slate-100 px-2.5 py-1 rounded-full font-caption text-slate-600">
-                  ID Produk: {{ poCustomer.produk_poc }}
-                </span>
-              </template>
-
               <div class="overflow-x-auto">
-                <Table bordered sm class="font-body">
+                <Table bordered sm class="text-body">
                   <Table.Thead class="bg-slate-50">
                     <Table.Tr>
-                      <Table.Th class="px-4 py-3 font-label text-left">Produk</Table.Th>
-                      <Table.Th class="px-4 py-3 font-label text-left">Ukuran</Table.Th>
-                      <Table.Th class="px-4 py-3 font-label text-right">Rasio</Table.Th>
-                      <Table.Th class="px-4 py-3 font-label text-right">Volume</Table.Th>
+                      <Table.Th class="px-4 py-3 text-form-label text-left">Produk</Table.Th>
+                      <Table.Th class="px-4 py-3 text-form-label text-left">Ukuran</Table.Th>
+                      <Table.Th class="px-4 py-3 text-form-label text-right">Rasio</Table.Th>
+                      <Table.Th class="px-4 py-3 text-form-label text-right">Volume</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
 
                   <Table.Tbody class="bg-white">
                     <Table.Tr v-for="(it, i) in penawaranItems" :key="it.id_penawaran_item || i">
                       <Table.Td class="px-4 py-3">
-                        <div class="font-strong">{{ it.produk?.nama_produk || '-' }}</div>
-                        <div v-if="it.produk?.jenis?.nama" class="font-caption">{{ it.produk?.jenis?.nama }}</div>
+                        <div class="text-body-strong">{{ it.produk?.nama_produk || '-' }}</div>
+                        <div v-if="it.produk?.jenis?.nama" class="text-caption">{{ it.produk?.jenis?.nama }}</div>
                       </Table.Td>
                       <Table.Td class="px-4 py-3">{{ it.produk?.ukuran?.nama_ukuran || '-' }}</Table.Td>
-                      <Table.Td class="px-4 py-3 font-num text-right">{{ Math.round(Number(it.persen ?? 0)) }}%</Table.Td>
-                      <Table.Td class="px-4 py-3 font-num text-right">{{ formatNumber(poVolumeForItem(it)) }} m³</Table.Td>
+                      <Table.Td class="px-4 py-3 num-sm text-right">{{ Math.round(Number(it.persen ?? 0)) }}%</Table.Td>
+                      <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(poVolumeForItem(it)) }} m³</Table.Td>
                     </Table.Tr>
 
                     <Table.Tr v-if="!penawaranItems.length">
-                      <Table.Td colspan="4" class="px-4 py-6 font-body text-center">Belum ada item penawaran.</Table.Td>
+                      <Table.Td colspan="4" class="px-4 py-6 text-body text-center">Belum ada item penawaran.</Table.Td>
                     </Table.Tr>
                   </Table.Tbody>
 
                   <Table.Tbody class="bg-slate-50">
                     <Table.Tr>
-                      <Table.Td colspan="3" class="px-4 py-2 font-strong text-right">Total Keseluruhan</Table.Td>
-                      <Table.Td class="px-4 py-2 font-num text-right">{{ formatNumber(poCustomer.volume_poc) }} m³</Table.Td>
+                      <Table.Td colspan="3" class="px-4 py-2 text-body-strong text-right">Total Keseluruhan</Table.Td>
+                      <Table.Td class="px-4 py-2 num-sm text-right">{{ formatNumber(poCustomer.volume_poc) }} m³</Table.Td>
                     </Table.Tr>
                   </Table.Tbody>
                 </Table>
@@ -321,12 +323,12 @@ function poVolumeForItem(it: any): number {
 
               <div class="mt-4 px-4 py-3 border border-slate-200 rounded-xl space-y-2">
                 <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                  <span class="font-label">Harga per m³</span>
-                  <span class="font-strong text-right">{{ formatCurrency(poCustomer.harga_poc) }}</span>
+                  <span class="text-form-label">Harga per m³</span>
+                  <span class="text-body-strong text-right">{{ formatCurrency(poCustomer.harga_poc) }}</span>
                 </div>
                 <div class="flex justify-between gap-4">
-                  <span class="font-label">Total Harga</span>
-                  <span class="font-num-lg text-right">{{ formatCurrency(totalNilaiPo) }}</span>
+                  <span class="text-form-label">Total Harga</span>
+                  <span class="num-md text-right">{{ formatCurrency(totalNilaiPo) }}</span>
                 </div>
               </div>
             </CardSection>
@@ -340,8 +342,8 @@ function poVolumeForItem(it: any): number {
                     <Lucide icon="FileText" class="h-5 w-5" />
                   </div>
                   <div>
-                    <div class="font-strong">{{ poCustomer.lampiran_poc_ori }}</div>
-                    <div class="font-caption text-slate-500">Diunggah {{ formatDate(poCustomer.created_time) }}</div>
+                    <div class="text-body-strong">{{ poCustomer.lampiran_poc_ori }}</div>
+                    <div class="text-caption text-slate-500">Diunggah {{ formatDate(poCustomer.created_time) }}</div>
                   </div>
                 </div>
 
@@ -372,7 +374,7 @@ function poVolumeForItem(it: any): number {
               <CardSection v-if="showGatePanel" title="Proses Sales Confirmation" icon="ShieldAlert"
                 icon-class="bg-amber-100 text-amber-600">
                 <div class="space-y-4 px-2">
-                  <p class="font-body text-slate-600">
+                  <p class="text-body text-slate-600">
                     {{ gatePanelDescription }}
                   </p>
 

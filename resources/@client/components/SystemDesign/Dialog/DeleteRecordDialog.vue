@@ -4,7 +4,6 @@ import { ref } from 'vue';
 import Button from '@/components/Base/Button';
 import Lucide from '@/components/Base/Lucide';
 import { Dialog } from '@/components/Base/Headless';
-import LoadingIcon from '@/components/Base/LoadingIcon';
 
 const confirmButtonRef = ref<HTMLButtonElement | null>(null);
 
@@ -15,12 +14,16 @@ withDefaults(
     description?: string;
     confirmText?: string;
     loading?: boolean;
+    showConfirm?: boolean;
+    cancelText?: string;
   }>(),
   {
     title: 'Hapus Data',
     description: 'Anda yakin ingin menghapus data ini?',
     confirmText: 'Hapus',
     loading: false,
+    showConfirm: true,
+    cancelText: "Batal",
   },
 );
 
@@ -34,29 +37,33 @@ defineEmits<{
   <Dialog :open="open" @close="$emit('close')" :initialFocus="confirmButtonRef">
     <Dialog.Panel>
       <div class="p-6 text-center">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-          <Lucide icon="Trash2" class="h-8 w-8 text-red-600" />
+        <div class="flex justify-center items-center bg-red-100 mx-auto rounded-full w-16 h-16">
+          <Lucide icon="Trash2" class="w-8 h-8 text-red-600" />
         </div>
 
-        <h3 class="font-header mt-5">
+        <h3 class="mt-5 text-section-title">
           {{ title }}
         </h3>
 
-        <p class="font-body mt-2">
-          {{ description }} <br />
-          Tindakan ini tidak dapat dibatalkan.
-        </p>
+        <slot>
+          <p class="mt-2 text-body">
+            {{ description }} <br />
+            Tindakan ini tidak dapat dibatalkan.
+          </p>
+        </slot>
       </div>
 
-      <div class="flex justify-center gap-3 border-t border-slate-200 px-6 py-4">
+      <div class="flex justify-center gap-3 px-6 py-4 border-slate-200 border-t">
         <Button variant="outline-secondary" :disabled="loading" @click="$emit('close')">
-          Batal
+          {{ cancelText }}
         </Button>
 
-        <Button ref="confirmButtonRef" variant="danger" :disabled="loading" @click="$emit('confirm')">
-          <Lucide v-if="loading" icon="Loader2" class="h-4 w-4 mr-1 animate-spin" />
-          {{ confirmText }}
-        </Button>
+        <template v-if="showConfirm">
+          <Button ref="confirmButtonRef" variant="danger" :disabled="loading" @click="$emit('confirm')">
+            <Lucide v-if="loading" icon="Loader2" class="mr-1 w-4 h-4 animate-spin" />
+            {{ confirmText }}
+          </Button>
+        </template>
       </div>
     </Dialog.Panel>
   </Dialog>

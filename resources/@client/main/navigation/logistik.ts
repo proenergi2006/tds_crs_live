@@ -19,18 +19,15 @@ export const logistikNavigation: NavItem[] = [
       },
       {
         icon: 'Database',
-        title: 'Master Logistik',
-        // Grup parent tanpa permission — filter rekursif di stores/menu.ts
-        // akan menampilkan grup ini jika user punya akses ke minimal satu child.
+        title: 'Logistics Master Data',
         subMenu: [
-          { icon: 'Users',   pageName: 'transportir-list',    title: 'Transportir',   permission: 'logistik.master.manage' },
-          { icon: 'User',    pageName: 'personnel-list',       title: 'Personnel',     permission: 'logistik.master.manage' },
-          { icon: 'Package', pageName: 'volumes-list',         title: 'Volume',        permission: 'logistik.master.manage' },
-          { icon: 'Pin',     pageName: 'wilayah-angkut-list',  title: 'Wilayah Angkut',permission: 'logistik.master.manage' },
-          { icon: 'Ship',    pageName: 'kapals-list',          title: 'Master Kapal',  permission: 'logistik.master.manage' },
-          { icon: 'Ship',    pageName: 'ongkos-kapal-list',    title: 'OA Kapal',      permission: 'logistik.master.manage' },
-          { icon: 'Truck',   pageName: 'trucks-list',          title: 'Master Truck',  permission: 'logistik.master.manage' },
-          { icon: 'Truck',   pageName: 'oa-trucks-list',       title: 'OA Truck',      permission: 'logistik.master.manage' },
+          { icon: 'Users',   pageName: 'transporters-list',      title: 'Transporter',      permission: 'logistik.master.manage' },
+          { icon: 'User',    pageName: 'personnels-list',        title: 'Personnel',        permission: 'logistik.master.manage' },
+          { icon: 'Package', pageName: 'volumes-list',           title: 'Volume',           permission: 'logistik.master.manage' },
+          { icon: 'Pin',     pageName: 'transport-areas-list',   title: 'Transport Area',   permission: 'logistik.master.manage' },
+          { icon: 'Ship',    pageName: 'vessels-list',           title: 'Vessel',           permission: 'logistik.master.manage' },
+          { icon: 'Truck',   pageName: 'trucks-list',            title: 'Truck',            permission: 'logistik.master.manage' },
+          { icon: 'Coins',   pageName: 'transport-tariffs-list', title: 'Transport Tariff', permission: 'logistik.master.manage' },
         ],
       },
     ],

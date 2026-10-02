@@ -50,7 +50,6 @@ const loading = ref(true)
 const ajukanLoading = ref(false)
 const ajukanDialogOpen = ref(false)
 
-// canSeeHarga masih hardcode false, nunggu role asli buat cek permission harga
 const canSeeHarga = ref(false)
 
 const items = computed<any[]>(() => penawaran.value.items || [])
@@ -105,13 +104,12 @@ const showOngkosTruck = computed(() => penawaran.value.metode === 'DAP' || penaw
 const ongkosKapal = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'KAPAL'))
 const ongkosTruck = computed(() => ongkosList.value.filter((o: any) => o.jenis === 'TRUCK'))
 
-// province/regency (BPS baru) dipakai kalau ada, fallback ke provinsi/kabupaten lama buat record yang belum termigrasi
 function wilayahLabel(w: any) {
   if (!w) return null
   const parts = [
     w.province?.name || w.provinsi?.nama_provinsi,
     w.regency?.name || w.kabupaten?.nama_kabupaten,
-    w.destinasi,
+    w.name,
   ].filter(Boolean)
   return parts.length ? parts.join(' - ') : null
 }
@@ -209,11 +207,11 @@ function formatNumber(v: number | string = 0) {
 
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <h2 class="font-display">{{ cfg.title }}</h2>
-          <p class="mt-1 font-lead">{{ cfg.description }}</p>
+          <h2 class="text-screen-title">{{ cfg.title }}</h2>
+          <p class="mt-1 text-body-lg">{{ cfg.description }}</p>
         </div>
         <div class="flex items-center gap-2">
-          <Button v-if="['draft', 'rejected_bm', 'rejected_om'].includes(penawaran.status)" variant="soft-pending"
+          <Button v-if="['draft', 'rejected_bm', 'rejected_om'].includes(penawaran.status)" variant="soft-warning"
             @click="openEdit">
             <Lucide icon="Edit" class="mr-2 w-4 h-4" />
             Edit
@@ -234,16 +232,16 @@ function formatNumber(v: number | string = 0) {
               <div class="col-span-12 md:col-span-5">
                 <div class="space-y-3">
                   <div>
-                    <div class="font-label">Nomor Penawaran</div>
+                    <div class="text-form-label">Nomor Penawaran</div>
                     <div
-                      class="inline-block bg-danger/5 mt-1 px-2 py-1 border border-danger/20 rounded font-strong text-danger text-xs whitespace-pre-line">
+                      class="inline-block bg-danger/5 mt-1 px-2 py-1 border border-danger/20 rounded text-body-strong text-danger text-xs whitespace-pre-line">
                       {{ dash(penawaran.nomor_penawaran) }}
                     </div>
                   </div>
 
                   <div>
-                    <div class="font-label">Masa Berlaku</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">
+                    <div class="text-form-label">Masa Berlaku</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">
                       {{
                         penawaran.masa_berlaku
                           ? `${formatDate(penawaran.masa_berlaku)} – ${formatDate(penawaran.sampai_dengan)}`
@@ -252,15 +250,15 @@ function formatNumber(v: number | string = 0) {
                     </div>
                   </div>
                   <div>
-                    <div class="font-label">Customer</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">
+                    <div class="text-form-label">Customer</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">
                       {{ dash(penawaran.customer?.company_name) }}
                     </div>
                   </div>
 
                   <div>
-                    <div class="font-label">Cabang</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">
+                    <div class="text-form-label">Cabang</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">
                       {{ dash(penawaran.cabang?.nama_cabang) }}
                     </div>
                   </div>
@@ -268,41 +266,41 @@ function formatNumber(v: number | string = 0) {
               </div>
 
               <div class="col-span-12 md:col-span-7">
-                <div class="mx-2 mb-1 font-label">Kontak Tujuan</div>
+                <div class="mx-2 mb-1 text-form-label">Kontak Tujuan</div>
                 <div>
                   <div class="px-4 py-3 border border-slate-200 rounded-xl">
                     <div class="gap-4 grid grid-cols-12">
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Kepada (Perusahaan / Dept.)</div>
-                        <div class="mt-1 font-strong">
+                        <div class="text-form-label">Kepada (Perusahaan / Dept.)</div>
+                        <div class="mt-1 text-body-strong">
                           {{ dash(penawaran.customer?.company_name) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Nama (UP.)</div>
-                        <div class="mt-1 font-strong">
+                        <div class="text-form-label">Nama (UP.)</div>
+                        <div class="mt-1 text-body-strong">
                           {{ dash(penawaran.customer_contact?.full_name) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Jabatan</div>
-                        <div class="mt-1 font-strong">
+                        <div class="text-form-label">Jabatan</div>
+                        <div class="mt-1 text-body-strong">
                           {{ dash(penawaran.customer_contact?.position) }}
                         </div>
                       </div>
 
                       <div class="col-span-12 md:col-span-6">
-                        <div class="font-label">Telepon</div>
-                        <div class="mt-1 font-strong">
+                        <div class="text-form-label">Telepon</div>
+                        <div class="mt-1 text-body-strong">
                           {{ dash(penawaran.customer_contact?.mobile) }}
                         </div>
                       </div>
 
                       <div class="col-span-12">
-                        <div class="font-label">Alamat</div>
-                        <div class="mt-1 font-strong">
+                        <div class="text-form-label">Alamat</div>
+                        <div class="mt-1 text-body-strong">
                           {{ dash(penawaran.customer?.head_office_address?.address_line) }}
                         </div>
                       </div>
@@ -321,65 +319,65 @@ function formatNumber(v: number | string = 0) {
               <div class="col-span-12 md:col-span-6">
                 <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                   <div>
-                    <div class="font-label">Tipe Pengiriman</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
+                    <div class="text-form-label">Tipe Pengiriman</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.type_pengiriman) }}</div>
                   </div>
                   <div>
-                    <div class="font-label">Metode</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
+                    <div class="text-form-label">Metode</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.metode) }}</div>
                   </div>
 
                   <div v-if="showOngkosKapal" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
-                    <div class="mb-2 font-label">Ongkos Kapal</div>
-                    <div v-if="ongkosKapal.length === 0" class="font-caption text-slate-500">
+                    <div class="mb-2 text-form-label">Ongkos Kapal</div>
+                    <div v-if="ongkosKapal.length === 0" class="text-caption text-slate-500">
                       Belum ada data ongkos kapal.
                     </div>
                     <div v-for="oa in ongkosKapal" :key="oa.id"
                       class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
                       <div class="gap-4 grid grid-cols-12">
                         <div class="col-span-12 md:col-span-4">
-                          <div class="font-label">Transportir</div>
-                          <div class="mt-1 font-strong">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="text-form-label">Transportir</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.transportir?.company_name) }}</div>
                         </div>
                         <div class="col-span-12 md:col-span-4">
-                          <div class="font-label">Wilayah Angkut</div>
-                          <div class="mt-1 font-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="text-form-label">Wilayah Angkut</div>
+                          <div class="mt-1 text-body-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
-                          <div class="font-label">Volume</div>
-                          <div class="mt-1 font-strong">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="text-form-label">Volume</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
-                          <div class="font-label">Ongkos</div>
-                          <div class="mt-1 font-strong">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="text-form-label">Ongkos</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div v-if="showOngkosTruck" class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
-                    <div class="mb-2 font-label">Ongkos Truck</div>
-                    <div v-if="ongkosTruck.length === 0" class="font-caption text-slate-500">
+                    <div class="mb-2 text-form-label">Ongkos Truck</div>
+                    <div v-if="ongkosTruck.length === 0" class="text-caption text-slate-500">
                       Belum ada data ongkos truck.
                     </div>
                     <div v-for="oa in ongkosTruck" :key="oa.id"
                       class="bg-white mb-2 last:mb-0 px-4 py-3 border border-slate-200 rounded-xl">
                       <div class="gap-4 grid grid-cols-12">
                         <div class="col-span-12 md:col-span-4">
-                          <div class="font-label">Transportir</div>
-                          <div class="mt-1 font-strong">{{ dash(oa.transportir?.nama_perusahaan) }}</div>
+                          <div class="text-form-label">Transportir</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.transportir?.company_name) }}</div>
                         </div>
                         <div class="col-span-12 md:col-span-4">
-                          <div class="font-label">Wilayah Angkut</div>
-                          <div class="mt-1 font-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
+                          <div class="text-form-label">Wilayah Angkut</div>
+                          <div class="mt-1 text-body-strong">{{ dash(wilayahLabel(oa.wilayah)) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
-                          <div class="font-label">Volume</div>
-                          <div class="mt-1 font-strong">{{ dash(oa.volume?.volume) }}</div>
+                          <div class="text-form-label">Volume</div>
+                          <div class="mt-1 text-body-strong">{{ dash(oa.volume?.volume) }}</div>
                         </div>
                         <div class="col-span-6 md:col-span-2">
-                          <div class="font-label">Ongkos</div>
-                          <div class="mt-1 font-strong">{{ formatCurrency(oa.ongkos) }}</div>
+                          <div class="text-form-label">Ongkos</div>
+                          <div class="mt-1 text-body-strong">{{ formatCurrency(oa.ongkos) }}</div>
                         </div>
                       </div>
                     </div>
@@ -390,18 +388,18 @@ function formatNumber(v: number | string = 0) {
               <div class="col-span-12 md:col-span-6">
                 <div class="space-y-3 p-4 border border-slate-200 rounded-xl">
                   <div>
-                    <div class="font-label">Lokasi Pengiriman</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
+                    <div class="text-form-label">Lokasi Pengiriman</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.lokasi_pengiriman) }}</div>
                   </div>
                   <div>
-                    <div class="font-label">Titik Serah Terima & T&C Bongkar</div>
-                    <div class="mt-1 font-strong whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
+                    <div class="text-form-label">Titik Serah Terima & T&C Bongkar</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line">{{ dash(penawaran.keterangan) }}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <Table bordered sm class="mt-4 font-body">
+            <Table bordered sm class="mt-4 text-body">
               <Table.Thead class="bg-slate-50">
                 <Table.Th>Produk</Table.Th>
                 <Table.Th class="w-40">Source</Table.Th>
@@ -411,52 +409,52 @@ function formatNumber(v: number | string = 0) {
               <Table.Tbody class="bg-white">
                 <Table.Tr v-for="item in items" :key="item.id_penawaran_item">
                   <Table.Td>
-                    <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                    <div class="mt-0.5 font-caption">
+                    <div class="text-body-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                    <div class="mt-0.5 text-caption">
                       {{ item.produk?.jenis?.nama || '-' }}
                       <span class="mx-1">·</span>
                       {{ item.produk?.ukuran?.nama_ukuran || '-' }} {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                     </div>
                   </Table.Td>
-                  <Table.Td class="font-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
-                  <Table.Td class="font-num text-lg text-right">
+                  <Table.Td class="text-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
+                  <Table.Td class="num-sm text-lg text-right">
                     {{ formatNumber(item.persen) }}%
                   </Table.Td>
-                  <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
+                  <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.volume_order) }}</Table.Td>
                 </Table.Tr>
               </Table.Tbody>
 
               <Table.Tbody v-if="items.length > 2" class="bg-slate-50 border-slate-200 border-t">
                 <Table.Tr>
-                  <Table.Td colspan="2" class="py-2.5 pr-6 font-header text-right">Total</Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalPersen) }}%</Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatNumber(totalVolume) }}</Table.Td>
+                  <Table.Td colspan="2" class="py-2.5 pr-6 text-section-title text-right">Total</Table.Td>
+                  <Table.Td class="py-2.5 num-md text-xl text-right">{{ formatNumber(totalPersen) }}%</Table.Td>
+                  <Table.Td class="py-2.5 num-md text-xl text-right">{{ formatNumber(totalVolume) }}</Table.Td>
                   <Table.Td v-if="canSeeHarga" colspan="2"></Table.Td>
                 </Table.Tr>
               </Table.Tbody>
 
               <Table.Tbody v-if="canSeeHarga" class="bg-slate-50 border-slate-200 border-t">
                 <Table.Tr>
-                  <Table.Td :colspan="items.length > 2 ? 4 : 3" class="py-2.5 pr-6 font-header text-right">
+                  <Table.Td :colspan="items.length > 2 ? 4 : 3" class="py-2.5 pr-6 text-section-title text-right">
                     Subtotal Harga Tebus
                   </Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg text-xl text-right">{{ formatCurrency(subtotal) }}</Table.Td>
+                  <Table.Td class="py-2.5 num-md text-xl text-right">{{ formatCurrency(subtotal) }}</Table.Td>
                 </Table.Tr>
                 <Table.Tr v-if="totalDiskon > 0" class="bg-yellow-50">
                   <Table.Td :colspan="items.length > 2 ? 4 : 3"
-                    class="py-2.5 pr-6 font-header !text-yellow-700 text-right">
+                    class="py-2.5 pr-6 text-section-title !text-yellow-700 text-right">
                     Diskon
                   </Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg !text-yellow-800 text-xl text-right">
+                  <Table.Td class="py-2.5 num-md !text-yellow-800 text-xl text-right">
                     - {{ formatCurrency(totalDiskon) }}
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr class="bg-emerald-50">
                   <Table.Td :colspan="items.length > 2 ? 4 : 3"
-                    class="py-2.5 pr-6 font-header !text-emerald-700 text-right">
+                    class="py-2.5 pr-6 text-section-title !text-emerald-700 text-right">
                     Setelah Diskon
                   </Table.Td>
-                  <Table.Td class="py-2.5 font-num-lg !text-emerald-800 text-xl text-right">
+                  <Table.Td class="py-2.5 num-md !text-emerald-800 text-xl text-right">
                     {{ formatCurrency(grandTotalHargaTebusSetelahDiskon) }}
                   </Table.Td>
                 </Table.Tr>
@@ -470,8 +468,8 @@ function formatNumber(v: number | string = 0) {
                 icon="Wallet" icon-class="bg-amber-100 text-amber-600" class="h-full">
                 <div class="gap-4 grid grid-cols-12">
                   <div v-for="field in paymentFields" :key="field.label" class="col-span-12 md:col-span-6">
-                    <div class="font-label">{{ field.label }}</div>
-                    <div class="mt-1 font-strong whitespace-pre-line"
+                    <div class="text-form-label">{{ field.label }}</div>
+                    <div class="mt-1 text-body-strong whitespace-pre-line"
                       :class="field.tone === 'red' ? 'text-danger' : ''">
                       {{ dash(field.value) }}
                     </div>
@@ -486,32 +484,32 @@ function formatNumber(v: number | string = 0) {
                 <dl class="flex flex-col gap-4 px-4">
                   <div class="flex flex-row justify-between items-center gap-4">
                     <div class="bg-slate-100 p-4 rounded-lg text-right grow">
-                      <dt class="font-label">Harga Dasar</dt>
-                      <dd class="mt-1 font-num-lg !text-slate-800 text-lg">{{ formatCurrency(penawaran.harga_dasar) }}
+                      <dt class="text-form-label">Harga Dasar</dt>
+                      <dd class="mt-1 num-md !text-slate-800 text-lg">{{ formatCurrency(penawaran.harga_dasar) }}
                       </dd>
                     </div>
                     <div class="bg-slate-100 p-4 rounded-lg text-right grow">
-                      <dt class="font-label">OAT per Volume</dt>
-                      <div class="mt-1 font-num-lg !text-slate-800 text-lg">{{ formatCurrency(penawaran.oat) }}</div>
+                      <dt class="text-form-label">OAT per Volume</dt>
+                      <div class="mt-1 num-md !text-slate-800 text-lg">{{ formatCurrency(penawaran.oat) }}</div>
                     </div>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg grow">
                     <div class="flex justify-between items-start">
-                      <dt class="font-label">Subtotal (DPP)</dt>
-                      <dd class="mt-1 font-num-lg !text-slate-800 text-xl">{{ formatCurrency(dppHargaDasar) }}</dd>
+                      <dt class="text-form-label">Subtotal (DPP)</dt>
+                      <dd class="mt-1 num-md !text-slate-800 text-xl">{{ formatCurrency(dppHargaDasar) }}</dd>
                     </div>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg grow">
                     <div class="flex justify-between items-start">
-                      <dt class="font-label">PPN 11%</dt>
-                      <dd class="mt-1 font-num-lg !text-slate-800 text-xl">{{ formatCurrency(ppnHargaDasar) }}</dd>
+                      <dt class="text-form-label">PPN 11%</dt>
+                      <dd class="mt-1 num-md !text-slate-800 text-xl">{{ formatCurrency(ppnHargaDasar) }}</dd>
                     </div>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg grow">
                     <div class="flex justify-between items-start">
-                      <dt class="font-label">TOTAL</dt>
-                      <dd class="mt-1 font-num-lg !text-emerald-700 text-xl">{{ formatCurrency(grandTotalHargaDasar)
-                      }}</dd>
+                      <dt class="text-form-label">TOTAL</dt>
+                      <dd class="mt-1 num-md !text-emerald-700 text-xl">{{ formatCurrency(grandTotalHargaDasar)
+                        }}</dd>
                     </div>
                   </div>
                 </dl>
@@ -523,19 +521,19 @@ function formatNumber(v: number | string = 0) {
             <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div class="flex flex-col gap-4">
                 <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
-                  <div class="font-label">Catatan</div>
-                  <p class="mt-1 font-body whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
+                  <div class="text-form-label">Catatan</div>
+                  <p class="mt-1 text-body whitespace-pre-line">{{ penawaran.catatan || '-' }}</p>
                 </div>
                 <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
-                  <div class="font-label">Syarat & Ketentuan</div>
-                  <p class="mt-1 font-body whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
+                  <div class="text-form-label">Syarat & Ketentuan</div>
+                  <p class="mt-1 text-body whitespace-pre-line">{{ penawaran.syarat_ketentuan || '-' }}</p>
                 </div>
               </div>
             </CardSection>
 
             <CardSection title="Lampiran Tambahan" icon="Paperclip" icon-class="bg-rose-100 text-rose-600">
               <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
-                <p class="font-body whitespace-pre-line">{{ penawaran.lampiran_tambahan || '-' }}</p>
+                <p class="text-body whitespace-pre-line">{{ penawaran.lampiran_tambahan || '-' }}</p>
               </div>
             </CardSection>
           </div>
@@ -550,7 +548,7 @@ function formatNumber(v: number | string = 0) {
                 <div class="space-y-6">
                   <div v-for="(attempt, idx) in approvalAttempts" :key="idx" class="space-y-3">
                     <span v-if="attempt.label"
-                      class="inline-flex items-center bg-slate-50 px-3 py-1 border border-slate-200 rounded-full w-fit font-label text-slate-500">
+                      class="inline-flex items-center bg-slate-50 px-3 py-1 border border-slate-200 rounded-full w-fit text-form-label text-slate-500">
                       {{ attempt.label }}
                     </span>
                     <Stepper :steps="attempt.steps" direction="vertical" />
@@ -558,7 +556,7 @@ function formatNumber(v: number | string = 0) {
                 </div>
 
                 <p v-if="penawaran.status === 'draft'"
-                  class="bg-slate-50 px-4 py-3 border border-slate-100 rounded-xl font-caption">
+                  class="bg-slate-50 px-4 py-3 border border-slate-100 rounded-xl text-caption">
                   Pastikan seluruh data penawaran sudah benar sebelum diajukan ke Branch Manager.
                 </p>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerContactRequest;
 use App\Http\Requests\Customer\UpdateCustomerContactRequest;
 use App\Models\Customer;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class CustomerContactController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     public function index(Request $request, Customer $customer)
     {
         $user = $request->user();
@@ -40,6 +43,10 @@ class CustomerContactController extends Controller
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validated();
@@ -72,6 +79,10 @@ class CustomerContactController extends Controller
             return response()->json(['message' => 'Kontak tidak ditemukan untuk customer ini.'], 404);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
 
         $contact->update([
@@ -99,6 +110,10 @@ class CustomerContactController extends Controller
 
         if ($contact->id_customer !== $customer->id_customer) {
             return response()->json(['message' => 'Kontak tidak ditemukan untuk customer ini.'], 404);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $contact->delete();

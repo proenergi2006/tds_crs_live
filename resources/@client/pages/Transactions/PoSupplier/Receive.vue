@@ -204,8 +204,8 @@ function formatCurrency(v: number | string = 0) {
       <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="font-display">Good Receipt</h2>
-          <p class="font-lead mt-1">
+          <h2 class="text-screen-title">Good Receipt</h2>
+          <p class="text-body-lg mt-1">
             Catat penerimaan produk PO dan posting volume terima ke stok.
           </p>
         </div>
@@ -226,16 +226,16 @@ function formatCurrency(v: number | string = 0) {
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <div>
-                  <div class="font-label">Nomor PO</div>
-                  <div class="font-strong mt-1">{{ po.nomor_po || '-' }}</div>
+                  <div class="text-form-label">Nomor PO</div>
+                  <div class="text-body-strong mt-1">{{ po.nomor_po || '-' }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Tanggal PO</div>
-                  <div class="font-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
+                  <div class="text-form-label">Tanggal PO</div>
+                  <div class="text-body-strong mt-1">{{ formatDate(po.tanggal_inven) }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Terms</div>
-                  <div class="font-strong mt-1">
+                  <div class="text-form-label">Terms</div>
+                  <div class="text-body-strong mt-1">
                     {{ po.terms || '-' }}
                     <span class="text-slate-400">&nbsp;·&nbsp;{{ po.terms_day || 0 }} hari</span>
                   </div>
@@ -244,12 +244,12 @@ function formatCurrency(v: number | string = 0) {
 
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <div>
-                  <div class="font-label">Vendor</div>
-                  <div class="font-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
+                  <div class="text-form-label">Vendor</div>
+                  <div class="text-body-strong mt-1">{{ po.vendor?.nama_vendor || '-' }}</div>
                 </div>
                 <div>
-                  <div class="font-label">Terminal</div>
-                  <div class="font-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
+                  <div class="text-form-label">Terminal</div>
+                  <div class="text-body-strong mt-1">{{ po.terminal?.nama_terminal || '-' }}</div>
                 </div>
               </div>
             </div>
@@ -259,7 +259,7 @@ function formatCurrency(v: number | string = 0) {
           <CardSection title="Rincian Produk PO" description="Produk yang akan diterima berdasarkan vendor PO"
             icon="Boxes" icon-class="bg-indigo-100 text-indigo-600">
             <div class="overflow-x-auto">
-              <Table bordered sm class="font-body">
+              <Table bordered sm class="text-body">
                 <Table.Thead class="bg-slate-50">
                   <Table.Th>Produk</Table.Th>
                   <Table.Th class="text-right">Volume PO</Table.Th>
@@ -270,15 +270,15 @@ function formatCurrency(v: number | string = 0) {
                 <Table.Tbody class="bg-white">
                   <Table.Tr v-for="item in poProducts" :key="item.id_po_produk" class="transition hover:bg-slate-50">
                     <Table.Td>
-                      <div class="font-strong">{{ item.produk?.nama_produk || '-' }}</div>
-                      <div class="font-caption mt-0.5">
+                      <div class="text-body-strong">{{ item.produk?.nama_produk || '-' }}</div>
+                      <div class="text-caption mt-0.5">
                         {{ item.produk?.ukuran?.nama_ukuran || '-' }}
                         {{ item.produk?.ukuran?.satuan?.nama_satuan || '' }}
                       </div>
                     </Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
-                    <Table.Td class="font-num text-lg text-right">{{ formatCurrency(item.jumlah_harga) }}
+                    <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.volume_po) }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.harga_tebus) }}</Table.Td>
+                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.jumlah_harga) }}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -295,17 +295,17 @@ function formatCurrency(v: number | string = 0) {
               icon-class="bg-emerald-100 text-emerald-600">
               <div class="space-y-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div class="font-body">Total Produk PO</div>
-                  <div class="font-num-lg mt-1">{{ poProducts.length }}</div>
+                  <div class="text-body">Total Produk PO</div>
+                  <div class="num-md mt-1">{{ poProducts.length }}</div>
                 </div>
 
                 <div class="rounded-xl border border-slate-200 p-4">
                   <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <div class="font-strong">History Receive</div>
-                      <div class="font-caption">Riwayat penerimaan produk</div>
+                      <div class="text-body-strong">History Receive</div>
+                      <div class="text-caption">Riwayat penerimaan produk</div>
                     </div>
-                    <span class="rounded-full bg-slate-100 font-label px-2.5 py-1 !text-slate-600">
+                    <span class="rounded-full bg-slate-100 text-form-label px-2.5 py-1 !text-slate-600">
                       {{ receives.length }}
                     </span>
                   </div>
@@ -315,14 +315,14 @@ function formatCurrency(v: number | string = 0) {
                       class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div class="flex items-start justify-between gap-3">
                         <div>
-                          <div class="font-strong">
+                          <div class="text-body-strong">
                             {{ formatDate(receive.received_at || receive.created_at) }}
                           </div>
-                          <div class="font-caption">PIC: {{ receive.nama_pic || '-' }}</div>
+                          <div class="text-caption">PIC: {{ receive.nama_pic || '-' }}</div>
                         </div>
                         <div class="flex items-center gap-2">
                           <a v-if="receive.file_url" :href="receive.file_url" target="_blank"
-                            class="inline-flex items-center gap-1 font-caption !text-primary hover:underline">
+                            class="inline-flex items-center gap-1 text-caption !text-primary hover:underline">
                             <Lucide icon="Download" class="h-3.5 w-3.5" />
                             File
                           </a>
@@ -336,11 +336,11 @@ function formatCurrency(v: number | string = 0) {
 
                       <div class="mt-3 space-y-2">
                         <div v-for="detail in receive.details" :key="detail.id"
-                          class="rounded-md font-caption bg-white px-3 py-2">
-                          <div class="font-strong">{{ detail.produk?.nama_produk || '-' }}</div>
+                          class="rounded-md text-caption bg-white px-3 py-2">
+                          <div class="text-body-strong">{{ detail.produk?.nama_produk || '-' }}</div>
                           <div class="mt-1 flex justify-between gap-2 text-slate-500">
                             <span>Terima {{ formatNumber(detail.volume_terima) }}</span>
-                            <span class="font-strong"
+                            <span class="text-body-strong"
                               :class="Number(detail.selisih) === 0 ? 'text-emerald-600' : Number(detail.selisih) > 0 ? 'text-amber-600' : 'text-red-600'">
                               Sisa {{ formatNumber(detail.selisih) }}
                             </span>
@@ -355,8 +355,8 @@ function formatCurrency(v: number | string = 0) {
                       class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                       <Lucide icon="Inbox" class="h-5 w-5" />
                     </div>
-                    <p class="font-strong mt-3">Belum ada receive</p>
-                    <p class="mt-1 font-caption">Receive pertama dapat dicatat dari tombol Add Receive.</p>
+                    <p class="text-body-strong mt-3">Belum ada receive</p>
+                    <p class="mt-1 text-caption">Receive pertama dapat dicatat dari tombol Add Receive.</p>
                   </div>
                 </div>
 
@@ -392,8 +392,8 @@ function formatCurrency(v: number | string = 0) {
       <div v-for="item in poProducts" :key="item.id_po_produk"
         class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
         <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p class="font-strong">{{ item.produk?.nama_produk || '-' }}</p>
-          <div class="font-body">Harga Tebus: {{ formatCurrency(item.harga_tebus) }}</div>
+          <p class="text-body-strong">{{ item.produk?.nama_produk || '-' }}</p>
+          <div class="text-body">Harga Tebus: {{ formatCurrency(item.harga_tebus) }}</div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -405,7 +405,7 @@ function formatCurrency(v: number | string = 0) {
                 {{ persenTerimaMap[item.id_po_produk] }}%
               </Progress.Bar>
             </Progress>
-            <p class="mt-1 font-caption">Sudah diterima: {{ formatNumber(totalTerimaMap[item.id_po_produk] ??
+            <p class="mt-1 text-caption">Sudah diterima: {{ formatNumber(totalTerimaMap[item.id_po_produk] ??
               0) }} dari {{ formatNumber(item.volume_po) }}</p>
           </div>
 
@@ -414,7 +414,7 @@ function formatCurrency(v: number | string = 0) {
             <FormInput :id="`volume_terima_${item.id_po_produk}`"
               v-model="form.details[item.id_po_produk].volume_terima" type="text" inputmode="numeric" class="text-right"
               placeholder="0" required @input="onNumberInput(item.id_po_produk, $event)" />
-            <p class="mt-1 font-caption">Sisa dapat diterima: {{
+            <p class="mt-1 text-caption">Sisa dapat diterima: {{
               formatNumber(volumeSisaMap[item.id_po_produk])
             }}</p>
           </div>

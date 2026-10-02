@@ -18,8 +18,8 @@ defineProps<{
 
 <template>
   <div class="space-y-6">
-    <h2 class="font-header text-xl">Logistic Info</h2>
-    <p class="font-caption">
+    <h2 class="text-section-title text-xl">Logistic Info</h2>
+    <p class="text-caption">
       Informasi ini membantu tim logistik kami mempersiapkan armada dan proses pengiriman yang sesuai dengan lokasi
       dan kondisi site Anda.
     </p>
@@ -27,8 +27,8 @@ defineProps<{
     <div class="grid grid-cols-3 gap-6">
       <!-- Site Environment -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">SITE ENVIRONMENT</div>
-        <p class="font-caption mb-3">Kondisi lingkungan sekitar lokasi penerimaan barang.</p>
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">SITE ENVIRONMENT</div>
+        <p class="text-caption mb-3">Kondisi lingkungan sekitar lokasi penerimaan barang.</p>
         <div class="space-y-2">
           <FormCheck v-for="opt in siteEnvironmentOptions" :key="opt.value">
             <FormCheck.Input :id="'site-env-' + opt.value" type="radio" :value="opt.value"
@@ -46,7 +46,7 @@ defineProps<{
         </div>
 
         <div class="mt-4">
-          <FormLabel class="font-label !mb-1 block">Site Environment Notes</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Site Environment Notes</FormLabel>
           <FormTextarea v-model="form.logistics.site_environment_notes" rows="3"
             placeholder="Catatan tambahan mengenai lokasi (optional)" />
         </div>
@@ -54,8 +54,8 @@ defineProps<{
 
       <!-- Storage Type -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">STORAGE TYPE</div>
-        <p class="font-caption mb-3">Cara barang disimpan sebelum digunakan.</p>
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">STORAGE TYPE</div>
+        <p class="text-caption mb-3">Cara barang disimpan sebelum digunakan.</p>
         <div class="space-y-2">
           <FormCheck v-for="opt in storageTypeOptions" :key="opt.value">
             <FormCheck.Input :id="'storage-type-' + opt.value" type="radio" :value="opt.value"
@@ -73,7 +73,7 @@ defineProps<{
         </div>
 
         <div class="mt-4">
-          <FormLabel class="font-label !mb-1 block">Storage Notes</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Storage Notes</FormLabel>
           <FormTextarea v-model="form.logistics.storage_notes" rows="3"
             placeholder="Catatan tambahan mengenai penyimpanan (optional)" />
         </div>
@@ -81,8 +81,8 @@ defineProps<{
 
       <!-- Operating Hours -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">OPERATING HOURS</div>
-        <p class="font-caption mb-3">Jam operasional site untuk penerimaan pengiriman barang.</p>
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">OPERATING HOURS</div>
+        <p class="text-caption mb-3">Jam operasional site untuk penerimaan pengiriman barang.</p>
         <div class="space-y-2">
           <FormCheck v-for="opt in operatingHoursOptions" :key="opt.value">
             <FormCheck.Input :id="'operating-hours-' + opt.value" type="radio" :value="opt.value"
@@ -105,8 +105,8 @@ defineProps<{
     <div class="grid grid-cols-2 gap-6">
       <!-- Quality Checking -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">QUALITY CHECKING</div>
-        <p class="font-caption mb-3">Metode pengecekan kualitas barang yang berlaku di site Anda.</p>
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">QUALITY CHECKING</div>
+        <p class="text-caption mb-3">Metode pengecekan kualitas barang yang berlaku di site Anda.</p>
         <div class="space-y-2">
           <FormCheck v-for="opt in qualityCheckingOptions" :key="opt.value">
             <FormCheck.Input :id="'quality-checking-' + opt.value" type="radio" :value="opt.value"
@@ -127,8 +127,8 @@ defineProps<{
 
       <!-- Quantity Checking -->
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">QUANTITY CHECKING</div>
-        <p class="font-caption mb-3">Metode pengecekan kuantitas/jumlah barang yang berlaku di site Anda.</p>
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">QUANTITY CHECKING</div>
+        <p class="text-caption mb-3">Metode pengecekan kuantitas/jumlah barang yang berlaku di site Anda.</p>
         <div class="space-y-2">
           <FormCheck v-for="opt in quantityCheckingOptions" :key="opt.value">
             <FormCheck.Input :id="'quantity-checking-' + opt.value" type="radio" :value="opt.value"
@@ -151,24 +151,24 @@ defineProps<{
     <!-- Max Truck Capacity + Vessel -->
     <div class="grid gap-6 md:grid-cols-2">
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">TRUCK CAPACITY (m³)</div>
-        <p class="font-caption mb-3">Kapasitas volume truk yang bisa diakomodasi site Anda untuk keperluan bongkar muat.
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">TRUCK CAPACITY (m³)</div>
+        <p class="text-caption mb-3">Kapasitas volume truk yang bisa diakomodasi site Anda untuk keperluan bongkar muat.
         </p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <FormLabel class="font-label !mb-1 block">Min</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Min</FormLabel>
             <FormInput v-model="form.logistics.max_truck_capacity_min" type="number" min="0" placeholder="e.g. 8" />
           </div>
           <div>
-            <FormLabel class="font-label !mb-1 block">Max</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Max</FormLabel>
             <FormInput v-model="form.logistics.max_truck_capacity_max" type="number" min="0" placeholder="e.g. 20" />
           </div>
         </div>
       </div>
 
       <div class="rounded-lg bg-white p-6 shadow-sm">
-        <div class="font-section mb-1 border-b border-slate-100 pb-2">SUPPORTS VESSEL DELIVERY?</div>
-        <p class="font-caption mb-3">Apakah site Anda bisa menerima pengiriman lewat kapal/vessel selain jalur darat.
+        <div class="text-overline mb-1 border-b border-slate-100 pb-2">SUPPORTS VESSEL DELIVERY?</div>
+        <p class="text-caption mb-3">Apakah site Anda bisa menerima pengiriman lewat kapal/vessel selain jalur darat.
         </p>
         <div class="grid max-w-xs grid-cols-2 gap-3">
           <div class="cursor-pointer rounded-lg border py-2 text-center transition-colors"
@@ -189,12 +189,12 @@ defineProps<{
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="grid gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
-          <FormLabel class="font-label !mb-1 block">Product Notes</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Product Notes</FormLabel>
           <FormTextarea v-model="form.logistics.product_notes" rows="3"
             placeholder="Catatan tambahan terkait produk (optional)" />
         </div>
         <div>
-          <FormLabel class="font-label !mb-1 block">Est. Monthly Volume (m³)</FormLabel>
+          <FormLabel class="text-form-label !mb-1 block">Est. Monthly Volume (m³)</FormLabel>
           <FormInput v-model="form.logistics.estimated_monthly_volume" type="number" min="0" placeholder="e.g. 500" />
         </div>
       </div>

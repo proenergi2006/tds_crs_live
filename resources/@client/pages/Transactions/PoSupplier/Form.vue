@@ -336,7 +336,7 @@ function cancel() {
     <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
       <div class="grid grid-cols-12 gap-4">
         <div class="col-span-12 md:col-span-4">
-          <div class="font-label mb-1">Data PO</div>
+          <div class="text-form-label mb-1">Data PO</div>
           <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
             <div v-if="mode === 'edit'">
               <FormLabel for="nomor_po">Nomor PO</FormLabel>
@@ -345,7 +345,7 @@ function cancel() {
 
             <div v-else>
               <FormLabel>Nomor PO</FormLabel>
-              <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 font-body text-xs">
+              <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-body text-xs">
                 *<i>Generate</i> otomatis setelah simpan.
               </div>
             </div>
@@ -354,7 +354,7 @@ function cancel() {
           </div>
         </div>
         <div class="col-span-12 md:col-span-4">
-          <div class="font-label mb-1">Data Vendor</div>
+          <div class="text-form-label mb-1">Data Vendor</div>
           <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
             <div>
               <FormLabel for="vendor">Vendor</FormLabel>
@@ -378,7 +378,7 @@ function cancel() {
           </div>
         </div>
         <div class="col-span-12 md:col-span-4">
-          <div class="font-label mb-1">Data Lainnya</div>
+          <div class="text-form-label mb-1">Data Lainnya</div>
           <div class="flex flex-col gap-4 rounded border border-slate-200 p-4">
             <div class="col-span-12 md:col-span-3">
               <FormLabel for="terms">Terms</FormLabel>
@@ -409,16 +409,16 @@ function cancel() {
       </template>
 
       <div class="overflow-x-auto">
-        <Table bordered sm class="font-body">
+        <Table bordered sm class="text-body">
           <Table.Thead class="bg-slate-50">
             <Table.Tr>
-              <Table.Th class="w-16 px-4 py-3 font-label text-center">#</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-left">Produk</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-right">Volume PO</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-right">Harga Tebus</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-right">Total Harga</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-center">Kode Tax</Table.Th>
-              <Table.Th class="px-4 py-3 font-label text-right">Tax Amount</Table.Th>
+              <Table.Th class="w-16 px-4 py-3 text-form-label text-center">#</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-left">Produk</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-right">Volume PO</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-right">Harga Tebus</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-right">Total Harga</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-center">Kode Tax</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-right">Tax Amount</Table.Th>
             </Table.Tr>
           </Table.Thead>
 
@@ -469,8 +469,8 @@ function cancel() {
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="4" class="px-4 py-3 font-strong text-right">Subtotal</Table.Td>
-              <Table.Td class="px-4 py-3 font-num-lg text-right">
+              <Table.Td colspan="4" class="px-4 py-3 text-body-strong text-right">Subtotal</Table.Td>
+              <Table.Td class="px-4 py-3 num-md text-right">
                 {{ formatNumber(calcSubtotal) }}
               </Table.Td>
               <Table.Td></Table.Td>
@@ -478,8 +478,8 @@ function cancel() {
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="4" class="px-4 py-3 font-strong text-right">Total Tax</Table.Td>
-              <Table.Td class="px-4 py-3 font-num-lg text-right">
+              <Table.Td colspan="4" class="px-4 py-3 text-body-strong text-right">Total Tax</Table.Td>
+              <Table.Td class="px-4 py-3 num-md text-right">
                 {{ formatNumber(calcTotalTax) }}
               </Table.Td>
               <Table.Td></Table.Td>
@@ -487,8 +487,8 @@ function cancel() {
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="4" class="px-4 py-4 text-right font-header">Total Order</Table.Td>
-              <Table.Td class="px-4 py-4 font-num-lg text-right !text-emerald-700">
+              <Table.Td colspan="4" class="px-4 py-4 text-right text-section-title">Total Order</Table.Td>
+              <Table.Td class="px-4 py-4 num-md text-right !text-emerald-700">
                 {{ formatNumber(calcTotalOrder) }}
               </Table.Td>
               <Table.Td></Table.Td>
@@ -509,7 +509,7 @@ function cancel() {
               placeholder="(opsional)" />
           </div>
 
-          <label class="inline-flex items-center gap-2 font-strong">
+          <label class="inline-flex items-center gap-2 text-body-strong">
             <input v-model="termsChecked" type="checkbox"
               class="rounded border-slate-300 text-primary focus:ring-primary" />
             Terms & Condition

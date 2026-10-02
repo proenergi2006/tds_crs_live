@@ -17,7 +17,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\DecideCustomerVerificationRequest;
 use App\Models\Customer;
 use App\Models\CustomerLcr;
-use App\Models\CustomerReview;
 use App\Models\CustomerVerification;
 use App\Models\Penawaran;
 use App\Models\User;
@@ -33,6 +32,13 @@ class CustomerVerificationController extends Controller
         $ownerId = Customer::where('id_customer', $customerVerification->id_customer)->value('id_user');
 
         return $ownerId !== null ? (int) $ownerId : null;
+    }
+
+    private function canAccessVerificationDocument(User $user, CustomerVerification $customerVerification): bool
+    {
+        return $user->can('verification.customer')
+            || $user->can('customer.viewAny')
+            || ($user->can('customer.viewOwn') && $this->verificationOwnerId($customerVerification) === $user->id);
     }
 
     public function store(Request $request, Customer $customer, SubmitCustomerVerificationAction $action): \Illuminate\Http\JsonResponse
@@ -96,7 +102,8 @@ class CustomerVerificationController extends Controller
                 $customerVerification,
                 (int) $data['approved_limit'],
                 (int) $data['approved_top'],
-                $data['financial_review'],
+                $data['notes'] ?? null,
+                $request->file('attachments', []),
                 $user->id
             );
         } else {
@@ -104,12 +111,14 @@ class CustomerVerificationController extends Controller
         }
 
         return response()->json([
-            'id_verification' => $customerVerification->id_verification,
-            'status'          => $customerVerification->status->value,
-            'approved_limit'  => $customerVerification->approved_limit,
-            'approved_top'    => $customerVerification->approved_top,
-            'reviewed_at'     => $customerVerification->reviewed_at,
-            'reviewed_by'     => [
+            'id_verification'     => $customerVerification->id_verification,
+            'status'              => $customerVerification->status->value,
+            'approved_limit'      => $customerVerification->approved_limit,
+            'approved_top'        => $customerVerification->approved_top,
+            'notes'               => $customerVerification->notes,
+            'finance_attachments' => $customerVerification->formatFinanceAttachments(),
+            'reviewed_at'         => $customerVerification->reviewed_at,
+            'reviewed_by'         => [
                 'id'   => $customerVerification->reviewedBy->id,
                 'name' => $customerVerification->reviewedBy->name,
             ],
@@ -149,7 +158,7 @@ class CustomerVerificationController extends Controller
 
         return response()->json([
             'data' => $rows->getCollection()
-                ->map(fn (CustomerVerification $verification) => $this->formatQueueRow($verification))
+                ->map(fn(CustomerVerification $verification) => $this->formatQueueRow($verification))
                 ->values(),
             'meta' => [
                 'current_page' => $rows->currentPage(),
@@ -179,7 +188,7 @@ class CustomerVerificationController extends Controller
     {
         $user = $request->user();
 
-        $cv = CustomerVerification::with(['customer', 'submittedBy:id,name', 'reviewedBy:id,name'])->findOrFail($id);
+        $cv = CustomerVerification::whereHas('customer')->with(['customer', 'submittedBy:id,name', 'reviewedBy:id,name'])->findOrFail($id);
 
         $allowed = $user->can('verification.customer')
             || $user->can('customer.viewAny')
@@ -190,8 +199,13 @@ class CustomerVerificationController extends Controller
         }
 
         $cv->customer->load([
-            'addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village',
-            'payment', 'contacts', 'documents.documentType', 'creditRequest',
+            'addresses.province',
+            'addresses.regency',
+            'addresses.district',
+            'addresses.village',
+            'payment',
+            'contacts',
+            'documents.documentType',
         ]);
 
         $headOffice = $cv->customer->addresses->firstWhere('address_type', CustomerAddressType::HeadOffice);
@@ -207,57 +221,51 @@ class CustomerVerificationController extends Controller
         $cv->customer->district_id = $headOffice?->district_id;
         $cv->customer->village_id = $headOffice?->village_id;
 
-        $customerReview = CustomerReview::where('id_customer', $cv->id_customer)->first();
-        $review = $customerReview?->review_answers;
-        $reviewNotes = $customerReview?->notes;
-
         $sites = CustomerLcr::where('id_customer', $cv->id_customer)->with('latestDocumentApproval')->get();
 
         $allApproved = $sites->isNotEmpty()
-            && $sites->every(fn (CustomerLcr $site) => $site->latestDocumentApproval?->status === DocumentApprovalStatus::Approved);
-
-        $creditRequest = $cv->customer->creditRequest;
+            && $sites->every(fn(CustomerLcr $site) => $site->latestDocumentApproval?->status === DocumentApprovalStatus::Approved);
 
         return response()->json([
-            'id_verification'           => $cv->id_verification,
-            'status'                    => $cv->status->value,
-            'status_label'              => $cv->status->label(),
-            'submitted_at'              => $cv->submitted_at,
-            'submitted_by'              => $cv->submittedBy ? ['id' => $cv->submittedBy->id, 'name' => $cv->submittedBy->name] : null,
-            'reviewed_at'               => $cv->reviewed_at,
-            'reviewed_by'               => $cv->reviewedBy ? ['id' => $cv->reviewedBy->id, 'name' => $cv->reviewedBy->name] : null,
-            'reject_note'               => $cv->reject_note,
-            'requested_limit_snapshot'  => $cv->requested_limit_snapshot,
-            'requested_top_snapshot'    => $cv->requested_top_snapshot,
-            'approved_limit'            => $cv->approved_limit,
-            'approved_top'              => $cv->approved_top,
-            'financial_review'          => $cv->financial_review,
-            'customer'                  => $cv->customer,
-            'review'                    => $review,
-            'review_notes'              => $reviewNotes,
-            'lcr'                       => [
-                'sites' => $sites->map(fn (CustomerLcr $site) => [
+            'id_verification'                  => $cv->id_verification,
+            'status'                           => $cv->status->value,
+            'status_label'                     => $cv->status->label(),
+            'submitted_at'                     => $cv->submitted_at,
+            'submitted_by'                     => $cv->submittedBy ? ['id' => $cv->submittedBy->id, 'name' => $cv->submittedBy->name] : null,
+            'reviewed_at'                      => $cv->reviewed_at,
+            'reviewed_by'                      => $cv->reviewedBy ? ['id' => $cv->reviewedBy->id, 'name' => $cv->reviewedBy->name] : null,
+            'reject_note'                      => $cv->reject_note,
+            'requested_limit_snapshot'         => $cv->requested_limit_snapshot,
+            'requested_top_snapshot'           => $cv->requested_top_snapshot,
+            'requested_qty_snapshot'           => $cv->requested_qty_snapshot,
+            'product_category_snapshot'        => $cv->product_category_snapshot?->value,
+            'product_category_snapshot_label'  => $cv->product_category_snapshot?->label(),
+            'unit_snapshot'                    => $cv->product_category_snapshot?->unit(),
+            'approved_limit'                   => $cv->approved_limit,
+            'approved_top'                     => $cv->approved_top,
+            'financial_review_snapshot'        => $cv->financial_review_snapshot,
+            'notes'                            => $cv->notes,
+            'finance_attachments'              => $cv->formatFinanceAttachments(),
+            'customer'                         => $cv->customer,
+            'lcr'                              => [
+                'sites' => $sites->map(fn(CustomerLcr $site) => [
                     'id_lcr'          => $site->id_lcr,
                     'site_name'       => $site->site_name,
                     'approval_status' => $site->latestDocumentApproval?->status?->value,
                 ])->values(),
                 'all_approved' => $allApproved,
             ],
-            'credit_request'   => $creditRequest ? [
-                'requested_limit' => $creditRequest->requested_limit,
-                'requested_top'   => $creditRequest->requested_top,
-            ] : null,
             'tab_completeness' => $evaluateTabCompleteness->execute($cv->customer),
         ]);
     }
 
     public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
     {
-        if ($request->user()->cant('verification.customer')) {
+        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+
+        if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
             return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
@@ -276,11 +284,11 @@ class CustomerVerificationController extends Controller
 
     public function salesReviewDocument(Request $request, int $id, GenerateCustomerSalesReviewDocumentAction $action)
     {
-        if ($request->user()->cant('verification.customer')) {
+        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+
+        if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
             return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
@@ -299,11 +307,11 @@ class CustomerVerificationController extends Controller
 
     public function creditApplicationDocument(Request $request, int $id, GenerateCustomerCreditApplicationDocumentAction $action)
     {
-        if ($request->user()->cant('verification.customer')) {
+        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+
+        if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
             return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
@@ -322,11 +330,11 @@ class CustomerVerificationController extends Controller
 
     public function lcrDocument(Request $request, int $id, GenerateCustomerLcrDocumentAction $action)
     {
-        if ($request->user()->cant('verification.customer')) {
+        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+
+        if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
             return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
@@ -352,11 +360,11 @@ class CustomerVerificationController extends Controller
         GenerateCustomerLcrDocumentAction $lcrAction,
         MergeCustomerDocumentsAction $mergeAction,
     ) {
-        if ($request->user()->cant('verification.customer')) {
+        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+
+        if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $cv = CustomerVerification::findOrFail($id);
 
         if (!in_array($cv->status, [CustomerVerificationStatus::InReview, CustomerVerificationStatus::Approved], true)) {
             return response()->json(['message' => 'Dokumen tidak tersedia untuk verifikasi yang sudah ditolak.'], 409);
@@ -440,10 +448,10 @@ class CustomerVerificationController extends Controller
 
     private function scopedVerificationQuery(User $user): Builder
     {
-        $query = CustomerVerification::query();
+        $query = CustomerVerification::query()->whereHas('customer');
 
         if ($user->cant('verification.customer')) {
-            $query->whereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('id_user', $user->id));
+            $query->whereHas('customer', fn(Builder $customerQuery) => $customerQuery->where('id_user', $user->id));
         }
 
         return $query;

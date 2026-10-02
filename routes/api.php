@@ -38,19 +38,19 @@ use App\Http\Controllers\ReceiveItemController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\PenawaranController;
 use App\Http\Controllers\PenawaranVerificationController;
-use App\Http\Controllers\TransportirController;
-use App\Http\Controllers\PersonnelController;
-use App\Http\Controllers\VolumeController;
-use App\Http\Controllers\WilayahAngkutController;
-use App\Http\Controllers\MasterKapalController;
-use App\Http\Controllers\OngkosKapalController;
-use App\Http\Controllers\MasterTruckController;
-use App\Http\Controllers\OngkosTruckController;
-use App\Http\Controllers\PoCustomerController;
+use App\Http\Controllers\MasterLogistik\TransporterController;
+use App\Http\Controllers\MasterLogistik\PersonnelController;
+use App\Http\Controllers\MasterLogistik\VolumeController;
+use App\Http\Controllers\MasterLogistik\TransportAreaController;
+use App\Http\Controllers\MasterLogistik\VesselController;
+use App\Http\Controllers\MasterLogistik\TruckController;
+use App\Http\Controllers\MasterLogistik\TransportTariffController;
+use App\Http\Controllers\MasterLogistik\LogisticDocumentController;
+use App\Http\Controllers\PoCustomer\PoCustomerController;
 use App\Http\Controllers\PoCustomerUnblockRequestController;
 use App\Http\Controllers\CustomerArAgingController;
-use App\Http\Controllers\CustomerLcrController;
-use App\Http\Controllers\CustomerReviewController;
+use App\Http\Controllers\Customer\CustomerLcrController;
+use App\Http\Controllers\Customer\CustomerReviewController;
 use App\Http\Controllers\MapsLinkController;
 use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\DeliveryPlanController;
@@ -219,16 +219,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/penawarans/{id}/preview', [PenawaranController::class, 'previewPdfMultiLang'])->defaults('brand', 'tds');
 
     Route::apiResource('jenis-produks', JenisProdukController::class);
-    Route::apiResource('transportirs', TransportirController::class);
+    Route::apiResource('transporters', TransporterController::class);
     Route::apiResource('personnels', PersonnelController::class);
     Route::apiResource('volumes', VolumeController::class);
-    Route::apiResource('wilayah-angkuts', WilayahAngkutController::class);
-    Route::apiResource('master-kapals', MasterKapalController::class);
-    Route::get('ongkos-kapal/check', [OngkosKapalController::class, 'checkOA']);
-    Route::apiResource('ongkos-kapal', OngkosKapalController::class);
-    Route::apiResource('master-trucks', MasterTruckController::class);
-    Route::get('ongkos-trucks/check', [OngkosTruckController::class, 'checkOA']);
-    Route::apiResource('ongkos-trucks', OngkosTruckController::class);
+    Route::apiResource('transport-areas', TransportAreaController::class);
+    Route::apiResource('vessels', VesselController::class);
+    Route::apiResource('trucks', TruckController::class);
+    Route::get('transport-tariffs/check', [TransportTariffController::class, 'check']);
+    Route::apiResource('transport-tariffs', TransportTariffController::class);
+
+    Route::get('{parentType}/{parentId}/documents', [LogisticDocumentController::class, 'index'])
+        ->where('parentType', 'transporters|personnels|vessels|trucks')
+        ->whereNumber('parentId');
+    Route::post('{parentType}/{parentId}/documents', [LogisticDocumentController::class, 'store'])
+        ->where('parentType', 'transporters|personnels|vessels|trucks')
+        ->whereNumber('parentId');
+    Route::delete('{parentType}/{parentId}/documents/{documentId}', [LogisticDocumentController::class, 'destroy'])
+        ->where('parentType', 'transporters|personnels|vessels|trucks')
+        ->whereNumber('parentId')
+        ->whereNumber('documentId');
+
     Route::patch('penawarans/{id}/ajukan', [PenawaranController::class, 'ajukan'])->defaults('brand', 'tds');
     Route::apiResource('customer-pos', PoCustomerController::class);
 
@@ -254,6 +264,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
     Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
     Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'decideSalesConfirmationBm']);
+    Route::post('/sales-confirmations/po/{poc}/return', [PoCustomerController::class, 'returnSalesConfirmationToMarketing']);
 
     Route::post('/po-customers/{poc}/process-sc', [PoCustomerController::class, 'processSalesConfirmation']);
 

@@ -169,10 +169,10 @@ function joinWithAmpersand(items: string[]): string {
 
         <template #body>
           <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="group hover:bg-slate-50 transition">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
-            <Table.Td class="font-num whitespace-nowrap">
+            <Table.Td class="num-sm whitespace-nowrap">
               <span class="hover:underline cursor-pointer" :data-tooltip="`produk-tooltip-${pen.id_penawaran}`">
                 {{ pen.nomor_penawaran }}
               </span>
@@ -183,14 +183,14 @@ function joinWithAmpersand(items: string[]): string {
                     <div class="flex justify-between items-center gap-2 mb-3">
                       <div class="flex items-center gap-2 min-w-0">
                         <span class="bg-primary rounded-full w-2 h-2 shrink-0"></span>
-                        <span class="font-label text-slate-500 truncate tracking-wide">Daftar Produk Penawaran</span>
+                        <span class="text-form-label text-slate-500 truncate tracking-wide">Daftar Produk Penawaran</span>
                       </div>
-                      <span class="bg-slate-100 px-2 py-0.5 rounded-full font-caption text-slate-600 shrink-0">
+                      <span class="bg-slate-100 px-2 py-0.5 rounded-full text-caption text-slate-600 shrink-0">
                         {{ pen.items?.length || 0 }} Item{{ (pen.items?.length || 0) > 1 ? 's' : '' }}
                       </span>
                     </div>
 
-                    <div v-if="!pen.items || pen.items.length === 0" class="font-caption text-slate-500">
+                    <div v-if="!pen.items || pen.items.length === 0" class="text-caption text-slate-500">
                       Belum ada produk.
                     </div>
 
@@ -199,17 +199,17 @@ function joinWithAmpersand(items: string[]): string {
                         class="bg-slate-50 p-3 border border-slate-200 rounded-lg">
                         <div class="flex justify-between items-start gap-2">
                           <div class="min-w-0">
-                            <div class="font-strong truncate">{{ it.produk?.nama_produk || '-' }}</div>
-                            <div class="font-caption text-primary truncate">{{ it.produk?.jenis?.nama || '-' }}</div>
+                            <div class="text-body-strong truncate">{{ it.produk?.nama_produk || '-' }}</div>
+                            <div class="text-caption text-primary truncate">{{ it.produk?.jenis?.nama || '-' }}</div>
                           </div>
                           <span
-                            class="bg-primary/10 px-2 py-0.5 rounded-full font-num-sm text-primary whitespace-nowrap shrink-0">
+                            class="bg-primary/10 px-2 py-0.5 rounded-full num-micro text-primary whitespace-nowrap shrink-0">
                             {{ Number(it.volume_order ?? 0).toLocaleString('id-ID') }} m³
                           </span>
                         </div>
 
-                        <div v-if="sizePills(it).length" class="mt-2 font-caption text-slate-600">
-                          <span class="font-strong text-slate-700 text-xs">Komposisi:</span>
+                        <div v-if="sizePills(it).length" class="mt-2 text-caption text-slate-600">
+                          <span class="text-body-strong text-slate-700 text-xs">Komposisi:</span>
                           Ukuran {{ joinWithAmpersand(sizePills(it)) }}
                         </div>
                       </div>
@@ -217,8 +217,8 @@ function joinWithAmpersand(items: string[]): string {
 
                     <div v-if="pen.items && pen.items.length > 0"
                       class="flex justify-between items-center mt-3 pt-1 border-slate-100 border-t">
-                      <span class="font-caption text-slate-500">Total Volume:</span>
-                      <span class="font-strong">{{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³</span>
+                      <span class="text-caption text-slate-500">Total Volume:</span>
+                      <span class="text-body-strong">{{ Number(pen.total_volume ?? 0).toLocaleString('id-ID') }} m³</span>
                     </div>
                   </div>
                 </TippyContent>
@@ -234,11 +234,11 @@ function joinWithAmpersand(items: string[]): string {
               {{ pen.marketing?.name || '-' }}
             </Table.Td>
             <Table.Td class="whitespace-nowrap">
-              <div class="font-caption text-slate-500">Dibuat: {{ formatDate(pen.created_at) }}</div>
-              <div class="font-caption text-slate-500">Berlaku hingga: {{ formatDate(pen.sampai_dengan) }}</div>
+              <div class="text-caption text-slate-500">Dibuat: {{ formatDate(pen.created_at) }}</div>
+              <div class="text-caption text-slate-500">Berlaku hingga: {{ formatDate(pen.sampai_dengan) }}</div>
             </Table.Td>
             <Table.Td class="text-center whitespace-nowrap">
-              <span class="inline-flex items-center px-3 py-1 rounded-full font-label whitespace-nowrap"
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-form-label whitespace-nowrap"
                 :class="disposisiBadgeClass(pen.disposisi_penawaran)">
                 {{ pen.disposisi_label || '-' }}
               </span>

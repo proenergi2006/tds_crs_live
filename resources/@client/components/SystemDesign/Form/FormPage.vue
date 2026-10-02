@@ -103,11 +103,11 @@ function handleKeydown(event: KeyboardEvent) {
     <form class="intro-x flex flex-col gap-4" @submit.prevent="handleSubmit" @keydown="handleKeydown">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 class="font-display">
+          <h2 class="text-screen-title">
             {{ title }}
           </h2>
 
-          <p v-if="description" class="font-lead mt-1">
+          <p v-if="description" class="text-body-lg mt-1">
             {{ description }}
           </p>
         </div>
@@ -125,7 +125,7 @@ function handleKeydown(event: KeyboardEvent) {
 
           <div class="px-6 py-5">
             <div v-if="error"
-              class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
+              class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-body !text-rose-700">
               {{ error }}
             </div>
 
@@ -157,7 +157,7 @@ function handleKeydown(event: KeyboardEvent) {
           </div>
 
           <div v-if="error"
-            class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
+            class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-body !text-rose-700">
             {{ error }}
           </div>
 
@@ -193,7 +193,7 @@ function handleKeydown(event: KeyboardEvent) {
 
               <div class="px-6 py-5">
                 <div v-if="error"
-                  class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
+                  class="mb-4 whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-body !text-rose-700">
                   {{ error }}
                 </div>
 
@@ -227,7 +227,7 @@ function handleKeydown(event: KeyboardEvent) {
             </div>
 
             <div v-if="error"
-              class="whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 font-body !text-rose-700">
+              class="whitespace-pre-line rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-body !text-rose-700">
               {{ error }}
             </div>
 

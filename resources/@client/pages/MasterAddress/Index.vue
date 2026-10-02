@@ -233,10 +233,10 @@ function handleRowClick(row: RegionRow) {
               <Lucide :icon="stat.icon" class="h-5 w-5" />
             </div>
             <div>
-              <div class="font-num text-lg font-semibold text-slate-800">
+              <div class="num-sm text-lg font-semibold text-slate-800">
                 {{ stat.value.toLocaleString('id-ID') }}
               </div>
-              <div class="font-body text-slate-500">
+              <div class="text-body text-slate-500">
                 {{ stat.label }}
               </div>
             </div>
@@ -246,7 +246,7 @@ function handleRowClick(row: RegionRow) {
 
       <!-- Drill-down Browser -->
       <CardSection title="Jelajahi Wilayah" description="Klik baris untuk melihat data di bawahnya." icon="Globe">
-        <div class="mb-4 flex flex-wrap items-center gap-1 font-body">
+        <div class="mb-4 flex flex-wrap items-center gap-1 text-body">
           <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
             <button v-if="crumb.onClick" type="button" class="text-primary hover:underline" @click="crumb.onClick">
               {{ crumb.label }}
@@ -273,7 +273,7 @@ function handleRowClick(row: RegionRow) {
             <Table.Tr v-for="(item, idx) in paginatedRows" :key="item.id"
               :class="currentLevel !== 'village' ? 'cursor-pointer transition hover:bg-slate-50' : ''"
               @click="handleRowClick(item)">
-              <Table.Td class="font-num text-center">
+              <Table.Td class="num-sm text-center">
                 {{ (currentPage - 1) * perPage + idx + 1 }}.
               </Table.Td>
               <Table.Td>

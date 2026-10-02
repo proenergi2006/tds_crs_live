@@ -187,17 +187,17 @@ function levelClass(level: string | null): string {
           @page-change="goToPage">
           <template #filters="{ close }">
             <div>
-              <div class="font-section px-3 pb-2 pt-1">Level</div>
+              <div class="text-overline px-3 pb-2 pt-1">Level</div>
               <div class="space-y-1">
                 <button type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-body transition"
                   :class="filterLevel === '' ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="filterLevel = ''; close()">
                   Semua Level
                   <Lucide v-if="filterLevel === ''" icon="Check" class="h-4 w-4" />
                 </button>
                 <button v-for="lvl in levelOptions" :key="lvl" type="button"
-                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left font-body transition"
+                  class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-body transition"
                   :class="filterLevel === lvl ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'"
                   @click="filterLevel = lvl; close()">
                   {{ lvl }}
@@ -220,10 +220,10 @@ function levelClass(level: string | null): string {
 
               <Table.Tr class="transition hover:bg-slate-50" :class="log.trace ? 'cursor-pointer' : ''"
                 @click="log.trace ? openTraceModal(log) : undefined">
-                <Table.Td class="font-num text-center text-slate-400">
+                <Table.Td class="num-sm text-center text-slate-400">
                   {{ (currentPage - 1) * perPage + idx + 1 }}
                 </Table.Td>
-                <Table.Td class="font-caption whitespace-nowrap text-slate-500">
+                <Table.Td class="text-caption whitespace-nowrap text-slate-500">
                   {{ log.timestamp ?? '-' }}
                 </Table.Td>
                 <Table.Td>
@@ -232,12 +232,12 @@ function levelClass(level: string | null): string {
                     {{ log.level ?? '-' }}
                   </span>
                 </Table.Td>
-                <Table.Td class="font-caption text-slate-400">
+                <Table.Td class="text-caption text-slate-400">
                   {{ log.environment ?? '-' }}
                 </Table.Td>
                 <Table.Td>
                   <div class="flex items-start justify-between gap-2">
-                    <span class="font-body break-words">{{ log.message || '-' }}</span>
+                    <span class="text-body break-words">{{ log.message || '-' }}</span>
                     <Lucide v-if="log.trace" icon="FileSearch" class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                   </div>
                 </Table.Td>
@@ -255,18 +255,18 @@ function levelClass(level: string | null): string {
         <div class="p-6">
           <div class="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
-              <h3 class="font-header">Stacktrace</h3>
-              <p class="font-caption mt-1 text-slate-500">
+              <h3 class="text-section-title">Stacktrace</h3>
+              <p class="text-caption mt-1 text-slate-500">
                 {{ activeTraceLog?.timestamp ?? '-' }}
                 <span class="mx-1">&middot;</span>
                 {{ activeTraceLog?.level ?? '-' }}
               </p>
-              <p class="font-body mt-2 break-words">{{ activeTraceLog?.message }}</p>
+              <p class="text-body mt-2 break-words">{{ activeTraceLog?.message }}</p>
             </div>
           </div>
 
           <pre
-            class="mt-4 max-h-[60vh] overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-50 px-4 py-3 font-caption text-xs leading-relaxed text-slate-600">{{ activeTraceLog?.trace }}</pre>
+            class="mt-4 max-h-[60vh] overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-50 px-4 py-3 text-caption text-xs leading-relaxed text-slate-600">{{ activeTraceLog?.trace }}</pre>
         </div>
 
         <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
