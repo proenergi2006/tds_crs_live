@@ -65,7 +65,7 @@ const totalHarga = computed(() => dppPerM3.value * volumePoc.value)
 const pageTitle = computed(() => (isEditMode.value ? 'Edit PO Customer' : 'Buat PO Customer'))
 const pageDescription = computed(() =>
   isEditMode.value
-    ? 'Perbarui detail PO Customer. Penawaran sumber tidak dapat diubah.'
+    ? 'Perbarui detail PO Customer. Penawaran hanya dapat diganti dengan penawaran customer yang sama dan masih berlaku.'
     : 'Sumber harga dari Penawaran terpilih. Lengkapi detail PO untuk memproses.',
 )
 const isPoBlocked = computed(() => isEditMode.value && poRecord.value?.status_key === 'blocked')
@@ -186,7 +186,12 @@ function applyPoCustomerToForm() {
 async function fetchPenawaranOptions() {
   try {
     const { data } = await axios.get('/api/penawarans', {
-      params: { status: 'approved_om', per_page: 200, valid_today: 1 },
+      params: {
+        status: 'approved_om',
+        per_page: 200,
+        valid_today: 1,
+        ...(isEditMode.value && poRecord.value?.id_customer ? { id_customer: poRecord.value.id_customer } : {}),
+      },
     })
     penawaranOptions.value = (data.data ?? []).map((row: any) => ({
       id_penawaran: row.id_penawaran,
@@ -215,9 +220,11 @@ async function fetchPenawaranDetail(id: string | number) {
     form.oat = Number(data.oat ?? 0)
     hargaDasar.value = Number(data.harga_dasar ?? 0)
 
-    const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
-    form.tipe_bayar = tipeBayar
-    form.termin_hari = terminHari ?? ''
+    if (!isEditMode.value) {
+      const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
+      form.tipe_bayar = tipeBayar
+      form.termin_hari = terminHari ?? ''
+    }
 
     items.value = Array.isArray(data.items) ? data.items : []
     form.produk_poc = items.value[0]?.produk?.id_produk || ''
@@ -260,6 +267,9 @@ async function submit() {
   const payload = new FormData()
   if (isEditMode.value) {
     payload.append('_method', 'PUT')
+    if (String(form.id_penawaran) !== String(poRecord.value?.id_penawaran)) {
+      payload.append('id_penawaran', String(form.id_penawaran))
+    }
   } else {
     payload.append('id_customer', String(form.customer_id))
     payload.append('id_penawaran', String(form.id_penawaran))
@@ -339,13 +349,14 @@ function poVolumeForItem(it: any) {
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
         <div>
           <div class="text-form-label">Nomor Penawaran</div>
-          <TomSelect :model-value="String(form.id_penawaran)" class="w-full" :disabled="isEditMode"
+          <TomSelect :model-value="String(form.id_penawaran)" class="w-full"
             :options="{ placeholder: 'Pilih penawaran...', dropdownParent: 'body' }"
             @update:modelValue="onPenawaranSelected">
             <option v-for="opt in penawaranOptions" :key="opt.id_penawaran" :value="String(opt.id_penawaran)">
               {{ opt.nomor_penawaran }} — {{ opt.customer_nama }}
             </option>
           </TomSelect>
+          <small v-if="isEditMode" class="block text-caption text-slate-500">Hanya penawaran customer ini yang berlaku hari ini.</small>
           <small v-if="fieldError('id_penawaran')" class="text-caption !text-rose-600">{{ fieldError('id_penawaran') }}</small>
         </div>
         <div>
