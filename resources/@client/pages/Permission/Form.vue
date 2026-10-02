@@ -182,24 +182,24 @@ async function submitForm() {
           </FormLabel>
           <FormInput id="permission-name" v-model="form.name" placeholder="produk-harga.create"
             :class="v$.name.$error ? 'border-rose-500' : ''" />
-          <small class="font-caption text-slate-500">
+          <small class="text-caption text-slate-500">
             Format: module.action — huruf kecil, angka, dan tanda hubung saja.
           </small>
-          <small v-if="v$.name.$error" class="font-caption !text-rose-600 block">{{ getFieldError('name') }}</small>
+          <small v-if="v$.name.$error" class="text-caption !text-rose-600 block">{{ getFieldError('name') }}</small>
         </div>
       </template>
 
       <template v-else>
         <div>
           <FormLabel htmlFor="edit-permission-name">Name</FormLabel>
-          <div id="edit-permission-name" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-num text-sm text-slate-600">
+          <div id="edit-permission-name" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 num-sm text-sm text-slate-600">
             {{ form.name }}
           </div>
         </div>
 
         <div>
           <FormLabel htmlFor="edit-permission-guard">Guard Name</FormLabel>
-          <div id="edit-permission-guard" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-num text-sm text-slate-600">
+          <div id="edit-permission-guard" class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 num-sm text-sm text-slate-600">
             {{ form.guard_name || '-' }}
           </div>
         </div>
@@ -217,14 +217,14 @@ async function submitForm() {
           }">
           <option v-for="m in moduleOptions" :key="m" :value="m">{{ m }}</option>
         </TomSelect>
-        <small v-if="v$.module.$error" class="font-caption !text-rose-600">{{ getFieldError('module') }}</small>
+        <small v-if="v$.module.$error" class="text-caption !text-rose-600">{{ getFieldError('module') }}</small>
       </div>
 
       <div>
         <FormLabel htmlFor="permission-description">Deskripsi</FormLabel>
         <FormTextarea id="permission-description" v-model="form.description" placeholder="Deskripsi"
           :class="v$.description.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.description.$error" class="font-caption !text-rose-600">{{ getFieldError('description') }}</small>
+        <small v-if="v$.description.$error" class="text-caption !text-rose-600">{{ getFieldError('description') }}</small>
       </div>
     </div>
   </FormModal>

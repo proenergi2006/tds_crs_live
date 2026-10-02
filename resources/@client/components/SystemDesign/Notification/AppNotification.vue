@@ -81,16 +81,16 @@ onMounted(() => {
       }" />
 
     <div class="ml-4 mr-4">
-      <div class="font-strong">
+      <div class="text-body-strong">
         {{ notificationPayload.title }}
       </div>
 
-      <div v-if="notificationPayload.message" class="font-body mt-1 whitespace-pre-line break-words">
+      <div v-if="notificationPayload.message" class="text-body mt-1 whitespace-pre-line break-words">
         {{ notificationPayload.message }}
       </div>
 
       <ul v-if="notificationPayload.items && notificationPayload.items.length"
-        class="font-body mt-1.5 max-h-60 list-disc space-y-0.5 overflow-auto pl-4">
+        class="text-body mt-1.5 max-h-60 list-disc space-y-0.5 overflow-auto pl-4">
         <li v-for="(item, i) in notificationPayload.items" :key="i" class="break-words">
           {{ item }}
         </li>
@@ -104,7 +104,7 @@ onMounted(() => {
 
       <div v-if="notificationPayload.action" class="mt-1.5 flex">
         <button type="button" data-dismiss="notification" :data-notification-action="notificationPayload.action.id"
-          class="font-strong !text-primary dark:!text-slate-400"
+          class="text-body-strong !text-primary dark:!text-slate-400"
           :class="notificationPayload.action.variant === 'secondary' ? '!text-slate-500' : ''">
           {{ notificationPayload.action.label }}
         </button>

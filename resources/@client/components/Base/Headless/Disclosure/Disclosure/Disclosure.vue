@@ -11,7 +11,7 @@ export interface DisclosureProps
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { Disclosure as HeadlessDisclosure } from "@headlessui/vue";
 import { useAttrs, computed, inject } from "vue";
 import { type ProvideGroup } from "../Group.vue";

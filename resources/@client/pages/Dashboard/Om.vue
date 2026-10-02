@@ -140,13 +140,13 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col gap-4 intro-y">
     <div v-if="loading" class="p-8 rounded-2xl text-center box">
-      <div class="font-body">Memuat data dashboard...</div>
+      <div class="text-body">Memuat data dashboard...</div>
     </div>
 
     <div v-else-if="error" class="bg-red-50 p-6 border border-red-200 rounded-2xl box">
       <div class="flex items-center gap-3">
         <Lucide icon="AlertCircle" class="w-5 h-5 text-red-600 shrink-0" />
-        <div class="font-body !text-red-700">{{ error }}</div>
+        <div class="text-body !text-red-700">{{ error }}</div>
       </div>
     </div>
 
@@ -179,14 +179,14 @@ onMounted(async () => {
           icon="ClipboardCheck" icon-class="bg-blue-100 text-blue-600" description="Menunggu verifikasi OM">
           <template #action>
             <div class="flex flex-col gap-3 px-5 pt-4 pb-5">
-              <div class="font-label">Quick Links</div>
+              <div class="text-form-label">Quick Links</div>
               <div v-if="!summary.penawaran_approval_queue.items.length" class="py-3 text-center">
-                <div class="font-caption">Tidak ada Penawaran menunggu approval.</div>
+                <div class="text-caption">Tidak ada Penawaran menunggu approval.</div>
               </div>
               <div v-else class="flex flex-col gap-2">
                 <RouterLink v-for="p in summary.penawaran_approval_queue.items" :key="p.id_penawaran"
                   :to="{ name: 'penawarans-verifikasi-om-detail', params: { id: p.id_penawaran } }"
-                  class="flex justify-between items-center bg-white hover:bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl font-body text-sm">
+                  class="flex justify-between items-center bg-white hover:bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl text-body text-sm">
                   {{ p.nomor_penawaran }}
                   <Lucide icon="ArrowRight" class="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </RouterLink>

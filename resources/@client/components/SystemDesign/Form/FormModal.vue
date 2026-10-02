@@ -63,11 +63,11 @@ function handleClose() {
     <Dialog.Panel :class="['overflow-hidden p-0', sizeClass]">
       <Dialog.Title class="px-6 py-5 border-slate-200 border-b">
         <div>
-          <h2 class="font-header">
+          <h2 class="text-section-title">
             {{ title }}
           </h2>
 
-          <p v-if="description" class="mt-1 font-body">
+          <p v-if="description" class="mt-1 text-body">
             {{ description }}
           </p>
         </div>
@@ -80,7 +80,7 @@ function handleClose() {
       </Dialog.Title>
 
       <Dialog.Description class="px-6 py-5 max-h-[70vh] overflow-y-auto">
-        <div v-if="error" class="bg-rose-50 mb-4 px-4 py-3 border border-rose-200 rounded-lg font-body !text-rose-700">
+        <div v-if="error" class="bg-rose-50 mb-4 px-4 py-3 border border-rose-200 rounded-lg text-body !text-rose-700">
           {{ error }}
         </div>
 

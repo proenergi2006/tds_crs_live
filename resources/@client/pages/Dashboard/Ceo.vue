@@ -262,13 +262,13 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col gap-4 intro-y">
     <div v-if="loading" class="p-8 rounded-2xl text-center box">
-      <div class="font-body">Memuat data dashboard...</div>
+      <div class="text-body">Memuat data dashboard...</div>
     </div>
 
     <div v-else-if="error" class="bg-red-50 p-6 border border-red-200 rounded-2xl box">
       <div class="flex items-center gap-3">
         <Lucide icon="AlertCircle" class="w-5 h-5 text-red-600 shrink-0" />
-        <div class="font-body !text-red-700">{{ error }}</div>
+        <div class="text-body !text-red-700">{{ error }}</div>
       </div>
     </div>
 
@@ -311,10 +311,10 @@ onMounted(async () => {
             </FormSelect>
           </template>
           <div v-if="monthlyTrendLoading" class="flex justify-center items-center h-full min-h-64">
-            <div class="font-caption">Memuat data...</div>
+            <div class="text-caption">Memuat data...</div>
           </div>
           <div v-else-if="!hasMonthlyTrendData" class="flex justify-center items-center h-full min-h-64">
-            <div class="font-caption">Belum ada data PO di tahun {{ selectedYear }}.</div>
+            <div class="text-caption">Belum ada data PO di tahun {{ selectedYear }}.</div>
           </div>
           <div v-else class="h-full min-h-64">
             <Chart type="line" :data="monthlyTrendChartData" :options="monthlyTrendChartOptions" />
@@ -330,10 +330,10 @@ onMounted(async () => {
             </FormSelect>
           </template>
           <div v-if="vendorValueLoading" class="flex justify-center items-center h-full min-h-64">
-            <div class="font-caption">Memuat data...</div>
+            <div class="text-caption">Memuat data...</div>
           </div>
           <div v-else-if="!hasVendorData" class="flex justify-center items-center h-full min-h-64">
-            <div class="font-caption">Belum ada PO Approved per vendor di tahun {{ selectedVendorYear }}.</div>
+            <div class="text-caption">Belum ada PO Approved per vendor di tahun {{ selectedVendorYear }}.</div>
           </div>
           <div v-else class="h-full min-h-64">
             <Chart type="doughnut" :data="vendorChartData" :options="vendorChartOptions" />

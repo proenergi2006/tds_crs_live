@@ -219,11 +219,11 @@ function formatSize(bytes?: number) {
 <template>
   <div class="space-y-2">
     <div v-if="label || hint" class="flex flex-col gap-1">
-      <label v-if="label" class="font-label">
+      <label v-if="label" class="text-form-label">
         {{ label }}
       </label>
 
-      <p v-if="hint" class="font-caption">
+      <p v-if="hint" class="text-caption">
         {{ hint }}
       </p>
     </div>
@@ -245,7 +245,7 @@ function formatSize(bytes?: number) {
             :disabled="disabled" @change="onFileChange" />
         </div>
 
-        <div class="font-caption">
+        <div class="text-caption">
           {{ acceptedText }} - Maks {{ maxSizeMb }}MB
         </div>
       </div>
@@ -262,7 +262,7 @@ function formatSize(bytes?: number) {
             </button>
           </div>
 
-          <p class="truncate font-caption" :title="file.name">
+          <p class="truncate text-caption" :title="file.name">
             {{ file.name }}
           </p>
 
@@ -283,7 +283,7 @@ function formatSize(bytes?: number) {
             </button>
           </div>
 
-          <p class="truncate font-caption" :title="file.name">
+          <p class="truncate text-caption" :title="file.name">
             {{ file.name }} <span v-if="formatSize(file.size)">- {{ formatSize(file.size) }}</span>
           </p>
 
@@ -294,7 +294,7 @@ function formatSize(bytes?: number) {
       </div>
 
       <p v-else
-        class="font-body mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
+        class="text-body mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
         {{ emptyText }}
       </p>
     </div>

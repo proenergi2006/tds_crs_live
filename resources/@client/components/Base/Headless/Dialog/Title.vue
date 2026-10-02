@@ -11,7 +11,7 @@ export interface TitleProps
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { DialogTitle as HeadlessDialogTitle } from "@headlessui/vue";
 import { useAttrs, computed } from "vue";
 

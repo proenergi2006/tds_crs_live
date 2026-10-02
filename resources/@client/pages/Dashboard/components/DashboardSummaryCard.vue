@@ -25,8 +25,8 @@ defineProps<{
             <Lucide :icon="icon" class="w-5 h-5" />
           </div>
           <div>
-            <h2 class="font-header">{{ title }}</h2>
-            <p v-if="description" class="font-body">{{ description }}</p>
+            <h2 class="text-section-title">{{ title }}</h2>
+            <p v-if="description" class="text-body">{{ description }}</p>
           </div>
         </div>
         <div v-if="$slots.action" class="flex items-center gap-3">
@@ -46,9 +46,9 @@ defineProps<{
     <template v-else>
       <div class="flex justify-between items-start gap-3 bg-white shadow-sm p-5 border-b rounded-2xl">
         <div>
-          <div class="font-section">{{ label }}</div>
-          <div class="mt-1 font-num-display">{{ value }}</div>
-          <div v-if="description" class="font-body text-xs">{{ description }}</div>
+          <div class="text-overline">{{ label }}</div>
+          <div class="mt-1 num-lg">{{ value }}</div>
+          <div v-if="description" class="text-body text-xs">{{ description }}</div>
         </div>
         <div class="flex justify-center items-center rounded-xl w-9 h-9 shrink-0" :class="iconClass">
           <Lucide :icon="icon" class="w-4 h-4" />

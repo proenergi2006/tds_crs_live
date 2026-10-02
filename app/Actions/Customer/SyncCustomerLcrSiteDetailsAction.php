@@ -9,7 +9,7 @@ use App\Models\CustomerLcr;
 
 class SyncCustomerLcrSiteDetailsAction
 {
-    public function execute(CustomerLcr $site, ?array $addressData, ?array $contactsData): void
+    public function execute(CustomerLcr $site, ?array $addressData, ?array $contactData): void
     {
         if ($addressData !== null) {
             CustomerAddress::updateOrCreate(
@@ -27,49 +27,18 @@ class SyncCustomerLcrSiteDetailsAction
             );
         }
 
-        if ($contactsData !== null) {
-            $this->syncContacts($site, $contactsData);
-        }
-    }
-
-    private function syncContacts(CustomerLcr $site, array $contactsData): void
-    {
-        $existingIds = CustomerContact::where('id_lcr', $site->id_lcr)
-            ->pluck('id_contact')
-            ->all();
-
-        $incomingIds = collect($contactsData)->pluck('id_contact')->filter()->all();
-
-        $idsToDelete = array_diff($existingIds, $incomingIds);
-
-        if (!empty($idsToDelete)) {
-            CustomerContact::where('id_lcr', $site->id_lcr)
-                ->whereIn('id_contact', $idsToDelete)
-                ->delete();
-        }
-
-        foreach ($contactsData as $contact) {
-            $attributes = [
-                'full_name' => $contact['full_name'],
-                'position'  => $contact['position'] ?? null,
-                'phone'     => $contact['phone'] ?? null,
-                'mobile'    => $contact['mobile'] ?? null,
-                'email'     => $contact['email'] ?? null,
-            ];
-
-            if (!empty($contact['id_contact'])) {
-                CustomerContact::where('id_contact', $contact['id_contact'])
-                    ->where('id_lcr', $site->id_lcr)
-                    ->update($attributes);
-
-                continue;
-            }
-
-            CustomerContact::create([
-                ...$attributes,
-                'id_customer' => $site->id_customer,
-                'id_lcr'      => $site->id_lcr,
-            ]);
+        if ($contactData !== null) {
+            CustomerContact::updateOrCreate(
+                ['id_lcr' => $site->id_lcr],
+                [
+                    'id_customer' => $site->id_customer,
+                    'full_name'   => $contactData['full_name'],
+                    'position'    => $contactData['position'] ?? null,
+                    'phone'       => $contactData['phone'] ?? null,
+                    'mobile'      => $contactData['mobile'] ?? null,
+                    'email'       => $contactData['email'] ?? null,
+                ]
+            );
         }
     }
 }

@@ -1,14 +1,8 @@
 import axios from "axios";
 import { installAuthInterceptor } from "./httpAuthInterceptor";
 
-const http = axios.create({
-  baseURL: "/api",
-  headers: {
-    Accept: "application/json",
-  },
-});
+export const http = axios.create({ baseURL: "/api", headers: { Accept: "application/json" } });
 
-// createResourceApi sebelumnya gak punya interceptor 401 sama sekali
 installAuthInterceptor(http);
 
 http.interceptors.request.use((config) => {

@@ -89,7 +89,7 @@ const endRecord = computed(() => {
 
     <div class="overflow-x-auto" :class="showFooter && total > 0 ? '' : 'rounded-b-xl'">
       <Table bordered class="min-w-full border-collapse">
-        <Table.Thead class="bg-slate-50 font-label">
+        <Table.Thead class="bg-slate-50 text-form-label">
           <Table.Tr>
             <slot name="head" />
           </Table.Tr>
@@ -101,7 +101,7 @@ const endRecord = computed(() => {
               <slot name="loading">
                 <div class="flex flex-col items-center gap-3">
                   <LoadingIcon icon="three-dots" class="w-8 h-8" />
-                  <span class="font-body">{{ loadingText }}</span>
+                  <span class="text-body">{{ loadingText }}</span>
                 </div>
               </slot>
             </Table.Td>
@@ -115,11 +115,11 @@ const endRecord = computed(() => {
                     <Lucide icon="Inbox" class="h-7 w-7" />
                   </div>
 
-                  <div class="font-strong">
+                  <div class="text-body-strong">
                     {{ emptyTitle }}
                   </div>
 
-                  <div class="font-body">
+                  <div class="text-body">
                     {{ emptyDescription }}
                   </div>
                 </div>
@@ -133,17 +133,17 @@ const endRecord = computed(() => {
     </div>
 
     <div v-if="showFooter && total > 0"
-      class="font-body rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3">
+      class="text-body rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3">
       Menampilkan
-      <span class="font-num">
+      <span class="num-sm">
         {{ startRecord }}
       </span>
       -
-      <span class="font-num">
+      <span class="num-sm">
         {{ endRecord }}
       </span>
       dari total
-      <span class="font-num">
+      <span class="num-sm">
         {{ total }}
       </span>
       data

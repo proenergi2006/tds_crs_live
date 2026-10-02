@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\UpdateCustomerPaymentRequest;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 
 class CustomerPaymentController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     public function update(UpdateCustomerPaymentRequest $request, Customer $customer)
     {
         $user = $request->user();
@@ -18,6 +21,10 @@ class CustomerPaymentController extends Controller
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validated();
@@ -31,7 +38,6 @@ class CustomerPaymentController extends Controller
                 'payment_method_other'   => $data['method_other'] ?? null,
                 'invoice'                => $data['invoice_tax'] ?? false,
                 'extra_notes'            => $data['note'] ?? '',
-                // Operasional saat ini selalu Quotation -- belum bisa diedit user, tunggu kebijakan baru.
                 'calculate_method'       => 'Quotation',
                 'bank_name'              => $data['bank_name'] ?? null,
                 'currency'               => $data['currency'] ?? null,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerAddressRequest;
 use App\Http\Requests\Customer\UpdateCustomerAddressRequest;
 use App\Models\Customer;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerAddressController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     private const RELATIONS = ['province', 'regency', 'district', 'village'];
 
     public function index(Request $request, Customer $customer)
@@ -45,6 +48,10 @@ class CustomerAddressController extends Controller
 
         if (!$allowed) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $data = $request->validated();
@@ -87,6 +94,10 @@ class CustomerAddressController extends Controller
             return response()->json(['message' => 'Alamat tidak ditemukan untuk customer ini.'], 404);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $customer, $address) {
@@ -124,15 +135,15 @@ class CustomerAddressController extends Controller
             return response()->json(['message' => 'Alamat tidak ditemukan untuk customer ini.'], 404);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $address->delete();
 
         return response()->json(null, 204);
     }
 
-    /**
-     * Pastikan cuma 1 row `is_primary=true` per (id_customer, address_type) --
-     * dipanggil sebelum insert/update row yang di-set primary baru.
-     */
     private function unsetOtherPrimaries(Customer $customer, string $addressType, ?int $exceptId = null): void
     {
         $customer->addresses()

@@ -52,11 +52,11 @@ defineEmits<{
           <Lucide :icon="icon" class="h-8 w-8" />
         </div>
 
-        <h3 class="font-header mt-5">
+        <h3 class="text-section-title mt-5">
           {{ title }}
         </h3>
 
-        <p class="font-body mt-2">
+        <p class="text-body mt-2">
           {{ description }}
         </p>
 

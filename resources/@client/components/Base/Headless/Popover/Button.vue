@@ -12,7 +12,7 @@ export interface ButtonProps
 <script setup lang="ts">
 import { type ComponentPublicInstance, computed, inject, ref, useAttrs, watchEffect } from "vue";
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { PopoverButton as HeadlessPopoverButton } from "@headlessui/vue";
 import { PopoverTriggerKey } from "./context";
 

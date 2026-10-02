@@ -11,7 +11,7 @@ export interface ButtonProps
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { DisclosureButton as HeadlessDisclosureButton } from "@headlessui/vue";
 import { useAttrs, computed, inject, watch } from "vue";
 import { type ProvideDisclosure } from "./Disclosure/Provider.vue";

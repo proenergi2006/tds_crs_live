@@ -122,16 +122,16 @@ watch(perPage, () => fetchData(1))
 
         <template #body>
           <Table.Tr v-for="(pen, idx) in penawarans" :key="pen.id_penawaran" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ pen.nomor_penawaran || '-' }}</div>
+              <div class="text-body-strong">{{ pen.nomor_penawaran || '-' }}</div>
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ pen.customer?.company_name || '-' }}</div>
+              <div class="text-body-strong">{{ pen.customer?.company_name || '-' }}</div>
               <div class="text-slate-500">{{ pen.nama || '-' }} - {{ pen.jabatan || '' }}</div>
             </Table.Td>
 
@@ -145,7 +145,7 @@ watch(perPage, () => fetchData(1))
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="font-label inline-flex items-center rounded-full px-3 py-1"
+              <span class="text-form-label inline-flex items-center rounded-full px-3 py-1"
                 :class="disposisiBadgeClass(pen.disposisi_penawaran)">
                 {{ pen.disposisi_label || '-' }}
               </span>

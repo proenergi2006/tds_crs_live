@@ -15,7 +15,7 @@ export interface DialogProps
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { Dialog as HeadlessDialog, TransitionRoot } from "@headlessui/vue";
 import { provide, useAttrs, computed, ref, type Ref } from "vue";
 

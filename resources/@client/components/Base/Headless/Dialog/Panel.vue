@@ -15,7 +15,7 @@ import {
   TransitionChild,
 } from "@headlessui/vue";
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { type ProvideDialog } from "./Dialog.vue";
 import { inject, useAttrs, computed } from "vue";
 

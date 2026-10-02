@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CreditProductCategory;
 use App\Enums\CustomerVerificationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 class CustomerVerification extends Model
 {
     protected $table = 'customer_verifications';
+
     protected $primaryKey = 'id_verification';
 
     protected $fillable = [
@@ -24,20 +26,27 @@ class CustomerVerification extends Model
         'reject_note',
         'requested_limit_snapshot',
         'requested_top_snapshot',
+        'requested_qty_snapshot',
+        'product_category_snapshot',
         'approved_limit',
         'approved_top',
-        'financial_review',
+        'financial_review_snapshot',
+        'notes',
+        'finance_attachments',
     ];
 
     protected $casts = [
-        'status'                   => CustomerVerificationStatus::class,
-        'is_scheduled'             => 'boolean',
-        'submitted_at'             => 'datetime',
-        'reviewed_at'              => 'datetime',
+        'status' => CustomerVerificationStatus::class,
+        'is_scheduled' => 'boolean',
+        'submitted_at' => 'datetime',
+        'reviewed_at' => 'datetime',
         'requested_limit_snapshot' => 'integer',
-        'requested_top_snapshot'   => 'integer',
-        'approved_limit'           => 'integer',
-        'approved_top'             => 'integer',
+        'requested_top_snapshot' => 'integer',
+        'requested_qty_snapshot' => 'decimal:2',
+        'product_category_snapshot' => CreditProductCategory::class,
+        'approved_limit' => 'integer',
+        'approved_top' => 'integer',
+        'finance_attachments' => 'array',
     ];
 
     public function customer(): BelongsTo
@@ -63,5 +72,10 @@ class CustomerVerification extends Model
     public function latestDocumentApproval(): MorphOne
     {
         return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
+
+    public function formatFinanceAttachments(): array
+    {
+        return \App\Services\PublicAttachmentFormatter::format($this->finance_attachments);
     }
 }

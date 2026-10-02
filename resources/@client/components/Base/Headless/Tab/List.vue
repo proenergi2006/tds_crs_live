@@ -14,7 +14,7 @@ export interface ListProps
 <script setup lang="ts">
 import _ from "lodash";
 import { provide, useAttrs, computed } from "vue";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { TabList as HeadlessTabList } from "@headlessui/vue";
 
 export type ProvideList = {

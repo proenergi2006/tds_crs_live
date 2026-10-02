@@ -25,7 +25,7 @@ export interface ItemsProps
 <script setup lang="ts">
 import { computed, inject, ref, useAttrs } from "vue";
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import {
   MenuItems as HeadlessMenuItems,
   TransitionRoot,

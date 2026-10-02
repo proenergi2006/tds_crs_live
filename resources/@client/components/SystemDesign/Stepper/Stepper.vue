@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { twMerge } from 'tailwind-merge';
+import { twMerge } from "@/utils/tw-merge";
 import Lucide, { type Icon } from '@/components/Base/Lucide/Lucide.vue';
 
 export interface StepItem {
@@ -106,7 +106,7 @@ function circleClass(status: StepItem['status'], wrapSize: string): string {
 
 function titleClass(status: StepItem['status']): string {
   return twMerge(
-    'font-barlow font-bold transition-colors duration-300',
+    'font-ubuntu font-bold transition-colors duration-300',
     sz.value.titleText,
     status === 'completed' && 'text-slate-700',
     status === 'active' && 'text-slate-800',
@@ -117,7 +117,7 @@ function titleClass(status: StepItem['status']): string {
 
 function badgeClass(status: StepItem['status']): string {
   return twMerge(
-    'inline-flex items-center gap-1 rounded font-barlow font-semibold uppercase tracking-wide transition-colors duration-300',
+    'inline-flex items-center gap-1 rounded font-ubuntu font-semibold uppercase tracking-wide transition-colors duration-300',
     sz.value.badgePad,
     sz.value.badgeText,
     status === 'completed' && 'bg-emerald-100 text-emerald-700',
@@ -142,7 +142,7 @@ function isConnectorFilled(step: StepItem): boolean {
           <Lucide v-else-if="step.status === 'completed'" icon="CheckCheck" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'active'" icon="Loader2" :class="sz.iconInner" />
           <Lucide v-else-if="step.status === 'rejected'" icon="X" :class="sz.iconInner" />
-          <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
+          <span v-else :class="twMerge('font-ubuntu font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
         <div v-if="index < steps.length - 1" class="w-1.5 flex-1 transition-colors duration-500"
@@ -152,7 +152,7 @@ function isConnectorFilled(step: StepItem): boolean {
       <div :class="['flex flex-1 items-start justify-between gap-3', sz.contentPt]">
         <div class="min-w-0">
           <p v-if="showLabel"
-            :class="twMerge('mb-0.5 font-barlow font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+            :class="twMerge('mb-0.5 font-ubuntu font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
             {{ getStepLabel(step, index) }}
           </p>
 
@@ -193,7 +193,7 @@ function isConnectorFilled(step: StepItem): boolean {
           <Lucide v-else-if="step.status === 'completed'" icon="Check" :class="sz.iconInner" />
           <span v-else-if="step.status === 'active'" :class="twMerge('rounded-full bg-success', sz.dot)" />
           <Lucide v-else-if="step.status === 'rejected'" icon="X" :class="sz.iconInner" />
-          <span v-else :class="twMerge('font-barlow font-bold', sz.numText)">{{ index + 1 }}</span>
+          <span v-else :class="twMerge('font-ubuntu font-bold', sz.numText)">{{ index + 1 }}</span>
         </div>
 
         <!-- right half: represents the connector going TO the next step -->
@@ -204,7 +204,7 @@ function isConnectorFilled(step: StepItem): boolean {
 
       <div class="mt-2 text-center">
         <p v-if="showLabel"
-          :class="twMerge('font-barlow font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
+          :class="twMerge('font-ubuntu font-bold uppercase tracking-widest text-slate-400', sz.labelText)">
           {{ getStepLabel(step, index) }}
         </p>
         <p :class="titleClass(step.status)">{{ step.title }}</p>

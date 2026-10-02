@@ -12,7 +12,7 @@ export interface HighlightProps extends /* @vue-ignore */ HTMLAttributes {
 <script setup lang="ts">
 import "@/assets/css/vendors/highlight.css";
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import Button from "../Button";
 import Lucide from "../Lucide";
 import jsBeautify from "js-beautify";
@@ -47,7 +47,7 @@ const codePreviewComputedClass = computed(() =>
   twMerge([
     "text-xs leading-relaxed [&.hljs]:bg-slate-50 [&.hljs]:px-5 [&.hljs]:py-4",
     "[&.hljs]:dark:text-slate-200 [&.hljs]:dark:bg-darkmode-700 [&.hljs_.hljs-string]:dark:text-slate-200 [&.hljs_.hljs-tag]:dark:text-slate-200 [&.hljs_.hljs-name]:dark:text-emerald-500 [&.hljs_.hljs-attr]:dark:text-sky-500",
-    "before:content-['HTML'] before:font-opensans before:font-medium before:px-4 before:py-2 before:block before:absolute before:top-0 before:right-0 before:rounded-bl before:bg-slate-200 before:bg-opacity-70 before:dark:bg-darkmode-400",
+    "before:content-['HTML'] before:font-lexend before:font-medium before:px-4 before:py-2 before:block before:absolute before:top-0 before:right-0 before:rounded-bl before:bg-slate-200 before:bg-opacity-70 before:dark:bg-darkmode-400",
     "[&.javascript]:before:content-['JS']",
     props.type,
   ])
@@ -69,17 +69,13 @@ onMounted(() => {
     const codeEl = highlightRef.value.querySelectorAll("code")[0];
     let source = codeEl.innerHTML;
 
-    // Format for beautify
     source = _.replace(source, /&lt;/g, "<");
     source = _.replace(source, /&gt;/g, ">");
 
-    // Beautify code
     source = jsBeautify.html(source);
 
-    // Save for copy code function
     copySource.value = source;
 
-    // Format for highlight.js
     source = _.replace(source, /</g, "&lt;");
     source = _.replace(source, />/g, "&gt;");
 
@@ -92,18 +88,13 @@ onMounted(() => {
 
 <template>
   <div>
-    <Button
-      v-if="props.copyButton"
-      variant="outline-secondary"
-      :class="buttonComputedClass"
-      v-bind="_.omit(attrs, 'class')"
-      @click="
+    <Button v-if="props.copyButton" variant="outline-secondary" :class="buttonComputedClass"
+      v-bind="_.omit(attrs, 'class')" @click="
         () => {
           copyCode();
         }
-      "
-    >
-      <Lucide icon="File" class="w-4 h-4 mr-2" /> {{ copyText }}
+      ">
+      <Lucide icon="File" class="mr-2 w-4 h-4" /> {{ copyText }}
     </Button>
     <div ref="highlightRef" :class="highlightComputedClass">
       <pre class="relative grid">
@@ -113,7 +104,7 @@ onMounted(() => {
         <textarea
           ref="copySourceEl"
           :value="copySource"
-          class="absolute w-0 h-0 p-0 -mt-1 -ml-1"
+          class="absolute -mt-1 -ml-1 p-0 w-0 h-0"
         ></textarea>
       </pre>
     </div>

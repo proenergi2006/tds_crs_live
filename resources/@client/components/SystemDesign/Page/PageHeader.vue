@@ -18,11 +18,11 @@ const { variant = "gradient" } = defineProps<{
 
     <div class="z-10 relative flex flex-row justify-between items-center gap-4 p-2">
       <div>
-        <h2 class="font-display" :class="variant === 'gradient' ? '!text-white' : '!text-slate-800'">
+        <h2 class="text-screen-title" :class="variant === 'gradient' ? '!text-white' : '!text-slate-800'">
           {{ title }}
         </h2>
 
-        <p v-if="description" class="mt-1 font-lead"
+        <p v-if="description" class="mt-1 text-body-lg"
           :class="variant === 'gradient' ? '!text-white/80' : '!text-slate-500'">
           {{ description }}
         </p>

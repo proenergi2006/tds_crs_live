@@ -173,7 +173,7 @@ async function confirmMigrate() {
             <option value="">-- Pilih marketing/pemilik --</option>
             <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
           </TomSelect>
-          <small v-if="loadingUsers" class="font-caption mt-1 block text-slate-400">Memuat daftar user...</small>
+          <small v-if="loadingUsers" class="text-caption mt-1 block text-slate-400">Memuat daftar user...</small>
         </div>
       </CardSection>
 
@@ -185,7 +185,7 @@ async function confirmMigrate() {
             @click="openMigrateModal">
             <Lucide icon="ArrowRightLeft" class="h-4 w-4" />
             Migrasi ke Marketing Lain
-            <span v-if="selectedCount > 0" class="font-num">({{ selectedCount }})</span>
+            <span v-if="selectedCount > 0" class="num-sm">({{ selectedCount }})</span>
           </Button>
         </template>
 
@@ -198,19 +198,19 @@ async function confirmMigrate() {
                     :checked="allSelected" :disabled="customersOfFromUser.length === 0"
                     @change="toggleSelectAll(($event.target as HTMLInputElement).checked)" />
                 </th>
-                <th class="px-4 py-3 font-label text-left">Nama Perusahaan</th>
+                <th class="px-4 py-3 text-form-label text-left">Nama Perusahaan</th>
               </tr>
             </thead>
 
             <tbody class="divide-y divide-slate-200 bg-white">
               <tr v-if="loadingCustomers">
-                <td colspan="2" class="px-4 py-8 text-center font-body">
+                <td colspan="2" class="px-4 py-8 text-center text-body">
                   Memuat customer...
                 </td>
               </tr>
 
               <tr v-else-if="customersOfFromUser.length === 0">
-                <td colspan="2" class="px-4 py-8 text-center font-body">
+                <td colspan="2" class="px-4 py-8 text-center text-body">
                   Marketing/pemilik ini tidak memiliki customer aktif.
                 </td>
               </tr>
@@ -221,7 +221,7 @@ async function confirmMigrate() {
                     :checked="isChecked(c.id_customer)"
                     @change="toggleCustomer(c.id_customer, ($event.target as HTMLInputElement).checked)" />
                 </td>
-                <td class="px-4 py-3 font-body">{{ c.company_name }}</td>
+                <td class="px-4 py-3 text-body">{{ c.company_name }}</td>
               </tr>
             </tbody>
           </table>
@@ -233,8 +233,8 @@ async function confirmMigrate() {
     <Dialog :open="showMigrateModal" size="md" @close="closeMigrateModal">
       <Dialog.Panel>
         <div class="p-6">
-          <h3 class="font-header">Migrasi ke Marketing Lain</h3>
-          <p class="font-body mt-1">
+          <h3 class="text-section-title">Migrasi ke Marketing Lain</h3>
+          <p class="text-body mt-1">
             Pilih marketing/pemilik baru untuk customer yang sudah dipilih.
           </p>
 
@@ -247,8 +247,8 @@ async function confirmMigrate() {
             </TomSelect>
           </div>
 
-          <div class="mt-4 rounded-md bg-slate-50 p-3 font-body">
-            <span class="font-num font-semibold">{{ selectedCount }}</span>
+          <div class="mt-4 rounded-md bg-slate-50 p-3 text-body">
+            <span class="num-sm font-semibold">{{ selectedCount }}</span>
             customer akan dipindahkan dari
             <span class="font-semibold">{{ fromUser?.name ?? '-' }}</span>
             ke

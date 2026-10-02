@@ -264,8 +264,8 @@ function save() {
 
       <div class="min-w-0">
         <div class="flex justify-between items-center mb-2">
-          <h3 class="font-strong">Item Penawaran ({{ draft.length }})</h3>
-          <span class="font-caption" :class="persenOk ? '!text-slate-500' : '!text-rose-600'">
+          <h3 class="text-body-strong">Item Penawaran ({{ draft.length }})</h3>
+          <span class="text-caption" :class="persenOk ? '!text-slate-500' : '!text-rose-600'">
             Total rasio {{ totalPersen }}% · {{ totalVolume.toLocaleString('id-ID') }} vol
           </span>
         </div>
@@ -280,17 +280,17 @@ function save() {
           <table class="divide-y divide-slate-200 w-full">
             <thead class="bg-slate-50">
               <tr>
-                <th class="px-3 py-2 font-label text-left">Produk / Source</th>
-                <th class="px-2 py-2 w-20 font-label text-right">Persen</th>
-                <th class="px-2 py-2 w-32 font-label text-right">Volume</th>
+                <th class="px-3 py-2 text-form-label text-left">Produk / Source</th>
+                <th class="px-2 py-2 w-20 text-form-label text-right">Persen</th>
+                <th class="px-2 py-2 w-32 text-form-label text-right">Volume</th>
                 <th class="px-2 py-2 w-10"></th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-200">
               <tr v-for="(d, idx) in draft" :key="d.id_produk + '-' + d.source_branch_id">
                 <td class="px-3 py-2">
-                  <div class="font-strong leading-snug">{{ draftProdukLabel(d.id_produk) }}</div>
-                  <div class="font-caption">
+                  <div class="text-body-strong leading-snug">{{ draftProdukLabel(d.id_produk) }}</div>
+                  <div class="text-caption">
                     {{ d.source_name }} · {{ formatCurrency(d.harga_price_list) }}
                   </div>
                 </td>
@@ -298,7 +298,7 @@ function save() {
                   <FormInput :model-value="String(d.persen)" type="text" inputmode="numeric"
                     class="text-right" @input="onPersen(idx, $event)" />
                 </td>
-                <td class="px-2 py-2 font-num text-right">{{ volNum(d).toLocaleString('id-ID') }}</td>
+                <td class="px-2 py-2 num-sm text-right">{{ volNum(d).toLocaleString('id-ID') }}</td>
                 <td class="px-2 py-2 text-center">
                   <button type="button" class="text-rose-500 hover:text-rose-700" title="Hapus"
                     @click="removeDraft(idx)">
@@ -307,7 +307,7 @@ function save() {
                 </td>
               </tr>
               <tr v-if="draft.length === 0">
-                <td colspan="4" class="px-3 py-10 font-body !text-slate-400 text-center">
+                <td colspan="4" class="px-3 py-10 text-body !text-slate-400 text-center">
                   Belum ada item. Klik "+" pada referensi di kanan.
                 </td>
               </tr>
@@ -315,12 +315,12 @@ function save() {
           </table>
         </div>
 
-        <p v-if="draft.length && !totalVolNum" class="mt-2 font-caption !text-rose-600">Isi Total Volume Order.</p>
-        <p v-else-if="draft.length && Math.round(totalPersen) !== 100" class="mt-2 font-caption !text-rose-600">Total rasio harus 100%. Saat ini: {{ Math.round(totalPersen) }}%</p>
+        <p v-if="draft.length && !totalVolNum" class="mt-2 text-caption !text-rose-600">Isi Total Volume Order.</p>
+        <p v-else-if="draft.length && Math.round(totalPersen) !== 100" class="mt-2 text-caption !text-rose-600">Total rasio harus 100%. Saat ini: {{ Math.round(totalPersen) }}%</p>
       </div>
 
       <div class="min-w-0">
-        <h3 class="mb-2 font-strong">Referensi Harga</h3>
+        <h3 class="mb-2 text-body-strong">Referensi Harga</h3>
         <div class="gap-2 grid grid-cols-2 mb-3">
           <div>
             <FormLabel>Source Harga</FormLabel>
@@ -341,7 +341,7 @@ function save() {
 
 
 
-        <div v-if="loadingRows" class="inline-flex items-center gap-2 py-4 font-body !text-slate-400">
+        <div v-if="loadingRows" class="inline-flex items-center gap-2 py-4 text-body !text-slate-400">
           <Lucide icon="Loader2" class="w-4 h-4 animate-spin" /> Memuat harga…
         </div>
 
@@ -349,24 +349,24 @@ function save() {
           <table class="divide-y divide-slate-200 w-full">
             <thead class="top-0 sticky bg-slate-50">
               <tr>
-                <th class="px-3 py-2 font-label text-left">Produk</th>
-                <th class="px-2 py-2 font-label text-left">Source</th>
-                <th class="px-2 py-2 font-label text-right">Harga</th>
+                <th class="px-3 py-2 text-form-label text-left">Produk</th>
+                <th class="px-2 py-2 text-form-label text-left">Source</th>
+                <th class="px-2 py-2 text-form-label text-right">Harga</th>
                 <th class="px-2 py-2 w-10"></th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-200">
               <tr v-for="r in referenceRows" :key="r.key" class="hover:bg-slate-50 transition">
                 <td class="px-3 py-2">
-                  <div class="font-strong leading-snug">
-                    {{ r.nama }}<span v-if="r.jenis" class="font-body"> — {{ r.jenis }}</span>
+                  <div class="text-body-strong leading-snug">
+                    {{ r.nama }}<span v-if="r.jenis" class="text-body"> — {{ r.jenis }}</span>
                   </div>
-                  <div v-if="r.ukuran" class="font-caption">{{ r.ukuran }}</div>
+                  <div v-if="r.ukuran" class="text-caption">{{ r.ukuran }}</div>
                 </td>
-                <td class="px-2 py-2 font-body">{{ r.source }}</td>
-                <td class="px-2 py-2 font-num text-right">
+                <td class="px-2 py-2 text-body">{{ r.source }}</td>
+                <td class="px-2 py-2 num-sm text-right">
                   <span v-if="r.harga > 0">{{ formatCurrency(r.harga) }}</span>
-                  <span v-else class="font-label !text-amber-600">belum diisi</span>
+                  <span v-else class="text-form-label !text-amber-600">belum diisi</span>
                 </td>
                 <td class="px-2 py-2 text-center">
                   <button type="button" :disabled="r.added || r.harga <= 0"
@@ -379,7 +379,7 @@ function save() {
                 </td>
               </tr>
               <tr v-if="referenceRows.length === 0">
-                <td colspan="4" class="px-3 py-10 font-body !text-slate-400 text-center">
+                <td colspan="4" class="px-3 py-10 text-body !text-slate-400 text-center">
                   Tidak ada harga untuk source / pencarian ini.
                 </td>
               </tr>

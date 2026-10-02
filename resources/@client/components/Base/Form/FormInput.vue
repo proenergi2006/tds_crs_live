@@ -6,7 +6,7 @@ export default {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { computed, type InputHTMLAttributes, useAttrs, inject } from "vue";
 import { type ProvideFormInline } from "./FormInline.vue";
 import { type ProvideInputGroup } from "./InputGroup/InputGroup.vue";

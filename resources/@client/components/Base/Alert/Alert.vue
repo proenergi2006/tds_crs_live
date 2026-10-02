@@ -39,7 +39,7 @@ export interface AlertProps extends /* @vue-ignore */ HTMLAttributes {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { TransitionRoot } from "@headlessui/vue";
 import { computed, ref, type HTMLAttributes, useAttrs } from "vue";
 
@@ -115,31 +115,31 @@ const outlineDark = [
 
 // Soft Color
 const softPrimary = [
-  "bg-primary border-primary bg-opacity-20 border-opacity-5 text-primary", // Default
-  "dark:border-opacity-100 dark:bg-opacity-20 dark:border-primary", // Dark mode
+  "bg-primary/10 border-primary/20 text-primary", // Default
+  "dark:bg-primary/10 dark:border-primary/30", // Dark mode
 ];
 const softSecondary = [
-  "bg-slate-300 border-secondary bg-opacity-10 text-slate-500", // Default
+  "bg-slate-100 border-slate-300 text-slate-500", // Default
   "dark:bg-darkmode-100/20 dark:border-darkmode-100/30 dark:text-slate-300", // Dark mode
 ];
 const softSuccess = [
-  "bg-success border-success bg-opacity-20 border-opacity-5 text-success", // Default
-  "dark:border-success dark:border-opacity-20", // Dark mode
+  "bg-success/10 border-success/20 text-success", // Default
+  "dark:bg-success/10 dark:border-success/30", // Dark mode
 ];
 const softWarning = [
-  "bg-warning border-warning bg-opacity-20 border-opacity-5 text-warning", // Default
-  "dark:border-warning dark:border-opacity-20", // Dark mode
+  "bg-warning/10 border-warning/20 text-warning", // Default
+  "dark:bg-warning/10 dark:border-warning/30", // Dark mode
 ];
 const softPending = [
-  "bg-pending border-pending bg-opacity-20 border-opacity-5 text-pending", // Default
-  "dark:border-pending dark:border-opacity-20", // Dark mode
+  "bg-pending/10 border-pending/20 text-pending", // Default
+  "dark:bg-pending/10 dark:border-pending/30", // Dark mode
 ];
 const softDanger = [
-  "bg-danger border-danger bg-opacity-20 border-opacity-5 text-danger", // Default
-  "dark:border-danger dark:border-opacity-20", // Dark mode
+  "bg-danger/10 border-danger/20 text-danger", // Default
+  "dark:bg-danger/10 dark:border-danger/30", // Dark mode
 ];
 const softDark = [
-  "bg-dark border-dark bg-opacity-20 border-opacity-5 text-dark", // Default
+  "bg-slate-100 border-slate-300 text-slate-700", // Default
   "dark:bg-darkmode-800/30 dark:border-darkmode-800/60 dark:text-slate-300", // Dark mode
 ];
 

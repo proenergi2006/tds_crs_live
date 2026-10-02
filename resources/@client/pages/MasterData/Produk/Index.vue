@@ -17,7 +17,6 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 const produkApi = createResourceApi('/produks')
 const { success, error } = useNotification()
 
-/* State: data & pagination */
 const allProduks = ref<any[]>([])
 
 const searchQuery = ref('')
@@ -27,12 +26,10 @@ const perPage = ref(10)
 const currentPage = ref(1)
 const loading = ref(false)
 
-/* State: form */
 const formModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const selectedProduk = ref<any | null>(null)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
@@ -125,7 +122,6 @@ const produks = computed(() => {
   return filteredProduks.value.slice(start, start + perPage.value)
 })
 
-/* Data */
 async function fetchData() {
   loading.value = true
 
@@ -157,7 +153,6 @@ function resetFilters() {
   filterUkuran.value = ''
 }
 
-/* Form */
 function openCreate() {
   formMode.value = 'create'
   selectedProduk.value = null
@@ -190,7 +185,6 @@ function syncProduk(data: any, mode: 'create' | 'edit') {
   }
 }
 
-/* Delete */
 function confirmDelete(id: number) {
   deleteTarget.value = id
   deleteModal.value = true
@@ -228,27 +222,25 @@ async function submitDelete() {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
-      <!-- Page Header -->
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Master Produk" description="Kelola data produk">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-            <Lucide icon="Plus" class="h-4 w-4" />
+            <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Data Baru
           </Button>
         </template>
       </PageHeader>
 
-      <!-- Data Table List -->
-      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="produks.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
-        :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
-        search-placeholder="Cari produk..." loading-text="Memuat data produk..."
-        empty-description="Belum ada produk untuk ditampilkan." @page-change="goToPage">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading" :empty="produks.length === 0"
+        :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords" :current-page="currentPage"
+        :total-pages="totalPages" :active-filter-count="activeFilterCount" search-placeholder="Cari produk..."
+        loading-text="Memuat data produk..." empty-description="Belum ada produk untuk ditampilkan."
+        @page-change="goToPage">
         <template #filters>
           <div class="space-y-4 p-1">
             <div>
-              <div class="font-section px-3 pb-2 pt-1">
+              <div class="px-3 pt-1 pb-2 text-overline">
                 Jenis
               </div>
 
@@ -261,7 +253,7 @@ async function submitDelete() {
             </div>
 
             <div>
-              <div class="font-section px-3 pb-2">
+              <div class="px-3 pb-2 text-overline">
                 Ukuran
               </div>
 
@@ -273,14 +265,9 @@ async function submitDelete() {
               </FormSelect>
             </div>
 
-            <div class="border-t border-slate-100 pt-3">
-              <Button
-                type="button"
-                variant="outline-secondary"
-                class="w-full"
-                :disabled="activeFilterCount === 0"
-                @click="resetFilters"
-              >
+            <div class="pt-3 border-slate-100 border-t">
+              <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
+                @click="resetFilters">
                 Clear Filter
               </Button>
             </div>
@@ -298,13 +285,13 @@ async function submitDelete() {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(item, idx) in produks" :key="item.id_produk" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(item, idx) in produks" :key="item.id_produk" class="hover:bg-slate-50 transition">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <span class="font-strong">{{ item.nama_produk }}</span>
-              <p v-if="item.deskripsi" class="font-body">{{ item.deskripsi }}</p>
+              <span class="text-body-strong">{{ item.nama_produk }}</span>
+              <p v-if="item.deskripsi" class="text-body">{{ item.deskripsi }}</p>
             </Table.Td>
             <Table.Td>
               {{ item.merk_dagang || '-' }}
@@ -316,20 +303,20 @@ async function submitDelete() {
               {{ item.jenis?.nama || '-' }}
             </Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
+              <span class="inline-flex px-3 py-1 rounded-full text-form-label"
                 :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
                 {{ item.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" @click.prevent="openEdit(item)"
-                  title="Edit">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+              <div class="inline-flex justify-center items-center gap-2">
+                <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8"
+                  @click.prevent="openEdit(item)" title="Edit">
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </Button>
-                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <Button variant="soft-danger" rounded class="!shadow-none !p-0 !w-8 !h-8"
                   @click="confirmDelete(item.id_produk)" title="Hapus">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
+                  <Lucide icon="Trash2" class="w-4 h-4" />
                 </Button>
               </div>
             </Table.Td>
@@ -337,11 +324,9 @@ async function submitDelete() {
         </template>
       </DataList>
 
-      <!-- Create Modal -->
       <FormModal :open="formModal" :mode="formMode" :item="selectedProduk" @close="formModal = false"
         @success="handleFormSuccess" />
 
-      <!-- Delete Confirmation Modal -->
       <DeleteRecordDialog :open="deleteModal" title="Hapus Produk" :loading="deleteLoading" @close="deleteModal = false"
         @confirm="submitDelete" />
     </div>

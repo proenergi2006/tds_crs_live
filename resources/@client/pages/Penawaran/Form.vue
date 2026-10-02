@@ -1,7 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { toRaw } from 'vue'
 import axios from 'axios'
 import { useVuelidate } from '@vuelidate/core'
 import { helpers, required, requiredIf } from '@vuelidate/validators'
@@ -18,11 +17,15 @@ import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { createResourceApi, http } from "@/utils/resourceApi";
 import ItemsGeneratorModal from './components/ItemsGeneratorModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
+const transporterApi = createResourceApi("/transporters");
+const transportAreaApi = createResourceApi("/transport-areas");
+const volumeApi = createResourceApi("/volumes");
 
 type Brand = 'tds' | 'proenergi'
 const brand: Brand = (route.meta.brand as Brand) === 'proenergi' ? 'proenergi' : 'tds'
@@ -48,6 +51,7 @@ const BRAND_CONFIG = {
 }
 const cfg = BRAND_CONFIG[brand]
 const brandLabel = isProenergi ? 'Penawaran Proenergi' : 'Penawaran'
+const TARIFF_TRANSPORT_TYPE = { KAPAL: "VESSEL", TRUCK: "TRUCK" } as const;
 
 const customers = ref<any[]>([])
 const cabangs = ref<any[]>([])
@@ -80,7 +84,6 @@ const pricePeriods = ref<any[]>([])
 const selectedPeriodId = ref<string>('')
 const clonedFromNomor = ref<string | null>(null)
 
-// true kalau periode penawaran ini sudah lewat sampai_dengan -- nomor lama gak regenerate bulan/tahun romawi kalau diedit, jadi dikunci gak bisa disimpan
 const isEditingExpiredPeriod = ref(false)
 
 const itemsModalOpen = ref(false)
@@ -95,7 +98,6 @@ interface ItemLine {
   harga_price_list?: number
 }
 
-// factory biar bisa dipanggil ulang buat reset form pas initializeForm() jalan lagi tanpa remount komponen
 function createDefaultForm() {
   return {
     nomor_penawaran: '',
@@ -107,7 +109,6 @@ function createDefaultForm() {
 
     type_pengiriman: '',
     metode: '',
-    ukuran_dasar: '',
     items: [] as ItemLine[],
     lokasi_pengiriman: '',
     keterangan: '',
@@ -302,17 +303,11 @@ watch(() => form.id_customer, async (val) => {
   }
 })
 
-watch(() => oaKapalInput.id_volume, (val) => {
-  const vol = volumes.value.find(v => String(v.id_volume) === String(val))
-  if (vol) form.ukuran_dasar = String(vol.volume ?? '')
-})
-
 watch(() => [oaKapalInput.id_transportir, oaKapalInput.id_angkut_wilayah, oaKapalInput.id_volume], async () => {
   if (form.metode !== 'CIF' && form.metode !== 'DAP') return
   if (!oaKapalInput.id_transportir || !oaKapalInput.id_angkut_wilayah || !oaKapalInput.id_volume) return
   try {
-    const { data } = await axios.get('/api/ongkos-kapal/check', { params: toRaw(oaKapalInput) })
-    oaKapal.value = data.oa || 0
+    oaKapal.value = await fetchTariffRate("KAPAL", oaKapalInput)
   } catch {
     oaKapal.value = 0
   }
@@ -322,8 +317,7 @@ watch(() => [oaTruckInput.id_transportir, oaTruckInput.id_angkut_wilayah, oaTruc
   if (form.metode !== 'DAP' && form.metode !== 'FOT') return
   if (!oaTruckInput.id_transportir || !oaTruckInput.id_angkut_wilayah || !oaTruckInput.id_volume) return
   try {
-    const { data } = await axios.get('/api/ongkos-trucks/check', { params: toRaw(oaTruckInput) })
-    oaTruck.value = data.oa || 0
+    oaTruck.value = await fetchTariffRate("TRUCK", oaTruckInput)
   } catch {
     oaTruck.value = 0
   }
@@ -400,13 +394,28 @@ async function fetchCustomerContacts(idCustomer: number | string) {
 
 async function fetchTransportirWilayahVolume() {
   const [t, w, v] = await Promise.all([
-    axios.get('/api/transportirs'),
-    axios.get('/api/wilayah-angkuts'),
-    axios.get('/api/volumes'),
-  ])
-  transportirs.value = t.data.data || t.data
-  wilayahs.value = w.data.data || w.data
-  volumes.value = v.data.data || v.data
+    transporterApi.getAll({ as_list: true }),
+    transportAreaApi.getAll({ as_list: true }),
+    volumeApi.getAll({ as_list: true }),
+  ]);
+  transportirs.value = t.data.data;
+  wilayahs.value = w.data.data;
+  volumes.value = v.data.data;
+}
+
+async function fetchTariffRate(
+  jenis: "KAPAL" | "TRUCK",
+  input: { id_transportir: string; id_angkut_wilayah: string; id_volume: string },
+): Promise<number> {
+  const { data } = await http.get("/transport-tariffs/check", {
+    params: {
+      transporter_id: input.id_transportir,
+      transport_type: TARIFF_TRANSPORT_TYPE[jenis],
+      transport_area_id: input.id_angkut_wilayah,
+      volume_id: input.id_volume,
+    },
+  });
+  return Number(data.data?.rate ?? 0);
 }
 
 async function fetchPenawaran() {
@@ -481,7 +490,6 @@ async function fetchPenawaran() {
   }
 }
 
-// bawa data penawaran lama (periode expired) ke form baru tanpa auto-save -- item lama di-remap ke periode aktif karena product_price_id-nya nempel ke periode lama
 async function fetchCloneSource(cloneFromId: string) {
   try {
     const { data } = await axios.get(`${cfg.apiBase}/${cloneFromId}`)
@@ -540,7 +548,6 @@ async function fetchCloneSource(cloneFromId: string) {
   }
 }
 
-// cocokkan item lama ke product_price periode aktif -- product_price_id lama gak bisa dipakai langsung, sudah terikat ke periode expired
 async function remapClonedItems(oldItems: any[]) {
   const targetPeriodId = selectedPeriodId.value
   if (!targetPeriodId || targetPeriodId === 'custom') {
@@ -854,7 +861,7 @@ function formatCurrency(v: number | string = 0) {
     <template v-if="isEdit || clonedFromNomor" #header>
       <div v-if="isEdit && isEditingExpiredPeriod"
         class="flex flex-wrap justify-between items-center gap-3 bg-rose-50 px-4 py-3 border border-rose-200 rounded-lg text-rose-800">
-        <span class="font-body leading-5">
+        <span class="text-body leading-5">
           <b>Penawaran ini tidak dapat diedit:</b> periode harga yang berlaku saat penawaran ini dibuat sudah
           berubah (tidak aktif lagi), sehingga perubahan apa pun di form ini tidak akan tersimpan — gunakan
           tombol berikut untuk membuat penawaran baru dari data ini.
@@ -867,14 +874,14 @@ function formatCurrency(v: number | string = 0) {
       </div>
       <div v-else-if="isEdit"
         class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-amber-800">
-        <span class="font-body leading-5">
+        <span class="text-body leading-5">
           <b>Info:</b> Mengubah penawaran akan mengembalikan posisi disposisi ke
           <b>Draft</b> dan proses approval akan dimulai dari awal.
         </span>
       </div>
       <div v-else-if="clonedFromNomor"
         class="flex items-start gap-2 bg-sky-50 px-4 py-3 border border-sky-200 rounded-lg text-sky-800">
-        <span class="font-body leading-5">
+        <span class="text-body leading-5">
           <b>Info:</b> Data ini disalin dari penawaran <b>{{ clonedFromNomor }}</b> (periode harganya sudah
           tidak aktif). Penawaran ini akan mendapat nomor baru, dan item produk sudah dicocokkan ke periode
           harga yang sedang aktif — periksa kembali sebelum disimpan.
@@ -903,7 +910,7 @@ function formatCurrency(v: number | string = 0) {
                 </TomSelect>
               </div>
               <small v-if="fieldError('id_customer')" class="block input-error-text">{{ fieldError('id_customer')
-              }}</small>
+                }}</small>
             </div>
 
             <div v-if="false">
@@ -933,18 +940,18 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
 
               <div v-else-if="selectedPeriodLabel"
-                class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-md font-strong text-slate-700">
+                class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-md text-body-strong text-slate-700">
                 {{ selectedPeriodLabel }}
               </div>
 
-              <div v-else class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md font-body !text-amber-700">
+              <div v-else class="bg-amber-50 px-3 py-2 border border-amber-200 rounded-md text-body !text-amber-700">
                 Belum ada periode harga aktif — hubungi Procurement.
               </div>
 
               <small v-if="fieldError('masa_berlaku') || fieldError('sampai_dengan')" class="block input-error-text">
                 {{ fieldError('masa_berlaku') || fieldError('sampai_dengan') }}
               </small>
-              <small v-else-if="periodeIsChoice && form.masa_berlaku" class="block mt-1 font-caption text-slate-500">
+              <small v-else-if="periodeIsChoice && form.masa_berlaku" class="block mt-1 text-caption text-slate-500">
                 {{ form.masa_berlaku }} s/d {{ form.sampai_dengan }}
               </small>
             </div>
@@ -956,22 +963,22 @@ function formatCurrency(v: number | string = 0) {
             <div class="gap-4 grid grid-cols-12">
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Kepada (Perusahaan / Dept.)</FormLabel>
-                <div class="mt-1 font-strong">{{ selectedCustomer?.company_name || '-' }}</div>
+                <div class="mt-1 text-body-strong">{{ selectedCustomer?.company_name || '-' }}</div>
               </div>
 
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Kontak Tujuan
                   <RequiredAsterisk />
                 </FormLabel>
-                <div v-if="!form.id_customer" class="mt-1 font-body text-slate-500">
+                <div v-if="!form.id_customer" class="mt-1 text-body text-slate-500">
                   Pilih Customer terlebih dahulu
                 </div>
                 <div v-else-if="customerContactsLoading"
-                  class="inline-flex items-center gap-2 mt-1 font-body text-slate-500">
+                  class="inline-flex items-center gap-2 mt-1 text-body text-slate-500">
                   <Lucide icon="Loader2" class="w-4 h-4 animate-spin" />
                   Memuat kontak…
                 </div>
-                <div v-else-if="customerContacts.length === 0" class="mt-1 font-body text-slate-500">
+                <div v-else-if="customerContacts.length === 0" class="mt-1 text-body text-slate-500">
                   Belum ada kontak untuk customer ini
                 </div>
                 <TomSelect v-else v-model="form.customer_contact_id" :options="{
@@ -994,17 +1001,17 @@ function formatCurrency(v: number | string = 0) {
 
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Jabatan</FormLabel>
-                <div class="mt-1 font-strong">{{ selectedContact?.position || '-' }}</div>
+                <div class="mt-1 text-body-strong">{{ selectedContact?.position || '-' }}</div>
               </div>
 
               <div class="col-span-12 md:col-span-6">
                 <FormLabel>Telepon</FormLabel>
-                <div class="mt-1 font-strong">{{ selectedContact?.mobile || '-' }}</div>
+                <div class="mt-1 text-body-strong">{{ selectedContact?.mobile || '-' }}</div>
               </div>
 
               <div class="col-span-12">
                 <FormLabel>Alamat</FormLabel>
-                <div class="mt-1 font-strong whitespace-pre-line">{{ selectedCustomer?.company_address || '-' }}</div>
+                <div class="mt-1 text-body-strong whitespace-pre-line">{{ selectedCustomer?.company_address || '-' }}</div>
               </div>
             </div>
           </div>
@@ -1029,7 +1036,7 @@ function formatCurrency(v: number | string = 0) {
               </FormSelect>
               <small v-if="fieldError('type_pengiriman')" class="block input-error-text">{{
                 fieldError('type_pengiriman')
-              }}</small>
+                }}</small>
             </div>
 
             <div>
@@ -1049,17 +1056,17 @@ function formatCurrency(v: number | string = 0) {
                 </template>
               </FormSelect>
               <small v-if="fieldError('metode')" class="block input-error-text">{{ fieldError('metode')
-              }}</small>
+                }}</small>
             </div>
             <div v-if="form.metode === 'CIF' || form.metode === 'DAP'"
               class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
-              <h4 class="mb-3 font-section">Ongkos Kapal</h4>
+              <h4 class="mb-3 text-overline">Ongkos Kapal</h4>
               <div class="gap-4 grid grid-cols-12">
                 <div class="col-span-12 md:col-span-4">
                   <FormLabel>Transportir</FormLabel>
                   <FormSelect v-model="oaKapalInput.id_transportir" :key="oaSelectKey">
                     <option value="">Pilih Transportir</option>
-                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}
+                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.company_name }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1070,7 +1077,7 @@ function formatCurrency(v: number | string = 0) {
                     <option value="">Pilih Wilayah</option>
                     <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
                       {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name ||
-                        w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                        w.kabupaten?.nama_kabupaten }} - {{ w.name }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1079,7 +1086,7 @@ function formatCurrency(v: number | string = 0) {
                   <FormLabel>Volume</FormLabel>
                   <FormSelect v-model="oaKapalInput.id_volume" :key="oaSelectKey">
                     <option value="">Pilih Volume</option>
-                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}
+                    <option v-for="v in volumes" :key="v.id" :value="String(v.id)">{{ v.volume }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1092,13 +1099,13 @@ function formatCurrency(v: number | string = 0) {
 
             <div v-if="form.metode === 'DAP' || form.metode === 'FOT'"
               class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
-              <h4 class="mb-3 font-section">Ongkos Truck</h4>
+              <h4 class="mb-3 text-overline">Ongkos Truck</h4>
               <div class="gap-4 grid grid-cols-12">
                 <div class="col-span-12 md:col-span-4">
                   <FormLabel>Transportir</FormLabel>
                   <FormSelect v-model="oaTruckInput.id_transportir" :key="oaSelectKey">
                     <option value="">Pilih Transportir</option>
-                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.nama_perusahaan }}
+                    <option v-for="t in transportirs" :key="t.id" :value="String(t.id)">{{ t.company_name }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1109,7 +1116,7 @@ function formatCurrency(v: number | string = 0) {
                     <option value="">Pilih Wilayah</option>
                     <option v-for="w in wilayahs" :key="w.id" :value="String(w.id)">
                       {{ w.province?.name || w.provinsi?.nama_provinsi }} - {{ w.regency?.name ||
-                        w.kabupaten?.nama_kabupaten }} - {{ w.destinasi }}
+                        w.kabupaten?.nama_kabupaten }} - {{ w.name }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1118,7 +1125,7 @@ function formatCurrency(v: number | string = 0) {
                   <FormLabel>Volume</FormLabel>
                   <FormSelect v-model="oaTruckInput.id_volume" :key="oaSelectKey">
                     <option value="">Pilih Volume</option>
-                    <option v-for="v in volumes" :key="v.id_volume" :value="String(v.id_volume)">{{ v.volume }}
+                    <option v-for="v in volumes" :key="v.id" :value="String(v.id)">{{ v.volume }}
                     </option>
                   </FormSelect>
                 </div>
@@ -1151,7 +1158,7 @@ function formatCurrency(v: number | string = 0) {
       <hr class="my-4" />
 
       <div class="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
-        <p class="font-body !text-slate-500">
+        <p class="text-body !text-slate-500">
           Item penawaran disusun lewat modal generator berdasarkan periode &amp; source harga.
         </p>
         <Button type="button" variant="primary" class="inline-flex justify-center items-center gap-2 whitespace-nowrap"
@@ -1164,26 +1171,26 @@ function formatCurrency(v: number | string = 0) {
         <table class="divide-y divide-slate-200 w-full min-w-[760px]">
           <thead class="bg-slate-50">
             <tr>
-              <th class="px-4 py-3 w-12 font-label text-center">No</th>
-              <th class="px-4 py-3 font-label text-left">Produk</th>
-              <th class="px-4 py-3 font-label text-left">Source</th>
-              <th class="px-4 py-3 w-24 font-label text-right">Persen</th>
-              <th class="px-4 py-3 w-32 font-label text-right">Volume</th>
-              <th class="px-4 py-3 w-44 font-label text-right">Harga Price List</th>
+              <th class="px-4 py-3 w-12 text-form-label text-center">No</th>
+              <th class="px-4 py-3 text-form-label text-left">Produk</th>
+              <th class="px-4 py-3 text-form-label text-left">Source</th>
+              <th class="px-4 py-3 w-24 text-form-label text-right">Persen</th>
+              <th class="px-4 py-3 w-32 text-form-label text-right">Volume</th>
+              <th class="px-4 py-3 w-44 text-form-label text-right">Harga Price List</th>
             </tr>
           </thead>
 
           <tbody class="bg-white divide-y divide-slate-200">
             <tr v-for="(item, idx) in form.items" :key="idx" class="hover:bg-slate-50 transition">
-              <td class="px-4 py-3 font-num text-center">{{ idx + 1 }}.</td>
-              <td class="px-4 py-3 font-strong">{{ produkLabel(item.id_produk) }}</td>
-              <td class="px-4 py-3 font-body">{{ item.source_name || '-' }}</td>
-              <td class="px-4 py-3 font-num text-right">{{ item.persen }}%</td>
-              <td class="px-4 py-3 font-num text-right">{{ item.volume_order || 0 }}</td>
-              <td class="px-4 py-3 font-num text-right">{{ formatCurrency(item.harga_price_list || 0) }}</td>
+              <td class="px-4 py-3 num-sm text-center">{{ idx + 1 }}.</td>
+              <td class="px-4 py-3 text-body-strong">{{ produkLabel(item.id_produk) }}</td>
+              <td class="px-4 py-3 text-body">{{ item.source_name || '-' }}</td>
+              <td class="px-4 py-3 num-sm text-right">{{ item.persen }}%</td>
+              <td class="px-4 py-3 num-sm text-right">{{ item.volume_order || 0 }}</td>
+              <td class="px-4 py-3 num-sm text-right">{{ formatCurrency(item.harga_price_list || 0) }}</td>
             </tr>
             <tr v-if="form.items.length === 0">
-              <td colspan="6" class="px-4 py-10 font-body !text-slate-400 text-center">
+              <td colspan="6" class="px-4 py-10 text-body !text-slate-400 text-center">
                 Belum ada item. Klik "Susun Item Penawaran".
               </td>
             </tr>
@@ -1191,13 +1198,13 @@ function formatCurrency(v: number | string = 0) {
 
           <tfoot v-if="form.items.length" class="bg-slate-50 border-slate-200 border-t">
             <tr>
-              <td class="px-4 py-3 font-strong text-right" colspan="3">Total</td>
-              <td class="px-4 py-3 font-num text-right"
+              <td class="px-4 py-3 text-body-strong text-right" colspan="3">Total</td>
+              <td class="px-4 py-3 num-sm text-right"
                 :class="totalPersenNumber !== 100 ? 'text-red-600' : 'text-slate-800'">
                 {{ totalPersenDisplay }}%
               </td>
-              <td class="px-4 py-3 font-num text-right">{{ totalVolume }}</td>
-              <td class="px-4 py-3 font-num text-right">{{ formatCurrency(avgHargaPriceList) }}</td>
+              <td class="px-4 py-3 num-sm text-right">{{ totalVolume }}</td>
+              <td class="px-4 py-3 num-sm text-right">{{ formatCurrency(avgHargaPriceList) }}</td>
             </tr>
           </tfoot>
         </table>
@@ -1225,7 +1232,7 @@ function formatCurrency(v: number | string = 0) {
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
                   fieldError('tipe_pembayaran')
-                }}</small>
+                  }}</small>
               </div>
 
               <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
@@ -1244,20 +1251,20 @@ function formatCurrency(v: number | string = 0) {
             <transition name="fade">
               <div v-if="form.tipe_pembayaran === 'CUSTOM'"
                 class="bg-slate-50 mt-4 p-4 border border-slate-200 rounded-lg">
-                <h4 class="mb-3 font-section">Detail Pembayaran Custom</h4>
+                <h4 class="mb-3 text-overline">Detail Pembayaran Custom</h4>
                 <div class="flex flex-col gap-4">
                   <div class="">
                     <FormLabel>Down Payment (%)</FormLabel>
                     <div class="flex flex-wrap items-center gap-2">
                       <NumberField class="w-20" v-model="form.dp_persen" placeholder="100" suffix="%" :min="0"
                         :max="100" :decimals="0" :error="fieldError('dp_persen')" />
-                      <span class="font-body">After</span>
+                      <span class="text-body">After</span>
                       <FormInput v-model="form.dp_keterangan" type="text" class="flex-1 min-w-40"
                         placeholder="PO / 7 days" />
                     </div>
                     <small v-if="fieldError('dp_persen')" class="block input-error-text">{{
                       fieldError('dp_persen')
-                    }}</small>
+                      }}</small>
                   </div>
 
                   <div class="">
@@ -1266,17 +1273,17 @@ function formatCurrency(v: number | string = 0) {
                       <FormInput v-model="form.repayment_persen" type="text" inputmode="numeric" placeholder="80"
                         class="w-20 text-right" :class="inputClass('repayment_persen')"
                         @input="formatNumeric(form, 'repayment_persen', $event)" />
-                      <span class="font-body">% TOP</span>
+                      <span class="text-body">% TOP</span>
                       <FormInput v-model="form.repayment_hari" type="text" inputmode="numeric" placeholder="7"
                         class="w-20 text-right" @input="formatNumeric(form, 'repayment_hari', $event)" />
-                      <span class="font-body">days</span>
+                      <span class="text-body">days</span>
                     </div>
                     <small v-if="fieldError('repayment_persen')" class="block input-error-text">{{
                       fieldError('repayment_persen')
-                    }}</small>
+                      }}</small>
                   </div>
                 </div>
-                <p class="mt-2 font-caption">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.
+                <p class="mt-2 text-caption">Contoh: <b>DP 20% after PO</b>, <b>Repayment 80% TOP 7 days</b>.
                 </p>
               </div>
             </transition>
@@ -1296,7 +1303,7 @@ function formatCurrency(v: number | string = 0) {
                 <div class="relative">
                   <FormInput v-model="form.toleransi_penyusutan" type="text" inputmode="decimal" placeholder="0"
                     class="pr-8 text-right" @input="formatDecimalInput(form, 'toleransi_penyusutan', $event)" />
-                  <span class="top-2.5 right-3 absolute font-caption">%</span>
+                  <span class="top-2.5 right-3 absolute text-caption">%</span>
                 </div>
               </div>
 
@@ -1321,12 +1328,12 @@ function formatCurrency(v: number | string = 0) {
     <CardSection title="Perhitungan Harga Dasar" description="Komponen harga dan total akhir" icon="Calculator"
       icon-class="bg-emerald-100 text-emerald-600">
       <div class="overflow-x-auto">
-        <Table bordered sm class="font-body">
+        <Table bordered sm class="text-body">
           <Table.Thead class="bg-slate-50">
             <Table.Tr>
-              <Table.Th class="w-12 font-label text-center">No</Table.Th>
-              <Table.Th class="font-label text-left">Rincian</Table.Th>
-              <Table.Th class="w-60 font-label text-right">Harga (Rp)</Table.Th>
+              <Table.Th class="w-12 text-form-label text-center">No</Table.Th>
+              <Table.Th class="text-form-label text-left">Rincian</Table.Th>
+              <Table.Th class="w-60 text-form-label text-right">Harga (Rp)</Table.Th>
             </Table.Tr>
           </Table.Thead>
 
@@ -1348,18 +1355,18 @@ function formatCurrency(v: number | string = 0) {
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="font-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
-              <Table.Td class="font-num-lg text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
+              <Table.Td colspan="2" class="text-body-strong text-right">Subtotal (Harga Dasar + OA)</Table.Td>
+              <Table.Td class="num-md text-right">{{ formatCurrency(dppHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="font-strong text-right">PPN (11%)</Table.Td>
-              <Table.Td class="font-num-lg text-right">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
+              <Table.Td colspan="2" class="text-body-strong text-right">PPN (11%)</Table.Td>
+              <Table.Td class="num-md text-right">{{ formatCurrency(ppnHargaDasar) }}</Table.Td>
             </Table.Tr>
 
             <Table.Tr>
-              <Table.Td colspan="2" class="font-header text-right">TOTAL</Table.Td>
-              <Table.Td class="font-num-lg !text-emerald-700 text-right">{{
+              <Table.Td colspan="2" class="text-section-title text-right">TOTAL</Table.Td>
+              <Table.Td class="num-md !text-emerald-700 text-right">{{
                 formatCurrency(grandTotalHargaDasar) }}</Table.Td>
             </Table.Tr>
           </Table.Tbody>

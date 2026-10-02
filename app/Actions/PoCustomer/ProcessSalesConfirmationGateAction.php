@@ -9,7 +9,7 @@ use App\Models\PoCustomer;
 
 class ProcessSalesConfirmationGateAction
 {
-    private const PPN_RATE = 0.11;
+    public const PPN_RATE = 0.11;
 
     public function execute(PoCustomer $po, string $pic, ?string $ip): array
     {

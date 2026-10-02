@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerDocumentRequest;
 use App\Http\Requests\Customer\UpdateCustomerDocumentRequest;
 use App\Models\Customer;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class CustomerDocumentController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     public function index(Request $request, Customer $customer)
     {
         $user = $request->user();
@@ -25,8 +28,6 @@ class CustomerDocumentController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        // Gak dipaginasi -- jumlahnya dibatasi customer_document_types yang aktif,
-        // bukan data transaksional yang bisa terus tumbuh.
         $query = $customer->documents()->with(['documentType', 'uploadedBy']);
 
         if ($request->filled('id_lcr')) {
@@ -51,6 +52,10 @@ class CustomerDocumentController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
         $file = $request->file('file');
 
@@ -65,8 +70,6 @@ class CustomerDocumentController extends Controller
             );
             $path = $file->storeAs($folder, $fileName, 'public');
 
-            // id_lcr/notes opsional, keisi kalau dokumennya foto site LCR (id_document_type
-            // salah satu kode lcr_*); null buat dokumen customer generik lainnya (NIB/NPWP/dst).
             $document = CustomerDocument::create([
                 'id_customer'      => $customer->id_customer,
                 'id_document_type' => $data['id_document_type'],
@@ -118,11 +121,13 @@ class CustomerDocumentController extends Controller
             return response()->json(['message' => 'Dokumen tidak ditemukan untuk customer ini.'], 404);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
         $document->update($data);
 
-        // Kalau caption-nya berubah, nama file fisik ikut di-rename juga --
-        // rename beneran di storage, bukan cuma update kolom DB.
         if (array_key_exists('notes', $data)) {
             $this->renameDocumentFile($customer, $document);
         }
@@ -167,6 +172,10 @@ class CustomerDocumentController extends Controller
 
         if ($document->id_customer !== $customer->id_customer) {
             return response()->json(['message' => 'Dokumen tidak ditemukan untuk customer ini.'], 404);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
