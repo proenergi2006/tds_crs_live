@@ -187,7 +187,7 @@ async function submitForm() {
         </FormLabel>
         <FormInput id="role-nama" v-model="form.name" placeholder="Nama Role"
           :class="v$.name.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.name.$error" class="font-caption !text-rose-600">{{ getFieldError('name') }}</small>
+        <small v-if="v$.name.$error" class="text-caption !text-rose-600">{{ getFieldError('name') }}</small>
       </div>
 
       <div>
@@ -196,7 +196,7 @@ async function submitForm() {
         </FormLabel>
         <FormTextarea id="role-deskripsi" v-model="form.role_desc" placeholder="Deskripsi Role"
           :class="v$.role_desc.$error ? 'border-rose-500' : ''" />
-        <small v-if="v$.role_desc.$error" class="font-caption !text-rose-600">{{ getFieldError('role_desc') }}</small>
+        <small v-if="v$.role_desc.$error" class="text-caption !text-rose-600">{{ getFieldError('role_desc') }}</small>
       </div>
 
       <div>
@@ -205,14 +205,14 @@ async function submitForm() {
           <FormSwitch>
             <FormSwitch.Input id="role-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="font-body">
+          <span class="text-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
       </div>
 
       <div v-if="props.mode === 'edit'">
-        <p class="font-caption text-right mt-6">
+        <p class="text-caption text-right mt-6">
           <i>* {{ updatedByInfo }}</i>
         </p>
       </div>

@@ -51,8 +51,8 @@ const progressPercent = computed(() => {
 
     <div class="p-5">
       <div class="mb-6">
-        <p class="font-header text-lg !text-white">Customer Onboarding Form</p>
-        <p class="font-caption mt-1 !text-slate-400">Lengkapi data perusahaan Anda</p>
+        <p class="text-section-title text-lg !text-white">Customer Onboarding Form</p>
+        <p class="text-caption mt-1 !text-slate-400">Lengkapi data perusahaan Anda</p>
       </div>
 
       <ul class="flex-1 space-y-1">
@@ -68,21 +68,21 @@ const progressPercent = computed(() => {
               ]">
               <Lucide v-if="step.hasError" icon="AlertTriangle" class="h-3.5 w-3.5" />
               <Lucide v-else-if="stepStatus(idx) === 'completed'" icon="Check" class="h-3.5 w-3.5" />
-              <span v-else class="font-barlow text-xs font-bold">{{ idx + 1 }}</span>
+              <span v-else class="font-ubuntu text-xs font-bold">{{ idx + 1 }}</span>
             </span>
             <div v-if="idx < props.steps.length - 1" class="w-0.5 flex-1 py-1"
               :class="stepStatus(idx) === 'completed' ? 'bg-white' : 'bg-slate-700'" style="min-height: 1.25rem" />
           </div>
 
           <div class="flex-1 pb-4 pt-0.5">
-            <span class="font-body block" :class="[
+            <span class="text-body block" :class="[
               step.hasError && 'text-danger',
               !step.hasError && stepStatus(idx) === 'pending' && '!text-slate-500',
               !step.hasError && stepStatus(idx) !== 'pending' && '!text-white',
             ]">
               {{ step.title }}
             </span>
-            <span v-if="step.hasError" class="font-label mt-0.5 inline-block text-danger">Periksa kembali isian</span>
+            <span v-if="step.hasError" class="text-form-label mt-0.5 inline-block text-danger">Periksa kembali isian</span>
           </div>
         </li>
       </ul>
@@ -91,7 +91,7 @@ const progressPercent = computed(() => {
     <div class="mt-auto border-t border-slate-800 p-5">
       <div class="mb-4">
         <div class="mb-1.5 flex items-center justify-between">
-          <p class="font-caption !text-slate-400">Step {{ props.currentStep }} of {{ props.steps.length }}</p>
+          <p class="text-caption !text-slate-400">Step {{ props.currentStep }} of {{ props.steps.length }}</p>
         </div>
         <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
           <div class="h-full rounded-full bg-white transition-all duration-300"

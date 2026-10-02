@@ -29,11 +29,7 @@ const routes = [
     component: () => import("@/pages/TwoFactor.vue"),
   },
 
-  {
-    path: "/forgot-password",
-    name: "forgot-password",
-    component: () => import("@/pages/ForgotPassword.vue"),
-  },
+  { path: "/forgot-password", name: "forgot-password", component: () => import("@/pages/ForgotPassword.vue") },
 
   {
     path: "/customer-onboarding/:token",
@@ -87,16 +83,8 @@ const routes = [
         component: () => import("@/pages/ProfileOverview3.vue"),
         meta: { permission: "admin.users.manage" },
       },
-      {
-        path: "crud-data-list",
-        name: "crud-data-list",
-        component: () => import("../pages/CrudDataList.vue"),
-      },
-      {
-        path: "crud-form",
-        name: "crud-form",
-        component: () => import("../pages/CrudForm.vue"),
-      },
+      { path: "crud-data-list", name: "crud-data-list", component: () => import("../pages/CrudDataList.vue") },
+      { path: "crud-form", name: "crud-form", component: () => import("../pages/CrudForm.vue") },
       {
         path: "cabang",
         name: "cabang",
@@ -131,30 +119,16 @@ const routes = [
         path: "product-prices/create",
         name: "product-prices-create",
         component: () => import("@/pages/MasterData/ProductPrice/Form.vue"),
-        meta: {
-          permission: "price-period.manage",
-          breadcrumbTitle: "Tambah Harga Produk",
-        },
+        meta: { permission: "price-period.manage", breadcrumbTitle: "Tambah Harga Produk" },
       },
       {
         path: "product-prices/:id/edit",
         name: "product-prices-edit",
         component: () => import("@/pages/MasterData/ProductPrice/Form.vue"),
-        meta: {
-          permission: "price-period.manage",
-          breadcrumbTitle: "Edit Harga Produk",
-        },
+        meta: { permission: "price-period.manage", breadcrumbTitle: "Edit Harga Produk" },
       },
-      {
-        path: "calendar",
-        name: "calendar",
-        component: () => import("@/pages/Calendar.vue"),
-      },
-      {
-        path: "validation",
-        name: "validation",
-        component: () => import("@/pages/Validation.vue"),
-      },
+      { path: "calendar", name: "calendar", component: () => import("@/pages/Calendar.vue") },
+      { path: "validation", name: "validation", component: () => import("@/pages/Validation.vue") },
       {
         path: "master-address",
         name: "master-address",
@@ -207,33 +181,25 @@ const routes = [
       {
         path: "approval-templates",
         name: "approval-templates",
-        component: () =>
-          import("@/pages/MasterData/ApprovalTemplate/Index.vue"),
+        component: () => import("@/pages/MasterData/ApprovalTemplate/Index.vue"),
         meta: { permission: "approval-template.manage" },
       },
       {
         path: "approval-templates/create",
         name: "approval-templates-create",
         component: () => import("@/pages/MasterData/ApprovalTemplate/Form.vue"),
-        meta: {
-          permission: "approval-template.manage",
-          breadcrumbTitle: "Tambah Approval Template",
-        },
+        meta: { permission: "approval-template.manage", breadcrumbTitle: "Tambah Approval Template" },
       },
       {
         path: "approval-templates/:id/edit",
         name: "approval-templates-edit",
         component: () => import("@/pages/MasterData/ApprovalTemplate/Form.vue"),
-        meta: {
-          permission: "approval-template.manage",
-          breadcrumbTitle: "Edit Approval Template",
-        },
+        meta: { permission: "approval-template.manage", breadcrumbTitle: "Edit Approval Template" },
       },
       {
         path: "customer-document-types",
         name: "customer-document-types",
-        component: () =>
-          import("@/pages/MasterData/CustomerDocumentType/Index.vue"),
+        component: () => import("@/pages/MasterData/CustomerDocumentType/Index.vue"),
         meta: { permission: "master-data.customer-document-type.manage" },
       },
       {
@@ -361,202 +327,83 @@ const routes = [
         meta: { permission: "master-data.view" },
       },
       {
-        path: "/transportir",
-        name: "transportir-list",
-        component: () => import("@/pages/TransportirList.vue"),
+        path: "/transporters",
+        name: "transporters-list",
+        component: () => import("@/pages/MasterLogistik/Transporter/Index.vue"),
         meta: { permission: "logistik.master.manage" },
-      },
-      {
-        path: "/transportirs/create",
-        name: "transportirs-create",
-        component: () => import("@/pages/TransportirForm.vue"),
-      },
-      {
-        path: "/transportirs/:id/edit",
-        name: "transportirs-edit",
-        component: () => import("@/pages/TransportirForm.vue"),
       },
       {
         path: "/personnels",
-        name: "personnel-list",
-        component: () => import("@/pages/PersonnelList.vue"),
+        name: "personnels-list",
+        component: () => import("@/pages/MasterLogistik/Personnel/Index.vue"),
         meta: { permission: "logistik.master.manage" },
       },
       {
-        path: "/personnels/create",
-        name: "personnels-create",
-        component: () => import("@/pages/PersonnelForm.vue"),
-      },
-      {
-        path: "/personnels/:id/edit",
-        name: "personnels-edit",
-        component: () => import("@/pages/PersonnelForm.vue"),
-      },
-      {
-        path: "/volumes",
-        name: "volumes-list",
-        component: () => import("@/pages/VolumeList.vue"),
+        path: "/vessels",
+        name: "vessels-list",
+        component: () => import("@/pages/MasterLogistik/Vessel/Index.vue"),
         meta: { permission: "logistik.master.manage" },
-      },
-      {
-        path: "/volumes/create",
-        name: "volumes-create",
-        component: () => import("@/pages/VolumeForm.vue"),
-      },
-      {
-        path: "/volumes/:id/edit",
-        name: "volumes-edit",
-        component: () => import("@/pages/VolumeForm.vue"),
-      },
-      {
-        path: "/wilayah-angkut",
-        name: "wilayah-angkut-list",
-        component: () => import("@/pages/WilayahAngkutList.vue"),
-        meta: { permission: "logistik.master.manage" },
-      },
-
-      {
-        path: "/wilayah-angkut/create",
-        name: "wilayah-angkut-create",
-        component: () => import("@/pages/WilayahAngkutForm.vue"),
-      },
-
-      {
-        path: "/wilayah-angkut/:id/edit",
-        name: "wilayah-angkut-edit",
-        component: () => import("@/pages/WilayahAngkutForm.vue"),
-        props: true,
-      },
-
-      {
-        path: "/kapals",
-        name: "kapals-list",
-        component: () => import("@/pages/KapalList.vue"),
-        meta: { title: "List Kapal", permission: "logistik.master.manage" },
-      },
-      {
-        path: "/kapals/create",
-        name: "kapals-create",
-        component: () => import("@/pages/KapalForm.vue"),
-        meta: { title: "Tambah Kapal" },
-      },
-      {
-        path: "/kapals/:id/edit",
-        name: "kapals-edit",
-        component: () => import("@/pages/KapalForm.vue"),
-        meta: { title: "Edit Kapal" },
-      },
-      {
-        path: "/ongkos-kapal",
-        name: "ongkos-kapal-list",
-        component: () => import("@/pages/OngkosKapalList.vue"),
-        meta: { permission: "logistik.master.manage" },
-      },
-      {
-        path: "/ongkos-kapal/create",
-        name: "ongkos-kapal-create",
-        component: () => import("@/pages/OngkosKapalForm.vue"),
-      },
-      {
-        path: "/ongkos-kapal/:id/edit",
-        name: "ongkos-kapal-edit",
-        component: () => import("@/pages/OngkosKapalForm.vue"),
-        props: true,
       },
       {
         path: "/trucks",
         name: "trucks-list",
-        component: () => import("@/pages/TruckList.vue"),
+        component: () => import("@/pages/MasterLogistik/Truck/Index.vue"),
         meta: { permission: "logistik.master.manage" },
       },
       {
-        path: "/trucks/create",
-        name: "trucks-create",
-        component: () => import("@/pages/TruckForm.vue"),
-      },
-      {
-        path: "/trucks/:id/edit",
-        name: "trucks-edit",
-        component: () => import("@/pages/TruckForm.vue"),
-        props: true,
-      },
-      {
-        path: "/oa-trucks",
-        name: "oa-trucks-list",
-        component: () => import("@/pages/OaTruckList.vue"),
-        props: true,
+        path: "/transport-areas",
+        name: "transport-areas-list",
+        component: () => import("@/pages/MasterLogistik/TransportArea/Index.vue"),
         meta: { permission: "logistik.master.manage" },
       },
       {
-        path: "/oa-trucks/create",
-        name: "oa-trucks-create",
-        component: () => import("@/pages/OaTruckForm.vue"),
-        props: true,
+        path: "/volumes",
+        name: "volumes-list",
+        component: () => import("@/pages/MasterLogistik/Volume/Index.vue"),
+        meta: { permission: "logistik.master.manage" },
       },
       {
-        path: "/oa-trucks/:id/edit",
-        name: "oa-trucks-edit",
-        component: () => import("@/pages/OaTruckForm.vue"),
-        props: true,
+        path: "/transport-tariffs",
+        name: "transport-tariffs-list",
+        component: () => import("@/pages/MasterLogistik/TransportTariff/Index.vue"),
+        meta: { permission: "logistik.master.manage" },
       },
 
       {
         path: "/penawarans/verifikasi",
         name: "penawarans-verifikasi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: {
-          brand: "tds",
-          permission: "penawaran.verify",
-        },
+        meta: { brand: "tds", permission: "penawaran.verify" },
       },
       {
         path: "/penawarans-proenergi/verifikasi",
         name: "penawarans-verifikasi-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: {
-          brand: "proenergi",
-          permission: "penawaran.proenergi.verify",
-        },
+        meta: { brand: "proenergi", permission: "penawaran.proenergi.verify" },
       },
       {
         path: "/penawarans/verifikasi/bm/:id",
         name: "penawarans-verifikasi-bm-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: {
-          role: "bm",
-          brand: "tds",
-          permission: "penawaran.verify",
-        },
+        meta: { role: "bm", brand: "tds", permission: "penawaran.verify" },
       },
       {
         path: "/penawarans-proenergi/verifikasi/bm/:id",
         name: "penawarans-verifikasi-bm-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: {
-          role: "bm",
-          brand: "proenergi",
-          permission: "penawaran.proenergi.verify-bm",
-        },
+        meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
       },
       {
         path: "/penawarans/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: {
-          role: "om",
-          brand: "tds",
-          permission: ["penawaran.verify", "penawaran.verify-om"],
-        },
+        meta: { role: "om", brand: "tds", permission: ["penawaran.verify", "penawaran.verify-om"] },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail-proenergi",
         component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
-        meta: {
-          role: "om",
-          brand: "proenergi",
-          permission: "penawaran.proenergi.verify-om",
-        },
+        meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
       },
 
       {
@@ -566,16 +413,18 @@ const routes = [
         meta: { permission: "penawaran.manage" },
       },
 
-      {
-        path: "/po-customers",
-        name: "po-customers-index",
-        component: () => import("@/pages/PoCustomer/Index.vue"),
-      },
+      { path: "/po-customers", name: "po-customers-index", component: () => import("@/pages/PoCustomer/Index.vue") },
       {
         path: "/po-customers/:id",
         name: "po-customers-detail",
         component: () => import("@/pages/PoCustomer/Detail.vue"),
         meta: { breadcrumbTitle: "Detail PO Customer" },
+      },
+      {
+        path: "/po-customers/:id/edit",
+        name: "po-customers-edit",
+        component: () => import("@/pages/PenawaranCustomerPO.vue"),
+        meta: { permission: "penawaran.manage", breadcrumbTitle: "Edit PO Customer" },
       },
 
       {
@@ -600,15 +449,13 @@ const routes = [
       {
         path: "/admin/review-data-customer",
         name: "review-data-customer-admin",
-        component: () =>
-          import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
+        component: () => import("@/pages/CustomerVerification/AdminFinance/Index.vue"),
         meta: { permission: "verification.customer" },
       },
       {
         path: "/admin/review-data-customer/:id",
         name: "review-data-customer-admin-detail",
-        component: () =>
-          import("@/pages/CustomerVerification/AdminFinance/Verify.vue"),
+        component: () => import("@/pages/CustomerVerification/AdminFinance/Verify.vue"),
         props: true,
         meta: { permission: "verification.customer" },
       },
@@ -628,19 +475,13 @@ const routes = [
         path: "/sales-confirmations/:id",
         name: "sales-confirmations-detail",
         component: () => import("@/pages/SalesConfirmation/Detail.vue"),
-        meta: {
-          breadcrumbTitle: "Detail Sales Confirmation",
-          permission: "sales-confirmation.manage",
-        },
+        meta: { breadcrumbTitle: "Detail Sales Confirmation", permission: "sales-confirmation.manage" },
       },
       {
         path: "/ar-agings",
         name: "ar-agings-index",
         component: () => import("@/pages/CustomerArAging/Index.vue"),
-        meta: {
-          permission: "sales-confirmation.manage",
-          breadcrumbTitle: "AR Aging Customer",
-        },
+        meta: { permission: "sales-confirmation.manage", breadcrumbTitle: "AR Aging Customer" },
       },
 
       {
@@ -661,19 +502,13 @@ const routes = [
         path: "/procurement/delivery-requests",
         name: "procurement-delivery-requests",
         component: () => import("@/pages/Delivery/Index.vue"),
-        meta: {
-          title: "Delivery Request",
-          permission: "delivery-request.manage",
-        },
+        meta: { title: "Delivery Request", permission: "delivery-request.manage" },
       },
       {
         path: "/procurement/delivery-requests/:id",
         name: "procurement-dr-detail",
         component: () => import("@/pages/DeliveryRequestDetail.vue"),
-        meta: {
-          breadcrumbTitle: "Detail Delivery Request",
-          permission: "delivery-request.manage",
-        },
+        meta: { breadcrumbTitle: "Detail Delivery Request", permission: "delivery-request.manage" },
         props: true,
       },
 
@@ -681,32 +516,25 @@ const routes = [
         path: "/monitoring/app-logs",
         name: "monitoring-app-logs",
         component: () => import("@/pages/Monitoring/Logs/Index.vue"),
-        meta: {
-          title: "Application Logs",
-          permission: "admin.monitoring.view",
-        },
+        meta: { title: "Application Logs", permission: "admin.monitoring.view" },
       },
 
-      {
-        path: "testing-page",
-        name: "testing-page",
-        component: () => import("@/pages/Testing/Index.vue"),
-      },
+      { path: "testing-page", name: "testing-page", component: () => import("@/pages/Testing/Index.vue") },
+
+      { path: "testing-page-2", name: "testing-page-2", component: () => import("@/pages/Tooltip.vue") },
 
       {
-        path: "testing-page-2",
-        name: "testing-page-2",
-        component: () => import("@/pages/Tooltip.vue"),
+        path: "design-system",
+        name: "design-system",
+        component: () => import("@/pages/DesignSystem/Index.vue"),
+        meta: { title: "Design System" },
       },
     ],
   },
   { path: "/:catchAll(.*)", redirect: "/login" },
 ];
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-});
+const router = createRouter({ history: createWebHistory(), routes });
 
 let shouldShowRouteLoading = false;
 
@@ -733,9 +561,7 @@ function getRouteLoadingScope(path: string) {
 }
 
 router.beforeEach(async (to, from, next) => {
-  shouldShowRouteLoading =
-    !from.name ||
-    getRouteLoadingScope(to.path) !== getRouteLoadingScope(from.path);
+  shouldShowRouteLoading = !from.name || getRouteLoadingScope(to.path) !== getRouteLoadingScope(from.path);
 
   if (shouldShowRouteLoading) {
     startRouteLoading();
@@ -747,8 +573,7 @@ router.beforeEach(async (to, from, next) => {
   if (token && !auth.user) {
     try {
       await auth.fetchUser();
-    } catch {
-    }
+    } catch {}
   }
 
   if (
@@ -783,9 +608,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   const requiredPermission = to.meta.permission;
-  const required = Array.isArray(requiredPermission)
-    ? requiredPermission
-    : [requiredPermission];
+  const required = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
   if (requiredPermission && !required.every((p) => auth.can(p))) {
     stopRouteLoading(150);
     return next({ name: "dashboard-overview-1" });

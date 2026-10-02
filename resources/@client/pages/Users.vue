@@ -19,7 +19,6 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi.js'
 
-/* Section: Types */
 interface Role {
   id: number
   name: string
@@ -42,7 +41,6 @@ interface User {
   cabang?: Cabang
 }
 
-/* Section: API instances */
 const userApi = createResourceApi('/users')
 const roleApi = createResourceApi('/roles')
 const cabangApi = createResourceApi('/cabangs')
@@ -50,7 +48,6 @@ const { success, error } = useNotification()
 const router = useRouter()
 const auth = useAuthStore()
 
-/* State: data & pagination */
 const allUsers = ref<User[]>([])
 const rolesList = ref<Role[]>([])
 const cabangList = ref<Cabang[]>([])
@@ -60,7 +57,6 @@ const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 
-/* State: create/edit form */
 const form = reactive({
   id: 0,
   name: '',
@@ -98,7 +94,6 @@ const rules = {
 
 const v$ = useVuelidate(rules, form)
 
-/* State: reset password */
 const resetModal = ref(false)
 const resetLoading = ref(false)
 const resetForm = reactive({
@@ -107,17 +102,14 @@ const resetForm = reactive({
   password: '',
 })
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const userToDelete = ref<number | null>(null)
 
-/* State: impersonate */
 const impersonateModal = ref(false)
 const impersonateTarget = ref<User | null>(null)
 const impersonateLoading = ref(false)
 
-/* Section: Computed */
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
@@ -151,7 +143,6 @@ const canImpersonate = computed((): boolean => auth.can('admin.users.impersonate
 
 const primaryRoleOptions = computed(() => rolesList.value.filter(r => form.role_ids.includes(String(r.id))))
 
-/* Section: Lifecycle & watch */
 onMounted(() => {
   fetchData()
   fetchRolesList()
@@ -161,13 +152,11 @@ onMounted(() => {
 watch(searchQuery, debounce(resetToFirstPage, 300))
 watch(perPage, resetToFirstPage)
 
-// role utama harus salah satu dari role_ids yang dipilih -- reset otomatis kalau yang lama sudah tidak dicentang
 watch(() => form.role_ids, (roleIds) => {
   if (form.primary_role_id && roleIds.includes(form.primary_role_id)) return
   form.primary_role_id = roleIds[0] ?? null
 })
 
-/* Section: Data fetching */
 async function fetchData() {
   loading.value = true
   try {
@@ -184,14 +173,14 @@ async function fetchRolesList() {
   try {
     const { data } = await roleApi.getAll({ per_page: 1000 })
     rolesList.value = data.data
-  } catch {}
+  } catch { }
 }
 
 async function fetchCabangList() {
   try {
     const { data } = await cabangApi.getAll({ as_list: true })
     cabangList.value = Array.isArray(data) ? data : []
-  } catch {}
+  } catch { }
 }
 
 function goToPage(page: number) {
@@ -203,7 +192,6 @@ function resetToFirstPage() {
   currentPage.value = 1
 }
 
-/* Section: Action handlers - create/edit */
 function getFieldError(field: keyof typeof rules) {
   return v$.value[field]?.$errors[0]?.$message?.toString() || ''
 }
@@ -295,7 +283,6 @@ function cancelModal() {
   createModal.value = false
 }
 
-/* Section: Action handlers - reset password */
 function openResetPassword(user: User) {
   resetForm.id = user.id
   resetForm.name = user.name
@@ -319,7 +306,6 @@ async function submitResetPassword() {
 
   resetLoading.value = true
   try {
-    // Endpoint custom di luar CRUD standar users, tidak ditangani createResourceApi.
     await axios.put(`/api/users/${resetForm.id}/reset-password`, {
       password: resetForm.password,
     })
@@ -333,7 +319,6 @@ async function submitResetPassword() {
   }
 }
 
-/* Section: Action handlers - delete */
 function confirmDelete(id: number) {
   userToDelete.value = id
   deleteModal.value = true
@@ -358,7 +343,6 @@ async function submitDelete() {
   }
 }
 
-/* Section: Action handlers - impersonate */
 function openImpersonateConfirm(user: User) {
   impersonateTarget.value = user
   impersonateModal.value = true
@@ -387,7 +371,6 @@ async function submitImpersonate() {
   }
 }
 
-/* Section: Helpers */
 function getInitials(name: string) {
   if (!name) return 'U'
   return name
@@ -400,61 +383,59 @@ function getInitials(name: string) {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="User Management"
         description="Kelola akun pengguna, role, cabang, status aktif, dan reset password.">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-            <Lucide icon="Plus" class="h-4 w-4" />
+            <Lucide icon="Plus" class="w-4 h-4" />
             Add New User
           </Button>
         </template>
       </PageHeader>
 
-      <!-- Summary -->
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="flex items-center justify-between">
+      <div class="gap-4 grid grid-cols-1 md:grid-cols-3">
+        <div class="bg-white shadow-sm p-5 border border-slate-200 rounded-2xl">
+          <div class="flex justify-between items-center">
             <div>
-              <p class="text-sm text-slate-500">Total Users</p>
-              <h3 class="mt-1 text-2xl font-bold text-slate-800">{{ totalUsers }}</h3>
+              <p class="text-slate-500 text-sm">Total Users</p>
+              <h3 class="mt-1 font-bold text-slate-800 text-2xl">{{ totalUsers }}</h3>
             </div>
-            <div class="rounded-full bg-primary/10 p-3 text-primary">
-              <Lucide icon="Users" class="h-5 w-5" />
+            <div class="bg-primary/10 p-3 rounded-full text-primary">
+              <Lucide icon="Users" class="w-5 h-5" />
             </div>
           </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="flex items-center justify-between">
+        <div class="bg-white shadow-sm p-5 border border-slate-200 rounded-2xl">
+          <div class="flex justify-between items-center">
             <div>
-              <p class="text-sm text-slate-500">Active Users</p>
-              <h3 class="mt-1 text-2xl font-bold text-emerald-600">{{ activeUsers }}</h3>
+              <p class="text-slate-500 text-sm">Active Users</p>
+              <h3 class="mt-1 font-bold text-emerald-600 text-2xl">{{ activeUsers }}</h3>
             </div>
-            <div class="rounded-full bg-emerald-100 p-3 text-emerald-600">
-              <Lucide icon="BadgeCheck" class="h-5 w-5" />
+            <div class="bg-emerald-100 p-3 rounded-full text-emerald-600">
+              <Lucide icon="BadgeCheck" class="w-5 h-5" />
             </div>
           </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="flex items-center justify-between">
+        <div class="bg-white shadow-sm p-5 border border-slate-200 rounded-2xl">
+          <div class="flex justify-between items-center">
             <div>
-              <p class="text-sm text-slate-500">Inactive Users</p>
-              <h3 class="mt-1 text-2xl font-bold text-rose-600">{{ inactiveUsers }}</h3>
+              <p class="text-slate-500 text-sm">Inactive Users</p>
+              <h3 class="mt-1 font-bold text-rose-600 text-2xl">{{ inactiveUsers }}</h3>
             </div>
-            <div class="rounded-full bg-rose-100 p-3 text-rose-600">
-              <Lucide icon="UserX" class="h-5 w-5" />
+            <div class="bg-rose-100 p-3 rounded-full text-rose-600">
+              <Lucide icon="UserX" class="w-5 h-5" />
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Data Table List -->
-      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
-        :empty="users.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
-        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Search name, email, role..."
-        loading-text="Loading users..." empty-description="No users found." @page-change="goToPage">
+      <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading" :empty="users.length === 0"
+        :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords" :current-page="currentPage"
+        :total-pages="totalPages" search-placeholder="Search name, email, role..." loading-text="Loading users..."
+        empty-description="No users found." @page-change="goToPage">
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>User</Table.Th>
@@ -466,20 +447,20 @@ function getInitials(name: string) {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(user, idx) in users" :key="user.id" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(user, idx) in users" :key="user.id" class="hover:bg-slate-50 transition">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
 
             <Table.Td>
               <div class="flex items-center gap-3">
                 <div
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                  class="flex justify-center items-center bg-primary/10 rounded-full w-10 h-10 font-semibold text-primary">
                   {{ getInitials(user.name) }}
                 </div>
                 <div>
                   <div class="font-medium text-slate-800">{{ user.name }}</div>
-                  <div class="text-sm text-slate-500">{{ user.email }}</div>
+                  <div class="text-slate-500 text-sm">{{ user.email }}</div>
                 </div>
               </div>
             </Table.Td>
@@ -489,30 +470,30 @@ function getInitials(name: string) {
             <Table.Td>{{ user.primary_role?.name || '-' }}</Table.Td>
 
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1"
+              <span class="inline-flex px-3 py-1 rounded-full text-form-label"
                 :class="user.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'">
                 {{ user.is_active ? 'Active' : 'Inactive' }}
               </span>
             </Table.Td>
 
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-2">
-                <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" @click="openEdit(user)"
+              <div class="inline-flex justify-center items-center gap-2">
+                <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" @click="openEdit(user)"
                   title="Edit">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </Button>
-                <Button variant="soft-warning" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8"
                   @click="openResetPassword(user)" title="Reset Password">
-                  <Lucide icon="KeyRound" class="h-4 w-4" />
+                  <Lucide icon="KeyRound" class="w-4 h-4" />
                 </Button>
-                <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <Button variant="soft-danger" rounded class="!shadow-none !p-0 !w-8 !h-8"
                   @click="confirmDelete(user.id)" title="Delete">
-                  <Lucide icon="Trash2" class="h-4 w-4" />
+                  <Lucide icon="Trash2" class="w-4 h-4" />
                 </Button>
-                <Button v-if="canImpersonate" variant="soft-info" rounded class="!h-8 !w-8 !p-0 !shadow-none"
+                <Button v-if="canImpersonate" variant="soft-info" rounded class="!shadow-none !p-0 !w-8 !h-8"
                   :disabled="user.primary_role?.id === 1 || !user.is_active || Number(user.id) === Number(auth.user?.id)"
                   @click="openImpersonateConfirm(user)" title="Impersonate">
-                  <Lucide icon="LogIn" class="h-4 w-4" />
+                  <Lucide icon="LogIn" class="w-4 h-4" />
                 </Button>
               </div>
             </Table.Td>
@@ -521,32 +502,35 @@ function getInitials(name: string) {
       </DataList>
     </div>
 
-    <!-- Create/Edit Modal -->
     <Dialog v-model:open="createModal">
-      <Dialog.Panel class="w-full max-w-lg p-0 overflow-hidden">
-        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
-          <h3 class="text-lg font-semibold text-slate-800">
+      <Dialog.Panel class="p-0 w-full max-w-lg overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-slate-200 border-b">
+          <h3 class="font-semibold text-slate-800 text-lg">
             {{ isEdit ? 'Edit User' : 'Add New User' }}
           </h3>
-          <p class="mt-1 text-sm text-slate-500">
+          <p class="mt-1 text-slate-500 text-sm">
             Lengkapi data user di bawah ini.
           </p>
         </div>
 
         <div class="p-6">
-          <p v-if="formError" class="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
+          <p v-if="formError" class="bg-rose-50 mb-4 px-3 py-2 rounded-lg text-rose-600 text-sm">
             {{ formError }}
           </p>
 
           <div class="space-y-4">
             <div>
-              <FormInput v-model="form.name" placeholder="Name" :class="getFieldError('name') ? 'border-rose-500' : ''" />
-              <small v-if="getFieldError('name')" class="font-caption !text-rose-600">{{ getFieldError('name') }}</small>
+              <FormInput v-model="form.name" placeholder="Name"
+                :class="getFieldError('name') ? 'border-rose-500' : ''" />
+              <small v-if="getFieldError('name')" class="text-caption !text-rose-600">{{ getFieldError('name')
+                }}</small>
             </div>
 
             <div>
-              <FormInput v-model="form.email" placeholder="Email" :class="getFieldError('email') ? 'border-rose-500' : ''" />
-              <small v-if="getFieldError('email')" class="font-caption !text-rose-600">{{ getFieldError('email') }}</small>
+              <FormInput v-model="form.email" placeholder="Email"
+                :class="getFieldError('email') ? 'border-rose-500' : ''" />
+              <small v-if="getFieldError('email')" class="text-caption !text-rose-600">{{ getFieldError('email')
+                }}</small>
             </div>
 
             <FormInput v-model="form.no_telepon" placeholder="No Telepon" />
@@ -554,7 +538,8 @@ function getInitials(name: string) {
             <div v-if="!isEdit">
               <FormInput v-model="form.password" type="password" placeholder="Password"
                 :class="getFieldError('password') ? 'border-rose-500' : ''" />
-              <small v-if="getFieldError('password')" class="font-caption !text-rose-600">{{ getFieldError('password') }}</small>
+              <small v-if="getFieldError('password')" class="text-caption !text-rose-600">{{ getFieldError('password')
+                }}</small>
             </div>
 
             <div>
@@ -564,11 +549,12 @@ function getInitials(name: string) {
                   {{ c.nama_cabang }}
                 </option>
               </FormSelect>
-              <small v-if="getFieldError('id_cabang')" class="font-caption !text-rose-600">{{ getFieldError('id_cabang') }}</small>
+              <small v-if="getFieldError('id_cabang')" class="text-caption !text-rose-600">{{ getFieldError('id_cabang')
+                }}</small>
             </div>
 
             <div>
-              <label class="font-label mb-1 block text-slate-700">Roles</label>
+              <label class="block mb-1 text-form-label text-slate-700">Roles</label>
               <TomSelect v-model="form.role_ids" multiple class="w-full"
                 :options="{ placeholder: 'Pilih satu atau lebih role...', dropdownParent: 'body', onDelete: () => true }"
                 :class="getFieldError('role_ids') ? 'border-rose-500' : ''">
@@ -576,27 +562,29 @@ function getInitials(name: string) {
                   {{ r.name }}
                 </option>
               </TomSelect>
-              <small v-if="getFieldError('role_ids')" class="font-caption !text-rose-600">{{ getFieldError('role_ids') }}</small>
+              <small v-if="getFieldError('role_ids')" class="text-caption !text-rose-600">{{ getFieldError('role_ids')
+                }}</small>
             </div>
 
             <div v-if="form.role_ids.length > 1">
-              <label class="font-label mb-1 block text-slate-700">Role Utama</label>
+              <label class="block mb-1 text-form-label text-slate-700">Role Utama</label>
               <FormSelect v-model="form.primary_role_id">
                 <option v-for="r in primaryRoleOptions" :key="r.id" :value="String(r.id)">
                   {{ r.name }}
                 </option>
               </FormSelect>
-              <small class="font-caption block text-slate-400">Menentukan brand & tab dashboard default untuk user ini.</small>
+              <small class="block text-caption text-slate-400">Menentukan brand & tab dashboard default untuk user
+                ini.</small>
             </div>
 
-            <label class="flex items-center rounded-lg border border-slate-200 px-3 py-3">
+            <label class="flex items-center px-3 py-3 border border-slate-200 rounded-lg">
               <FormCheck.Input v-model="form.is_active" type="checkbox" class="mr-3" />
-              <span class="text-sm text-slate-700">Active User</span>
+              <span class="text-slate-700 text-sm">Active User</span>
             </label>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4">
+        <div class="flex justify-end gap-2 bg-white px-6 py-4 border-slate-200 border-t">
           <Button variant="outline-secondary" @click="cancelModal">Cancel</Button>
           <Button variant="primary" :loading="formLoading" @click="isEdit ? submitEdit() : submitCreate()">
             {{ isEdit ? 'Save Changes' : 'Create User' }}
@@ -605,18 +593,17 @@ function getInitials(name: string) {
       </Dialog.Panel>
     </Dialog>
 
-    <!-- Reset Password Modal -->
     <Dialog v-model:open="resetModal">
-      <Dialog.Panel class="w-full max-w-md p-0 overflow-hidden">
-        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
-          <h3 class="text-lg font-semibold text-slate-800">Reset Password</h3>
-          <p class="mt-1 text-sm text-slate-500">
+      <Dialog.Panel class="p-0 w-full max-w-md overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-slate-200 border-b">
+          <h3 class="font-semibold text-slate-800 text-lg">Reset Password</h3>
+          <p class="mt-1 text-slate-500 text-sm">
             Reset password untuk user:
             <span class="font-medium text-slate-700">{{ resetForm.name }}</span>
           </p>
         </div>
 
-        <div class="p-6 space-y-4">
+        <div class="space-y-4 p-6">
           <FormInput v-model="resetForm.password" type="text" placeholder="Masukkan password baru" />
 
           <div class="flex gap-2">
@@ -625,12 +612,12 @@ function getInitials(name: string) {
             </Button>
           </div>
 
-          <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <div class="bg-amber-50 px-3 py-2 rounded-lg text-amber-700 text-sm">
             Password baru akan langsung menggantikan password lama user.
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4">
+        <div class="flex justify-end gap-2 bg-white px-6 py-4 border-slate-200 border-t">
           <Button variant="outline-secondary" @click="resetModal = false">Cancel</Button>
           <Button variant="primary" :loading="resetLoading" @click="submitResetPassword">
             Reset Password
@@ -639,22 +626,21 @@ function getInitials(name: string) {
       </Dialog.Panel>
     </Dialog>
 
-    <!-- Impersonate Confirm Modal -->
     <Dialog v-model:open="impersonateModal">
-      <Dialog.Panel class="w-full max-w-md p-0 overflow-hidden">
-        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
-          <h3 class="text-lg font-semibold text-slate-800">Impersonate User</h3>
+      <Dialog.Panel class="p-0 w-full max-w-md overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-slate-200 border-b">
+          <h3 class="font-semibold text-slate-800 text-lg">Impersonate User</h3>
         </div>
 
         <div class="p-6">
-          <p class="text-sm text-slate-600">
+          <p class="text-slate-600 text-sm">
             Anda akan masuk sebagai
             <span class="font-medium text-slate-800">{{ impersonateTarget?.name }}</span>.
             Sesi ini berlaku 2 jam dan bisa diakhiri kapan saja lewat tombol Kembali ke Admin.
           </p>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4">
+        <div class="flex justify-end gap-2 bg-white px-6 py-4 border-slate-200 border-t">
           <Button variant="outline-secondary" @click="cancelImpersonate">Cancel</Button>
           <Button variant="primary" :loading="impersonateLoading" @click="submitImpersonate">
             Impersonate
@@ -663,7 +649,6 @@ function getInitials(name: string) {
       </Dialog.Panel>
     </Dialog>
 
-    <!-- Delete Confirmation Modal -->
     <DeleteRecordDialog :open="deleteModal" title="Hapus User"
       description="Data user yang dihapus tidak bisa dikembalikan." :loading="deleteLoading"
       @close="deleteModal = false" @confirm="submitDelete" />

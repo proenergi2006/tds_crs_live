@@ -173,4 +173,22 @@ class Customer extends Model
     {
         return $this->latestVerification?->status === CustomerVerificationStatus::InReview;
     }
+
+    public function isEditLocked(): bool
+    {
+        return $this->isUnderReview() || ($this->is_verified && !$this->needs_reverification);
+    }
+
+    public function editLockReason(): ?string
+    {
+        if ($this->isUnderReview()) {
+            return 'Data terkunci, verifikasi sedang berjalan.';
+        }
+
+        if ($this->is_verified && !$this->needs_reverification) {
+            return 'Data terkunci, customer sudah terverifikasi.';
+        }
+
+        return null;
+    }
 }

@@ -13,7 +13,7 @@ class PenawaranOngkos extends Model
         'wilayah_id',
         'transportir_id',
         'volume_id',
-        'jenis',        // ✅ tambah
+        'jenis',
         'ongkos',
     ];
 
@@ -23,18 +23,17 @@ class PenawaranOngkos extends Model
     }
 
     public function volume()
-{
-    return $this->belongsTo(\App\Models\Volume::class, 'volume_id', 'id_volume');
-}
+    {
+        return $this->belongsTo(\App\Models\Volume::class, 'volume_id');
+    }
 
     public function transportir()
     {
-        return $this->belongsTo(\App\Models\Transportir::class, 'transportir_id');
+        return $this->belongsTo(\App\Models\Transporter::class, 'transportir_id');
     }
 
     public function wilayah()
     {
-        return $this->belongsTo(\App\Models\WilayahAngkut::class, 'wilayah_id');
+        return $this->belongsTo(\App\Models\TransportArea::class, 'wilayah_id');
     }
-
 }

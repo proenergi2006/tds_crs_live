@@ -203,25 +203,25 @@ function unblockStepNoteClass(status?: string | null): string {
     :submit-text="modalSubmitText" :submit-icon="modalSubmitIcon" @close="emit('close')" @submit="handleSubmit">
     <div v-if="loading" class="flex justify-center items-center gap-3 min-h-[220px] text-slate-500">
       <Lucide icon="Loader2" class="w-6 h-6 animate-spin" />
-      <span class="font-body">Memuat konteks Unblock...</span>
+      <span class="text-body">Memuat konteks Unblock...</span>
     </div>
 
     <div v-else-if="!context" class="flex flex-col justify-center items-center gap-2 min-h-[220px] text-center">
       <div class="flex justify-center items-center bg-rose-50 rounded-full w-14 h-14">
         <Lucide icon="AlertTriangle" class="w-7 h-7 text-rose-500" />
       </div>
-      <p class="font-body">Konteks Unblock tidak dapat dimuat.</p>
+      <p class="text-body">Konteks Unblock tidak dapat dimuat.</p>
     </div>
 
     <div v-else class="space-y-5">
       <div class="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <div class="font-strong">{{ context.po.nomor_poc || "-" }}</div>
-          <div class="font-caption text-slate-500">
+          <div class="text-body-strong">{{ context.po.nomor_poc || "-" }}</div>
+          <div class="text-caption text-slate-500">
             {{ context.po.customer?.company_name || "-" }} · {{ context.po.customer?.customer_code || "-" }}
           </div>
         </div>
-        <span class="inline-flex items-center px-3 py-1 rounded-full font-label"
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-form-label"
           :class="poCustomerStatusBadgeClass(context.po.status_key)">
           {{ context.po.status_label || "-" }}
         </span>
@@ -229,30 +229,30 @@ function unblockStepNoteClass(status?: string | null): string {
 
       <div class="bg-slate-900 shadow-lg p-6 rounded-lg text-white">
         <div class="mb-4">
-          <p class="font-caption !text-slate-400">Penyebab PO Terblokir</p>
-          <h3 class="font-header !text-white">Ringkasan Paparan Risiko Kredit</h3>
+          <p class="text-caption !text-slate-400">Penyebab PO Terblokir</p>
+          <h3 class="text-section-title !text-white">Ringkasan Paparan Risiko Kredit</h3>
         </div>
 
         <div class="gap-4 grid grid-cols-2 sm:grid-cols-5">
           <div>
-            <div class="font-label !text-slate-400">Credit Limit</div>
-            <div class="mt-1 font-num !text-white">{{ formatCurrency(context.po.current_credit_limit) }}</div>
+            <div class="text-form-label !text-slate-400">Credit Limit</div>
+            <div class="mt-1 num-sm !text-white">{{ formatCurrency(context.po.current_credit_limit) }}</div>
           </div>
           <div>
-            <div class="font-label !text-slate-400">Outstanding AR</div>
-            <div class="mt-1 font-num !text-white">{{ formatCurrency(context.po.exposure) }}</div>
+            <div class="text-form-label !text-slate-400">Outstanding AR</div>
+            <div class="mt-1 num-sm !text-white">{{ formatCurrency(context.po.exposure) }}</div>
           </div>
           <div>
-            <div class="font-label !text-slate-400">Sisa Headroom</div>
-            <div class="mt-1 font-num !text-white">{{ formatCurrency(context.po.headroom) }}</div>
+            <div class="text-form-label !text-slate-400">Sisa Headroom</div>
+            <div class="mt-1 num-sm !text-white">{{ formatCurrency(context.po.headroom) }}</div>
           </div>
           <div>
-            <div class="font-label !text-slate-400">Nilai PO Ini</div>
-            <div class="mt-1 font-num !text-white">{{ formatCurrency(context.po.nilai_order) }}</div>
+            <div class="text-form-label !text-slate-400">Nilai PO Ini</div>
+            <div class="mt-1 num-sm !text-white">{{ formatCurrency(context.po.nilai_order) }}</div>
           </div>
           <div v-if="creditExposureStats && creditExposureStats.deficit > 0">
-            <div class="font-label !text-rose-400">Defisit/Exceeded</div>
-            <div class="mt-1 font-num !text-rose-400">{{ formatCurrency(creditExposureStats.deficit) }}</div>
+            <div class="text-form-label !text-rose-400">Defisit/Exceeded</div>
+            <div class="mt-1 num-sm !text-rose-400">{{ formatCurrency(creditExposureStats.deficit) }}</div>
           </div>
         </div>
 
@@ -262,7 +262,7 @@ function unblockStepNoteClass(status?: string | null): string {
             <div class="bg-blue-500 h-full" :style="{ width: `${creditExposureStats?.coveredPercent ?? 0}%` }" />
             <div class="bg-rose-500 h-full" :style="{ width: `${creditExposureStats?.exceededPercent ?? 0}%` }" />
           </div>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 font-caption !text-slate-400">
+          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-caption !text-slate-400">
             <span class="inline-flex items-center gap-1.5">
               <span class="bg-amber-500 rounded-full w-2 h-2" />
               Outstanding AR
@@ -280,13 +280,13 @@ function unblockStepNoteClass(status?: string | null): string {
       </div>
 
       <div v-if="mode === 'submit'" class="space-y-4">
-        <p class="font-body text-slate-600">
+        <p class="text-body text-slate-600">
           Headroom kredit customer lebih kecil dari nilai order. Ajukan pelepasan blokir dengan melampirkan
           dokumen pendukung.
         </p>
 
         <div>
-          <div class="mb-1 font-label">Alasan (opsional)</div>
+          <div class="mb-1 text-form-label">Alasan (opsional)</div>
           <FormTextarea id="unblock-reason" v-model="submitForm.reason.value" :rows="3"
             placeholder="Alasan pengajuan Unblock" :disabled="submitForm.submitting.value" />
         </div>
@@ -299,36 +299,36 @@ function unblockStepNoteClass(status?: string | null): string {
       <div v-else class="space-y-5">
         <div class="space-y-3">
           <div class="flex justify-between items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label"
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-form-label"
               :class="unblockStatusBadgeClass(activeRequest?.status)">
               <span class="bg-current rounded-full w-1.5 h-1.5" />
               {{ activeRequest?.status_label || "-" }}
             </span>
-            <span class="font-caption text-slate-500">{{ formatDateTime(activeRequest?.created_at) ?? "-" }}</span>
+            <span class="text-caption text-slate-500">{{ formatDateTime(activeRequest?.created_at) ?? "-" }}</span>
           </div>
 
-          <div v-if="activeRequest" class="font-strong">
+          <div v-if="activeRequest" class="text-body-strong">
             {{ activeRequest.requested_by?.name ?? "-" }}
             <span v-if="activeRequest.requested_by?.role_name">({{ activeRequest.requested_by.role_name }})</span>
           </div>
 
           <div v-if="activeRequest?.reason" class="space-y-1">
-            <div class="font-label">Alasan Pengajuan</div>
-            <div class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-lg font-body text-slate-600 italic whitespace-pre-line">
+            <div class="text-form-label">Alasan Pengajuan</div>
+            <div class="bg-slate-50 px-3 py-2 border border-slate-200 rounded-lg text-body text-slate-600 italic whitespace-pre-line">
               {{ activeRequest.reason }}
             </div>
           </div>
 
           <div v-if="activeRequest?.attachments?.length" class="space-y-1">
-            <div class="font-label">Dokumen Pendukung</div>
+            <div class="text-form-label">Dokumen Pendukung</div>
             <div class="space-y-1">
               <div v-for="att in activeRequest.attachments" :key="att.path"
                 class="flex justify-between items-center gap-2">
-                <a :href="`/storage/${att.path}`" target="_blank" class="flex items-center gap-1.5 font-strong text-primary">
+                <a :href="`/storage/${att.path}`" target="_blank" class="flex items-center gap-1.5 text-body-strong text-primary">
                   <Lucide icon="Paperclip" class="w-4 h-4 text-slate-400" />
                   {{ att.original_name }}
                 </a>
-                <span v-if="att.size_bytes != null" class="font-caption text-slate-500 shrink-0">
+                <span v-if="att.size_bytes != null" class="text-caption text-slate-500 shrink-0">
                   {{ formatFileSize(att.size_bytes) }}
                 </span>
               </div>
@@ -336,7 +336,7 @@ function unblockStepNoteClass(status?: string | null): string {
           </div>
 
           <div v-if="activeRequest" class="pt-4 border-slate-100 border-t">
-            <div class="mb-3 font-label">Alur Approval</div>
+            <div class="mb-3 text-form-label">Alur Approval</div>
             <div class="flex flex-col">
               <div v-for="(step, index) in activeRequest.approval?.steps ?? []" :key="step.step_order" class="flex gap-3">
                 <div class="flex flex-col items-center">
@@ -344,7 +344,7 @@ function unblockStepNoteClass(status?: string | null): string {
                     :class="unblockStepDotClass(step.status)">
                     <Lucide v-if="step.status === 'approved'" icon="Check" class="w-4 h-4" />
                     <Lucide v-else-if="step.status === 'rejected'" icon="X" class="w-4 h-4" />
-                    <span v-else class="font-label">{{ index + 1 }}</span>
+                    <span v-else class="text-form-label">{{ index + 1 }}</span>
                   </div>
                   <div v-if="index < (activeRequest.approval?.steps?.length ?? 0) - 1" class="flex-1 w-1.5 min-h-8"
                     :class="unblockStepConnectorClass(step.status)" />
@@ -353,18 +353,18 @@ function unblockStepNoteClass(status?: string | null): string {
                 <div class="flex flex-col flex-1 gap-2 pb-4 last:pb-0">
                   <div class="flex justify-between items-start gap-2">
                     <div>
-                      <div class="font-strong">{{ step.step_name || `Langkah ${step.step_order}` }}</div>
-                      <div v-if="step.actor_name" class="font-caption text-slate-500">
+                      <div class="text-body-strong">{{ step.step_name || `Langkah ${step.step_order}` }}</div>
+                      <div v-if="step.actor_name" class="text-caption text-slate-500">
                         {{ step.actor_name }} · {{ formatDateTime(step.acted_at) ?? "-" }}
                       </div>
                     </div>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label shrink-0"
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-form-label shrink-0"
                       :class="unblockStepBadgeClass(step.status)">
                       {{ unblockStepStatusLabel(step.status) }}
                     </span>
                   </div>
 
-                  <div v-if="step.decision_note" class="px-3 py-2 rounded-lg font-body" :class="unblockStepNoteClass(step.status)">
+                  <div v-if="step.decision_note" class="px-3 py-2 rounded-lg text-body" :class="unblockStepNoteClass(step.status)">
                     Catatan: {{ step.decision_note }}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ function unblockStepNoteClass(status?: string | null): string {
           <div class="flex justify-center items-center bg-slate-100 rounded-full w-14 h-14">
             <Lucide icon="Lock" class="w-7 h-7 text-slate-400" />
           </div>
-          <p class="font-body text-slate-600">{{ readonlyMessage }}</p>
+          <p class="text-body text-slate-600">{{ readonlyMessage }}</p>
         </div>
       </div>
     </div>

@@ -177,13 +177,13 @@ function handleClose() {
       </div>
 
       <div>
-        <FormLabel class="block !mb-1 font-label">Catatan Alasan Periode</FormLabel>
+        <FormLabel class="block !mb-1 text-form-label">Catatan Alasan Periode</FormLabel>
         <FormTextarea v-model="form.notes" rows="3"
           placeholder="Contoh: Penyesuaian tarif bea masuk baja Q4 & inflasi bahan baku..." />
       </div>
 
       <div>
-        <FormLabel class="block !mb-1 font-label">Lampiran Dokumen Memo / SK Direksi</FormLabel>
+        <FormLabel class="block !mb-1 text-form-label">Lampiran Dokumen Memo / SK Direksi</FormLabel>
         <FileUploadField :model-value="newAttachments" multiple :existing-files="existingAttachmentsForUpload"
           accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="10" choose-text="Pilih File (Max 10MB)"
           empty-text="Unggah file PDF / Surat SK Direksi" @update:model-value="handleAttachmentsSelected"

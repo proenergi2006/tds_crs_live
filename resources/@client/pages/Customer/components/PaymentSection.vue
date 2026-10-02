@@ -10,10 +10,13 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { paymentMethodOptions, paymentTermBasisOptions, paymentTermOptions } from '@/pages/CustomerOnboarding/optionSets'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   customer: any
   idCustomer: number
-}>()
+  readonly?: boolean
+}>(), {
+  readonly: false,
+})
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
@@ -31,7 +34,6 @@ const paymentRows = computed(() => {
       value: dash(pay.payment_method === 'Other' ? pay.payment_method_other : pay.payment_method),
     },
     { label: 'Term of Payment', value: dash(pay.payment_term) },
-    // Term Days & Basis cuma relevan buat term CREDIT -- baris ini dihilangkan total (bukan '-') kalau bukan CREDIT
     ...(pay.payment_term === 'CREDIT'
       ? [{ label: 'Term Days & Basis', value: `${dash(pay.payment_term_days)} ${dash(humanize(pay.payment_term_basis))}` }]
       : []),
@@ -65,7 +67,7 @@ function resolveErrorMessage(e: any, fallback: string): string {
   return e.response?.data?.message ?? fallback
 }
 
-/* State: edit modal Payment & Banking -- paymentScheduleOptions bukan dari optionSets.ts karena field ini gak dipakai onboarding publik, nilai valid cuma 'Every Day' + 'Other' */
+// bukan dari optionSets.ts -- field ini gak dipakai onboarding publik, nilai valid cuma 'Every Day' + 'Other'
 const paymentScheduleOptions = ['Every Day']
 
 const editingPayment = ref(false)
@@ -96,6 +98,8 @@ watch(() => paymentForm.term, (val) => {
 })
 
 function startEditPayment() {
+  if (props.readonly) return
+
   const pay = props.customer?.payment || {}
   Object.assign(paymentForm, {
     schedule: pay.payment_schedule ?? '',
@@ -122,6 +126,8 @@ function cancelEditPayment() {
 }
 
 async function submitPaymentForm() {
+  if (props.readonly) return
+
   savingPayment.value = true
   try {
     await axios.put(`/api/customers/${props.idCustomer}/payment`, paymentForm)
@@ -139,7 +145,7 @@ async function submitPaymentForm() {
 <template>
   <CardSection title="Payment & Banking" description="Metode, term, dan rekening bank customer." icon="CreditCard"
     icon-class="bg-emerald-100 text-emerald-600">
-    <template #action>
+    <template v-if="!readonly" #action>
       <Button size="sm" variant="outline-secondary" class="inline-flex items-center gap-2" @click="startEditPayment">
         <Lucide icon="Edit" class="w-4 h-4" /> Edit
       </Button>
@@ -148,8 +154,8 @@ async function submitPaymentForm() {
     <div class="space-y-1.5">
       <div v-for="row in paymentRows" :key="row.label"
         class="flex justify-between gap-4 py-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">{{ row.label }}</span>
-        <span class="font-strong text-right">{{ row.value }}</span>
+        <span class="text-form-label text-[14px]">{{ row.label }}</span>
+        <span class="text-body-strong text-right">{{ row.value }}</span>
       </div>
     </div>
   </CardSection>
@@ -158,7 +164,7 @@ async function submitPaymentForm() {
     description="Metode, term, dan rekening bank customer." :loading="savingPayment" submit-text="Simpan"
     submit-icon="Save" @close="cancelEditPayment" @submit="submitPaymentForm">
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Payment Schedule</span>
+      <span class="text-form-label text-[14px]">Payment Schedule</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormSelect v-model="paymentForm.schedule" :class="paymentForm.schedule === 'Other' ? 'w-1/3' : ''">
           <option value="">- Pilihan -</option>
@@ -170,7 +176,7 @@ async function submitPaymentForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Payment Method</span>
+      <span class="text-form-label text-[14px]">Payment Method</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormSelect v-model="paymentForm.method" :class="paymentForm.method === 'Other' ? 'w-1/3' : ''">
           <option value="">- Pilihan -</option>
@@ -182,7 +188,7 @@ async function submitPaymentForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Term of Payment</span>
+      <span class="text-form-label text-[14px]">Term of Payment</span>
       <div class="mt-0.5 w-2/3">
         <FormSelect v-model="paymentForm.term">
           <option value="">- Pilihan -</option>
@@ -192,7 +198,7 @@ async function submitPaymentForm() {
     </div>
     <div v-if="paymentForm.term === 'CREDIT'"
       class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Term Days & Basis</span>
+      <span class="text-form-label text-[14px]">Term Days & Basis</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormInput class="w-1/3" v-model="paymentForm.term_days" type="number" min="0" placeholder="cth. 30" />
         <FormSelect class="w-2/3" v-model="paymentForm.term_basis">
@@ -203,25 +209,25 @@ async function submitPaymentForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Bank Name</span>
+      <span class="text-form-label text-[14px]">Bank Name</span>
       <div class="mt-0.5 w-2/3">
         <FormInput v-model="paymentForm.bank_name" placeholder="cth. Bank Central Asia" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Bank Account Number</span>
+      <span class="text-form-label text-[14px]">Bank Account Number</span>
       <div class="mt-0.5 w-2/3">
         <FormInput v-model="paymentForm.account_number" placeholder="cth. 1234567890" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Bank Address</span>
+      <span class="text-form-label text-[14px]">Bank Address</span>
       <div class="mt-0.5 w-2/3">
         <FormTextarea v-model="paymentForm.bank_address" rows="2" placeholder="Alamat cabang bank" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Credit Facility</span>
+      <span class="text-form-label text-[14px]">Credit Facility</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormCheck :class="paymentForm.has_credit ? 'w-1/2' : ''">
           <FormCheck.Input id="payment-has-credit" type="checkbox" v-model="paymentForm.has_credit" />
@@ -232,7 +238,7 @@ async function submitPaymentForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Tax Invoice</span>
+      <span class="text-form-label text-[14px]">Tax Invoice</span>
       <div class="mt-0.5 w-2/3">
         <FormCheck>
           <FormCheck.Input id="payment-invoice-tax" type="checkbox" v-model="paymentForm.invoice_tax" />
@@ -242,7 +248,7 @@ async function submitPaymentForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Catatan</span>
+      <span class="text-form-label text-[14px]">Catatan</span>
       <div class="mt-0.5 w-2/3">
         <FormTextarea v-model="paymentForm.note" rows="2" placeholder="Catatan tambahan (opsional)" />
       </div>

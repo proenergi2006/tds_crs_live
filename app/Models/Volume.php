@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Volume extends Model
 {
     protected $table = 'volumes';
-    protected $primaryKey = 'id_volume';
 
     protected $fillable = [
         'volume',
@@ -35,5 +35,10 @@ class Volume extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function transportTariffs(): HasMany
+    {
+        return $this->hasMany(TransportTariff::class);
     }
 }

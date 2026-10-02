@@ -32,7 +32,7 @@ const documentButtons: { key: DownloadableDocument; label: string; icon: 'FileTe
   <Dialog :open="open" size="xl" @close="$emit('close')">
     <Dialog.Panel>
       <div class="flex justify-between items-center px-6 py-4 border-slate-200 border-b">
-        <h3 class="font-header">Download Dokumen</h3>
+        <h3 class="text-section-title">Download Dokumen</h3>
         <button type="button" class="text-slate-400 hover:text-slate-600" :disabled="loading" @click="$emit('close')">
           <Lucide icon="X" class="w-5 h-5" />
         </button>
@@ -40,7 +40,7 @@ const documentButtons: { key: DownloadableDocument; label: string; icon: 'FileTe
 
       <div class="gap-0 grid grid-cols-1 sm:grid-cols-5">
         <div class="space-y-2 sm:col-span-2 p-6">
-          <p class="mb-3 font-caption text-slate-500">Cetak dokumen secara terpisah</p>
+          <p class="mb-3 text-caption text-slate-500">Cetak dokumen secara terpisah</p>
           <Button v-for="btn in documentButtons" :key="btn.key" variant="outline-primary"
             class="justify-start items-center gap-2 w-full" :disabled="loading" @click="$emit('select', btn.key)">
             <Lucide icon="Printer" class="w-4 h-4" />
@@ -48,7 +48,7 @@ const documentButtons: { key: DownloadableDocument; label: string; icon: 'FileTe
           </Button>
 
           <div class="pt-3 border-slate-100 border-t">
-            <p class="mb-2 font-caption text-slate-500">Atau gabungkan semua jadi satu file</p>
+            <p class="mb-2 text-caption text-slate-500">Atau gabungkan semua jadi satu file</p>
             <Button variant="primary" class="justify-start items-center gap-2 w-full" :disabled="loading"
               @click="$emit('select', 'bulk')">
               <Lucide v-if="loading" icon="Loader2" class="w-4 h-4 animate-spin" />
@@ -63,7 +63,7 @@ const documentButtons: { key: DownloadableDocument; label: string; icon: 'FileTe
           <div class="flex justify-center items-center bg-slate-200 rounded-full w-20 h-20 text-slate-400">
             <Lucide icon="FileText" class="w-10 h-10" />
           </div>
-          <p class="font-body text-slate-500">Pilih salah satu dokumen di sebelah kiri untuk mulai mencetak.</p>
+          <p class="text-body text-slate-500">Pilih salah satu dokumen di sebelah kiri untuk mulai mencetak.</p>
         </div>
       </div>
     </Dialog.Panel>

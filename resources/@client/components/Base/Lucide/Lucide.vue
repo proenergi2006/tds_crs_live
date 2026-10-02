@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as lucideIcons from "lucide-vue-next";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { computed, useAttrs, type SVGAttributes } from "vue";
 
 export type Icon = keyof typeof lucideIcons;

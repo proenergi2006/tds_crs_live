@@ -48,7 +48,7 @@ onUnmounted(() => { document.documentElement.classList.remove('theme-1') })
   <div class="min-h-screen bg-slate-50">
     <div v-if="pageState === 'loading'" class="flex min-h-screen items-center justify-center gap-2 text-slate-500">
       <Lucide icon="Loader2" class="h-6 w-6 animate-spin" />
-      <span class="font-body">Memuat halaman...</span>
+      <span class="text-body">Memuat halaman...</span>
     </div>
 
     <div v-else-if="pageState === 'verified'" class="flex min-h-screen items-center justify-center px-5 py-16">
@@ -56,27 +56,27 @@ onUnmounted(() => { document.documentElement.classList.remove('theme-1') })
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
           <Lucide icon="ShieldCheck" class="h-8 w-8 text-emerald-600" />
         </div>
-        <h1 class="font-header mt-5 text-xl">Dokumen Terverifikasi</h1>
-        <p class="font-caption mt-2">
+        <h1 class="text-section-title mt-5 text-xl">Dokumen Terverifikasi</h1>
+        <p class="text-caption mt-2">
           Halaman ini menampilkan status verifikasi resmi dari dokumen penawaran berikut.
         </p>
 
         <div class="mt-6 space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left">
           <div>
-            <div class="font-label">Nomor Penawaran</div>
-            <div class="font-strong mt-1">{{ verification?.nomor_penawaran }}</div>
+            <div class="text-form-label">Nomor Penawaran</div>
+            <div class="text-body-strong mt-1">{{ verification?.nomor_penawaran }}</div>
           </div>
           <div>
-            <div class="font-label">Status</div>
+            <div class="text-form-label">Status</div>
             <div class="mt-1">
-              <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 font-label text-emerald-700">
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-form-label text-emerald-700">
                 {{ verification?.status_label }}
               </span>
             </div>
           </div>
           <div v-if="verification?.tanggal_approval">
-            <div class="font-label">Tanggal Approval</div>
-            <div class="font-strong mt-1">{{ formatDate(verification.tanggal_approval) }}</div>
+            <div class="text-form-label">Tanggal Approval</div>
+            <div class="text-body-strong mt-1">{{ formatDate(verification.tanggal_approval) }}</div>
           </div>
         </div>
       </div>
@@ -87,8 +87,8 @@ onUnmounted(() => { document.documentElement.classList.remove('theme-1') })
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
           <Lucide icon="SearchX" class="h-8 w-8 text-slate-500" />
         </div>
-        <h1 class="font-header mt-5 text-xl">Dokumen Tidak Ditemukan</h1>
-        <p class="font-caption mt-2">Dokumen tidak ditemukan atau belum terverifikasi.</p>
+        <h1 class="text-section-title mt-5 text-xl">Dokumen Tidak Ditemukan</h1>
+        <p class="text-caption mt-2">Dokumen tidak ditemukan atau belum terverifikasi.</p>
       </div>
     </div>
   </div>

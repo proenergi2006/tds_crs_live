@@ -35,9 +35,9 @@ class UpdatePenawaranRequest extends FormRequest
 
             'ongkos'                     => 'nullable|array',
             'ongkos.*.jenis'             => 'required|in:KAPAL,TRUCK',
-            'ongkos.*.id_angkut_wilayah' => 'required|exists:wilayah_angkuts,id',
-            'ongkos.*.id_transportir'    => 'required|exists:transportirs,id',
-            'ongkos.*.id_volume'         => 'required|exists:volumes,id_volume',
+            'ongkos.*.id_angkut_wilayah' => 'required|exists:transport_areas,id',
+            'ongkos.*.id_transportir'    => 'required|exists:transporters,id',
+            'ongkos.*.id_volume'         => 'required|exists:volumes,id',
             'ongkos.*.ongkos'            => 'required|numeric|min:0',
 
             'items'                    => 'required|array|min:1',

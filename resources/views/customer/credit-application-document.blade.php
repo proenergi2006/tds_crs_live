@@ -252,8 +252,8 @@
 
 <div class="section-title">2. Financial Review</div>
 <div class="rich-text-content section-content" style="min-height: 100px;">
-    @if ($verification->financial_review)
-        {!! $verification->financial_review !!}
+    @if ($verification->financial_review_snapshot ?? $verification->notes)
+        {!! $verification->financial_review_snapshot ?? $verification->notes !!}
     @else
         <div class="muted">Belum ada Financial Review tercatat.</div>
     @endif
@@ -264,27 +264,38 @@
     @php
         $rupiah = fn ($n) => $n === null ? '' : 'Rp ' . number_format((float) $n, 0, ',', '.');
         $days = fn ($n) => $n === null ? '' : $n . ' days';
+        $volume = function ($n, $unit) {
+            if ($n === null) {
+                return '';
+            }
+
+            $formatted = rtrim(rtrim(number_format((float) $n, 2, ',', '.'), '0'), ',');
+
+            return $formatted . ' ' . $unit;
+        };
     @endphp
     <table class="grid-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 20%;">Product</th>
+                <th rowspan="2" style="width: 16%;">Product</th>
+                <th rowspan="2" style="width: 16%;">Volume per PO</th>
                 <th colspan="2">Credit Limit</th>
                 <th colspan="2">TOP</th>
             </tr>
             <tr>
-                <th style="width: 20%;">Request</th>
-                <th style="width: 20%;">Approval</th>
-                <th style="width: 20%;">Request</th>
-                <th style="width: 20%;">Approval</th>
+                <th style="width: 17%;">Request</th>
+                <th style="width: 17%;">Approval</th>
+                <th style="width: 17%;">Request</th>
+                <th style="width: 17%;">Approval</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td style="text-align: center;">Crushed Stone</td>
-                <td style="text-align: center;">{{ $rupiah($creditRequest?->requested_limit) }}</td>
+                <td style="text-align: center;">{{ $verification->product_category_snapshot?->label() ?? '-' }}</td>
+                <td style="text-align: center;">{{ $volume($verification->requested_qty_snapshot, $verification->product_category_snapshot?->unit()) }}</td>
+                <td style="text-align: center;">{{ $rupiah($verification->requested_limit_snapshot) }}</td>
                 <td style="text-align: center;">{{ $rupiah($verification->approved_limit) }}</td>
-                <td style="text-align: center;">{{ $days($creditRequest?->requested_top) }}</td>
+                <td style="text-align: center;">{{ $days($verification->requested_top_snapshot) }}</td>
                 <td style="text-align: center;">{{ $days($verification->approved_top) }}</td>
             </tr>
         </tbody>
@@ -324,22 +335,9 @@
                 @endforeach
             </td>
             <td style="width: 42%; vertical-align: top;">
-                <div class="notes-box" style="min-height: 110px;">
+                <div class="notes-box" style="min-height: 240px;">
                     <div class="notes-label">General Notes:</div>
                 </div>
-
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
-                    <tr>
-                        <td class="sig-box" style="vertical-align: top;">
-                            <div class="sig-title">Validation by,</div>
-                            <table class="data-table" style="border-spacing: 0;">
-                                <tr><td class="sig-area"></td></tr>
-                            </table>
-                            <div class="sig-line"></div>
-                            <div class="sig-role">Customer Support</div>
-                        </td>
-                    </tr>
-                </table>
 
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
@@ -349,7 +347,7 @@
                                 <tr><td class="sig-area"></td></tr>
                             </table>
                             <div class="sig-line"></div>
-                            <div class="sig-role">Robby Pratama P<br>KAE/Marketing Administration</div>
+                            <div class="sig-role">{{ $marketingName }}<br>KAE/Marketing</div>
                         </td>
                         <td class="sig-box" style="width: 50%; vertical-align: top;">
                             <div class="sig-title">Review by,</div>

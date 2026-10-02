@@ -14,11 +14,13 @@ class DecideCustomerVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action'           => ['required', 'in:approve,reject'],
-            'approved_limit'   => ['required_if:action,approve', 'integer', 'min:1'],
-            'approved_top'     => ['required_if:action,approve', 'integer', 'min:0'],
-            'financial_review' => ['required_if:action,approve', 'string'],
-            'reject_note'      => ['required_if:action,reject', 'string', 'min:1'],
+            'action'            => ['required', 'in:approve,reject'],
+            'approved_limit'    => ['required_if:action,approve', 'integer', 'min:1'],
+            'approved_top'      => ['required_if:action,approve', 'integer', 'min:0'],
+            'notes'             => ['nullable', 'string'],
+            'attachments'       => ['nullable', 'array'],
+            'attachments.*'     => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
+            'reject_note'       => ['required_if:action,reject', 'string', 'min:1'],
         ];
     }
 }

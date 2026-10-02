@@ -83,7 +83,7 @@ function handleBlur() {
 
     <div class="relative">
       <div
-        class="font-caption pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center gap-1 pl-3">
+        class="text-caption pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center gap-1 pl-3">
         <span>{{ prefix }}</span>
       </div>
 

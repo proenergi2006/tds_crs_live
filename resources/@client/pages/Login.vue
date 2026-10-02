@@ -144,7 +144,7 @@ async function onSubmit() {
           <form @submit.prevent="onSubmit" class="mt-8 intro-x">
             <FormInput v-model="email" type="text" name="email" autocomplete="username" placeholder="Email"
               class="block min-w-full px-4 py-3" @blur="v$.email.$touch()" />
-            <small v-if="v$.email.$error" class="font-caption !text-rose-600">
+            <small v-if="v$.email.$error" class="text-caption !text-rose-600">
               {{ v$.email.$errors[0].$message }}
             </small>
 
@@ -158,7 +158,7 @@ async function onSubmit() {
                 <Lucide :icon="showPassword ? 'EyeOff' : 'Eye'" class="w-5 h-5" />
               </button>
             </div>
-            <small v-if="v$.password.$error" class="font-caption !text-rose-600">
+            <small v-if="v$.password.$error" class="text-caption !text-rose-600">
               {{ v$.password.$errors[0].$message }}
             </small>
 

@@ -281,12 +281,12 @@ function exportCsv() {
         <template #filters="{ close }">
           <div class="space-y-4 p-1">
             <div>
-              <div class="px-3 pb-2 pt-1 font-section">Tanggal DR Dari</div>
+              <div class="px-3 pb-2 pt-1 text-overline">Tanggal DR Dari</div>
               <FormInput v-model="from" type="date" class="!box" />
             </div>
 
             <div>
-              <div class="px-3 pb-2 font-section">Sampai</div>
+              <div class="px-3 pb-2 text-overline">Sampai</div>
               <FormInput v-model="to" type="date" class="!box" />
             </div>
 
@@ -325,27 +325,27 @@ function exportCsv() {
                 </Button>
               </Table.Td>
 
-              <Table.Td class="font-body whitespace-nowrap">
+              <Table.Td class="text-body whitespace-nowrap">
                 {{ formatDate(pr.tanggal_pr) }}
               </Table.Td>
-              <Table.Td class="font-num">
+              <Table.Td class="num-sm">
                 {{ pr.nomor_pr }}
               </Table.Td>
-              <Table.Td class="font-body whitespace-pre-line">
+              <Table.Td class="text-body whitespace-pre-line">
                 {{ pr.customers || '-' }}
               </Table.Td>
-              <Table.Td class="font-num whitespace-pre-line">
+              <Table.Td class="num-sm whitespace-pre-line">
                 {{ pr.nomor_pos || '-' }}
               </Table.Td>
               <Table.Td>
-                <span class="font-label rounded px-2 py-1" :class="disposisiClass(pr.disposisi)">
+                <span class="text-form-label rounded px-2 py-1" :class="disposisiClass(pr.disposisi)">
                   {{ pr.disposisi_label }}
                 </span>
               </Table.Td>
-              <Table.Td class="font-num text-right">
+              <Table.Td class="num-sm text-right">
                 {{ formatNumber(pr.total_volume) }}
               </Table.Td>
-              <Table.Td class="font-num text-right">
+              <Table.Td class="num-sm text-right">
                 {{ formatNumber(pr.total_sisa) }}
               </Table.Td>
               <Table.Td class="text-center">
@@ -359,8 +359,8 @@ function exportCsv() {
             <Table.Tr v-if="pr._open">
               <Table.Td colspan="9" class="bg-slate-50 p-3">
                 <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                  <Table class="min-w-full font-body">
-                    <Table.Thead class="bg-slate-50 font-label">
+                  <Table class="min-w-full text-body">
+                    <Table.Thead class="bg-slate-50 text-form-label">
                       <Table.Tr>
                         <Table.Th>Produk</Table.Th>
                         <Table.Th>Customer</Table.Th>
@@ -375,10 +375,10 @@ function exportCsv() {
                       <Table.Tr v-for="item in pr.items" :key="item.id_prd">
                         <Table.Td>{{ item.produk }}</Table.Td>
                         <Table.Td>{{ item.customer || '-' }}</Table.Td>
-                        <Table.Td class="font-num">{{ item.nomor_poc || '-' }}</Table.Td>
-                        <Table.Td class="font-num text-right">{{ formatNumber(item.volume) }}</Table.Td>
-                        <Table.Td class="font-num text-right">{{ formatNumber(item.allocated) }}</Table.Td>
-                        <Table.Td class="font-num text-right">{{ formatNumber(item.remain) }}</Table.Td>
+                        <Table.Td class="num-sm">{{ item.nomor_poc || '-' }}</Table.Td>
+                        <Table.Td class="num-sm text-right">{{ formatNumber(item.volume) }}</Table.Td>
+                        <Table.Td class="num-sm text-right">{{ formatNumber(item.allocated) }}</Table.Td>
+                        <Table.Td class="num-sm text-right">{{ formatNumber(item.remain) }}</Table.Td>
                         <Table.Td class="text-center">
                           <Button variant="soft-success" size="sm" class="inline-flex items-center gap-2"
                             :disabled="item.remain <= 0" @click="openAllocate(pr, item)">
@@ -388,7 +388,7 @@ function exportCsv() {
                         </Table.Td>
                       </Table.Tr>
                       <Table.Tr v-if="!pr.items.length">
-                        <Table.Td colspan="7" class="font-body py-6 text-center">
+                        <Table.Td colspan="7" class="text-body py-6 text-center">
                           Tidak ada detail.
                         </Table.Td>
                       </Table.Tr>
@@ -406,16 +406,16 @@ function exportCsv() {
       <div class="absolute inset-0 bg-black/40" @click="closeAlloc"></div>
       <div class="relative w-full max-w-3xl rounded-lg bg-white shadow-xl">
         <div class="border-b border-slate-200 px-5 py-4">
-          <div class="font-strong">Alokasikan Stok</div>
-          <div class="font-body mt-1">{{ currentIt?.produk }}</div>
+          <div class="text-body-strong">Alokasikan Stok</div>
+          <div class="text-body mt-1">{{ currentIt?.produk }}</div>
         </div>
 
         <div class="space-y-4 p-5">
-          <div class="font-body rounded-lg bg-slate-50 p-3">
+          <div class="text-body rounded-lg bg-slate-50 p-3">
             Butuh dialokasikan:
-            <span class="font-num">{{ formatNumber(currentIt?.remain || 0) }}</span>
+            <span class="num-sm">{{ formatNumber(currentIt?.remain || 0) }}</span>
             dari volume
-            <span class="font-num">{{ formatNumber(currentIt?.volume || 0) }}</span>
+            <span class="num-sm">{{ formatNumber(currentIt?.volume || 0) }}</span>
           </div>
 
           <div class="grid grid-cols-1 gap-3 md:grid-cols-[160px_minmax(0,1fr)_auto] md:items-end">
@@ -437,7 +437,7 @@ function exportCsv() {
 
           <div class="overflow-x-auto rounded-lg border border-slate-200">
             <Table class="min-w-full">
-              <Table.Thead class="bg-slate-50 font-label">
+              <Table.Thead class="bg-slate-50 text-form-label">
                 <Table.Tr>
                   <Table.Th>Lot</Table.Th>
                   <Table.Th>Tanggal</Table.Th>
@@ -447,18 +447,18 @@ function exportCsv() {
               </Table.Thead>
               <Table.Tbody>
                 <Table.Tr v-for="stock in stocks" :key="stock.id">
-                  <Table.Td class="font-num">
+                  <Table.Td class="num-sm">
                     PP:{{ stock.po_produk_id || '-' }} RI:{{ stock.receive_item_id || '-' }}
                   </Table.Td>
-                  <Table.Td class="font-body">{{ formatDateTime(stock.created_at) }}</Table.Td>
-                  <Table.Td class="font-num text-right">{{ formatNumber(stock.volume) }}</Table.Td>
+                  <Table.Td class="text-body">{{ formatDateTime(stock.created_at) }}</Table.Td>
+                  <Table.Td class="num-sm text-right">{{ formatNumber(stock.volume) }}</Table.Td>
                   <Table.Td>
                     <FormInput v-model.number="stock._qty" type="number" min="0" :max="stock.volume" step="1"
                       class="ml-auto max-w-[160px] text-right" />
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr v-if="!stocks.length">
-                  <Table.Td colspan="4" class="font-body py-6 text-center">
+                  <Table.Td colspan="4" class="text-body py-6 text-center">
                     Tidak ada stok.
                   </Table.Td>
                 </Table.Tr>
@@ -466,15 +466,15 @@ function exportCsv() {
             </Table>
           </div>
 
-          <div class="font-body text-right">
+          <div class="text-body text-right">
             Total alokasi:
-            <span class="font-num">{{ formatNumber(totalAlloc) }}</span>
+            <span class="num-sm">{{ formatNumber(totalAlloc) }}</span>
             <span class="mx-1">/</span>
             Sisa target:
             <span class="font-semibold text-slate-800">
               {{ formatNumber((currentIt?.remain || 0) - totalAlloc) }}
             </span>
-            <div v-if="allocError" class="font-caption mt-1 !text-danger">{{ allocError }}</div>
+            <div v-if="allocError" class="text-caption mt-1 !text-danger">{{ allocError }}</div>
           </div>
         </div>
 

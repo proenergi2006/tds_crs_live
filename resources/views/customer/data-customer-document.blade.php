@@ -292,51 +292,29 @@
 </div>
 
 <div class="section-title">3. Person In Charge (PIC)</div>
-@php
-    $picGroups = [
-        'director'    => 'Director / Owner',
-        'procurement' => 'Procurement',
-        'finance'     => 'Finance',
-        'site_pic'    => 'Site PIC',
-    ];
-@endphp
 <div class="section-content">
     <table class="grid-table">
         <thead>
             <tr>
-                <th style="width: 18%;">PIC Type</th>
-                <th style="width: 18%;">Name</th>
-                <th style="width: 16%;">Position</th>
-                <th style="width: 15%;">Phone</th>
-                <th style="width: 15%;">Mobile</th>
-                <th style="width: 18%;">Email</th>
+                <th style="width: 22%;">Name</th>
+                <th style="width: 20%;">Position</th>
+                <th style="width: 17%;">Phone</th>
+                <th style="width: 17%;">Mobile</th>
+                <th style="width: 24%;">Email</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($picGroups as $code => $groupLabel)
-                @php $rows = $contactsByType->get($code, collect()); @endphp
-                @if ($rows->isEmpty())
-                    <tr>
-                        <td>{{ $groupLabel }}</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                @else
-                    @foreach ($rows as $c)
-                        <tr>
-                            <td>{{ $groupLabel }}</td>
-                            <td>{{ $dash($c->full_name) }}</td>
-                            <td>{{ $dash($c->position) }}</td>
-                            <td>{{ $dash($c->phone) }}</td>
-                            <td>{{ $dash($c->mobile) }}</td>
-                            <td>{{ $dash($c->email) }}</td>
-                        </tr>
-                    @endforeach
-                @endif
-            @endforeach
+            @forelse ($contacts as $c)
+                <tr>
+                    <td>{{ $dash($c->full_name) }}</td>
+                    <td>{{ $dash($c->position) }}</td>
+                    <td>{{ $dash($c->phone) }}</td>
+                    <td>{{ $dash($c->mobile) }}</td>
+                    <td>{{ $dash($c->email) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="5">Belum ada PIC tercatat.</td></tr>
+            @endforelse
         </tbody>
     </table>
 </div>
@@ -472,10 +450,10 @@
                 <div style="font-size: 7pt; color: #64748b; text-align: center;">Authorized Signature &amp; Stamp</div>
             </td>
             <td class="sig-box" style="width: 50%; vertical-align: top;">
-                <div class="sig-title">Sales Person (Tridaya Selaras)</div>
+                <div class="sig-title">Sales Person (PT Tri Daya Selaras)</div>
                 <table class="data-table">
                     <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name:</td></tr>
+                    <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
                     <tr><td class="label">Date:</td></tr>
                 </table>
                 <div class="sig-line"></div>

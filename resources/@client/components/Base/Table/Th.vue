@@ -6,7 +6,7 @@ export default {
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { computed, useAttrs, inject } from "vue";
 import { type ProvideTable } from "./Table.vue";
 import { type ProvideThead } from "./Thead.vue";

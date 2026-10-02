@@ -10,14 +10,15 @@ class GenerateCustomerCreditApplicationDocumentAction
     public function execute(CustomerVerification $verification): array
     {
         $customer = $verification->customer;
-        $creditRequest = $customer->creditRequest;
 
-        $customer->load(['addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village']);
+        $customer->load(['user:id,name', 'addresses.province', 'addresses.regency', 'addresses.district', 'addresses.village']);
 
         $headOfficeAddress = $customer->addresses->first(
-            fn ($a) => $a->address_type === CustomerAddressType::HeadOffice
+            fn($a) => $a->address_type === CustomerAddressType::HeadOffice
         );
 
-        return compact('customer', 'creditRequest', 'verification', 'headOfficeAddress');
+        $marketingName = $customer->user?->name ?? '-';
+
+        return compact('customer', 'verification', 'headOfficeAddress', 'marketingName');
     }
 }

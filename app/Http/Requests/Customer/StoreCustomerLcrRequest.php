@@ -13,26 +13,16 @@ use App\Enums\VesselQualityCheckingMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
-// address & contacts di sini cuma divalidasi shape-nya. Upsert/sync ke
-// customer_addresses/customer_contacts jalan di CustomerLcrController, bukan
-// lewat controller generik (CustomerAddressController/CustomerContactController).
 class StoreCustomerLcrRequest extends FormRequest
 {
-    // authorize() selalu true, ownership dicek di controller. Konvensinya ada di standards/backend.md.
     public function authorize(): bool
     {
         return true;
     }
 
-    // quality_checking_method, quantity_checking_method, vessel_quality_checking_method,
-    // vessel_quantity_checking_method disimpan sebagai array of enum (checkbox multi-select),
-    // makanya divalidasi per-item di sini, bukan di cast model.
     public function rules(): array
     {
         return [
-            // Key request pakai nama kolom asli, beda sama key response formatSite() --
-            // lihat CustomerLcrController::formatSite().
-            /* Grup 1: Identitas & info umum */
             'site_name'                 => 'nullable|string|max:255',
             'survey_date'               => 'nullable|date',
             'surveyor_names'            => 'nullable|string',
@@ -47,7 +37,6 @@ class StoreCustomerLcrRequest extends FormRequest
             'survey_notes'              => 'nullable|string',
             'id_wil_oa'                 => 'nullable|integer',
 
-            /* Grup 2: Akses & rute */
             'max_truck_capacity_min' => 'nullable|numeric|min:0',
             'max_truck_capacity_max' => 'nullable|numeric|min:0',
             'access_notes'           => 'nullable|string',
@@ -60,18 +49,15 @@ class StoreCustomerLcrRequest extends FormRequest
             'rute_lokasi'            => 'nullable|string',
             'note_lokasi'            => 'nullable|string',
 
-            /* Grup 3: Layout & unloading truk */
             'unloading_method'        => 'nullable|string|max:100',
             'max_trucks_per_day'      => 'nullable|integer|min:0',
             'unloading_notes'         => 'nullable|string',
 
-            /* Grup 4: Penyimpanan */
             'storage_type'            => ['nullable', new Enum(StorageType::class)],
             'storage_type_other'      => 'nullable|string|max:100',
             'storage_capacity'        => 'nullable|string|max:100',
             'storage_notes'           => 'nullable|string',
 
-            /* Grup 5: Verifikasi quality/quantity */
             'quality_checking_method'       => 'nullable|array',
             'quality_checking_method.*'     => [new Enum(QualityCheckingMethod::class)],
             'quality_checking_method_other' => 'nullable|string|max:255',
@@ -82,7 +68,6 @@ class StoreCustomerLcrRequest extends FormRequest
             'quantity_checking_method_other' => 'nullable|string|max:255',
             'quantity_checking_notes'        => 'nullable|string',
 
-            /* Grup 6: Vessel/Jetty */
             'supports_vessel_delivery'        => 'nullable|boolean',
             'vessel_type'                     => ['nullable', new Enum(CustomerLcrVesselType::class)],
             'vessel_type_other'               => 'nullable|string|max:255',
@@ -108,7 +93,6 @@ class StoreCustomerLcrRequest extends FormRequest
             'jetty_permit_info'      => 'nullable|string',
             'document_requirements'  => 'nullable|string',
 
-            /* Grup 7: Lokasi */
             'latitude'              => 'nullable|numeric',
             'longitude'             => 'nullable|numeric',
             'google_maps_link'      => 'nullable|string',
@@ -121,23 +105,20 @@ class StoreCustomerLcrRequest extends FormRequest
             'address.village_id'     => 'nullable|string|exists:villages,id',
             'address.postal_code'    => 'nullable|string|max:10',
 
-            // PIC site LCR wajib -- minimal satu kontak dengan nama. Berlaku juga di update (UpdateCustomerLcrRequest extends).
-            'contacts'                => 'required|array|min:1',
-            'contacts.*.id_contact'   => 'nullable|integer|exists:customer_contacts,id_contact',
-            'contacts.*.full_name'    => 'required|string|max:255',
-            'contacts.*.position'     => 'nullable|string|max:255',
-            'contacts.*.phone'        => 'nullable|string|max:50',
-            'contacts.*.mobile'       => 'nullable|string|max:50',
-            'contacts.*.email'        => 'nullable|email|max:255',
+            'contact'             => 'required|array',
+            'contact.full_name'   => 'required|string|max:255',
+            'contact.position'    => 'nullable|string|max:255',
+            'contact.phone'       => 'nullable|string|max:50',
+            'contact.mobile'      => 'nullable|string|max:50',
+            'contact.email'       => 'nullable|email|max:255',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'contacts.required'          => 'Minimal satu Penanggung Jawab (PIC) wajib diisi.',
-            'contacts.min'               => 'Minimal satu Penanggung Jawab (PIC) wajib diisi.',
-            'contacts.*.full_name.required' => 'Nama Penanggung Jawab (PIC) wajib diisi.',
+            'contact.required'            => 'Penanggung Jawab (PIC) wajib diisi.',
+            'contact.full_name.required'  => 'Nama Penanggung Jawab (PIC) wajib diisi.',
         ];
     }
 }

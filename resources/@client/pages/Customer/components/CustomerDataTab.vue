@@ -24,8 +24,10 @@ const props = withDefaults(defineProps<{
   idCustomer: number
   customer: any
   showOnboardingLink?: boolean
+  readonly?: boolean
 }>(), {
   showOnboardingLink: true,
+  readonly: false,
 })
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
@@ -68,7 +70,7 @@ function formatExpiresAt(value: string) {
 }
 
 async function generateLink() {
-  if (generatingLink.value) return
+  if (props.readonly || generatingLink.value) return
 
   generatingLink.value = true
   try {
@@ -177,6 +179,7 @@ function rowState(typeId: number): DocumentRowState {
 }
 
 function openDocumentPicker(typeId: number) {
+  if (props.readonly) return
   activeDocumentTypeId.value = typeId
   documentFileInputRef.value?.click()
 }
@@ -186,7 +189,7 @@ function handleDocumentFileSelected(event: Event) {
   const file = input.files?.[0]
   const typeId = activeDocumentTypeId.value
 
-  if (file && typeId) {
+  if (!props.readonly && file && typeId) {
     const state = rowState(typeId)
     state.file = file
     state.error = ''
@@ -199,10 +202,12 @@ function handleDocumentFileSelected(event: Event) {
 const newFreeFormRows = ref<NewFreeFormRow[]>([])
 
 function addFreeFormRow() {
+  if (props.readonly) return
   newFreeFormRows.value.push({ label: '', file: null, error: '' })
 }
 
 function removeNewFreeFormRow(idx: number) {
+  if (props.readonly) return
   newFreeFormRows.value.splice(idx, 1)
 }
 
@@ -210,6 +215,7 @@ const freeFormFileInputRef = ref<HTMLInputElement | null>(null)
 const activeNewFreeFormIndex = ref<number | null>(null)
 
 function openFreeFormFilePicker(idx: number) {
+  if (props.readonly) return
   activeNewFreeFormIndex.value = idx
   freeFormFileInputRef.value?.click()
 }
@@ -219,7 +225,7 @@ function handleFreeFormFileSelected(event: Event) {
   const file = input.files?.[0]
   const idx = activeNewFreeFormIndex.value
 
-  if (file && idx !== null) {
+  if (!props.readonly && file && idx !== null) {
     newFreeFormRows.value[idx].file = file
     newFreeFormRows.value[idx].error = ''
   }
@@ -296,6 +302,8 @@ async function uploadFreeFormRow(row: NewFreeFormRow): Promise<boolean> {
 }
 
 async function submitAllDocuments() {
+  if (props.readonly) return
+
   const dirtyFixedRows = documentRows.value.filter(row => !!rowState(row.type.id).file)
   const dirtyFreeFormRows = newFreeFormRows.value.filter(row => row.label.trim() || row.file)
   if ((dirtyFixedRows.length === 0 && dirtyFreeFormRows.length === 0) || bulkUploading.value) return
@@ -334,13 +342,14 @@ async function submitAllDocuments() {
 }
 
 function confirmDeleteDocument(document: CustomerDocumentRecord) {
+  if (props.readonly) return
   deleteDocumentTarget.value = document
   deleteDocumentDialogOpen.value = true
 }
 
 async function performDeleteDocument() {
   const target = deleteDocumentTarget.value
-  if (!target) return
+  if (props.readonly || !target) return
 
   deleteDocumentLoading.value = true
   try {
@@ -445,6 +454,7 @@ function resetContactForm() {
 }
 
 function openCreateContact() {
+  if (props.readonly) return
   contactFormMode.value = 'create'
   editingContactRecord.value = null
   resetContactForm()
@@ -452,6 +462,7 @@ function openCreateContact() {
 }
 
 function openEditContact(contact: CustomerContactRecord) {
+  if (props.readonly) return
   contactFormMode.value = 'edit'
   editingContactRecord.value = contact
   resetContactForm()
@@ -471,6 +482,8 @@ function closeContactForm() {
 }
 
 async function submitContactForm() {
+  if (props.readonly) return
+
   contactFormError.value = null
   contactFormErrors.value = {}
 
@@ -518,13 +531,14 @@ async function submitContactForm() {
 }
 
 function confirmDeleteContact(contact: CustomerContactRecord) {
+  if (props.readonly) return
   deleteContactTarget.value = contact
   deleteContactDialogOpen.value = true
 }
 
 async function performDeleteContact() {
   const target = deleteContactTarget.value
-  if (!target) return
+  if (props.readonly || !target) return
 
   deleteContactLoading.value = true
   try {
@@ -549,11 +563,11 @@ onMounted(fetchCustomerContacts)
 <template>
   <div class="gap-6 grid grid-cols-2">
     <div class="gap-6 grid lg:grid-cols-1">
-      <div v-if="showOnboardingLink"
+      <div v-if="showOnboardingLink && !readonly"
         class="flex justify-between items-center gap-3 bg-gradient-to-br from-theme-1 via-emerald-800 to-green-600 shadow-sm p-6 box">
         <div>
-          <div class="font-header text-white">Customer Onboarding Form</div>
-          <div class="font-body text-white">Buat public link untuk customer onboarding form</div>
+          <div class="text-section-title text-white">Customer Onboarding Form</div>
+          <div class="text-body text-white">Buat public link untuk customer onboarding form</div>
         </div>
         <div v-if="canGenerateLink" class="flex items-center gap-2">
           <template v-if="hasActiveToken">
@@ -573,58 +587,58 @@ onMounted(fetchCustomerContacts)
         </div>
       </div>
 
-      <CorporateDetailSection :customer="customer" :id-customer="idCustomer" @updated="emit('updated')" />
+      <CorporateDetailSection :customer="customer" :id-customer="idCustomer" :readonly="readonly"
+        @updated="emit('updated')" />
 
-      <PaymentSection :customer="customer" :id-customer="idCustomer" @updated="emit('updated')" />
+      <PaymentSection :customer="customer" :id-customer="idCustomer" :readonly="readonly" @updated="emit('updated')" />
     </div>
 
     <div class="gap-6 grid lg:grid-cols-1">
       <CardSection title="Kontak Customer" description="Kelola PIC/kontak customer." icon="Users"
         icon-class="bg-cyan-100 text-cyan-600">
-        <template #action>
+        <template v-if="!readonly" #action>
           <Button size="sm" variant="outline-primary" class="inline-flex items-center gap-2" @click="openCreateContact">
             <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Kontak
           </Button>
         </template>
 
-        <div v-if="contactsLoading"
-          class="flex justify-center items-center gap-3 min-h-[120px] text-slate-500">
+        <div v-if="contactsLoading" class="flex justify-center items-center gap-3 min-h-[120px] text-slate-500">
           <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
-          <span class="font-body">Memuat kontak...</span>
+          <span class="text-body">Memuat kontak...</span>
         </div>
 
         <div v-else-if="customerContacts.length === 0"
           class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
           <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
-          <div class="font-body">Belum ada kontak yang ditambahkan.</div>
+          <div class="text-body">Belum ada kontak yang ditambahkan.</div>
         </div>
 
         <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
           <table class="divide-y divide-slate-200 w-full min-w-[640px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="px-3 py-2 w-12 font-label text-center">No</th>
-                <th class="px-3 py-2 font-label text-left">Nama</th>
-                <th class="px-3 py-2 font-label text-left">Telepon</th>
-                <th class="px-3 py-2 font-label text-left">Mobile</th>
-                <th class="px-3 py-2 font-label text-left">Email</th>
-                <th class="px-3 py-2 w-20 font-label text-center">Aksi</th>
+                <th class="px-3 py-2 w-12 text-form-label text-center">No</th>
+                <th class="px-3 py-2 text-form-label text-left">Nama</th>
+                <th class="px-3 py-2 text-form-label text-left">Telepon</th>
+                <th class="px-3 py-2 text-form-label text-left">Mobile</th>
+                <th class="px-3 py-2 text-form-label text-left">Email</th>
+                <th v-if="!readonly" class="px-3 py-2 w-20 text-form-label text-center">Aksi</th>
               </tr>
             </thead>
 
             <tbody class="bg-white divide-y divide-slate-200">
               <tr v-for="(c, idx) in customerContacts" :key="c.id" class="hover:bg-slate-50 transition">
-                <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+                <td class="px-3 py-2 num-sm text-center">{{ idx + 1 }}.</td>
                 <td class="px-3 py-2">
-                  <div class="font-strong">{{ c.full_name }}</div>
-                  <div v-if="c.position" class="font-caption text-slate-500">({{ c.position }})</div>
+                  <div class="text-body-strong">{{ c.full_name }}</div>
+                  <div v-if="c.position" class="text-caption text-slate-500">({{ c.position }})</div>
                 </td>
-                <td class="px-3 py-2 font-body">{{ c.phone ? formatOfficePhone(c.phone) : '-' }}</td>
-                <td class="px-3 py-2 font-body">{{ c.mobile ? groupMobileDigits(c.mobile) : '-' }}</td>
-                <td class="px-3 py-2 font-body break-all">{{ c.email || '-' }}</td>
-                <td class="px-3 py-2 text-center">
-                  <Button size="sm" variant="soft-pending" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
+                <td class="px-3 py-2 text-body">{{ c.phone ? formatOfficePhone(c.phone) : '-' }}</td>
+                <td class="px-3 py-2 text-body">{{ c.mobile ? groupMobileDigits(c.mobile) : '-' }}</td>
+                <td class="px-3 py-2 text-body break-all">{{ c.email || '-' }}</td>
+                <td v-if="!readonly" class="px-3 py-2 text-center">
+                  <Button size="sm" variant="soft-warning" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
                     @click="openEditContact(c)">
                     <Lucide icon="Edit" class="w-4 h-4" />
                   </Button>
@@ -635,11 +649,11 @@ onMounted(fetchCustomerContacts)
         </div>
       </CardSection>
 
-      <AddressSection :customer="customer" :id-customer="idCustomer" @updated="emit('updated')" />
+      <AddressSection :customer="customer" :id-customer="idCustomer" :readonly="readonly" @updated="emit('updated')" />
 
       <CardSection title="Dokumen Lampiran" description="Upload dan kelola dokumen pendukung." icon="FileCheck2"
         icon-class="bg-indigo-100 text-indigo-600">
-        <template #action>
+        <template v-if="!readonly" #action>
           <div class="flex items-center gap-2">
             <Button size="sm" variant="outline-primary" class="inline-flex items-center gap-2" @click="addFreeFormRow">
               <Lucide icon="Plus" class="w-4 h-4" /> Tambah
@@ -656,54 +670,54 @@ onMounted(fetchCustomerContacts)
         <div v-if="documentTypesLoading || documentsLoading"
           class="flex justify-center items-center gap-3 min-h-[120px] text-slate-500">
           <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
-          <span class="font-body">Memuat dokumen...</span>
+          <span class="text-body">Memuat dokumen...</span>
         </div>
 
-        <div
-          v-else-if="documentRows.length === 0 && freeFormDocumentRows.length === 0 && newFreeFormRows.length === 0"
+        <div v-else-if="documentRows.length === 0 && freeFormDocumentRows.length === 0 && newFreeFormRows.length === 0"
           class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
           <Lucide icon="Inbox" class="w-8 h-8 text-slate-400" />
-          <div class="font-body">Belum ada dokumen. Klik "Tambah" untuk menambah dokumen.</div>
+          <div class="text-body">Belum ada dokumen. Klik "Tambah" untuk menambah dokumen.</div>
         </div>
 
         <div v-else class="border border-slate-200 rounded-xl overflow-x-auto">
           <table class="divide-y divide-slate-200 w-full min-w-[640px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="px-3 py-2 w-12 font-label text-center">No</th>
-                <th class="px-3 py-2 font-label text-left">Nama Dokumen</th>
-                <th class="px-3 py-2 font-label text-left">Nomor Dokumen</th>
-                <th class="px-3 py-2 font-label text-left">File</th>
-                <th class="px-3 py-2 w-28 font-label text-center">Aksi</th>
+                <th class="px-3 py-2 w-12 text-form-label text-center">No</th>
+                <th class="px-3 py-2 text-form-label text-left">Nama Dokumen</th>
+                <th class="px-3 py-2 text-form-label text-left">Nomor Dokumen</th>
+                <th class="px-3 py-2 text-form-label text-left">File</th>
+                <th v-if="!readonly" class="px-3 py-2 w-28 text-form-label text-center">Aksi</th>
               </tr>
             </thead>
 
             <tbody class="bg-white divide-y divide-slate-200">
               <tr v-for="(row, idx) in documentRows" :key="row.type.id" class="hover:bg-slate-50 transition">
-                <td class="px-3 py-2 font-num text-center">{{ idx + 1 }}.</td>
+                <td class="px-3 py-2 num-sm text-center">{{ idx + 1 }}.</td>
                 <td class="px-3 py-2">
-                  <div class="flex flex-wrap items-center gap-1 font-body">
+                  <div class="flex flex-wrap items-center gap-1 text-body">
                     {{ row.type.name }}
                     <RequiredAsterisk v-if="['nib', 'npwp'].includes(row.type.code)" />
                   </div>
                 </td>
                 <td class="px-3 py-2">
-                  <FormInput v-model="rowState(row.type.id).documentNumber" type="text" placeholder="Nomor dokumen" />
+                  <FormInput v-model="rowState(row.type.id).documentNumber" type="text" placeholder="Nomor dokumen"
+                    :disabled="readonly" />
                 </td>
                 <td class="px-3 py-2">
-                  <span v-if="rowState(row.type.id).file" class="block font-body text-amber-600 break-all italic">
+                  <span v-if="rowState(row.type.id).file" class="block text-body text-amber-600 break-all italic">
                     {{ rowState(row.type.id).file?.name }}
                   </span>
                   <a v-else-if="row.document" :href="row.document.url ?? undefined" target="_blank"
-                    class="block font-body !text-primary underline break-all">
+                    class="block text-body !text-primary underline break-all">
                     {{ row.document.file_name }}
                   </a>
-                  <span v-else class="font-body text-slate-400">Belum ada file</span>
+                  <span v-else class="text-body text-slate-400">Belum ada file</span>
                   <small v-if="rowState(row.type.id).error" class="block input-error-text">
                     {{ rowState(row.type.id).error }}
                   </small>
                 </td>
-                <td class="px-3 py-2 text-center">
+                <td v-if="!readonly" class="px-3 py-2 text-center">
                   <Button size="sm" variant="outline-secondary" class="inline-flex items-center gap-1"
                     @click="openDocumentPicker(row.type.id)">
                     <Lucide :icon="rowState(row.type.id).file || row.document ? 'RefreshCw' : 'Upload'"
@@ -714,15 +728,15 @@ onMounted(fetchCustomerContacts)
               </tr>
 
               <tr v-for="(doc, idx) in freeFormDocumentRows" :key="doc.id" class="hover:bg-slate-50 transition">
-                <td class="px-3 py-2 font-num text-center">{{ documentRows.length + idx + 1 }}.</td>
-                <td class="px-3 py-2 font-body">{{ doc.document_name }}</td>
-                <td class="px-3 py-2 font-body">-</td>
+                <td class="px-3 py-2 num-sm text-center">{{ documentRows.length + idx + 1 }}.</td>
+                <td class="px-3 py-2 text-body">{{ doc.document_name }}</td>
+                <td class="px-3 py-2 text-body">-</td>
                 <td class="px-3 py-2">
-                  <a :href="doc.url ?? undefined" target="_blank" class="font-body !text-primary underline break-all">
+                  <a :href="doc.url ?? undefined" target="_blank" class="text-body !text-primary underline break-all">
                     {{ doc.file_name }}
                   </a>
                 </td>
-                <td class="px-3 py-2 text-center">
+                <td v-if="!readonly" class="px-3 py-2 text-center">
                   <Button size="sm" variant="soft-danger" title="Hapus" class="!shadow-none !p-0 !w-8 !h-8"
                     @click="confirmDeleteDocument(doc)">
                     <Lucide icon="Trash2" class="w-4 h-4" />
@@ -731,23 +745,24 @@ onMounted(fetchCustomerContacts)
               </tr>
 
               <tr v-for="(row, idx) in newFreeFormRows" :key="`new-${idx}`" class="hover:bg-slate-50 transition">
-                <td class="px-3 py-2 font-num text-center">{{ documentRows.length + freeFormDocumentRows.length + idx +
+                <td class="px-3 py-2 num-sm text-center">{{ documentRows.length + freeFormDocumentRows.length + idx +
                   1 }}.
                 </td>
                 <td class="px-3 py-2">
                   <FormInput v-model="row.label" type="text" placeholder="Nama dokumen" />
                 </td>
-                <td class="px-3 py-2 font-body">-</td>
+                <td class="px-3 py-2 text-body">-</td>
                 <td class="px-3 py-2">
-                  <span v-if="row.file" class="font-body">{{ row.file.name }}</span>
-                  <span v-else class="font-body text-slate-400">Belum ada file</span>
+                  <span v-if="row.file" class="text-body">{{ row.file.name }}</span>
+                  <span v-else class="text-body text-slate-400">Belum ada file</span>
                   <small v-if="row.error" class="block input-error-text">{{ row.error }}</small>
                 </td>
                 <td class="px-3 py-2 text-center">
                   <div class="flex justify-center items-center gap-1.5">
                     <Button size="sm" variant="outline-secondary" class="inline-flex items-center gap-1"
                       @click="openFreeFormFilePicker(idx)">
-                      <Lucide :icon="row.file ? 'RefreshCw' : 'Upload'" class="w-3.5 h-3.5" /> {{ row.file ? 'Ganti' : 'Unggah' }}
+                      <Lucide :icon="row.file ? 'RefreshCw' : 'Upload'" class="w-3.5 h-3.5" /> {{ row.file ? 'Ganti' :
+                      'Unggah' }}
                     </Button>
                     <Button size="sm" variant="soft-danger" class="!shadow-none !p-0 !w-8 !h-8" title="Hapus"
                       @click="removeNewFreeFormRow(idx)">
@@ -777,7 +792,7 @@ onMounted(fetchCustomerContacts)
       :submit-icon="contactFormMode === 'create' ? 'PlusCircle' : 'Save'" @close="closeContactForm"
       @submit="submitContactForm">
       <div class="space-y-3">
-        <div v-if="contactFormMode === 'edit'" class="flex justify-end">
+        <div v-if="contactFormMode === 'edit' && !readonly" class="flex justify-end">
           <Button size="sm" variant="soft-danger" class="inline-flex items-center gap-2"
             @click="editingContactRecord && confirmDeleteContact(editingContactRecord)">
             <Lucide icon="Trash2" class="w-4 h-4" />
@@ -795,21 +810,13 @@ onMounted(fetchCustomerContacts)
         <div class="gap-3 grid grid-cols-2">
           <div>
             <FormLabel>Telepon</FormLabel>
-            <FormInput
-              :value="contactForm.phone"
-              inputmode="tel"
-              placeholder="cth. (021) 5551234"
-              @input="onContactPhoneInput"
-            />
+            <FormInput :value="contactForm.phone" inputmode="tel" placeholder="cth. (021) 5551234"
+              @input="onContactPhoneInput" />
           </div>
           <div>
             <FormLabel>Mobile</FormLabel>
-            <FormInput
-              :value="contactForm.mobile"
-              inputmode="numeric"
-              placeholder="cth. 0812 3456 7890"
-              @input="onContactMobileInput"
-            />
+            <FormInput :value="contactForm.mobile" inputmode="numeric" placeholder="cth. 0812 3456 7890"
+              @input="onContactMobileInput" />
           </div>
         </div>
         <div>
@@ -826,15 +833,15 @@ onMounted(fetchCustomerContacts)
     <ConfirmDialog :open="linkResultOpen" :title="linkResultTitle" :description="linkResultDescription"
       confirm-text="Salin Link" cancel-text="Tutup" icon="Link" icon-class="bg-primary/10 text-primary"
       variant="primary" @close="closeLinkResult" @confirm="copyLinkResult">
-      <div class="mb-1 font-caption">Token</div>
+      <div class="mb-1 text-caption">Token</div>
       <div class="bg-slate-50 p-3 rounded-lg font-mono text-slate-700 text-sm break-all">
         {{ linkResult.token }}
       </div>
-      <div class="mt-3 mb-1 font-caption">Link Onboarding</div>
+      <div class="mt-3 mb-1 text-caption">Link Onboarding</div>
       <div class="bg-slate-50 p-3 rounded-lg font-mono text-slate-700 text-sm break-all">
         {{ linkResult.link }}
       </div>
-      <div class="mt-2 font-caption text-slate-500">Berlaku sampai {{ formatExpiresAt(linkResult.expiresAt) }}</div>
+      <div class="mt-2 text-caption text-slate-500">Berlaku sampai {{ formatExpiresAt(linkResult.expiresAt) }}</div>
     </ConfirmDialog>
   </div>
 </template>

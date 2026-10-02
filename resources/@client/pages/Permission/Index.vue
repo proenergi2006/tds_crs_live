@@ -1,12 +1,10 @@
 <template>
   <div class="p-6">
-    <PageHeader
-      title="Permission"
-      description="Lihat daftar master permission dan kelola assignment permission per role."
-    >
+    <PageHeader title="Permission"
+      description="Lihat daftar master permission dan kelola assignment permission per role.">
       <template #action>
         <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
-          <Lucide icon="Plus" class="h-4 w-4" />
+          <Lucide icon="Plus" class="w-4 h-4" />
           Tambah Permission
         </Button>
       </template>
@@ -23,7 +21,6 @@
       </Tab.List>
 
       <Tab.Panels class="mt-4">
-        <!-- Master Permission (read-only, flat list, edit module/description only) -->
         <Tab.Panel>
           <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="isLoading"
             :empty="paginatedPermissions.length === 0" :colspan="4" :show-footer="true" :show-toolbar="true"
@@ -38,16 +35,16 @@
             </template>
 
             <template #body>
-              <Table.Tr v-for="perm in paginatedPermissions" :key="perm.id" class="transition hover:bg-slate-50">
+              <Table.Tr v-for="perm in paginatedPermissions" :key="perm.id" class="hover:bg-slate-50 transition">
                 <Table.Td>
-                  <span class="font-label inline-flex rounded-full bg-primary/10 px-3 py-1 text-primary">
+                  <span class="inline-flex bg-primary/10 px-3 py-1 rounded-full text-form-label text-primary">
                     {{ perm.module }}
                   </span>
                 </Table.Td>
                 <Table.Td class="font-medium text-slate-800">
                   <div class="flex items-center gap-2">
                     <span>{{ perm.name }}</span>
-                    <span class="font-caption inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-slate-600"
+                    <span class="inline-flex bg-slate-100 px-2 py-0.5 rounded-full text-caption text-slate-600"
                       :title="`Digunakan oleh ${perm.roles_count ?? 0} role`">
                       {{ perm.roles_count ?? 0 }} role
                     </span>
@@ -57,14 +54,14 @@
                   {{ perm.description || '-' }}
                 </Table.Td>
                 <Table.Td class="text-center">
-                  <div class="inline-flex items-center justify-center gap-2">
-                    <Button variant="soft-pending" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Edit"
+                  <div class="inline-flex justify-center items-center gap-2">
+                    <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
                       @click="openEdit(perm)">
-                      <Lucide icon="Edit" class="h-4 w-4" />
+                      <Lucide icon="Edit" class="w-4 h-4" />
                     </Button>
-                    <Button variant="soft-danger" rounded class="!h-8 !w-8 !p-0 !shadow-none" title="Hapus"
+                    <Button variant="soft-danger" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Hapus"
                       @click="confirmDelete(perm)">
-                      <Lucide icon="Trash2" class="h-4 w-4" />
+                      <Lucide icon="Trash2" class="w-4 h-4" />
                     </Button>
                   </div>
                 </Table.Td>
@@ -73,18 +70,15 @@
           </DataList>
         </Tab.Panel>
 
-        <!-- Permission Matrix -->
         <Tab.Panel>
           <PermissionMatrix />
         </Tab.Panel>
       </Tab.Panels>
     </Tab.Group>
 
-    <!-- Create/Edit Modal (create: name + module; edit: module + description only) -->
     <PermissionFormModal :open="formModal" :item="selectedPermission" :module-options="moduleOptions"
       @close="formModal = false" @success="handleFormSuccess" />
 
-    <!-- Delete Confirmation Modal -->
     <DeleteRecordDialog :open="deleteModal" title="Hapus Permission?" :description="deleteDescription"
       :loading="deleteLoading" @close="deleteModal = false" @confirm="submitDelete" />
   </div>
@@ -108,7 +102,6 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 const permissionApi = createResourceApi('/permissions')
 const { success, error: notifyError } = useNotification()
 
-/* Section: Types */
 interface Permission {
   id: number
   name: string
@@ -123,7 +116,6 @@ interface PermissionGroup {
   permissions: Permission[]
 }
 
-/* Section: State */
 const isLoading = ref(true)
 const permissionGroups = ref<PermissionGroup[]>([])
 
@@ -131,16 +123,13 @@ const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 
-/* Section: Form state */
 const formModal = ref(false)
 const selectedPermission = ref<Permission | null>(null)
 
-/* Section: Delete state */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<Permission | null>(null)
 
-/* Section: Computed — flatten grouped-by-module response into a single list */
 const allPermissions = computed<Permission[]>(() =>
   permissionGroups.value.flatMap(group => group.permissions),
 )
@@ -193,7 +182,6 @@ function goToPage(page: number) {
   currentPage.value = page
 }
 
-/* Section: Data fetching */
 async function loadPermissions() {
   isLoading.value = true
   try {
@@ -207,7 +195,6 @@ async function loadPermissions() {
   }
 }
 
-/* Section: Form actions */
 function openCreate() {
   selectedPermission.value = null
   formModal.value = true
@@ -219,14 +206,10 @@ function openEdit(perm: Permission) {
 }
 
 function handleFormSuccess() {
-  // Module may have changed, which moves the permission between groups —
-  // simplest correct approach is to re-fetch the grouped list from the
-  // backend rather than patch the grouping client-side.
   formModal.value = false
   loadPermissions()
 }
 
-/* Section: Delete actions */
 function confirmDelete(perm: Permission) {
   deleteTarget.value = perm
   deleteModal.value = true
@@ -251,6 +234,5 @@ async function submitDelete() {
   }
 }
 
-/* Section: Lifecycle */
 onMounted(loadPermissions)
 </script>

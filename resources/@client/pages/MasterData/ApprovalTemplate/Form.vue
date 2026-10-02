@@ -279,7 +279,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="template-code" v-model="form.code" placeholder="mis. customer_verification"
             :class="getFieldError('code') ? 'border-rose-500' : ''" />
-          <small v-if="getFieldError('code')" class="font-caption !text-rose-600">{{ getFieldError('code') }}</small>
+          <small v-if="getFieldError('code')" class="text-caption !text-rose-600">{{ getFieldError('code') }}</small>
         </div>
 
         <div>
@@ -288,7 +288,7 @@ function cancel() {
           </FormLabel>
           <FormInput id="template-name" v-model="form.name" placeholder="mis. Verifikasi Data Customer"
             :class="getFieldError('name') ? 'border-rose-500' : ''" />
-          <small v-if="getFieldError('name')" class="font-caption !text-rose-600">{{ getFieldError('name') }}</small>
+          <small v-if="getFieldError('name')" class="text-caption !text-rose-600">{{ getFieldError('name') }}</small>
         </div>
       </div>
 
@@ -298,7 +298,7 @@ function cancel() {
           <FormSwitch>
             <FormSwitch.Input id="template-status" v-model="form.is_active" type="checkbox" />
           </FormSwitch>
-          <span class="font-body">
+          <span class="text-body">
             {{ form.is_active ? 'Active' : 'Inactive' }}
           </span>
         </div>
@@ -306,8 +306,8 @@ function cancel() {
 
       <div class="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 class="font-header">Urutan Step Approval</h3>
-          <p class="font-body mt-1">
+          <h3 class="text-section-title">Urutan Step Approval</h3>
+          <p class="text-body mt-1">
             Urutan baris di bawah ini menentukan urutan step approval. Gunakan tombol panah untuk mengubah urutan.
           </p>
         </div>
@@ -322,29 +322,29 @@ function cancel() {
         <table class="min-w-full divide-y divide-slate-200">
           <thead class="bg-slate-50">
             <tr>
-              <th class="w-16 px-4 py-3 font-label text-center">Urutan</th>
-              <th class="px-4 py-3 font-label text-left">
+              <th class="w-16 px-4 py-3 text-form-label text-center">Urutan</th>
+              <th class="px-4 py-3 text-form-label text-left">
                 Nama Step
                 <RequiredAsterisk />
               </th>
-              <th class="px-4 py-3 font-label text-left">
+              <th class="px-4 py-3 text-form-label text-left">
                 Role
                 <RequiredAsterisk />
               </th>
-              <th class="w-32 px-4 py-3 font-label text-center">Aksi</th>
+              <th class="w-32 px-4 py-3 text-form-label text-center">Aksi</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-200 bg-white">
             <tr v-if="rows.length === 0">
-              <td colspan="4" class="px-4 py-8 text-center font-body">
+              <td colspan="4" class="px-4 py-8 text-center text-body">
                 Belum ada step. Klik "Tambah Step" untuk menambahkan.
               </td>
             </tr>
 
             <tr v-for="(row, index) in rows" :key="`${row.step_order}`" class="transition hover:bg-slate-50">
               <td class="px-4 py-3 text-center align-top">
-                <span class="font-num inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100">
+                <span class="num-sm inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100">
                   {{ index + 1 }}
                 </span>
               </td>
@@ -360,7 +360,7 @@ function cancel() {
                     {{ role.name }}
                   </option>
                 </FormSelect>
-                <small v-if="isRoleMissing(row.id_role)" class="font-caption !text-rose-600">
+                <small v-if="isRoleMissing(row.id_role)" class="text-caption !text-rose-600">
                   Role tidak ditemukan
                 </small>
               </td>

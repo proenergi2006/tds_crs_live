@@ -17,19 +17,16 @@ import { formatDate } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 
-/* Composables */
 const router = useRouter()
 const { success, error } = useNotification()
 const vendorPoApi = createResourceApi('/vendor-pos')
 
-/* State: data & pagination */
 const vendorPos = ref<any[]>([])
 const vendors = ref<any[]>([])
 const terminals = ref<any[]>([])
 const loading = ref(false)
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 
-/* State: filters */
 const searchQuery = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
@@ -37,12 +34,10 @@ const filterTerminal = ref('')
 const filterVendor = ref('')
 const perPage = ref(10)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; label: string } | null>(null)
 
-/* Computed */
 const activeFilterCount = computed(() =>
   [
     filterDateFrom.value,
@@ -52,7 +47,6 @@ const activeFilterCount = computed(() =>
   ].filter(Boolean).length,
 )
 
-/* Lifecycle / watch */
 onMounted(async () => {
   await Promise.all([fetchVendors(), fetchTerminals()])
   fetchData(1)
@@ -61,7 +55,6 @@ onMounted(async () => {
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
 
-/* Fetch */
 async function fetchData(page = 1) {
   loading.value = true
   try {
@@ -105,7 +98,6 @@ async function fetchTerminals() {
   }
 }
 
-/* Action handlers */
 function goToPage(page: number) {
   if (page < 1 || page > meta.value.last_page) return
   fetchData(page)
@@ -174,7 +166,6 @@ async function submitDelete() {
   }
 }
 
-/* Helpers */
 function isEditableState(key?: string): boolean {
   return key !== 'Approved'
 }
@@ -205,13 +196,13 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
 
       <PageHeader title="Daftar PO Supplier"
         description="Kelola Purchase Order vendor, filter data, dan akses aksi dengan cepat.">
         <template #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="goCreate">
-            <Lucide icon="Plus" class="h-4 w-4" />
+            <Lucide icon="Plus" class="w-4 h-4" />
             Tambah PO
           </Button>
         </template>
@@ -225,15 +216,15 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
         <template #filters="{ close }">
           <div class="space-y-4 p-1">
             <div>
-              <div class="font-section px-3 pb-2 pt-1">Tanggal Dari</div>
+              <div class="px-3 pt-1 pb-2 text-overline">Tanggal Dari</div>
               <FormInput v-model="filterDateFrom" type="date" class="!box" />
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Tanggal Sampai</div>
+              <div class="px-3 pb-2 text-overline">Tanggal Sampai</div>
               <FormInput v-model="filterDateTo" type="date" class="!box" />
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Terminal</div>
+              <div class="px-3 pb-2 text-overline">Terminal</div>
               <FormSelect v-model="filterTerminal" class="!box">
                 <option value="">— Semua Terminal —</option>
                 <option v-for="t in terminals" :key="t.id_terminal" :value="t.id_terminal">
@@ -242,7 +233,7 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
               </FormSelect>
             </div>
             <div>
-              <div class="font-section px-3 pb-2">Vendor</div>
+              <div class="px-3 pb-2 text-overline">Vendor</div>
               <FormSelect v-model="filterVendor" class="!box">
                 <option value="">— Semua Vendor —</option>
                 <option v-for="v in vendors" :key="v.id_vendor" :value="v.id_vendor">
@@ -250,10 +241,10 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
                 </option>
               </FormSelect>
             </div>
-            <div class="flex gap-2 border-t border-slate-100 pt-3">
-              <Button type="button" variant="primary" class="inline-flex flex-1 items-center justify-center gap-2"
+            <div class="flex gap-2 pt-3 border-slate-100 border-t">
+              <Button type="button" variant="primary" class="inline-flex flex-1 justify-center items-center gap-2"
                 :disabled="loading" @click="() => { fetchData(1); close() }">
-                <Lucide icon="Search" class="h-4 w-4" />
+                <Lucide icon="Search" class="w-4 h-4" />
                 Cari
               </Button>
               <Button type="button" variant="outline-secondary" class="flex-1" :disabled="activeFilterCount === 0"
@@ -275,45 +266,45 @@ function statusBadgeClass(statusPo?: { key: string; label: string }) {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(po, idx) in vendorPos" :key="po.id_po" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(po, idx) in vendorPos" :key="po.id_po" class="hover:bg-slate-50 transition">
+            <Table.Td class="num-sm text-center">
               {{ (meta.current_page - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-strong">{{ po.nomor_po }}</div>
+              <div class="text-body-strong">{{ po.nomor_po }}</div>
             </Table.Td>
-            <Table.Td class="whitespace-nowrap text-slate-700">{{ formatDate(po.tanggal_inven) }}</Table.Td>
+            <Table.Td class="text-slate-700 whitespace-nowrap">{{ formatDate(po.tanggal_inven) }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.vendor?.nama_vendor || '-' }}</Table.Td>
             <Table.Td class="text-slate-700">{{ po.terminal?.nama_terminal || '-' }}</Table.Td>
             <Table.Td class="text-center">
-              <span class="font-label inline-flex rounded-full px-3 py-1" :class="statusBadgeClass(po.status_po)">
+              <span class="inline-flex px-3 py-1 rounded-full text-form-label" :class="statusBadgeClass(po.status_po)">
                 {{ statusLabel(po.status_po) }}
               </span>
             </Table.Td>
-            <Table.Td class="text-center w-[320px]">
-              <div class="inline-flex items-center justify-center gap-1">
+            <Table.Td class="w-[320px] text-center">
+              <div class="inline-flex justify-center items-center gap-1">
                 <ExtendableButton variant="soft-dark" rounded label="Detail" @click="goDetail(po.id_po)">
-                  <Lucide icon="Eye" class="h-4 w-4" />
+                  <Lucide icon="Eye" class="w-4 h-4" />
                 </ExtendableButton>
-                <ExtendableButton v-if="isEditableState(po.status_po?.key)" variant="soft-pending" rounded label="Edit"
+                <ExtendableButton v-if="isEditableState(po.status_po?.key)" variant="soft-warning" rounded label="Edit"
                   @click="goEdit(po.id_po)">
-                  <Lucide icon="Edit" class="h-4 w-4" />
+                  <Lucide icon="Edit" class="w-4 h-4" />
                 </ExtendableButton>
                 <ExtendableButton v-if="isUnreleaseState(po.status_po?.key)" variant="soft-danger" rounded
                   label="Unrelease" @click="goEdit(po.id_po)">
-                  <Lucide icon="Undo2" class="h-4 w-4" />
+                  <Lucide icon="Undo2" class="w-4 h-4" />
                 </ExtendableButton>
                 <ExtendableButton v-if="isDestroyableState(po.status_po?.key)" variant="soft-danger" rounded
                   label="Hapus" @click="confirmDelete(po.id_po, po.nomor_po)">
-                  <Lucide icon="Trash2" class="h-4 w-4 shrink-0" />
+                  <Lucide icon="Trash2" class="w-4 h-4 shrink-0" />
                 </ExtendableButton>
                 <ExtendableButton v-if="po.status_po?.key === 'Approved'" variant="soft-success" rounded
                   label="Good Receipt" @click="goReceive(po.id_po)">
-                  <Lucide icon="PackageCheck" class="h-4 w-4" />
+                  <Lucide icon="PackageCheck" class="w-4 h-4" />
                 </ExtendableButton>
                 <ExtendableButton v-if="po.status_po?.key === 'Approved'" variant="soft-secondary" rounded label="Cetak"
                   @click="previewPdf(po.id_po)">
-                  <Lucide icon="Printer" class="h-4 w-4" />
+                  <Lucide icon="Printer" class="w-4 h-4" />
                 </ExtendableButton>
               </div>
             </Table.Td>

@@ -11,10 +11,13 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useRegionCascade } from '@/composables/useRegionCascade'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   customer: any
   idCustomer: number
-}>()
+  readonly?: boolean
+}>(), {
+  readonly: false,
+})
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
@@ -24,7 +27,6 @@ function regionName(item: { name?: string } | null | undefined): string | null {
   return item?.name ?? null
 }
 
-// baris region + kode pos jadi satu teks mengalir -- koma antar level region, kode pos disambung spasi di akhir
 function formatAddressRegionLine(region: {
   province?: { name?: string } | null
   regency?: { name?: string } | null
@@ -62,7 +64,6 @@ const headOfficeAddressLine1 = computed(() => props.customer?.company_address ||
 const headOfficeAddressLine2 = computed(() => formatAddressRegionLine(props.customer || {}))
 const hasHeadOfficeAddress = computed(() => !!(headOfficeAddressLine1.value || headOfficeAddressLine2.value))
 
-/* State: modal edit Alamat Head Office -- endpoint mandiri, sama polanya dengan alamat NPWP di bawah */
 const headOfficeFormOpen = ref(false)
 const savingHeadOffice = ref(false)
 const isHydratingHeadOfficeRegion = ref(false)
@@ -101,6 +102,8 @@ watch(() => headOfficeForm.village_id, (newVillage) => {
 })
 
 async function startEditHeadOffice() {
+  if (props.readonly) return
+
   const cust = props.customer || {}
   isHydratingHeadOfficeRegion.value = true
   try {
@@ -134,6 +137,8 @@ function cancelEditHeadOffice() {
 }
 
 async function submitHeadOfficeForm() {
+  if (props.readonly) return
+
   savingHeadOffice.value = true
   try {
     await axios.put(`/api/customers/${props.idCustomer}/addresses/head_office`, { ...headOfficeForm })
@@ -147,7 +152,6 @@ async function submitHeadOfficeForm() {
   }
 }
 
-/* State: modal edit Alamat NPWP -- endpoint mandiri, aman tanpa embed field lain */
 const npwpFormOpen = ref(false)
 const savingNpwp = ref(false)
 const isHydratingNpwpRegion = ref(false)
@@ -231,6 +235,8 @@ watch(npwpSameAsHeadOffice, (checked) => {
 })
 
 async function startEditNpwp() {
+  if (props.readonly) return
+
   const npwpAddress = (props.customer?.addresses || []).find((a: any) => a.address_type === 'registered_npwp') || {}
   npwpSameAsHeadOffice.value = false
   isHydratingNpwpRegion.value = true
@@ -265,6 +271,8 @@ function cancelEditNpwp() {
 }
 
 async function submitNpwpForm() {
+  if (props.readonly) return
+
   savingNpwp.value = true
   try {
     await axios.put(`/api/customers/${props.idCustomer}/addresses/registered_npwp`, npwpForm)
@@ -289,9 +297,9 @@ async function submitNpwpForm() {
             <div class="flex justify-center items-center bg-sky-100 rounded-full w-10 h-10 text-sky-600 shrink-0">
               <Lucide icon="Building2" class="w-5 h-5" />
             </div>
-            <div class="font-strong">Head Office</div>
+            <div class="text-body-strong">Head Office</div>
           </div>
-          <Button size="sm" variant="outline-secondary" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
+          <Button v-if="!readonly" size="sm" variant="outline-secondary" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
             @click="startEditHeadOffice">
             <Lucide icon="Edit" class="w-4 h-4" />
           </Button>
@@ -299,10 +307,10 @@ async function submitNpwpForm() {
 
         <div class="mt-4">
           <template v-if="hasHeadOfficeAddress">
-            <p v-if="headOfficeAddressLine1" class="font-body">{{ headOfficeAddressLine1 }}</p>
-            <p v-if="headOfficeAddressLine2" class="mt-3 font-body">{{ headOfficeAddressLine2 }}</p>
+            <p v-if="headOfficeAddressLine1" class="text-body">{{ headOfficeAddressLine1 }}</p>
+            <p v-if="headOfficeAddressLine2" class="mt-3 text-body">{{ headOfficeAddressLine2 }}</p>
           </template>
-          <p v-else class="font-body text-slate-400">Alamat belum diisi.</p>
+          <p v-else class="text-body text-slate-400">Alamat belum diisi.</p>
         </div>
       </div>
 
@@ -312,9 +320,9 @@ async function submitNpwpForm() {
             <div class="flex justify-center items-center bg-sky-100 rounded-full w-10 h-10 text-sky-600 shrink-0">
               <Lucide icon="FileCheck2" class="w-5 h-5" />
             </div>
-            <div class="font-strong">NPWP</div>
+            <div class="text-body-strong">NPWP</div>
           </div>
-          <Button size="sm" variant="outline-secondary" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
+          <Button v-if="!readonly" size="sm" variant="outline-secondary" title="Edit" class="!shadow-none !p-0 !w-8 !h-8"
             @click="startEditNpwp">
             <Lucide icon="Edit" class="w-4 h-4" />
           </Button>
@@ -322,10 +330,10 @@ async function submitNpwpForm() {
 
         <div class="mt-4">
           <template v-if="hasNpwpAddress">
-            <p v-if="npwpAddressLine1" class="font-body">{{ npwpAddressLine1 }}</p>
-            <p v-if="npwpAddressLine2" class="mt-3 font-body">{{ npwpAddressLine2 }}</p>
+            <p v-if="npwpAddressLine1" class="text-body">{{ npwpAddressLine1 }}</p>
+            <p v-if="npwpAddressLine2" class="mt-3 text-body">{{ npwpAddressLine2 }}</p>
           </template>
-          <p v-else class="font-body text-slate-400">Alamat belum diisi.</p>
+          <p v-else class="text-body text-slate-400">Alamat belum diisi.</p>
         </div>
       </div>
     </div>
@@ -335,14 +343,14 @@ async function submitNpwpForm() {
     :loading="savingHeadOffice" submit-text="Simpan" submit-icon="Save" @close="cancelEditHeadOffice"
     @submit="submitHeadOfficeForm">
     <div class="flex justify-between items-start gap-4 pb-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Alamat</span>
+      <span class="text-form-label text-[14px]">Alamat</span>
       <div class="mt-0.5 w-1/2">
         <FormTextarea v-model="headOfficeForm.address_line" rows="2" auto-resize
           placeholder="Nama jalan, nomor, gedung, lantai, dst." />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Provinsi</span>
+      <span class="text-form-label text-[14px]">Provinsi</span>
       <div class="mt-0.5 w-1/2">
         <TomSelect v-model="headOfficeForm.province_id" class="w-full">
           <option value="">Cari Provinsi</option>
@@ -352,7 +360,7 @@ async function submitNpwpForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Kota/Kabupaten</span>
+      <span class="text-form-label text-[14px]">Kota/Kabupaten</span>
       <div class="mt-0.5 w-1/2">
         <TomSelect :key="String(!!headOfficeForm.province_id)" v-model="headOfficeForm.regency_id" class="w-full"
           :disabled="!headOfficeForm.province_id">
@@ -364,7 +372,7 @@ async function submitNpwpForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Kecamatan</span>
+      <span class="text-form-label text-[14px]">Kecamatan</span>
       <div class="mt-0.5 w-1/2">
         <TomSelect :key="String(!!headOfficeForm.regency_id)" v-model="headOfficeForm.district_id" class="w-full"
           :disabled="!headOfficeForm.regency_id">
@@ -376,7 +384,7 @@ async function submitNpwpForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Kelurahan</span>
+      <span class="text-form-label text-[14px]">Kelurahan</span>
       <div class="mt-0.5 w-1/2">
         <TomSelect :key="String(!!headOfficeForm.district_id)" v-model="headOfficeForm.village_id" class="w-full"
           :disabled="!headOfficeForm.district_id">
@@ -389,7 +397,7 @@ async function submitNpwpForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 pb-1.5">
-      <span class="font-label text-[14px]">Kode Pos</span>
+      <span class="text-form-label text-[14px]">Kode Pos</span>
       <div class="mt-0.5 w-1/2">
         <FormInput v-model="headOfficeForm.postal_code" placeholder="cth. 40111" />
       </div>
@@ -403,19 +411,19 @@ async function submitNpwpForm() {
         :disabled="!hasHeadOfficeAddress" />
       <FormCheck.Label htmlFor="npwp-same-as-head-office">Sama dengan alamat Head Office</FormCheck.Label>
     </FormCheck>
-    <p v-if="!hasHeadOfficeAddress" class="mb-4 font-caption !text-amber-600">
+    <p v-if="!hasHeadOfficeAddress" class="mb-4 text-caption !text-amber-600">
       Alamat Head Office belum diisi. Isi alamat Head Office terlebih dahulu untuk menggunakan opsi ini.
     </p>
     <div v-if="!npwpSameAsHeadOffice">
       <div class="flex justify-between items-start gap-4 pb-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">Alamat NPWP</span>
+        <span class="text-form-label text-[14px]">Alamat NPWP</span>
         <div class="mt-0.5 w-1/2">
           <FormTextarea v-model="npwpForm.address_line" rows="2" auto-resize
             placeholder="Nama jalan, nomor, gedung, lantai, dst." />
         </div>
       </div>
       <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">Provinsi</span>
+        <span class="text-form-label text-[14px]">Provinsi</span>
         <div class="mt-0.5 w-1/2">
           <TomSelect v-model="npwpForm.province_id" class="w-full">
             <option value="">Cari Provinsi</option>
@@ -424,7 +432,7 @@ async function submitNpwpForm() {
         </div>
       </div>
       <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">Kota/Kabupaten</span>
+        <span class="text-form-label text-[14px]">Kota/Kabupaten</span>
         <div class="mt-0.5 w-1/2">
           <TomSelect :key="String(!!npwpForm.province_id)" v-model="npwpForm.regency_id" class="w-full"
             :disabled="!npwpForm.province_id">
@@ -435,7 +443,7 @@ async function submitNpwpForm() {
         </div>
       </div>
       <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">Kecamatan</span>
+        <span class="text-form-label text-[14px]">Kecamatan</span>
         <div class="mt-0.5 w-1/2">
           <TomSelect :key="String(!!npwpForm.regency_id)" v-model="npwpForm.district_id" class="w-full"
             :disabled="!npwpForm.regency_id">
@@ -446,7 +454,7 @@ async function submitNpwpForm() {
         </div>
       </div>
       <div class="flex justify-between items-center gap-4 pb-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">Kelurahan</span>
+        <span class="text-form-label text-[14px]">Kelurahan</span>
         <div class="mt-0.5 w-1/2">
           <TomSelect :key="String(!!npwpForm.district_id)" v-model="npwpForm.village_id" class="w-full"
             :disabled="!npwpForm.district_id">
@@ -458,7 +466,7 @@ async function submitNpwpForm() {
         </div>
       </div>
       <div class="flex justify-between items-center gap-4 pb-1.5">
-        <span class="font-label text-[14px]">Kode Pos</span>
+        <span class="text-form-label text-[14px]">Kode Pos</span>
         <div class="mt-0.5 w-1/2">
           <FormInput v-model="npwpForm.postal_code" placeholder="cth. 40111" />
         </div>

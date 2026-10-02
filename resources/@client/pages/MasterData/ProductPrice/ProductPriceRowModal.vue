@@ -91,11 +91,11 @@ function renderProdukRow(data: any, escape: (v: string) => string, wrapClass: st
     ? `${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}`
     : ''
   const badge = ukuran
-    ? `<span class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md font-num text-slate-600 text-xs break-words whitespace-normal">${ukuran}</span>`
+    ? `<span class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md num-sm text-slate-600 text-xs break-words whitespace-normal">${ukuran}</span>`
     : ''
 
   return `<div class="flex flex-wrap items-start gap-x-2 gap-y-1 ${wrapClass}">
-    <span class="font-strong">${escape(data.text)}</span>
+    <span class="text-body-strong">${escape(data.text)}</span>
     ${badge}
   </div>`
 }
@@ -328,7 +328,7 @@ function handleClose() {
     <div class="space-y-5">
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
         <div>
-          <FormLabel class="block !mb-1 font-label">Cabang
+          <FormLabel class="block !mb-1 text-form-label">Cabang
             <RequiredAsterisk />
           </FormLabel>
           <TomSelect v-model="form.branch_id" class="w-full" :disabled="procurementLocked"
@@ -338,11 +338,11 @@ function handleClose() {
               {{ cabang.nama_cabang }}
             </option>
           </TomSelect>
-          <small v-if="errors.branch_id" class="font-caption !text-rose-600">{{ errors.branch_id }}</small>
+          <small v-if="errors.branch_id" class="text-caption !text-rose-600">{{ errors.branch_id }}</small>
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 font-label">Produk
+          <FormLabel class="block !mb-1 text-form-label">Produk
             <RequiredAsterisk />
           </FormLabel>
           <TomSelect v-model="form.product_id" class="w-full" :options="produkSelectOptions"
@@ -353,7 +353,7 @@ function handleClose() {
               {{ produk.nama_produk }}
             </option>
           </TomSelect>
-          <small v-if="errors.product_id" class="font-caption !text-rose-600">{{ errors.product_id }}</small>
+          <small v-if="errors.product_id" class="text-caption !text-rose-600">{{ errors.product_id }}</small>
         </div>
       </div>
 
@@ -361,7 +361,7 @@ function handleClose() {
         <div class="col-span-2">
           <div class="gap-4 grid grid-cols-1" :class="{ 'sm:grid-cols-2': form.cogs_basis === 'franco' }">
             <div v-if="form.cogs_basis !== 'franco'">
-              <FormLabel class="block !mb-1 font-label">
+              <FormLabel class="block !mb-1 text-form-label">
                 Harga COGS
                 <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
               </FormLabel>
@@ -372,7 +372,7 @@ function handleClose() {
 
             <template v-else>
               <div>
-                <FormLabel class="block !mb-1 font-label">
+                <FormLabel class="block !mb-1 text-form-label">
                   COGS Material
                   <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
                 </FormLabel>
@@ -382,7 +382,7 @@ function handleClose() {
               </div>
 
               <div>
-                <FormLabel class="block !mb-1 font-label">
+                <FormLabel class="block !mb-1 text-form-label">
                   COGS Transport
                   <RequiredAsterisk v-if="!isReadonly('cogs_transport_price')" />
                 </FormLabel>
@@ -395,7 +395,7 @@ function handleClose() {
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 font-label">Tipe Harga COGS
+          <FormLabel class="block !mb-1 text-form-label">Tipe Harga COGS
             <RequiredAsterisk />
           </FormLabel>
           <div class="gap-3 grid grid-cols-2">
@@ -404,18 +404,18 @@ function handleClose() {
             <RadioCard v-model="form.cogs_basis" value="franco" title="Franco"
               :disabled="isReadonly('cogs_material_price')" @update:model-value="handleCogsBasisChange" />
           </div>
-          <small v-if="errors.cogs_basis" class="font-caption !text-rose-600">{{ errors.cogs_basis }}</small>
+          <small v-if="errors.cogs_basis" class="text-caption !text-rose-600">{{ errors.cogs_basis }}</small>
         </div>
       </div>
 
       <div>
-        <FormLabel class="block !mb-1 font-label">Catatan</FormLabel>
+        <FormLabel class="block !mb-1 text-form-label">Catatan</FormLabel>
         <FormTextarea v-model="form.notes" rows="2" placeholder="Catatan (opsional)" :disabled="procurementLocked" />
       </div>
 
       <div v-if="showMargin || showPriceList" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
         <div v-if="showMargin">
-          <FormLabel class="block !mb-1 font-label">Margin
+          <FormLabel class="block !mb-1 text-form-label">Margin
             <RequiredAsterisk v-if="canSetPriceList" />
           </FormLabel>
           <CurrencyField :model-value="form.margin_amount" placeholder="0" :readonly="isReadonly('margin_amount')"
@@ -423,12 +423,12 @@ function handleClose() {
         </div>
 
         <div v-if="visibleMoneyFields.includes('price_list')">
-          <FormLabel class="block !mb-1 font-label">Price List TDS</FormLabel>
+          <FormLabel class="block !mb-1 text-form-label">Price List TDS</FormLabel>
           <CurrencyField :model-value="form.price_list" placeholder="0" readonly />
         </div>
 
         <div v-if="visibleMoneyFields.includes('price_list_pe')">
-          <FormLabel class="block !mb-1 font-label">
+          <FormLabel class="block !mb-1 text-form-label">
             Price List PE
             <RequiredAsterisk v-if="canSetPriceList" />
           </FormLabel>
@@ -439,7 +439,7 @@ function handleClose() {
 
       <div v-if="showApproval" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
         <div>
-          <FormLabel class="block !mb-1 font-label">Approval BM
+          <FormLabel class="block !mb-1 text-form-label">Approval BM
             <RequiredAsterisk v-if="canSetPriceList" />
           </FormLabel>
           <CurrencyField :model-value="form.bm_price" placeholder="0" :readonly="isReadonly('bm_price')"
@@ -447,7 +447,7 @@ function handleClose() {
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 font-label">Approval OM
+          <FormLabel class="block !mb-1 text-form-label">Approval OM
             <RequiredAsterisk v-if="canSetPriceList" />
           </FormLabel>
           <CurrencyField :model-value="form.om_price" placeholder="0" :readonly="isReadonly('om_price')"
@@ -455,7 +455,7 @@ function handleClose() {
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 font-label">Approval CEO
+          <FormLabel class="block !mb-1 text-form-label">Approval CEO
             <RequiredAsterisk v-if="canSetPriceList" />
           </FormLabel>
           <CurrencyField :model-value="form.ceo_price" placeholder="0" :readonly="isReadonly('ceo_price')"

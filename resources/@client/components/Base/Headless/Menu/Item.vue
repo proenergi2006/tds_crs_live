@@ -11,7 +11,7 @@ export interface ItemProps
 
 <script setup lang="ts">
 import _ from "lodash";
-import { twMerge } from "tailwind-merge";
+import { twMerge } from "@/utils/tw-merge";
 import { MenuItem as HeadlessMenuItem } from "@headlessui/vue";
 import { useAttrs, computed } from "vue";
 

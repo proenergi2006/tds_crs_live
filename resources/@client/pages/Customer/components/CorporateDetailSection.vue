@@ -17,10 +17,13 @@ import {
   typeBusinessOptions,
 } from '@/pages/CustomerOnboarding/optionSets'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   customer: any
   idCustomer: number
-}>()
+  readonly?: boolean
+}>(), {
+  readonly: false,
+})
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
@@ -60,7 +63,6 @@ const corporateRows = computed(() => {
   ]
 })
 
-/* State: edit modal -- Corporate Details (PUT /customers/{id}). */
 const editingCorporate = ref(false)
 const savingCorporate = ref(false)
 const corporateForm = reactive({
@@ -77,7 +79,6 @@ const corporateForm = reactive({
   inco_terms_other: '',
 })
 
-/* State: cek ketersediaan nama perusahaan (informational, tidak menahan submit) */
 const nameCheckStatus = ref<'idle' | 'checking' | 'available' | 'taken'>('idle')
 const nameMatches = ref<{
   id_customer: number
@@ -102,16 +103,16 @@ async function checkCompanyName() {
     nameMatches.value = data.matches || []
     nameCheckStatus.value = data.available ? 'available' : 'taken'
   } catch {
-    // cuma fitur informational, gagal cek jangan sampai ganggu pengisian form
     nameCheckStatus.value = 'idle'
     nameMatches.value = []
   }
 }
 
-// cek ketersediaan nama perusahaan, debounced biar gak request tiap keystroke
 watch(() => corporateForm.company_name, debounce(checkCompanyName, 400))
 
 function startEditCorporate() {
+  if (props.readonly) return
+
   const cust = props.customer || {}
   Object.assign(corporateForm, {
     company_name: cust.company_name ?? '',
@@ -144,6 +145,8 @@ function onCorporateUppercaseInput(field: 'company_name' | 'parent_company', eve
 }
 
 async function submitCorporateForm() {
+  if (props.readonly) return
+
   savingCorporate.value = true
   try {
     await axios.put(`/api/customers/${props.idCustomer}`, { ...corporateForm })
@@ -161,7 +164,7 @@ async function submitCorporateForm() {
 <template>
   <CardSection title="Corporate Details" description="Identitas perusahaan customer." icon="Building2"
     icon-class="bg-violet-100 text-violet-600">
-    <template #action>
+    <template v-if="!readonly" #action>
       <Button size="sm" variant="outline-secondary" class="inline-flex items-center gap-2" @click="startEditCorporate">
         <Lucide icon="Edit" class="w-4 h-4" /> Edit
       </Button>
@@ -169,8 +172,8 @@ async function submitCorporateForm() {
     <div class="gap-x-8 gap-y-3 grid sm:grid-cols-1">
       <div v-for="row in corporateRows" :key="row.label"
         class="flex justify-between gap-4 py-1.5 border-slate-100 border-b">
-        <span class="font-label text-[14px]">{{ row.label }}</span>
-        <span class="font-strong text-right">{{ row.value }}</span>
+        <span class="text-form-label text-[14px]">{{ row.label }}</span>
+        <span class="text-body-strong text-right">{{ row.value }}</span>
       </div>
     </div>
   </CardSection>
@@ -179,14 +182,14 @@ async function submitCorporateForm() {
     :loading="savingCorporate" submit-text="Simpan" submit-icon="Save" @close="cancelEditCorporate"
     @submit="submitCorporateForm">
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Nama Perusahaan</span>
+      <span class="text-form-label text-[14px]">Nama Perusahaan</span>
       <div class="mt-0.5 w-2/3">
         <FormInput :value="corporateForm.company_name" placeholder="cth. PT Contoh Sejahtera"
           @input="onCorporateUppercaseInput('company_name', $event)" />
-        <div v-if="nameCheckStatus === 'available'" class="mt-1 font-caption !text-emerald-600">
+        <div v-if="nameCheckStatus === 'available'" class="mt-1 text-caption !text-emerald-600">
           Nama tersedia
         </div>
-        <div v-else-if="nameCheckStatus === 'taken'" class="flex items-center gap-2 mt-1 font-caption !text-amber-600">
+        <div v-else-if="nameCheckStatus === 'taken'" class="flex items-center gap-2 mt-1 text-caption !text-amber-600">
           <span>Sudah terdaftar, {{ nameMatches.length }} kecocokan ditemukan</span>
           <button type="button" class="font-semibold underline underline-offset-2" @click="showDuplicatePopup = true">
             Lihat daftar
@@ -195,32 +198,32 @@ async function submitCorporateForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Holding</span>
+      <span class="text-form-label text-[14px]">Holding</span>
       <div class="mt-0.5 w-2/3">
         <FormInput :value="corporateForm.parent_company" placeholder="cth. PT Induk Group (opsional)"
           @input="onCorporateUppercaseInput('parent_company', $event)" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Telepon</span>
+      <span class="text-form-label text-[14px]">Telepon</span>
       <div class="mt-0.5 w-2/3">
         <FormInput v-model="corporateForm.phone" placeholder="cth. (021) 5551234" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Email</span>
+      <span class="text-form-label text-[14px]">Email</span>
       <div class="mt-0.5 w-2/3">
         <FormInput v-model="corporateForm.email" type="email" placeholder="nama@email.com" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Website</span>
+      <span class="text-form-label text-[14px]">Website</span>
       <div class="mt-0.5 w-2/3">
         <FormInput v-model="corporateForm.website" placeholder="https://www.contoh.com" />
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Jenis Usaha</span>
+      <span class="text-form-label text-[14px]">Jenis Usaha</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormSelect v-model="corporateForm.business_type"
           :class="corporateForm.business_type === 'Other' ? 'w-1/3' : ''">
@@ -233,7 +236,7 @@ async function submitCorporateForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Kepemilikan</span>
+      <span class="text-form-label text-[14px]">Kepemilikan</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormSelect v-model="corporateForm.ownership_type"
           :class="corporateForm.ownership_type === 'Other' ? 'w-1/3' : ''">
@@ -246,7 +249,7 @@ async function submitCorporateForm() {
       </div>
     </div>
     <div class="flex justify-between items-center gap-4 py-1.5 border-slate-100 border-b">
-      <span class="font-label text-[14px]">Incoterms</span>
+      <span class="text-form-label text-[14px]">Incoterms</span>
       <div class="flex gap-2 mt-0.5 w-2/3">
         <FormSelect v-model="corporateForm.inco_terms" :class="corporateForm.inco_terms === 'Other' ? 'w-1/3' : ''">
           <option value="">- Pilihan -</option>
@@ -264,8 +267,8 @@ async function submitCorporateForm() {
     <Dialog.Panel>
       <div class="p-6">
         <div class="pb-4 border-slate-200 border-b">
-          <h3 class="font-header">Nama Perusahaan Sudah Terdaftar</h3>
-          <p class="mt-1 font-caption text-slate-500">
+          <h3 class="text-section-title">Nama Perusahaan Sudah Terdaftar</h3>
+          <p class="mt-1 text-caption text-slate-500">
             {{ nameMatches.length }} customer lain memakai nama yang sama/mirip
           </p>
         </div>
@@ -273,8 +276,8 @@ async function submitCorporateForm() {
         <div class="space-y-3 mt-4">
           <div v-for="match in nameMatches" :key="match.id_customer"
             class="px-4 py-3 border border-slate-200 rounded-md">
-            <p class="font-body font-semibold">{{ match.company_name }}</p>
-            <p class="mt-0.5 font-caption text-slate-500">
+            <p class="text-body font-semibold">{{ match.company_name }}</p>
+            <p class="mt-0.5 text-caption text-slate-500">
               Marketing: {{ match.marketing?.name || '-' }}
             </p>
           </div>

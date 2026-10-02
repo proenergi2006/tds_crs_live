@@ -136,24 +136,24 @@ function needsReverification(item: any) {
       <!-- Summary Cards (Proenergi only) -->
       <div v-if="isProenergi" class="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <div class="box p-4">
-          <div class="font-label">Total Customer</div>
-          <div class="font-num-display mt-1">{{ totalRecords }}</div>
+          <div class="text-form-label">Total Customer</div>
+          <div class="num-lg mt-1">{{ totalRecords }}</div>
         </div>
         <div class="box p-4">
-          <div class="font-label">Prospect</div>
-          <div class="font-num-display mt-1 text-slate-300"
+          <div class="text-form-label">Prospect</div>
+          <div class="num-lg mt-1 text-slate-300"
             title="Belum tersedia — akan disambungkan ke customer_status">-
           </div>
         </div>
         <div class="box p-4">
-          <div class="font-label">Customer Tetap</div>
-          <div class="font-num-display mt-1 text-slate-300"
+          <div class="text-form-label">Customer Tetap</div>
+          <div class="num-lg mt-1 text-slate-300"
             title="Belum tersedia — akan disambungkan ke customer_status">-
           </div>
         </div>
         <div class="box p-4">
-          <div class="font-label">Total Penawaran</div>
-          <div class="font-num-display mt-1 !text-primary">{{ totalPenawaran }}</div>
+          <div class="text-form-label">Total Penawaran</div>
+          <div class="num-lg mt-1 !text-primary">{{ totalPenawaran }}</div>
         </div>
       </div>
 
@@ -175,29 +175,29 @@ function needsReverification(item: any) {
 
         <template #body>
           <Table.Tr v-for="(row, idx) in customers" :key="row.id_customer" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
             <Table.Td>
-              <div class="font-strong">{{ row.company_name || '-' }}</div>
-              <div class="font-caption mt-0.5">{{ row.email || '-' }}</div>
+              <div class="text-body-strong">{{ row.company_name || '-' }}</div>
+              <div class="text-caption mt-0.5">{{ row.email || '-' }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ row.village ? row.village + ', ' : '' }}{{ row.district ? row.district + ', '
+              <div class="text-body">{{ row.village ? row.village + ', ' : '' }}{{ row.district ? row.district + ', '
                 : '' }}{{ row.regency }}</div>
-              <div class="font-body">{{ row.province + ', ' + row.postal_code }}</div>
+              <div class="text-body">{{ row.province + ', ' + row.postal_code }}</div>
             </Table.Td>
             <Table.Td>
-              <div class="font-body">{{ row.phone || '-' }}</div>
+              <div class="text-body">{{ row.phone || '-' }}</div>
             </Table.Td>
             <Table.Td class="text-center">
               <div class="inline-flex items-center gap-1.5">
-                <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
+                <span class="text-form-label inline-flex items-center rounded-full px-2.5 py-0.5"
                   :class="getVerificationBadgeClass(row.verification_badge)">
                   {{ getVerificationBadgeLabel(row) }}
                 </span>
                 <span v-if="needsReverification(row)"
-                  class="font-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-amber-100 text-amber-700">
+                  class="text-form-label inline-flex items-center rounded-full px-2.5 py-0.5 bg-amber-100 text-amber-700">
                   Perlu Pemutakhiran
                 </span>
               </div>
@@ -206,7 +206,7 @@ function needsReverification(item: any) {
               <Lucide v-if="row.has_lcr" icon="CheckCircle" class="mx-auto h-5 w-5 text-emerald-600" />
               <Lucide v-else icon="XCircle" class="mx-auto h-5 w-5 text-slate-300" />
             </Table.Td>
-            <Table.Td class="font-num text-center">
+            <Table.Td class="num-sm text-center">
               {{ row.quotation_count ?? 0 }}
             </Table.Td>
             <Table.Td class="text-center">

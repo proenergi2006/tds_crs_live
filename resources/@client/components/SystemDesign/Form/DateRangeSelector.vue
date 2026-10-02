@@ -97,10 +97,10 @@ function formatDisplayDate(value: string) {
           </div>
 
           <div class="min-w-0">
-            <div class="font-section">
+            <div class="text-overline">
               Periode
             </div>
-            <div class="font-strong mt-0.5">
+            <div class="text-body-strong mt-0.5">
               {{ startLabel }}
             </div>
           </div>
@@ -114,15 +114,15 @@ function formatDisplayDate(value: string) {
 
         <div class="flex items-center justify-between gap-3 sm:min-w-[220px]">
           <div class="min-w-0">
-            <div class="font-section">
+            <div class="text-overline">
               Sampai
             </div>
-            <div class="font-strong mt-0.5">
+            <div class="text-body-strong mt-0.5">
               {{ endLabel }}
             </div>
           </div>
 
-          <span class="font-label shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 !text-slate-600">
+          <span class="text-form-label shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 !text-slate-600">
             Ubah
           </span>
         </div>

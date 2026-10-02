@@ -2,6 +2,8 @@
 
 namespace App\Actions\Customer;
 
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
 use App\Models\CustomerDocument;
 use App\Models\CustomerDocumentType;
 use App\Models\CustomerLcr;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class GenerateCustomerLcrDocumentAction
 {
-    private const PHOTO_CATEGORIES = [
+    public const PHOTO_CATEGORIES = [
         'road_condition_photos'      => 'lcr_road_condition',
         'site_layout_photos'         => 'lcr_site_layout',
         'unloading_layout_photos'    => 'lcr_unloading_layout',
@@ -21,25 +23,51 @@ class GenerateCustomerLcrDocumentAction
         'additional_photos'          => 'lcr_additional',
     ];
 
+    public function __construct(private ResolveVerificationSupervisorNameAction $resolveSupervisorName)
+    {
+    }
+
     public function execute(CustomerVerification $verification): array
     {
-        $customer = $verification->customer;
+        $customer = $verification->customer->loadMissing('user:id,name');
+        $marketingName = $customer->user?->name ?? '-';
 
         $lcrSites = CustomerLcr::where('id_customer', $verification->id_customer)
             ->with([
-                'address.province', 'address.regency', 'address.district', 'address.village',
-                'contacts',
-                'wilayahAngkut.province', 'wilayahAngkut.regency',
-                'latestDocumentApproval',
+                'address.province',
+                'address.regency',
+                'address.district',
+                'address.village',
+                'contact',
+                'wilayahAngkut.province',
+                'wilayahAngkut.regency',
+                'latestDocumentApproval.steps.actor:id,name',
             ])
             ->orderBy('id_lcr')
             ->get();
 
         $photosBySite = $this->buildPhotosBySite($lcrSites);
 
-        return compact('customer', 'lcrSites', 'photosBySite');
+        $supervisorName = $this->resolveSupervisorName->execute($verification);
+        $logisticsReviewerBySite = $this->buildLogisticsReviewerBySite($lcrSites);
+
+        return compact('customer', 'lcrSites', 'photosBySite', 'marketingName', 'supervisorName', 'logisticsReviewerBySite');
     }
 
+    private function buildLogisticsReviewerBySite($lcrSites): array
+    {
+        $reviewerBySite = [];
+        foreach ($lcrSites as $site) {
+            $approval = $site->latestDocumentApproval;
+            $actorStep = $approval?->status === DocumentApprovalStatus::Approved
+                ? $approval->steps->last(fn ($step) => $step->status === DocumentApprovalStepStatus::Approved && $step->actor)
+                : null;
+
+            $reviewerBySite[$site->id_lcr] = $actorStep?->actor->name ?? '-';
+        }
+
+        return $reviewerBySite;
+    }
     private function buildPhotosBySite($lcrSites): array
     {
         $photosBySite = [];

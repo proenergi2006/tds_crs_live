@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Customer\GenerateCustomerLcrDocumentAction;
 use App\Actions\Customer\SyncCustomerLcrSiteDetailsAction;
 use App\Enums\CustomerLcrVesselQuantityCheckingMethod;
 use App\Enums\DocumentApprovalStatus;
@@ -9,27 +10,29 @@ use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QualityCheckingMethod;
 use App\Enums\QuantityCheckingMethod;
 use App\Enums\VesselQualityCheckingMethod;
+use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerLcrRequest;
 use App\Http\Requests\Customer\UpdateCustomerLcrRequest;
 use App\Models\Customer;
-use App\Models\CustomerContact;
 use App\Models\CustomerLcr;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
 use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CustomerLcrController extends Controller
 {
+    use GuardsCustomerEditLock;
+
     private const APPROVAL_TEMPLATE_CODE = 'customer_lcr_survey';
     private const ROLE_LOGISTIK = 6;
 
     public function __construct(
         private readonly DocumentApprovalService $approvalService,
         private readonly SyncCustomerLcrSiteDetailsAction $syncSiteDetailsAction
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, Customer $customer)
     {
@@ -38,11 +41,11 @@ class CustomerLcrController extends Controller
         }
 
         $sites = $customer->lcr()
-            ->with(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts'])
+            ->with(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact'])
             ->orderByDesc('id_lcr')
             ->get();
 
-        return response()->json($sites->map(fn (CustomerLcr $site) => $this->formatSite($site))->values());
+        return response()->json($sites->map(fn(CustomerLcr $site) => $this->formatSite($site))->values());
     }
 
     public function show(Request $request, Customer $customer, CustomerLcr $lcrSite)
@@ -55,7 +58,7 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
         }
 
-        $lcrSite->load(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts']);
+        $lcrSite->load(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact']);
 
         return response()->json($this->formatSite($lcrSite));
     }
@@ -66,15 +69,19 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
         $user = $request->user();
         $ip   = $request->ip();
 
-        $addressData  = $data['address'] ?? null;
-        $contactsData = array_key_exists('contacts', $data) ? ($data['contacts'] ?? []) : null;
-        unset($data['address'], $data['contacts']);
+        $addressData = $data['address'] ?? null;
+        $contactData = $data['contact'] ?? null;
+        unset($data['address'], $data['contact']);
 
-        $site = DB::transaction(function () use ($data, $customer, $user, $ip, $addressData, $contactsData) {
+        $site = DB::transaction(function () use ($data, $customer, $user, $ip, $addressData, $contactData) {
             $site = CustomerLcr::create([
                 ...$data,
                 'id_customer'     => $customer->id_customer,
@@ -86,14 +93,14 @@ class CustomerLcrController extends Controller
                 'lastupdate_by'   => $user->name ?? 'system',
             ]);
 
-            $this->syncSiteDetailsAction->execute($site, $addressData, $contactsData);
+            $this->syncSiteDetailsAction->execute($site, $addressData, $contactData);
 
             $this->approvalService->startCycle($site, self::APPROVAL_TEMPLATE_CODE);
 
             return $site;
         });
 
-        $site->load(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts']);
+        $site->load(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact']);
 
         return response()->json($this->formatSite($site), 201);
     }
@@ -108,13 +115,17 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
         }
 
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
+        }
+
         $data = $request->validated();
 
-        $addressData  = $data['address'] ?? null;
-        $contactsData = array_key_exists('contacts', $data) ? ($data['contacts'] ?? []) : null;
-        unset($data['address'], $data['contacts']);
+        $addressData = $data['address'] ?? null;
+        $contactData = $data['contact'] ?? null;
+        unset($data['address'], $data['contact']);
 
-        DB::transaction(function () use ($lcrSite, $data, $request, $addressData, $contactsData) {
+        DB::transaction(function () use ($lcrSite, $data, $request, $addressData, $contactData) {
             $lcrSite->update([
                 ...$data,
                 'lastupdate_time' => now(),
@@ -122,10 +133,10 @@ class CustomerLcrController extends Controller
                 'lastupdate_by'   => $request->user()->name ?? 'system',
             ]);
 
-            $this->syncSiteDetailsAction->execute($lcrSite, $addressData, $contactsData);
+            $this->syncSiteDetailsAction->execute($lcrSite, $addressData, $contactData);
         });
 
-        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts'])));
+        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact'])));
     }
 
     public function destroy(Request $request, Customer $customer, CustomerLcr $lcrSite)
@@ -136,6 +147,10 @@ class CustomerLcrController extends Controller
 
         if ($lcrSite->id_customer !== $customer->id_customer) {
             return response()->json(['message' => 'Site LCR tidak ditemukan untuk customer ini.'], 404);
+        }
+
+        if ($response = $this->blockIfCustomerEditLocked($customer)) {
+            return $response;
         }
 
         $lcrSite->delete();
@@ -154,7 +169,7 @@ class CustomerLcrController extends Controller
         $status  = $request->query('status', 'pending');
 
         $query = CustomerLcr::query()
-            ->with(['customer:id_customer,company_name', 'latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts']);
+            ->with(['customer:id_customer,company_name', 'latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact']);
 
         if ($request->filled('id_customer')) {
             $query->where('id_customer', (int) $request->query('id_customer'));
@@ -178,7 +193,7 @@ class CustomerLcrController extends Controller
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
                 $w->where('site_name', 'like', "%{$q}%")
-                    ->orWhereHas('address', fn ($a) => $a->where('address_line', 'like', "%{$q}%"))
+                    ->orWhereHas('address', fn($a) => $a->where('address_line', 'like', "%{$q}%"))
                     ->orWhereHas('customer', function ($c) use ($q) {
                         $c->where('company_name', 'like', "%{$q}%");
                     });
@@ -186,7 +201,7 @@ class CustomerLcrController extends Controller
         }
 
         $paginated = $query->orderByDesc('id_lcr')->paginate($perPage);
-        $paginated->getCollection()->transform(fn (CustomerLcr $site) => $this->formatSite($site));
+        $paginated->getCollection()->transform(fn(CustomerLcr $site) => $this->formatSite($site));
 
         return response()->json($paginated);
     }
@@ -199,8 +214,8 @@ class CustomerLcrController extends Controller
 
         $sites = CustomerLcr::query()->with('latestDocumentApproval')->get();
 
-        $countBy = fn (DocumentApprovalStatus $s) => $sites
-            ->filter(fn (CustomerLcr $site) => $site->latestDocumentApproval?->status === $s)
+        $countBy = fn(DocumentApprovalStatus $s) => $sites
+            ->filter(fn(CustomerLcr $site) => $site->latestDocumentApproval?->status === $s)
             ->count();
 
         return response()->json([
@@ -216,7 +231,7 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $lcrSite->load(['customer:id_customer,company_name', 'latestDocumentApproval.steps', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts']);
+        $lcrSite->load(['customer:id_customer,company_name', 'latestDocumentApproval.steps', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact', 'photos.documentType']);
 
         return response()->json($this->formatSite($lcrSite));
     }
@@ -235,7 +250,7 @@ class CustomerLcrController extends Controller
 
         $cycles = $lcrSite->documentApprovals()
             ->with([
-                'steps' => fn ($q) => $q->orderBy('step_order'),
+                'steps' => fn($q) => $q->orderBy('step_order'),
                 'steps.templateStep:id_step,step_name,step_order,id_role',
                 'steps.actor:id,name',
             ])
@@ -243,13 +258,13 @@ class CustomerLcrController extends Controller
             ->get();
 
         return response()->json([
-            'data' => $cycles->map(fn (DocumentApproval $cycle) => [
+            'data' => $cycles->map(fn(DocumentApproval $cycle) => [
                 'id_approval'        => $cycle->id_approval,
                 'status'             => $cycle->status,
                 'current_step_order' => $cycle->current_step_order,
                 'started_at'         => $cycle->started_at,
                 'completed_at'       => $cycle->completed_at,
-                'steps'              => $cycle->steps->map(fn (DocumentApprovalStep $step) => [
+                'steps'              => $cycle->steps->map(fn(DocumentApprovalStep $step) => [
                     'step_order'    => $step->step_order,
                     'step_name'     => $step->templateStep->step_name ?? null,
                     'status'        => $step->status,
@@ -269,8 +284,9 @@ class CustomerLcrController extends Controller
         }
 
         $data = $request->validate([
-            'decision' => ['required', 'in:approve,reject'],
-            'note'     => ['nullable', 'string'],
+            'decision'  => ['required', 'in:approve,reject'],
+            'note'      => ['nullable', 'string'],
+            'id_wil_oa' => ['required_if:decision,approve', 'nullable', 'integer', 'exists:transport_areas,id'],
         ]);
 
         $template  = $this->approvalService->activeTemplate(self::APPROVAL_TEMPLATE_CODE);
@@ -284,19 +300,25 @@ class CustomerLcrController extends Controller
             ? DocumentApprovalStepStatus::Approved
             : DocumentApprovalStepStatus::Rejected;
 
-        $cycle = DB::transaction(fn () => $this->approvalService->decideStep(
-            $lcrSite,
-            $stepOrder,
-            $status,
-            $request->user()->id,
-            $data['note'] ?? null
-        ));
+        $cycle = DB::transaction(function () use ($lcrSite, $stepOrder, $status, $request, $data) {
+            if ($data['decision'] === 'approve') {
+                $lcrSite->update(['id_wil_oa' => $data['id_wil_oa']]);
+            }
+
+            return $this->approvalService->decideStep(
+                $lcrSite,
+                $stepOrder,
+                $status,
+                $request->user()->id,
+                $data['note'] ?? null
+            );
+        });
 
         if (!$cycle) {
             return response()->json(['message' => 'Tidak ada siklus approval aktif untuk site LCR ini.'], 409);
         }
 
-        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts'])));
+        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact'])));
     }
 
     public function resetDecision(Request $request, CustomerLcr $lcrSite)
@@ -305,9 +327,9 @@ class CustomerLcrController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        DB::transaction(fn () => $this->approvalService->startCycle($lcrSite, self::APPROVAL_TEMPLATE_CODE));
+        DB::transaction(fn() => $this->approvalService->startCycle($lcrSite, self::APPROVAL_TEMPLATE_CODE));
 
-        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contacts'])));
+        return response()->json($this->formatSite($lcrSite->fresh(['latestDocumentApproval', 'address.province', 'address.regency', 'address.district', 'address.village', 'contact'])));
     }
 
     private static function verifyPermission(): string
@@ -380,12 +402,12 @@ class CustomerLcrController extends Controller
             'storage_notes'           => $site->storage_notes,
 
             'quality_checking_method'        => $site->quality_checking_method ?? [],
-            'quality_checking_method_labels' => array_map(fn ($v) => QualityCheckingMethod::from($v)->label(), $site->quality_checking_method ?? []),
+            'quality_checking_method_labels' => array_map(fn($v) => QualityCheckingMethod::from($v)->label(), $site->quality_checking_method ?? []),
             'quality_checking_method_other'  => $site->quality_checking_method_other,
             'quality_checking_notes'         => $site->quality_checking_notes,
 
             'quantity_checking_method'        => $site->quantity_checking_method ?? [],
-            'quantity_checking_method_labels' => array_map(fn ($v) => QuantityCheckingMethod::from($v)->label(), $site->quantity_checking_method ?? []),
+            'quantity_checking_method_labels' => array_map(fn($v) => QuantityCheckingMethod::from($v)->label(), $site->quantity_checking_method ?? []),
             'quantity_checking_method_other'  => $site->quantity_checking_method_other,
             'quantity_checking_notes'         => $site->quantity_checking_notes,
 
@@ -399,12 +421,12 @@ class CustomerLcrController extends Controller
             'vessel_unloading_method_other'   => $site->vessel_unloading_method_other,
 
             'vessel_quantity_checking_method'        => $site->vessel_quantity_checking_method ?? [],
-            'vessel_quantity_checking_method_labels' => array_map(fn ($v) => CustomerLcrVesselQuantityCheckingMethod::from($v)->label(), $site->vessel_quantity_checking_method ?? []),
+            'vessel_quantity_checking_method_labels' => array_map(fn($v) => CustomerLcrVesselQuantityCheckingMethod::from($v)->label(), $site->vessel_quantity_checking_method ?? []),
             'vessel_quantity_checking_method_other'  => $site->vessel_quantity_checking_method_other,
             'vessel_quantity_checking_notes'         => $site->vessel_quantity_checking_notes,
 
             'vessel_quality_checking_method'        => $site->vessel_quality_checking_method ?? [],
-            'vessel_quality_checking_method_labels' => array_map(fn ($v) => VesselQualityCheckingMethod::from($v)->label(), $site->vessel_quality_checking_method ?? []),
+            'vessel_quality_checking_method_labels' => array_map(fn($v) => VesselQualityCheckingMethod::from($v)->label(), $site->vessel_quality_checking_method ?? []),
             'vessel_quality_checking_method_other'  => $site->vessel_quality_checking_method_other,
             'vessel_quality_checking_notes'         => $site->vessel_quality_checking_notes,
 
@@ -438,16 +460,16 @@ class CustomerLcrController extends Controller
                 'postal_code'  => $site->address->postal_code,
             ] : null,
 
-            'contacts' => $site->relationLoaded('contacts')
-                ? $site->contacts->map(fn (CustomerContact $c) => [
-                    'id_contact' => $c->id_contact,
-                    'full_name'  => $c->full_name,
-                    'position'   => $c->position,
-                    'phone'      => $c->phone,
-                    'mobile'     => $c->mobile,
-                    'email'      => $c->email,
-                ])->all()
-                : [],
+            'contact' => $site->relationLoaded('contact') && $site->contact ? [
+                'id_contact' => $site->contact->id_contact,
+                'full_name'  => $site->contact->full_name,
+                'position'   => $site->contact->position,
+                'phone'      => $site->contact->phone,
+                'mobile'     => $site->contact->mobile,
+                'email'      => $site->contact->email,
+            ] : null,
+
+            'photos' => $this->formatPhotos($site),
 
             'approval' => $cycle ? [
                 'status'             => $cycle->status->value,
@@ -458,5 +480,33 @@ class CustomerLcrController extends Controller
             'created_time'    => optional($site->created_time)->toISOString(),
             'lastupdate_time' => optional($site->lastupdate_time)->toISOString(),
         ];
+    }
+
+    private function formatPhotos(CustomerLcr $site): array
+    {
+        $grouped = array_fill_keys(array_keys(GenerateCustomerLcrDocumentAction::PHOTO_CATEGORIES), []);
+
+        if (!$site->relationLoaded('photos')) {
+            return $grouped;
+        }
+
+        foreach ($site->photos as $photo) {
+            $code = $photo->documentType?->code;
+            $field = $code ? array_search($code, GenerateCustomerLcrDocumentAction::PHOTO_CATEGORIES, true) : false;
+
+            if ($field === false) {
+                continue;
+            }
+
+            $grouped[$field][] = [
+                'id'          => $photo->id_document,
+                'file_name'   => $photo->file_name,
+                'url'         => $photo->file_path ? Storage::disk('public')->url($photo->file_path) : null,
+                'notes'       => $photo->notes,
+                'uploaded_at' => optional($photo->uploaded_at)->toISOString(),
+            ];
+        }
+
+        return $grouped;
     }
 }

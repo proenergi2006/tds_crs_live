@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import { FormInput, FormLabel } from '@/components/Base/Form'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
@@ -39,18 +39,57 @@ const emit = defineEmits<{
 }>()
 
 const displayValue = ref('')
+const prefixRef = ref<HTMLElement | null>(null);
+const suffixRef = ref<HTMLElement | null>(null);
+const prefixWidth = ref(0);
+const suffixWidth = ref(0);
+
+let prefixObserver: ResizeObserver | null = null;
+let suffixObserver: ResizeObserver | null = null;
+
+const inputPaddingLeft = computed<string | undefined>(() =>
+  props.prefix && prefixWidth.value > 0 ? `${prefixWidth.value + 8}px` : undefined,
+);
+const inputPaddingRight = computed<string | undefined>(() =>
+  props.suffix && suffixWidth.value > 0 ? `${suffixWidth.value + 8}px` : undefined,
+);
 
 watch(
   () => props.modelValue,
   value => {
-    // Jangan timpa tampilan kalau nilainya sama dengan yang sedang diketik
-    // (mis. user baru mengetik "5," — biarkan koma menggantung).
-    if (parseNumber(displayValue.value) !== toNumber(value)) {
+    const isDisplayValueInSync = parseNumber(displayValue.value) === toNumber(value)
+    if (!isDisplayValueInSync) {
       displayValue.value = isEmpty(value) ? '' : formatDisplay(toNumber(value))
     }
   },
   { immediate: true },
 )
+
+watch(
+  () => props.prefix,
+  async () => {
+    await nextTick();
+    observePrefix();
+  },
+);
+
+watch(
+  () => props.suffix,
+  async () => {
+    await nextTick();
+    observeSuffix();
+  },
+);
+
+onMounted(() => {
+  observePrefix();
+  observeSuffix();
+});
+
+onBeforeUnmount(() => {
+  prefixObserver?.disconnect();
+  suffixObserver?.disconnect();
+});
 
 function isEmpty(value: unknown) {
   return value === null || value === undefined || value === ''
@@ -64,8 +103,8 @@ function toNumber(value: unknown): number {
 
 function parseNumber(text: string): number {
   if (!text) return 0
-  // Strip thousand separator dots, then convert decimal comma to dot
-  const n = Number.parseFloat(text.replace(/\./g, '').replace(',', '.'))
+  const normalized = text.replace(/\./g, '').replace(',', '.')
+  const n = Number.parseFloat(normalized)
   return Number.isFinite(n) ? n : 0
 }
 
@@ -79,23 +118,24 @@ function formatDisplay(n: number): string {
   return decPart ? addThousandSep(intPart) + ',' + decPart : addThousandSep(intPart)
 }
 
+function stripLeadingZeros(text: string): string {
+  return text.replace(/^0+(\d)/, '$1')
+}
+
 function sanitize(raw: string): string {
-  // Sisain digit & koma doang, sisanya dibuang
-  let val = raw.replace(/[^\d,]/g, '')
+  let digitsAndCommaOnly = raw.replace(/[^\d,]/g, '')
 
-  const parts = val.split(',')
-  if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('')
+  const parts = digitsAndCommaOnly.split(',')
+  if (parts.length > 2) digitsAndCommaOnly = parts[0] + ',' + parts.slice(1).join('')
 
-  let intPart = val.split(',')[0]
-  // Strip leading zeros: "00123" → "123", tapi "0" sendiri tetap "0"
-  intPart = intPart.replace(/^0+(\d)/, '$1')
+  const intPart = stripLeadingZeros(digitsAndCommaOnly.split(',')[0])
 
   if (props.decimals <= 0) {
     return addThousandSep(intPart)
   }
 
-  if (val.includes(',')) {
-    const decPart = val.split(',')[1].slice(0, props.decimals)
+  if (digitsAndCommaOnly.includes(',')) {
+    const decPart = digitsAndCommaOnly.split(',')[1].slice(0, props.decimals)
     return addThousandSep(intPart) + ',' + decPart
   }
 
@@ -117,6 +157,24 @@ function handleBlur() {
   emit('update:modelValue', n)
   displayValue.value = n ? formatDisplay(n) : ''
 }
+
+function observePrefix(): void {
+  prefixObserver?.disconnect();
+  if (!prefixRef.value) return;
+  prefixObserver = new ResizeObserver((entries) => {
+    prefixWidth.value = (entries[0]?.target as HTMLElement | undefined)?.offsetWidth ?? 0;
+  });
+  prefixObserver.observe(prefixRef.value);
+}
+
+function observeSuffix(): void {
+  suffixObserver?.disconnect();
+  if (!suffixRef.value) return;
+  suffixObserver = new ResizeObserver((entries) => {
+    suffixWidth.value = (entries[0]?.target as HTMLElement | undefined)?.offsetWidth ?? 0;
+  });
+  suffixObserver.observe(suffixRef.value);
+}
 </script>
 
 <template>
@@ -127,31 +185,19 @@ function handleBlur() {
     </FormLabel>
 
     <div class="relative">
-      <div
-        v-if="prefix"
-        class="font-caption pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3 text-slate-500"
-      >
+      <div v-if="prefix" ref="prefixRef"
+        class="left-0 z-10 absolute inset-y-0 flex items-center pl-3 text-caption text-slate-500 pointer-events-none">
         {{ prefix }}
       </div>
 
-      <FormInput
-        :model-value="displayValue"
-        type="text"
-        inputmode="decimal"
-        autocomplete="off"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :readonly="readonly"
-        class="text-right"
+      <FormInput :model-value="displayValue" type="text" inputmode="decimal" autocomplete="off"
+        :placeholder="placeholder" :disabled="disabled" :readonly="readonly" class="text-right"
         :class="[error ? 'input-error' : '', suffix ? 'pr-9' : '', prefix ? 'pl-10' : '']"
-        @input="handleInput"
-        @blur="handleBlur"
-      />
+        :style="{ paddingLeft: inputPaddingLeft, paddingRight: inputPaddingRight }" @input="handleInput"
+        @blur="handleBlur" />
 
-      <div
-        v-if="suffix"
-        class="font-caption pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-3"
-      >
+      <div v-if="suffix" ref="suffixRef"
+        class="right-0 z-10 absolute inset-y-0 flex items-center pr-3 text-caption pointer-events-none">
         {{ suffix }}
       </div>
     </div>

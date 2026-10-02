@@ -14,7 +14,11 @@ class SaveSalesConfirmationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'admin_summary' => 'nullable|string',
+            'admin_summary'         => 'nullable|string',
+            'attachments'           => 'nullable|array',
+            'attachments.*'         => 'file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'removed_attachments'   => 'nullable|array',
+            'removed_attachments.*' => 'string',
         ];
     }
 }

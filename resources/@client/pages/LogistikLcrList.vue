@@ -6,6 +6,7 @@ import axios from 'axios'
 
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import Badge from '@/components/SystemDesign/Data/Badge.vue'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -45,9 +46,7 @@ async function fetchStats(): Promise<void> {
   try {
     const { data } = await axios.get('/api/review/lcr-sites/stats')
     stats.value = data
-  } catch {
-    // kegagalan stats sengaja diabaikan: angka tab yang basi lebih aman daripada antrean yang gagal tampil
-  }
+  } catch { }
 }
 
 async function fetchData(page = 1): Promise<void> {
@@ -83,11 +82,11 @@ function tabCount(tab: LcrStatusTab): number {
   return tab === 'all' ? 0 : stats.value[tab]
 }
 
-function approvalBadgeClass(status?: string | null): string {
-  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
-  if (status === 'approved') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'rejected') return 'bg-rose-100 text-rose-700'
-  return 'bg-slate-100 text-slate-700'
+function approvalBadgeVariant(status?: string | null): 'soft-pending' | 'soft-success' | 'soft-danger' | 'soft-dark' {
+  if (status === 'in_progress') return 'soft-pending'
+  if (status === 'approved') return 'soft-success'
+  if (status === 'rejected') return 'soft-danger'
+  return 'soft-dark'
 }
 
 function approvalBadgeLabel(row: any): string {
@@ -97,13 +96,13 @@ function approvalBadgeLabel(row: any): string {
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Review LCR — Logistik"
         description="Verifikasi hasil survei site customer dan putuskan approve atau reject.">
         <template #body>
-          <div class="inline-flex w-fit gap-1 rounded-lg border border-white/20 bg-white/10 p-1 backdrop-blur-sm">
+          <div class="inline-flex gap-1 bg-white/10 backdrop-blur-sm p-1 border border-white/20 rounded-lg w-fit">
             <button v-for="tab in STATUS_TABS" :key="tab.value" type="button"
-              class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+              class="px-3 py-1.5 rounded-md font-medium text-sm transition"
               :class="activeStatusTab === tab.value ? 'bg-white text-theme-1 shadow-sm' : 'text-white/80 hover:bg-white/10'"
               @click="activeStatusTab = tab.value">
               {{ tab.label }}<template v-if="tab.value !== 'all'"> ({{ tabCount(tab.value) }})</template>
@@ -127,13 +126,13 @@ function approvalBadgeLabel(row: any): string {
         </template>
 
         <template #body>
-          <Table.Tr v-for="(row, idx) in rows" :key="row.id_lcr" class="transition hover:bg-slate-50">
-            <Table.Td class="font-num text-center">
+          <Table.Tr v-for="(row, idx) in rows" :key="row.id_lcr" class="hover:bg-slate-50 transition">
+            <Table.Td class="num-sm text-center">
               {{ (currentPage - 1) * perPage + idx + 1 }}
             </Table.Td>
 
             <Table.Td>
-              <div class="font-strong">{{ row.customer?.nama_perusahaan || ('#' + row.id_customer) }}</div>
+              <div class="text-body-strong">{{ row.customer?.nama_perusahaan || ('#' + row.id_customer) }}</div>
             </Table.Td>
 
             <Table.Td>{{ row.site_name || '-' }}</Table.Td>
@@ -141,18 +140,17 @@ function approvalBadgeLabel(row: any): string {
             <Table.Td>{{ formatDate(row.survey_date) }}</Table.Td>
 
             <Table.Td>
-              <span class="font-label inline-flex items-center rounded-full px-2.5 py-0.5"
-                :class="approvalBadgeClass(row.approval?.status)">
+              <Badge :variant="approvalBadgeVariant(row.approval?.status)">
                 {{ approvalBadgeLabel(row) }}
-              </span>
+              </Badge>
             </Table.Td>
 
             <Table.Td class="text-center">
-              <div class="inline-flex items-center justify-center gap-1">
+              <div class="inline-flex justify-center items-center gap-1">
                 <RouterLink :to="{ name: 'logistik-lcr-detail', params: { id: row.id_lcr } }"
-                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                  class="inline-flex justify-center items-center bg-white hover:bg-slate-100 border border-slate-200 rounded-full w-8 h-8 text-slate-500 hover:text-slate-700 transition"
                   title="Detail">
-                  <Lucide icon="Eye" class="h-4 w-4" />
+                  <Lucide icon="Eye" class="w-4 h-4" />
                 </RouterLink>
               </div>
             </Table.Td>
