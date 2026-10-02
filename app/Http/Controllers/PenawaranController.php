@@ -112,6 +112,10 @@ class PenawaranController extends Controller
             $query->where('status', $status);
         }
 
+        if ($idCustomer = $request->query('id_customer')) {
+            $query->where('id_customer', (int) $idCustomer);
+        }
+
         if ($request->boolean('valid_today')) {
             $query->validOn(now());
         }
