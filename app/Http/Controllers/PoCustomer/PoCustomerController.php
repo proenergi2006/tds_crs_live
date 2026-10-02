@@ -94,6 +94,12 @@ class PoCustomerController extends Controller
             ]);
         }
 
+        if (! $penawaran->isValidOn(Carbon::today())) {
+            throw ValidationException::withMessages([
+                'id_penawaran' => ["Penawaran tidak berlaku hari ini (masa berlaku {$penawaran->validityPeriodLabel()}). Gunakan penawaran periode berjalan."],
+            ]);
+        }
+
         $customer = Customer::find($validated['id_customer']);
         if (! $customer?->is_verified) {
             throw ValidationException::withMessages([

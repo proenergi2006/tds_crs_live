@@ -171,61 +171,61 @@ function handleClose() {
 
 <template>
   <Dialog :open="open" size="xl" @close="handleClose">
-    <Dialog.Panel class="flex h-[85vh] max-h-[620px] w-[95%] flex-col overflow-hidden p-0 lg:w-[860px]">
+    <Dialog.Panel class="flex flex-col p-0 w-[95%] lg:w-[860px] h-[85vh] max-h-[620px] overflow-hidden">
       <button type="button"
-        class="absolute right-0 top-0 z-10 mr-4 mt-4 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-darkmode-400"
+        class="top-0 right-0 z-10 absolute hover:bg-slate-100 dark:hover:bg-darkmode-400 mt-4 mr-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition"
         @click="handleClose">
-        <Lucide icon="X" class="h-5 w-5" />
+        <Lucide icon="X" class="w-5 h-5" />
       </button>
 
-      <div class="flex min-h-0 flex-1">
+      <div class="flex flex-1 min-h-0">
         <!-- Sidebar -->
-        <div class="flex w-56 shrink-0 flex-col border-r border-slate-200 py-5 dark:border-darkmode-400">
-          <div class="px-5 text-xs font-medium uppercase tracking-wide text-slate-400">
+        <div class="flex flex-col py-5 border-slate-200 dark:border-darkmode-400 border-r w-56 shrink-0">
+          <div class="px-5 font-medium text-slate-400 text-xs uppercase tracking-wide">
             Settings
           </div>
-          <nav class="mt-3 flex flex-col gap-0.5 px-3">
+          <nav class="flex flex-col gap-0.5 mt-3 px-3">
             <button v-for="section in sections" :key="section.key" type="button"
-              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition" :class="activeSection === section.key
+              class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition" :class="activeSection === section.key
                 ? 'bg-primary/10 font-medium text-primary'
                 : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-darkmode-400'"
               @click="activeSection = section.key">
-              <Lucide :icon="section.icon" class="h-4 w-4 shrink-0" />
+              <Lucide :icon="section.icon" class="w-4 h-4 shrink-0" />
               {{ section.label }}
             </button>
           </nav>
         </div>
 
         <!-- Content -->
-        <div class="min-w-0 flex-1 overflow-y-auto px-8 py-6">
+        <div class="flex-1 px-8 py-6 min-w-0 overflow-y-auto">
           <!-- Profil -->
           <div v-if="activeSection === 'profil'">
-            <h3 class="text-base font-medium text-slate-700 dark:text-slate-200">Profil</h3>
+            <h3 class="font-medium text-slate-700 dark:text-slate-200 text-base">Profil</h3>
 
-            <div class="mt-5 flex items-center gap-4">
+            <div class="flex items-center gap-4 mt-5">
               <div
-                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-medium text-primary">
+                class="flex justify-center items-center bg-primary/10 rounded-full w-14 h-14 font-medium text-primary text-lg shrink-0">
                 {{ initial }}
               </div>
               <div>
-                <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ userName }}</div>
-                <div class="text-xs text-slate-400">{{ userEmail }}</div>
+                <div class="font-medium text-slate-700 dark:text-slate-200 text-sm">{{ userName }}</div>
+                <div class="text-slate-400 text-xs">{{ userEmail }}</div>
               </div>
             </div>
 
-            <div class="mt-6 space-y-4">
+            <div class="space-y-4 mt-6">
               <div>
                 <FormLabel htmlFor="settings-profil-nama">Nama Lengkap</FormLabel>
                 <FormInput id="settings-profil-nama" type="text" v-model="profileForm.name"
                   :class="getProfileFieldError('name') ? 'border-rose-500' : ''" />
-                <small v-if="getProfileFieldError('name')" class="text-caption !text-rose-600">{{
+                <small v-if="getProfileFieldError('name')" class="!text-rose-600 text-caption">{{
                   getProfileFieldError('name') }}</small>
               </div>
               <div>
                 <FormLabel htmlFor="settings-profil-telepon">No Telepon</FormLabel>
                 <FormInput id="settings-profil-telepon" type="text" v-model="profileForm.no_telepon"
                   :class="getProfileFieldError('no_telepon') ? 'border-rose-500' : ''" />
-                <small v-if="getProfileFieldError('no_telepon')" class="text-caption !text-rose-600">{{
+                <small v-if="getProfileFieldError('no_telepon')" class="!text-rose-600 text-caption">{{
                   getProfileFieldError('no_telepon') }}</small>
               </div>
               <div>
@@ -234,33 +234,32 @@ function handleClose() {
               </div>
             </div>
 
-            <Button type="button" variant="primary" class="mt-6 inline-flex items-center gap-2"
+            <Button type="button" variant="primary" class="inline-flex items-center gap-2 mt-6"
               :disabled="profileLoading" @click="submitProfile">
               <Lucide v-if="profileLoading" icon="Loader2" class="w-4 h-4 animate-spin" />
-              <Lucide v-else icon="Save" class="h-4 w-4" />
+              <Lucide v-else icon="Save" class="w-4 h-4" />
               Simpan
             </Button>
           </div>
 
           <!-- Akun & Keamanan -->
           <div v-else-if="activeSection === 'akun'">
-            <h3 class="text-base font-medium text-slate-700 dark:text-slate-200">Akun &amp; Keamanan</h3>
+            <h3 class="font-medium text-slate-700 dark:text-slate-200 text-base">Akun & Keamanan</h3>
 
-            <div class="mt-5 space-y-4">
+            <div class="space-y-4 mt-5">
               <div>
                 <FormLabel htmlFor="settings-akun-old-password">Password Lama</FormLabel>
                 <FormInput id="settings-akun-old-password" type="password" placeholder="Masukkan password lama"
                   v-model="passwordForm.current_password"
                   :class="getPasswordFieldError('current_password') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('current_password')" class="text-caption !text-rose-600">{{
+                <small v-if="getPasswordFieldError('current_password')" class="!text-rose-600 text-caption">{{
                   getPasswordFieldError('current_password') }}</small>
               </div>
               <div>
                 <FormLabel htmlFor="settings-akun-new-password">Password Baru</FormLabel>
                 <FormInput id="settings-akun-new-password" type="password" placeholder="Masukkan password baru"
-                  v-model="passwordForm.password"
-                  :class="getPasswordFieldError('password') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('password')" class="text-caption !text-rose-600">{{
+                  v-model="passwordForm.password" :class="getPasswordFieldError('password') ? 'border-rose-500' : ''" />
+                <small v-if="getPasswordFieldError('password')" class="!text-rose-600 text-caption">{{
                   getPasswordFieldError('password') }}</small>
               </div>
               <div>
@@ -268,15 +267,15 @@ function handleClose() {
                 <FormInput id="settings-akun-confirm-password" type="password" placeholder="Ulangi password baru"
                   v-model="passwordForm.password_confirmation"
                   :class="getPasswordFieldError('password_confirmation') ? 'border-rose-500' : ''" />
-                <small v-if="getPasswordFieldError('password_confirmation')" class="text-caption !text-rose-600">{{
+                <small v-if="getPasswordFieldError('password_confirmation')" class="!text-rose-600 text-caption">{{
                   getPasswordFieldError('password_confirmation') }}</small>
               </div>
             </div>
 
-            <Button type="button" variant="primary" class="mt-6 inline-flex items-center gap-2"
+            <Button type="button" variant="primary" class="inline-flex items-center gap-2 mt-6"
               :disabled="passwordLoading" @click="submitPassword">
               <Lucide v-if="passwordLoading" icon="Loader2" class="w-4 h-4 animate-spin" />
-              <Lucide v-else icon="Save" class="h-4 w-4" />
+              <Lucide v-else icon="Save" class="w-4 h-4" />
               Simpan
             </Button>
           </div>
