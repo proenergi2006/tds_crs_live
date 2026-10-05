@@ -70,11 +70,10 @@ const cogs = computed<number>(() => {
   const weighted = items.value.reduce((s, it) => s + (Number(it.persen) || 0) * (Number(it.cogs_price) || 0), 0)
   return weighted / totalPersen
 })
-const margin = computed<number>(() => (Number(penawaran.value.harga_dasar) || 0) - cogs.value)
-const marginPercent = computed<number>(() => {
-  const dasar = Number(penawaran.value.harga_dasar) || 0
-  return dasar > 0 ? (margin.value / dasar) * 100 : 0
-})
+const margin = computed<number>(() => dppHargaDasar.value - cogs.value)
+const marginPercent = computed<number>(() =>
+  dppHargaDasar.value > 0 ? (margin.value / dppHargaDasar.value) * 100 : 0
+)
 const totalGrossProfit = computed<number>(() => margin.value * totalVolume.value)
 const hasIncompleteCogs = computed<boolean>(() => items.value.some((it: any) => it.cogs_price == null))
 
@@ -495,7 +494,7 @@ watch(() => route.fullPath, fetchPenawaran, { immediate: true })
                     <dd class="mt-1 num-md text-lg">{{ formatCurrency(cogs) }}</dd>
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg text-right">
-                    <dt class="text-form-label">Margin Harga Dasar terhadap COGS</dt>
+                    <dt class="text-form-label">Margin DPP terhadap COGS</dt>
                     <dd class="mt-1 num-md text-lg">{{ formatCurrency(margin) }} ({{ marginPercent.toFixed(2) }}%)
                     </dd>
                   </div>
