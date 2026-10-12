@@ -13,9 +13,10 @@ class BuildSalesConfirmationDetailAction
     {
         $po->loadMissing([
             'customer.latestApprovedVerification',
-            'penawaran.items.produk.ukuran.satuan',
-            'penawaran.latestDocumentApproval.steps.templateStep',
-            'penawaran.latestDocumentApproval.steps.actor',
+            'quotation.items.product.ukuran.satuan',
+            'quotation.latestDocumentApproval.steps.templateStep',
+            'quotation.latestDocumentApproval.steps.role',
+            'quotation.latestDocumentApproval.steps.actor',
             'unblockRequests.requestedBy',
         ]);
 
@@ -33,7 +34,7 @@ class BuildSalesConfirmationDetailAction
                 'total_nilai'      => round($totalNilai, 2),
                 'total_nilai_ppn'  => $nilaiOrderPpn,
             ],
-            'penawaran' => $this->penawaranDetail($po, $ppnMultiplier),
+            'quotation' => $this->quotationDetail($po, $ppnMultiplier),
             'credit'    => [
                 'approved_top'             => $po->customer?->latestApprovedVerification?->approved_top,
                 'nilai_order_ppn'          => $nilaiOrderPpn,
@@ -43,47 +44,52 @@ class BuildSalesConfirmationDetailAction
         ];
     }
 
-    private function penawaranDetail(PoCustomer $po, float $ppnMultiplier): array
+    private function quotationDetail(PoCustomer $po, float $ppnMultiplier): array
     {
-        $penawaran = $po->penawaran;
+        $quotation = $po->quotation;
 
-        if (!$penawaran) {
+        if (!$quotation) {
             return [];
         }
 
-        $hargaPerM3  = (float) ($penawaran->harga_dasar ?? 0) + (float) ($penawaran->oat ?? 0);
-        $totalVolume = (int) $penawaran->items->sum('volume_order');
+        $hargaPerM3  = $quotation->weightedFinalPrice();
+        $totalVolume = (float) $quotation->items->sum(fn ($item) => (float) $item->quantity);
         $totalHarga  = round($hargaPerM3 * $totalVolume, 2);
 
         return [
-            'id_penawaran'          => $penawaran->id_penawaran,
-            'brand'                 => $penawaran->brand?->value,
-            'masa_berlaku'          => $penawaran->masa_berlaku,
-            'sampai_dengan'         => $penawaran->sampai_dengan,
-            'harga_dasar'           => (float) ($penawaran->harga_dasar ?? 0),
-            'oat'                   => (float) ($penawaran->oat ?? 0),
+            'id'                    => $quotation->id,
+            'brand'                 => $quotation->brand?->value,
+            'masa_berlaku'          => $quotation->masa_berlaku,
+            'sampai_dengan'         => $quotation->sampai_dengan,
+            'dpp'                   => $quotation->dpp(),
+            'subtotal_material'     => $quotation->subtotalMaterial(),
+            'transport_total'       => $quotation->transportTotal(),
             'harga_per_m3'          => $hargaPerM3,
-            'tipe_pembayaran'       => $penawaran->tipe_pembayaran,
-            'repayment_hari'        => $penawaran->repayment_hari,
-            'type_pengiriman'       => $penawaran->type_pengiriman,
-            'lokasi_pengiriman'     => $penawaran->lokasi_pengiriman,
+            'tipe_pembayaran'       => $quotation->tipe_pembayaran,
+            'repayment_hari'        => $quotation->repayment_hari,
+            'type_pengiriman'       => $quotation->type_pengiriman,
+            'lokasi_pengiriman'     => $quotation->lokasi_pengiriman,
             'total_volume'          => $totalVolume,
             'total_harga'           => $totalHarga,
             'total_harga_ppn'       => round($totalHarga * $ppnMultiplier, 2),
-            'items'                 => $penawaran->items->map(fn ($item) => [
-                'produk'       => $item->produk?->nama_produk,
-                'ukuran'       => $item->produk?->ukuran?->nama_ukuran,
-                'satuan'       => $item->produk?->ukuran?->satuan?->nama_satuan,
-                'persen'       => $item->persen,
-                'volume_order' => $item->volume_order,
+            'items'                 => $quotation->items->map(fn ($item) => [
+                'produk'       => $item->product?->nama_produk,
+                'ukuran'       => $item->product?->ukuran?->nama_ukuran,
+                'satuan'       => $item->product?->ukuran?->satuan?->nama_satuan,
+                'unit_price'   => (float) $item->unit_price,
+                'quantity'     => (float) $item->quantity,
+                'line_total'   => (float) $item->line_total,
+                'transport_price' => (float) $item->transport_price,
+                'final_price'  => $item->finalPrice(),
+                'final_total'  => $item->finalTotal(),
             ])->values()->all(),
-            'approvals'             => $this->penawaranApprovals($po),
+            'approvals'             => $this->quotationApprovals($po),
         ];
     }
 
-    private function penawaranApprovals(PoCustomer $po): array
+    private function quotationApprovals(PoCustomer $po): array
     {
-        $cycle = $po->penawaran?->latestDocumentApproval;
+        $cycle = $po->quotation?->latestDocumentApproval;
 
         if (!$cycle) {
             return [];
@@ -91,7 +97,7 @@ class BuildSalesConfirmationDetailAction
 
         return $cycle->steps->sortBy('step_order')->map(fn ($step) => [
             'step_order' => $step->step_order,
-            'step_name'  => $step->templateStep?->step_name,
+            'step_name'  => $step->displayName(),
             'actor_name' => $step->actor?->name,
             'acted_at'   => $step->acted_at?->toISOString(),
             'status'     => $step->status?->value,

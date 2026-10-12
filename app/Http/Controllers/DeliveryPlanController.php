@@ -11,17 +11,12 @@ class DeliveryPlanController extends Controller
 {
     private array $statusMap = [0=>'Terdaftar',1=>'Masuk PR',2=>'Reschedule',3=>'Pending'];
 
-    /**
-     * GET /api/logistics/delivery-plans
-     * Query:
-     * - q, from, to, status (default 0), overdue, urgent, page, per_page
-     */
     public function index(Request $req)
     {
         $q       = trim((string)$req->query('q', ''));
         $from    = $this->toYmd($req->query('from'));
         $to      = $this->toYmd($req->query('to'));
-        $status  = $req->query('status', '0'); // default: hanya yg belum PR
+        $status  = $req->query('status', '0');
         $overdue = (int)$req->query('overdue', 0);
         $urgent  = $req->query('urgent', null);
         $perPage = min(max((int)$req->query('per_page', 25), 1), 200);
@@ -37,7 +32,7 @@ class DeliveryPlanController extends Controller
                 p.top_plan, p.actual_top_plan, p.pelanggan_plan,
                 p.ar_notyet, p.ar_satu, p.ar_dua, p.kredit_limit,
                 po.nomor_poc, po.tanggal_poc,
-                po.id_penawaran,
+                po.quotation_id AS id_penawaran,
                 c.nama_perusahaan,
                 CONCAT('PO-', LPAD(p.id_poc::text, 5, '0')) as doc_code
             ");
@@ -52,7 +47,6 @@ class DeliveryPlanController extends Controller
         if ($from) $base->whereDate('p.tanggal_kirim','>=',$from);
         if ($to)   $base->whereDate('p.tanggal_kirim','<=',$to);
 
-        // default hanya status 0
         if ($status !== null && $status !== '') {
             $base->where('p.status_plan', (int)$status);
         }
@@ -70,24 +64,23 @@ class DeliveryPlanController extends Controller
 
         $data = $base->paginate($perPage);
 
-        // ==== ambil produk per id_penawaran muncul di halaman ====
-        $penawaranIds = collect($data->items())->pluck('id_penawaran')->filter()->unique()->values();
+        $quotationIds = collect($data->items())->pluck('id_penawaran')->filter()->unique()->values();
 
-        $produkByPenawaran = collect();
-        if ($penawaranIds->isNotEmpty()) {
-            $rowsProduk = DB::table('penawaran_items as pi')
-                ->leftJoin('produks as pr','pr.id_produk','=','pi.id_produk')
-                ->whereIn('pi.id_penawaran', $penawaranIds)
+        $produkByQuotation = collect();
+        if ($quotationIds->isNotEmpty()) {
+            $rowsProduk = DB::table('quotation_items as pi')
+                ->leftJoin('produks as pr','pr.id_produk','=','pi.product_id')
+                ->whereIn('pi.quotation_id', $quotationIds)
                 ->selectRaw('
-                    pi.id_penawaran,
-                    pi.id_penawaran_item,
-                    pi.id_produk,
-                    COALESCE(pr.nama_produk, pi.id_produk::text) as nama_produk
+                    pi.quotation_id AS id_penawaran,
+                    pi.id AS id_penawaran_item,
+                    pi.product_id AS id_produk,
+                    COALESCE(pr.nama_produk, pi.product_id::text) as nama_produk
                 ')
-                ->orderBy('pi.id_penawaran_item')
+                ->orderBy('pi.id')
                 ->get();
 
-            $produkByPenawaran = $rowsProduk->groupBy('id_penawaran')->map(function($grp){
+            $produkByQuotation = $rowsProduk->groupBy('id_penawaran')->map(function($grp){
                 return $grp->map(fn($r)=>[
                     'id_penawaran_item' => (int)$r->id_penawaran_item,
                     'id_produk'         => (int)$r->id_produk,
@@ -96,9 +89,9 @@ class DeliveryPlanController extends Controller
             });
         }
 
-        $items = collect($data->items())->map(function ($r) use ($produkByPenawaran) {
+        $items = collect($data->items())->map(function ($r) use ($produkByQuotation) {
             $row = $this->mapRow($r);
-            $list = $produkByPenawaran->get($r->id_penawaran, collect());
+            $list = $produkByQuotation->get($r->id_penawaran, collect());
             $row['products'] = $list;
             if ($list->count()) {
                 $names = $list->pluck('nama_produk')->all();
@@ -122,9 +115,6 @@ class DeliveryPlanController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/logistics/delivery-plans/{id}
-     */
     public function show($id)
     {
         $r = DB::table('po_customer_plan as p')
@@ -139,7 +129,7 @@ class DeliveryPlanController extends Controller
                 p.top_plan, p.actual_top_plan, p.pelanggan_plan,
                 p.ar_notyet, p.ar_satu, p.ar_dua, p.kredit_limit,
                 po.nomor_poc, po.tanggal_poc,
-                po.id_penawaran,
+                po.quotation_id AS id_penawaran,
                 c.nama_perusahaan,
                 CONCAT('PO-', LPAD(p.id_poc::text, 5, '0')) as doc_code
             ")->first();
@@ -150,11 +140,11 @@ class DeliveryPlanController extends Controller
 
         $products = collect();
         if (!empty($r->id_penawaran)) {
-            $products = DB::table('penawaran_items as pi')
-                ->leftJoin('produks as pr','pr.id_produk','=','pi.id_produk')
-                ->where('pi.id_penawaran', $r->id_penawaran)
-                ->selectRaw('pi.id_penawaran_item, pi.id_produk, COALESCE(pr.nama_produk, pi.id_produk::text) as nama_produk')
-                ->orderBy('pi.id_penawaran_item')
+            $products = DB::table('quotation_items as pi')
+                ->leftJoin('produks as pr','pr.id_produk','=','pi.product_id')
+                ->where('pi.quotation_id', $r->id_penawaran)
+                ->selectRaw('pi.id AS id_penawaran_item, pi.product_id AS id_produk, COALESCE(pr.nama_produk, pi.product_id::text) as nama_produk')
+                ->orderBy('pi.id')
                 ->get()
                 ->map(fn($x)=>[
                     'id_penawaran_item'=>(int)$x->id_penawaran_item,
@@ -271,7 +261,6 @@ class DeliveryPlanController extends Controller
         });
     }
 
-    // ================= Helpers =================
 
     private function mapRow($r): array
     {

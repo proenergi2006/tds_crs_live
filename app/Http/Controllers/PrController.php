@@ -17,14 +17,13 @@ class PrController extends Controller
         ]);
 
         return DB::transaction(function () use ($data) {
-            // Ambil 1 plan buat referensi cabang
             $firstPlan = DB::table('po_customer_plan as p')
                 ->leftJoin('po_customers as po','po.id_poc','=','p.id_poc')
                 ->leftJoin('customers as c','c.id_customer','=','po.id_customer')
                 ->leftJoin('cabangs as cb','cb.id_cabang','=','c.id_cabang')
                 ->selectRaw("
                     p.id_poc,
-                    po.id_penawaran,
+                    po.quotation_id,
                     c.id_cabang,
                     COALESCE(cb.inisial_cabang, 'XXX') as inisial_cabang
                 ")
@@ -35,10 +34,7 @@ class PrController extends Controller
             $tanggalPr     = now()->toDateString();
             $nomorPr       = $this->generateNomorPr($inisialCabang);
 
-            // =======================
-            // INSERT HEADER PR (FIX)
-            // =======================
-            // Wajib sebut kolom PK 'id_pr' sebagai argumen ke-2
+            // insertGetId wajib sebut PK 'id_pr' di Postgres
             $idPr = DB::table('pro_pr')->insertGetId([
                 'id_wilayah'        => null,
                 'id_group'          => null,
@@ -60,31 +56,29 @@ class PrController extends Controller
                 'coo_result'        => 0,
                 'jam_submit'        => now(),
                 'submit_bm'         => now(),
-            ], 'id_pr'); // <-- ini yang bikin Postgres happy
+            ], 'id_pr');
 
-            // Insert detail per PLAN
             foreach ($data['items'] as $it) {
                 $plan = DB::table('po_customer_plan as p')
                     ->leftJoin('po_customers as po','po.id_poc','=','p.id_poc')
                     ->leftJoin('customers as cu','cu.id_customer','=','po.id_customer')
                     ->selectRaw('
                         p.id_plan, p.id_poc, p.volume_kirim, p.realisasi_kirim,
-                        po.id_penawaran, cu.nama_perusahaan
+                        po.quotation_id, cu.nama_perusahaan
                     ')
                     ->where('p.id_plan', $it['id_plan'])
                     ->first();
 
-                // (Opsional) ambil label produk gabungan kalau mau tampil di PR detail
-                $produkLabel = DB::table('penawaran_items as pi')
-                    ->leftJoin('produks as pr','pr.id_produk','=','pi.id_produk')
-                    ->where('pi.id_penawaran', $plan->id_penawaran)
-                    ->selectRaw("COALESCE(string_agg(COALESCE(pr.nama_produk, pi.id_produk::text), ', '), '-') as nama")
+                $produkLabel = DB::table('quotation_items as pi')
+                    ->leftJoin('produks as pr','pr.id_produk','=','pi.product_id')
+                    ->where('pi.quotation_id', $plan->quotation_id)
+                    ->selectRaw("COALESCE(string_agg(COALESCE(pr.nama_produk, pi.product_id::text), ', '), '-') as nama")
                     ->value('nama') ?? '-';
 
                 DB::table('pro_pr_detail')->insert([
                     'id_pr'             => $idPr,
                     'id_plan'           => $plan->id_plan,
-                    'produk'            => $produkLabel, // boleh null juga
+                    'produk'            => $produkLabel,
                     'volume'            => (int)$it['volume'],
                     'vol_potongan'      => 0,
                     'vol_ket'           => null,
@@ -100,7 +94,7 @@ class PrController extends Controller
                     'pr_kredit_limit'   => null,
                     'pr_terminal'       => null,
                     'pr_vendor'         => null,
-                    'pr_harga_beli'     => null, // akan terisi saat alokasi stok / verifikasi
+                    'pr_harga_beli'     => null,
                     'pr_price_list'     => 0,
                     'nomor_lo_pr'       => null,
                     'schedule_payment'  => null,
@@ -120,7 +114,6 @@ class PrController extends Controller
                 ]);
             }
 
-            // Update status plan → 1 (Masuk PR) agar hilang dari Delivery Plan list
             $planIds = collect($data['items'])->pluck('id_plan')->all();
             DB::table('po_customer_plan')->whereIn('id_plan', $planIds)->update([
                 'status_plan' => 1,
@@ -135,15 +128,12 @@ class PrController extends Controller
         });
     }
 
-    /** Format nomor: 0001/TDS/DR/{INISIAL}/{ROMAN}/{YYYY} */
     private function generateNomorPr(string $inisialCabang): string
     {
         $now   = now();
         $yyyy  = (int)$now->format('Y');
         $roman = RomanMonth::of($now->format('n'));
 
-        // Cari urutan terbesar di bulan & tahun berjalan.
-        // Pakai regex Postgres untuk ambil digit diawal (lebih aman).
         $maxSeq = DB::table('pro_pr')
             ->whereBetween('tanggal_pr', [
                 $now->copy()->startOfMonth()->toDateString(),

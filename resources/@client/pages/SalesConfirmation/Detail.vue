@@ -111,10 +111,9 @@ const totalAr = computed<number>(() =>
 
 const remaining = computed<number>(() => creditLimitDisplay.value - totalAr.value)
 
-const penawaranItems = computed<any[]>(() => detail.value?.penawaran?.items ?? [])
-
+const quotationItems = computed<any[]>(() => detail.value?.quotation?.items ?? [])
 const approvalSteps = computed<Array<{ label: string; text: string }>>(() => {
-  const steps: any[] = detail.value?.penawaran?.approvals ?? []
+  const steps: any[] = detail.value?.quotation?.approvals ?? []
   return steps.map((step) => {
     const label = step.step_name || `Step ${step.step_order}`
     if (step.status === 'approved') {
@@ -126,14 +125,16 @@ const approvalSteps = computed<Array<{ label: string; text: string }>>(() => {
   })
 })
 
-const penawaranLink = computed<{ name: string } | null>(() => {
-  const p = detail.value?.penawaran
-  if (!p?.id_penawaran) return null
+const quotationLink = computed<{ name: string } | null>(() => {
+  const p = detail.value?.quotation
+  if (!p?.id) return null
   if (p.brand === 'tds') {
     if (auth.can('penawaran.viewOwn')) return { name: 'penawarans-detail' }
+    if (auth.can('penawaran.verify-ceo')) return { name: 'penawarans-verifikasi-ceo-detail' }
     if (auth.can('penawaran.verify')) return { name: 'penawarans-verifikasi-bm-detail' }
   } else if (p.brand === 'proenergi') {
     if (auth.can('penawaran.proenergi.viewOwn')) return { name: 'penawarans-detail-proenergi' }
+    if (auth.can('penawaran.verify-ceo')) return { name: 'penawarans-verifikasi-ceo-detail-proenergi' }
     if (auth.can('penawaran.proenergi.verify-bm')) {
       return { name: 'penawarans-verifikasi-bm-detail-proenergi' }
     }
@@ -141,9 +142,9 @@ const penawaranLink = computed<{ name: string } | null>(() => {
   return null
 })
 
-const penawaranHref = computed<string | null>(() =>
-  penawaranLink.value
-    ? router.resolve({ ...penawaranLink.value, params: { id: detail.value.penawaran.id_penawaran } }).href
+const quotationHref = computed<string | null>(() =>
+  quotationLink.value
+    ? router.resolve({ ...quotationLink.value, params: { id: detail.value.quotation.id } }).href
     : null,
 )
 
@@ -174,7 +175,7 @@ const headerTheme = computed<{ banner: string; icon: string }>(() => {
 const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
 const priceValidity = computed<string>(() => {
-  const p = detail.value?.penawaran
+  const p = detail.value?.quotation
   if (!p?.masa_berlaku || !p?.sampai_dengan) return '-'
   const from = new Date(p.masa_berlaku)
   const to = new Date(p.sampai_dengan)
@@ -185,7 +186,7 @@ const priceValidity = computed<string>(() => {
 })
 
 const paymentTypeLabel = computed<string>(() => {
-  const p = detail.value?.penawaran
+  const p = detail.value?.quotation
   if (!p?.tipe_pembayaran) return '-'
   return Number(p.repayment_hari) > 0 && !/\d/.test(p.tipe_pembayaran)
     ? `${p.tipe_pembayaran} — ${p.repayment_hari} hari`
@@ -437,9 +438,9 @@ function backToIndex(): void {
       <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <CardSection title="Customer & Penawaran" icon="Users" icon-class="bg-blue-100 text-blue-600"
           class="border border-slate-200">
-          <template v-if="detail.penawaran?.type_pengiriman" #action>
+          <template v-if="detail.quotation?.type_pengiriman" #action>
             <span class="rounded-full bg-emerald-100 px-3 py-1 text-form-label !text-emerald-700">
-              {{ detail.penawaran.type_pengiriman }}
+              {{ detail.quotation.type_pengiriman }}
             </span>
           </template>
 
@@ -448,15 +449,15 @@ function backToIndex(): void {
             <div class="text-section-title">{{ detail.customer?.company_name || '-' }}</div>
             <div class="mt-1 text-caption text-slate-500">
               Kode: {{ detail.customer?.customer_code || '-' }} · No. Penawaran:
-              {{ detail.penawaran?.nomor_penawaran || '-' }}
+              {{ detail.quotation?.nomor_penawaran || '-' }}
             </div>
           </div>
 
-          <template v-if="detail.penawaran?.id_penawaran">
+          <template v-if="detail.quotation?.id">
             <div class="mt-3 grid grid-cols-2 gap-3">
               <div class="rounded-lg border border-slate-200 p-3">
                 <span class="text-form-label">Marketing</span>
-                <div class="text-body-strong">{{ detail.penawaran.marketing_name || '-' }}</div>
+                <div class="text-body-strong">{{ detail.quotation.marketing_name || '-' }}</div>
               </div>
               <div class="rounded-lg border border-slate-200 p-3">
                 <span class="text-form-label">Masa Berlaku Harga</span>
@@ -466,30 +467,34 @@ function backToIndex(): void {
 
             <dl class="mt-3 space-y-1">
               <div class="flex justify-between gap-4 px-2 py-1.5">
-                <span class="text-form-label">Harga Dasar</span>
-                <span class="text-body-strong text-right">{{ formatCurrency(detail.penawaran.harga_dasar) }}</span>
+                <span class="text-form-label">Subtotal Material</span>
+                <span class="text-body-strong text-right">{{ formatCurrency(detail.quotation.subtotal_material) }}</span>
               </div>
               <div class="flex justify-between gap-4 px-2 py-1.5">
-                <span class="text-form-label">OAT</span>
-                <span class="text-body-strong text-right">{{ formatCurrency(detail.penawaran.oat) }}</span>
+                <span class="text-form-label">Total Transport</span>
+                <span class="text-body-strong text-right">{{ formatCurrency(detail.quotation.transport_total) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 px-2 py-1.5">
+                <span class="text-form-label">DPP</span>
+                <span class="text-body-strong text-right">{{ formatCurrency(detail.quotation.dpp) }}</span>
               </div>
               <div class="flex justify-between gap-4 rounded-lg bg-emerald-50 px-2 py-1.5">
                 <span class="text-form-label">Harga per m³</span>
                 <span class="text-body-strong text-right !text-emerald-700">
-                  {{ formatCurrency(detail.penawaran.harga_per_m3) }}
+                  {{ formatCurrency(detail.quotation.harga_per_m3) }}
                 </span>
               </div>
               <div class="flex justify-between gap-4 px-2 py-1.5">
                 <span class="text-form-label">Total Volume</span>
-                <span class="text-body-strong text-right">{{ formatNumber(detail.penawaran.total_volume) }} m³</span>
+                <span class="text-body-strong text-right">{{ formatNumber(detail.quotation.total_volume) }} m³</span>
               </div>
               <div class="flex justify-between gap-4 px-2 py-1.5">
                 <span class="text-form-label">Total Harga (Sebelum PPN)</span>
-                <span class="text-body-strong text-right">{{ formatCurrency(detail.penawaran.total_harga) }}</span>
+                <span class="text-body-strong text-right">{{ formatCurrency(detail.quotation.total_harga) }}</span>
               </div>
               <div class="flex justify-between gap-4 rounded-lg bg-slate-100 px-2 py-1.5">
                 <span class="text-form-label">Total Harga (Incl. PPN 11%)</span>
-                <span class="text-body-strong text-right">{{ formatCurrency(detail.penawaran.total_harga_ppn) }}</span>
+                <span class="text-body-strong text-right">{{ formatCurrency(detail.quotation.total_harga_ppn) }}</span>
               </div>
             </dl>
 
@@ -503,38 +508,44 @@ function backToIndex(): void {
             <div class="mt-2 space-y-1">
               <span class="text-form-label">Lokasi Pengiriman</span>
               <div class="rounded-lg border border-slate-200 p-3 text-body">
-                {{ detail.penawaran.lokasi_pengiriman || '-' }}
+                {{ detail.quotation.lokasi_pengiriman || '-' }}
               </div>
             </div>
           </template>
 
-          <div v-if="penawaranItems.length" class="mt-4 space-y-2">
+          <div v-if="quotationItems.length" class="mt-4 space-y-2">
             <span class="text-form-label">Detail Produk</span>
             <div class="overflow-x-auto rounded-lg border border-slate-200">
               <table class="w-full text-left text-body">
                 <thead class="bg-slate-50">
                   <tr>
-                    <th class="px-3 py-2 text-form-label">Produk</th>
-                    <th class="px-3 py-2 text-form-label">Ukuran</th>
-                    <th class="px-3 py-2 text-right text-form-label">Rasio</th>
-                    <th class="px-3 py-2 text-right text-form-label">Volume</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-form-label">Produk</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-form-label">Ukuran</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-right text-form-label">Quantity</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-right text-form-label">Material/m³</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-right text-form-label">Transport/m³</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-right text-form-label">Final/m³</th>
+                    <th class="whitespace-nowrap px-3 py-2 text-right text-form-label">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(item, index) in penawaranItems" :key="index" class="border-t border-slate-100">
-                    <td class="px-3 py-2">{{ item.produk || '-' }}</td>
-                    <td class="px-3 py-2">
+                  <tr v-for="(item, index) in quotationItems" :key="index" class="border-t border-slate-100">
+                    <td class="whitespace-nowrap px-3 py-2">{{ item.produk || '-' }}</td>
+                    <td class="whitespace-nowrap px-3 py-2">
                       {{ item.ukuran || '-' }}<template v-if="item.satuan"> {{ item.satuan }}</template>
                     </td>
-                    <td class="px-3 py-2 text-right">{{ item.persen != null ? `${formatNumber(item.persen)}%` : '-' }}</td>
-                    <td class="px-3 py-2 text-right">{{ formatNumber(item.volume_order) }}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-right">{{ formatNumber(item.quantity) }}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-right">{{ formatCurrency(item.unit_price) }}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-right">{{ formatCurrency(item.transport_price) }}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-right">{{ formatCurrency(item.final_price) }}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-right">{{ formatCurrency(item.final_total) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div v-if="detail.penawaran?.id_penawaran"
+          <div v-if="detail.quotation?.id"
             class="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <span class="text-form-label">Persetujuan Penawaran</span>
             <div v-if="approvalSteps.length" class="grid grid-cols-2 gap-3">
@@ -545,8 +556,8 @@ function backToIndex(): void {
             </div>
             <div v-else class="text-body">-</div>
 
-            <Button v-if="penawaranHref" as="a" variant="outline-secondary" class="w-full bg-white"
-              :href="penawaranHref" target="_blank">
+            <Button v-if="quotationHref" as="a" variant="outline-secondary" class="w-full bg-white"
+              :href="quotationHref" target="_blank">
               <Lucide icon="Eye" class="mr-2 h-4 w-4" />
               Buka Penawaran
             </Button>

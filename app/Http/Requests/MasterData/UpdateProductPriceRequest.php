@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\MasterData;
 
+use App\Models\PricePeriod;
+use App\Models\ProductPrice;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,6 +17,26 @@ class UpdateProductPriceRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(array_map(fn ($v) => $v === '' ? null : $v, $this->all()));
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $current = $this->route('product_price');
+
+            if ($validator->errors()->isNotEmpty()
+                || $current?->pricePeriod?->isEnded()
+                || PricePeriod::targetIsEnded($this->input('price_period_id'), $this->input('end_date'))) {
+                return;
+            }
+
+            $existing = $current?->only(ProductPrice::TIER_ORDER) ?? [];
+            $submitted = $this->only(ProductPrice::TIER_ORDER);
+
+            foreach (ProductPrice::tierOrderErrors(array_merge($existing, $submitted)) as $field => $message) {
+                $validator->errors()->add($field, $message);
+            }
+        });
     }
 
     public function rules(): array
@@ -37,7 +59,8 @@ class UpdateProductPriceRequest extends FormRequest
                 'numeric',
                 'min:0',
             ],
-            'margin_amount'        => 'nullable|numeric|min:0',
+            'margin_material_amount' => 'nullable|numeric|min:0',
+            'margin_transport_amount' => 'nullable|numeric|min:0',
             'om_price'             => 'nullable|numeric|min:0',
             'ceo_price'            => 'nullable|numeric|min:0',
             'notes'                => 'nullable|string',

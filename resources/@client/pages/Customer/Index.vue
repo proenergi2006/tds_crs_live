@@ -21,7 +21,6 @@ const auth = useAuthStore()
 
 const isProenergi = [13, 14].includes(Number(auth.user?.id_role))
 
-/* State: data & pagination */
 const customers = ref<any[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
@@ -30,7 +29,6 @@ const currentPage = ref(1)
 const totalRecords = ref(0)
 const totalPages = ref(1)
 
-/* State: delete */
 const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
@@ -45,8 +43,7 @@ function canManageRow(item: any) {
   )
 }
 
-/* Computed: summary cards (Proenergi only) */
-const totalPenawaran = computed(() =>
+const totalQuotations = computed(() =>
   customers.value.reduce((sum, c) => sum + Number(c.quotation_count ?? 0), 0)
 )
 
@@ -133,7 +130,6 @@ function needsReverification(item: any) {
         </template>
       </PageHeader>
 
-      <!-- Summary Cards (Proenergi only) -->
       <div v-if="isProenergi" class="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <div class="box p-4">
           <div class="text-form-label">Total Customer</div>
@@ -153,7 +149,7 @@ function needsReverification(item: any) {
         </div>
         <div class="box p-4">
           <div class="text-form-label">Total Penawaran</div>
-          <div class="num-lg mt-1 !text-primary">{{ totalPenawaran }}</div>
+          <div class="num-lg mt-1 !text-primary">{{ totalQuotations }}</div>
         </div>
       </div>
 

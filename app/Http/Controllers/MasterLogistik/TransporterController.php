@@ -51,15 +51,13 @@ class TransporterController extends Controller
         return TransporterResource::collection($query->paginate($perPage));
     }
 
-    public function show(Request $request, $id): JsonResponse|TransporterResource
+    public function show(Request $request, Transporter $transporter): JsonResponse|TransporterResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transporter = Transporter::with('cabang')
-            ->withCount(['personnels', 'vessels', 'trucks'])
-            ->findOrFail($id);
+        $transporter->load('cabang')->loadCount(['personnels', 'vessels', 'trucks']);
 
         return new TransporterResource($transporter);
     }
@@ -80,26 +78,25 @@ class TransporterController extends Controller
         return (new TransporterResource($transporter))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateTransporterRequest $request, $id): JsonResponse|TransporterResource
+    public function update(UpdateTransporterRequest $request, Transporter $transporter): JsonResponse|TransporterResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transporter = Transporter::findOrFail($id);
         $transporter->update($request->validated() + ['updated_by' => $request->user()->id]);
         $transporter->refresh()->load('cabang')->loadCount(['personnels', 'vessels', 'trucks']);
 
         return new TransporterResource($transporter);
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, Transporter $transporter): JsonResponse
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transporter = Transporter::withCount(['personnels', 'vessels', 'trucks'])->findOrFail($id);
+        $transporter->loadCount(['personnels', 'vessels', 'trucks']);
 
         if ($transporter->personnels_count > 0 || $transporter->vessels_count > 0 || $transporter->trucks_count > 0) {
             return response()->json([

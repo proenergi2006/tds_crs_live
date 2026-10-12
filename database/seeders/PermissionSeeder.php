@@ -94,6 +94,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Isi margin, price list, dan harga tier/approval (BM/OM/CEO) sebagai verifikator harga (CEO)',
             'roles'       => [2],
         ],
+        [
+            'name'        => 'product-price.manage-transport-margin',
+            'module'      => 'product-price',
+            'description' => 'Lihat baris harga franco dan isi Margin Transport (Logistic HO)',
+            'roles'       => [7],
+        ],
 
         [
             'name'        => 'po-supplier.manage',
@@ -211,6 +217,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Verifikasi Penawaran Polimer sebagai Branch Manager Polimer',
             'roles'       => [17],
         ],
+        [
+            'name'        => 'penawaran.verify-ceo',
+            'module'      => 'penawaran',
+            'description' => 'Verifikasi Quotation Tier III / di luar batas tier sebagai CEO',
+            'roles'       => [2],
+        ],
 
         [
             'name'        => 'penawaran.proenergi.viewOwn',
@@ -255,6 +267,12 @@ class PermissionSeeder extends Seeder
             'description' => 'Kelola Sales Confirmation dan Review Data Customer (Admin Finance & Branch Manager)',
             'roles'       => [8, 9],
         ],
+        [
+            'name'        => 'sales-confirmation.view',
+            'module'      => 'sales-confirmation',
+            'description' => 'Lihat daftar & detail Sales Confirmation tanpa aksi (CEO)',
+            'roles'       => [2],
+        ],
 
         [
             'name'        => 'logistik.lcr.verify',
@@ -267,6 +285,12 @@ class PermissionSeeder extends Seeder
             'module'      => 'logistik',
             'description' => 'Kelola master logistik: Transportir, Personnel, Volume, Wilayah Angkut, Kapal, Truck, OA',
             'roles'       => [7],
+        ],
+        [
+            'name'        => 'logistik.transport-tariff.view',
+            'module'      => 'logistik',
+            'description' => 'Lihat daftar Transport Tariff tanpa aksi (CEO)',
+            'roles'       => [2],
         ],
         [
             'name'        => 'logistik.master.consume',

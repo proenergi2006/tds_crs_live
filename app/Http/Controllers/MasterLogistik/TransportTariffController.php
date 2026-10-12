@@ -19,7 +19,7 @@ class TransportTariffController extends Controller
 
     public function index(Request $request): JsonResponse|AnonymousResourceCollection
     {
-        if ($request->user()->cant('logistik.master.manage')) {
+        if (! $request->user()->canAny(['logistik.master.manage', 'logistik.transport-tariff.view'])) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -52,15 +52,15 @@ class TransportTariffController extends Controller
         return TransportTariffResource::collection($query->paginate($perPage));
     }
 
-    public function show(Request $request, $id): JsonResponse|TransportTariffResource
+    public function show(Request $request, TransportTariff $transportTariff): JsonResponse|TransportTariffResource
     {
-        if ($request->user()->cant('logistik.master.manage')) {
+        if (! $request->user()->canAny(['logistik.master.manage', 'logistik.transport-tariff.view'])) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $tariff = TransportTariff::with(self::EAGER_RELATIONS)->findOrFail($id);
+        $transportTariff->load(self::EAGER_RELATIONS);
 
-        return new TransportTariffResource($tariff);
+        return new TransportTariffResource($transportTariff);
     }
 
     public function store(StoreTransportTariffRequest $request): JsonResponse
@@ -83,34 +83,32 @@ class TransportTariffController extends Controller
         return (new TransportTariffResource($tariff))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateTransportTariffRequest $request, $id): JsonResponse|TransportTariffResource
+    public function update(UpdateTransportTariffRequest $request, TransportTariff $transportTariff): JsonResponse|TransportTariffResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $tariff = TransportTariff::findOrFail($id);
         $data = $request->validated();
-        $data['is_active'] = $data['is_active'] ?? $tariff->is_active;
+        $data['is_active'] = $data['is_active'] ?? $transportTariff->is_active;
 
-        if ($data['is_active'] && $this->hasActiveDuplicate($data, $tariff->id)) {
+        if ($data['is_active'] && $this->hasActiveDuplicate($data, $transportTariff->id)) {
             return $this->duplicateTariffResponse();
         }
 
-        $tariff->update($data + ['updated_by' => $request->user()->id]);
-        $tariff->refresh()->load(self::EAGER_RELATIONS);
+        $transportTariff->update($data + ['updated_by' => $request->user()->id]);
+        $transportTariff->refresh()->load(self::EAGER_RELATIONS);
 
-        return new TransportTariffResource($tariff);
+        return new TransportTariffResource($transportTariff);
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, TransportTariff $transportTariff): JsonResponse
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $tariff = TransportTariff::findOrFail($id);
-        $tariff->delete();
+        $transportTariff->delete();
 
         return response()->json(null, 204);
     }
@@ -141,13 +139,17 @@ class TransportTariffController extends Controller
             return response()->json(['data' => null]);
         }
 
+        $price = $tariff->sellingPrice();
+
         return response()->json([
             'data' => [
-                'rate' => $tariff->rate,
+                'id' => $tariff->id,
+                'transport_type' => $tariff->transport_type->value,
                 'transporter_id' => $tariff->transporter_id,
                 'transport_area_id' => $tariff->transport_area_id,
                 'volume_id' => $tariff->volume_id,
-                'transport_type' => ['value' => $tariff->transport_type->value, 'label' => $tariff->transport_type->label()],
+                'available' => $price !== null,
+                'price' => $price,
             ],
         ]);
     }

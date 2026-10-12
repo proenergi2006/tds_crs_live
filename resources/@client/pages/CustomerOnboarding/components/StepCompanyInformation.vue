@@ -18,10 +18,9 @@ const props = defineProps<{
   npwpRegion: ReturnType<typeof useRegionCascade>
 }>()
 
-/* dropdownParent: 'body' -- halaman ini scroll container sendiri, dropdown TomSelect tinggi bikin blank space + scrollbar ganda kalau nempel di container (pola sama di Penawaran/Form.vue & Permission/Form.vue) */
 const regionSelectOptions = { dropdownParent: 'body' as const }
 
-/* Cascade: Head Office -- pakai @update:model-value bukan @change, soalnya tom-select.js clone <select> asli jadi native change gak pernah kepicu */
+// pakai @update:model-value bukan @change, tom-select clone <select> asli jadi native change gak pernah kepicu
 function onHeadOfficeProvinceChange(value: string | string[]) {
   const v = (Array.isArray(value) ? value[0] : value) || null
   props.form.identity.province_id = v
@@ -53,7 +52,6 @@ function onHeadOfficeVillageChange(value: string | string[]) {
   }
 }
 
-/* Cascade: NPWP */
 function onNpwpProvinceChange(value: string | string[]) {
   const v = (Array.isArray(value) ? value[0] : value) || null
   props.form.registered_address.province_id = v
@@ -85,7 +83,6 @@ function onNpwpVillageChange(value: string | string[]) {
   }
 }
 
-/* Checkbox: NPWP address sama dengan Head Office */
 const npwpSameAsHeadOffice = ref(false)
 
 async function copyHeadOfficeToNpwp() {
@@ -120,7 +117,7 @@ function addContact() {
   props.form.contacts.push({ full_name: '', position: '', phone: '', mobile: '', email: '' })
 }
 
-// Baris hasil prefill punya id -- backend hanya menghapus kontak yang id-nya ikut dikirim di remove_contact_ids.
+// backend cuma hapus kontak yang id-nya ikut di remove_contact_ids
 function removeContact(idx: number) {
   const id = props.form.contacts[idx]?.id
   if (id !== undefined) props.form.remove_contact_ids.push(id)
@@ -141,7 +138,6 @@ watch(npwpSameAsHeadOffice, (checked) => {
       acuan proses verifikasi KYC.
     </p>
 
-    <!-- Identity dasar -->
     <div class="space-y-4 rounded-lg bg-white p-6 shadow-sm">
       <div>
         <FormLabel class="text-form-label !mb-1 block">Full Registered Company Name
@@ -162,7 +158,6 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
     </div>
 
-    <!-- Head Office Address -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="text-overline mb-1 border-b border-slate-100 pb-2">HEAD OFFICE ADDRESS</div>
       <p class="text-caption mb-3">Alamat kantor pusat yang aktif saat ini beroperasi.</p>
@@ -254,7 +249,6 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
     </div>
 
-    <!-- NPWP Address -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="text-overline mb-1 border-b border-slate-100 pb-2">NPWP ADDRESS (REGISTERED)</div>
       <p class="text-caption mb-3">Alamat sesuai yang tertera di kartu/dokumen NPWP perusahaan.</p>
@@ -324,7 +318,6 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
     </div>
 
-    <!-- Type of Business + Ownership -->
     <div class="grid gap-6 md:grid-cols-3">
       <div class="rounded-lg bg-white p-6 shadow-sm">
         <div class="text-overline mb-3 border-b border-slate-100 pb-2">TYPE OF BUSINESS</div>
@@ -379,7 +372,6 @@ watch(npwpSameAsHeadOffice, (checked) => {
       </div>
     </div>
 
-    <!-- PIC Invoice -->
     <div class="rounded-lg bg-white p-6 shadow-sm">
       <div class="text-overline mb-1 border-b border-slate-100 pb-2">PIC INVOICE (KONTAK FINANCE)</div>
       <div class="mb-3 mt-3 flex items-center justify-between gap-4">

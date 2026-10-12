@@ -40,13 +40,13 @@ class TruckController extends Controller
         return TruckResource::collection($query->paginate($perPage));
     }
 
-    public function show(Request $request, $id): JsonResponse|TruckResource
+    public function show(Request $request, Truck $truck): JsonResponse|TruckResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $truck = Truck::with('transporter:id,company_name')->withCount('logisticDocuments')->findOrFail($id);
+        $truck->load('transporter:id,company_name')->loadCount('logisticDocuments');
 
         return new TruckResource($truck);
     }
@@ -67,26 +67,24 @@ class TruckController extends Controller
         return (new TruckResource($truck))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateTruckRequest $request, $id): JsonResponse|TruckResource
+    public function update(UpdateTruckRequest $request, Truck $truck): JsonResponse|TruckResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $truck = Truck::findOrFail($id);
         $truck->update($request->validated() + ['updated_by' => $request->user()->id]);
         $truck->refresh()->load('transporter:id,company_name')->loadCount('logisticDocuments');
 
         return new TruckResource($truck);
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, Truck $truck): JsonResponse
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $truck = Truck::findOrFail($id);
         $this->deleteWithLogisticDocumentFiles($truck);
 
         return response()->json(null, 204);

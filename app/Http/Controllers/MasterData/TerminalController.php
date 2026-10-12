@@ -43,13 +43,13 @@ class TerminalController extends Controller
         return response()->json($terminal->load('cabang'), 201);
     }
 
-    public function show($id)
+    public function show(Terminal $terminal)
     {
-        $terminal = Terminal::with('cabang')->findOrFail($id);
+        $terminal->load('cabang');
         return response()->json($terminal);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Terminal $terminal)
     {
         $data = $request->validate([
             'nama_terminal'      => 'required|string|max:255',
@@ -64,11 +64,11 @@ class TerminalController extends Controller
         ]);
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name;
-        $terminal = Terminal::findOrFail($id);
         $terminal->update($data);
         return response()->json($terminal->fresh('cabang'));
     }
 
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         Terminal::destroy($id);

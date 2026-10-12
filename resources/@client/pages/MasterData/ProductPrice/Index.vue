@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import axios from 'axios'
 
 import { Slideover } from '@/components/Base/Headless'
 import Button from '@/components/Base/Button'
@@ -7,13 +8,14 @@ import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
+import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
+import { createResourceApi } from '@/utils/resourceApi'
 import PeriodPricesPanel from './PeriodPricesPanel.vue'
 import PeriodFormModal from './PeriodFormModal.vue'
 import ProductPriceRowModal from './ProductPriceRowModal.vue'
-import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
-import { createResourceApi } from '@/utils/resourceApi'
-import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { useAuthStore } from '@/stores/auth'
 
 type PeriodeCategory = 'active' | 'upcoming' | 'inactive'
 
@@ -28,6 +30,7 @@ type PeriodeRow = {
   jumlah_data: number
   jumlah_cabang: number
   jumlah_belum_lengkap: number
+  jumlah_perlu_konfirmasi: number
   terakhir_diupdate: string | null
 }
 
@@ -48,11 +51,14 @@ type ProductPriceRow = {
   cogs_price: string | number | null
   cogs_material_price: string | number | null
   cogs_transport_price: string | number | null
-  margin_amount: string | number | null
+  margin_material_amount: string | number | null
+  margin_transport_amount?: string | number | null
+  transport_price?: number | null
   om_price: string | number | null
   ceo_price: string | number | null
   cogs_basis: string | null
   notes: string | null
+  needs_reverification?: boolean
   branch?: { id: number; name: string }
   product?: {
     id_produk: number
@@ -113,6 +119,10 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<number | null>(null)
 
+const confirmingRowId = ref<number | null>(null)
+const confirmAllOpen = ref(false)
+const confirmAllLoading = ref(false)
+
 const periodModalOpen = ref(false)
 const periodModalMode = ref<'create' | 'edit'>('create')
 const rowModalOpen = ref(false)
@@ -130,16 +140,27 @@ const tableView = computed<'procurement' | 'ceo'>(() =>
 
 const notInactive = computed(() => selectedPeriode.value?.category !== 'inactive')
 
+const canConfirmNow = computed(() => canVerifyPrice.value && notInactive.value)
+
 const incompleteNotice = computed(() => {
   if (!canVerifyPrice.value) return null
   const p = selectedPeriode.value
   if (!p || p.category === 'inactive') return null
-  if (p.status !== 'belum_lengkap' || p.jumlah_belum_lengkap <= 0) return null
-  return { count: p.jumlah_belum_lengkap, total: p.jumlah_data }
+
+  const pending = p.jumlah_perlu_konfirmasi ?? 0
+  const unfilled = pricesRows.value.filter(isUnfilled).length
+  if (unfilled <= 0 && pending <= 0) return null
+
+  return { unfilled, pending }
 })
 const canEditRowNow = computed(() => canEditRow.value && notInactive.value)
 const canDeleteRowNow = computed(() => canCreatePrice.value && notInactive.value)
 const canEditPeriodeNow = computed(() => canManagePeriode.value && notInactive.value)
+
+const latestPeriod = computed(() => {
+  const latest = periodeList.value[0]
+  return latest ? { label: latest.label, end_date: latest.end_date } : null
+})
 
 const activeTab = ref<PeriodeCategory>('active')
 const activeCategoryMeta = computed(() => TAB_META[activeTab.value])
@@ -224,7 +245,6 @@ watch([activeTab, focusPeriode], () => {
     return
   }
 
-  // skip refetch periode yang sama, rate limit api 60/menit gampang kena pas pindah-pindah tab
   if (selectedPeriode.value?.id === target.id) return
 
   selectedPeriode.value = target
@@ -291,6 +311,56 @@ async function fetchPeriodeDetail() {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat detail periode')
   } finally {
     periodeDetailLoading.value = false
+  }
+}
+
+function isUnfilled(row: ProductPriceRow): boolean {
+  const num = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? 0 : Number(v))
+  return num(row.ceo_price) === 0 || num(row.margin_material_amount) === 0 || num(row.price_list) === 0
+}
+
+async function refreshSelectedPeriode() {
+  await fetchPeriode()
+
+  if (selectedPeriode.value) {
+    const fresh = periodeList.value.find(p => p.id === selectedPeriode.value?.id) ?? null
+    selectedPeriode.value = fresh
+    if (fresh) {
+      fetchProductPrices()
+      fetchPeriodeDetail()
+    }
+  }
+}
+
+async function handleConfirmRow(id: number) {
+  if (!canConfirmNow.value || confirmingRowId.value !== null) return
+
+  confirmingRowId.value = id
+  try {
+    await axios.post(`/api/product-prices/${id}/confirm`)
+    success('Berhasil', 'Harga dikonfirmasi.')
+    await refreshSelectedPeriode()
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message ?? 'Gagal mengonfirmasi harga.')
+  } finally {
+    confirmingRowId.value = null
+  }
+}
+
+async function submitConfirmAll() {
+  const periode = selectedPeriode.value
+  if (!periode || !canConfirmNow.value) return
+
+  confirmAllLoading.value = true
+  try {
+    const { data } = await axios.post(`/api/price-periods/${periode.id}/confirm-prices`)
+    confirmAllOpen.value = false
+    success('Berhasil', `${data.confirmed_count} harga dikonfirmasi.`)
+    await refreshSelectedPeriode()
+  } catch (e: any) {
+    error('Gagal', e.response?.data?.message ?? 'Gagal mengonfirmasi harga.')
+  } finally {
+    confirmAllLoading.value = false
   }
 }
 
@@ -503,17 +573,27 @@ function formatDateTime(dateStr: string | null) {
           <div v-if="incompleteNotice"
             class="flex items-start gap-2 bg-amber-50 px-4 py-3 border border-amber-200 rounded-lg text-body text-amber-700">
             <Lucide icon="AlertTriangle" class="flex-shrink-0 mt-0.5 w-4 h-4" />
-            <span>
-              <span class="text-body-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
-                produk</span>
-              di periode ini belum lengkap — nilai yang ditandai merah (Margin, Price List, Approval BM/OM/CEO) masih
-              perlu diisi agar periode siap dipakai.
-            </span>
+            <div class="flex-1 space-y-1">
+              <p v-if="incompleteNotice.unfilled > 0">
+                <span class="text-body-strong">{{ incompleteNotice.unfilled }} harga belum diisi</span>
+                — nilai yang ditandai merah (Margin, Price List, Approval BM/OM/CEO) masih perlu diisi agar periode
+                siap dipakai.
+              </p>
+              <p v-if="incompleteNotice.pending > 0">
+                <span class="text-body-strong">{{ incompleteNotice.pending }} harga menunggu konfirmasi</span>
+              </p>
+            </div>
+            <Button v-if="incompleteNotice.pending > 0" type="button" variant="soft-success"
+              class="inline-flex flex-shrink-0 items-center gap-1.5" @click="confirmAllOpen = true">
+              <Lucide icon="CheckCircle2" class="w-4 h-4" />
+              Konfirmasi semua ({{ incompleteNotice.pending }})
+            </Button>
           </div>
 
           <PeriodPricesPanel :rows="pricesRows" :loading="pricesLoading" :cabangs="cabangs" :produks="produks"
-            :view="tableView" :can-edit="canEditRowNow" :can-delete="canDeleteRowNow" @edit="handleEditRow"
-            @delete="confirmDelete" />
+            :view="tableView" :can-edit="canEditRowNow" :can-delete="canDeleteRowNow" :can-confirm="canConfirmNow"
+            :confirming-id="confirmingRowId" @edit="handleEditRow" @delete="confirmDelete"
+            @confirm="handleConfirmRow" />
         </template>
       </template>
       <DataList v-else v-model:search="periodeSearch" v-model:per-page="periodePerPage" :loading="periodeLoading"
@@ -653,16 +733,26 @@ function formatDateTime(dateStr: string | null) {
             <div v-if="incompleteNotice"
               class="flex items-start gap-2 bg-amber-50 mb-4 px-4 py-3 border border-amber-200 rounded-lg text-body text-amber-700">
               <Lucide icon="AlertTriangle" class="flex-shrink-0 mt-0.5 w-4 h-4" />
-              <span>
-                <span class="text-body-strong">{{ incompleteNotice.count }} dari {{ incompleteNotice.total }} harga
-                  produk</span>
-                di periode ini belum lengkap — nilai yang ditandai merah masih perlu diisi.
-              </span>
+              <div class="flex-1 space-y-1">
+                <p v-if="incompleteNotice.unfilled > 0">
+                  <span class="text-body-strong">{{ incompleteNotice.unfilled }} harga belum diisi</span>
+                  — nilai yang ditandai merah masih perlu diisi.
+                </p>
+                <p v-if="incompleteNotice.pending > 0">
+                  <span class="text-body-strong">{{ incompleteNotice.pending }} harga menunggu konfirmasi</span>
+                </p>
+              </div>
+              <Button v-if="incompleteNotice.pending > 0" type="button" variant="soft-success"
+                class="inline-flex flex-shrink-0 items-center gap-1.5" @click="confirmAllOpen = true">
+                <Lucide icon="CheckCircle2" class="w-4 h-4" />
+                Konfirmasi semua ({{ incompleteNotice.pending }})
+              </Button>
             </div>
 
             <PeriodPricesPanel :rows="pricesRows" :loading="pricesLoading" :cabangs="cabangs" :produks="produks"
-              :view="tableView" :can-edit="canEditRowNow" :can-delete="canDeleteRowNow" @edit="handleEditRow"
-              @delete="confirmDelete" />
+              :view="tableView" :can-edit="canEditRowNow" :can-delete="canDeleteRowNow" :can-confirm="canConfirmNow"
+              :confirming-id="confirmingRowId" @edit="handleEditRow" @delete="confirmDelete"
+              @confirm="handleConfirmRow" />
           </Slideover.Description>
         </Slideover.Panel>
       </Slideover>
@@ -670,8 +760,13 @@ function formatDateTime(dateStr: string | null) {
       <DeleteRecordDialog :open="deleteModal" title="Hapus Harga Produk" :loading="deleteLoading"
         @close="deleteModal = false" @confirm="submitDelete" />
 
+      <ConfirmDialog :open="confirmAllOpen" variant="success" icon="CheckCircle2"
+        icon-class="bg-success/10 text-success" title="Konfirmasi semua harga?" confirm-text="Konfirmasi"
+        :description="`${selectedPeriode?.jumlah_perlu_konfirmasi ?? 0} harga di periode ${selectedPeriode?.label ?? ''} akan ditandai sudah dikonfirmasi. Pastikan harga jual sudah Anda tinjau.`"
+        :loading="confirmAllLoading" @close="confirmAllOpen = false" @confirm="submitConfirmAll" />
+
       <PeriodFormModal :open="periodModalOpen" :mode="periodModalMode" :period-id="selectedPeriode?.id ?? null"
-        @close="closePeriodModal" @saved="handlePeriodSaved" />
+        :latest-period="latestPeriod" @close="closePeriodModal" @saved="handlePeriodSaved" />
 
       <ProductPriceRowModal :open="rowModalOpen" :mode="rowModalMode" :product-price="editingRow"
         :price-period-id="selectedPeriode?.id ?? focusPeriode?.id ?? null"

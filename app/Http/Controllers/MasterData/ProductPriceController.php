@@ -45,12 +45,8 @@ class ProductPriceController extends Controller
         }
 
         if ($user->cant('price-period.view')) {
-            $q->where('product_prices.bm_price', '>', 0)
-                ->where('product_prices.om_price', '>', 0)
-                ->where('product_prices.ceo_price', '>', 0)
-                ->whereColumn('product_prices.price_list', '>=', 'product_prices.bm_price')
-                ->whereColumn('product_prices.bm_price', '>=', 'product_prices.om_price')
-                ->whereColumn('product_prices.om_price', '>=', 'product_prices.ceo_price');
+            $q->withCompleteTierOrder()
+                ->where('product_prices.needs_reverification', false);
         }
 
         $q->orderBy('price_periods.start_date', 'desc')
@@ -149,7 +145,8 @@ class ProductPriceController extends Controller
             'cogs_transport_price' => 'product-price.manage',
             'price_list'           => 'product-price.verify',
             'price_list_pe'        => 'product-price.verify',
-            'margin_amount'        => 'product-price.verify',
+            'margin_material_amount' => 'product-price.verify',
+            'margin_transport_amount' => 'product-price.manage-transport-margin',
             'bm_price'             => 'product-price.verify',
             'om_price'             => 'product-price.verify',
             'ceo_price'            => 'product-price.verify',
@@ -163,13 +160,17 @@ class ProductPriceController extends Controller
 
         $data = $this->computeCogsPrice($data);
 
-        foreach (['price_list', 'price_list_pe', 'bm_price', 'margin_amount', 'om_price', 'ceo_price'] as $k) {
+        foreach (['price_list', 'price_list_pe', 'bm_price', 'margin_material_amount', 'om_price', 'ceo_price'] as $k) {
             $data[$k] = $data[$k] ?? 0;
         }
 
         $startDate = $data['start_date'] ?? null;
         $endDate = $data['end_date'] ?? null;
         unset($data['start_date'], $data['end_date']);
+
+        if ($this->targetsEndedPeriod($data['price_period_id'] ?? null, $endDate)) {
+            return $this->endedPeriodResponse();
+        }
 
         $productPrice = DB::transaction(function () use ($data, $startDate, $endDate, $request) {
             if (!isset($data['price_period_id'])) {
@@ -187,18 +188,18 @@ class ProductPriceController extends Controller
         return new ProductPriceResource($productPrice->load(['pricePeriod', 'cabang', 'produk.ukuran.satuan']));
     }
 
-    public function show(Request $request, $id)
+    public function show(Request $request, ProductPrice $productPrice)
     {
         if ($request->user()->cant('price-period.view')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $productPrice = ProductPrice::with(['pricePeriod', 'cabang', 'produk.ukuran.satuan'])->findOrFail($id);
+        $productPrice->load(['pricePeriod', 'cabang', 'produk.ukuran.satuan']);
 
         return new ProductPriceResource($productPrice);
     }
 
-    public function update(UpdateProductPriceRequest $request, $id)
+    public function update(UpdateProductPriceRequest $request, ProductPrice $productPrice)
     {
         $user = $request->user();
         if ($user->cant('product-price.manage') && $user->cant('product-price.verify')) {
@@ -212,7 +213,8 @@ class ProductPriceController extends Controller
             'cogs_transport_price' => 'product-price.manage',
             'price_list'           => 'product-price.verify',
             'price_list_pe'        => 'product-price.verify',
-            'margin_amount'        => 'product-price.verify',
+            'margin_material_amount' => 'product-price.verify',
+            'margin_transport_amount' => 'product-price.manage-transport-margin',
             'bm_price'             => 'product-price.verify',
             'om_price'             => 'product-price.verify',
             'ceo_price'            => 'product-price.verify',
@@ -230,7 +232,12 @@ class ProductPriceController extends Controller
         $endDate = $data['end_date'] ?? null;
         unset($data['start_date'], $data['end_date']);
 
-        $productPrice = DB::transaction(function () use ($data, $startDate, $endDate, $request, $id) {
+        if ($productPrice->pricePeriod->isEnded()
+            || $this->targetsEndedPeriod($data['price_period_id'] ?? null, $endDate)) {
+            return $this->endedPeriodResponse();
+        }
+
+        $productPrice = DB::transaction(function () use ($data, $startDate, $endDate, $request, $productPrice) {
             if (!isset($data['price_period_id']) && $startDate && $endDate) {
                 $data['price_period_id'] = PricePeriod::firstOrCreate(
                     ['start_date' => $startDate, 'end_date' => $endDate],
@@ -240,11 +247,40 @@ class ProductPriceController extends Controller
 
             $data['updated_by'] = $request->user()?->name ?? 'system';
 
-            $productPrice = ProductPrice::findOrFail($id);
-            $productPrice->update($data);
+            $productPrice->fill($data);
+            $productPrice->syncReverificationFlag(ProductPrice::submitsVerifierColumns($data));
+            $productPrice->save();
 
             return $productPrice;
         });
+
+        return new ProductPriceResource($productPrice->load(['pricePeriod', 'cabang', 'produk.ukuran.satuan']));
+    }
+
+    // Parameter harus bernama $id agar cocok dengan segmen {id} di route eksplisit.
+    public function confirm(Request $request, ProductPrice $id)
+    {
+        if ($request->user()->cant('product-price.verify')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $productPrice = $id;
+
+        if ($productPrice->pricePeriod->isEnded()) {
+            return $this->endedPeriodResponse();
+        }
+
+        if (!$productPrice->hasValidTierOrder()) {
+            return response()->json([
+                'message' => 'Urutan harga tidak valid, perbaiki sebelum dikonfirmasi.',
+                'errors'  => ProductPrice::tierOrderErrors($productPrice->only(ProductPrice::TIER_ORDER)),
+            ], 422);
+        }
+
+        $productPrice->update([
+            'needs_reverification' => false,
+            'updated_by'           => $request->user()?->name ?? 'system',
+        ]);
 
         return new ProductPriceResource($productPrice->load(['pricePeriod', 'cabang', 'produk.ukuran.satuan']));
     }
@@ -255,9 +291,29 @@ class ProductPriceController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $productPrice = ProductPrice::with('pricePeriod')->find($id);
+
+        if ($productPrice?->pricePeriod->isEnded()) {
+            return $this->endedPeriodResponse();
+        }
+
         ProductPrice::destroy($id);
 
         return response()->json(null, 204);
+    }
+
+    private function targetsEndedPeriod($pricePeriodId, $endDate): bool
+    {
+        if ($pricePeriodId) {
+            return PricePeriod::findOrFail($pricePeriodId)->isEnded();
+        }
+
+        return $endDate && PricePeriod::dateHasEnded($endDate);
+    }
+
+    private function endedPeriodResponse()
+    {
+        return response()->json(['message' => 'Periode harga sudah berakhir dan tidak dapat diubah.'], 422);
     }
 
     private function computeCogsPrice(array $data): array
@@ -270,6 +326,7 @@ class ProductPriceController extends Controller
 
         if ($basis === 'loco') {
             $data['cogs_transport_price'] = null;
+            $data['margin_transport_amount'] = null;
         }
 
         $material = (float) ($data['cogs_material_price'] ?? 0);

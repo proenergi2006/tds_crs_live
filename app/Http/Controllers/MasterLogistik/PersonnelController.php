@@ -47,13 +47,13 @@ class PersonnelController extends Controller
         return PersonnelResource::collection($query->paginate($perPage));
     }
 
-    public function show(Request $request, $id): JsonResponse|PersonnelResource
+    public function show(Request $request, Personnel $personnel): JsonResponse|PersonnelResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $personnel = Personnel::with('transporter:id,company_name')->withCount('logisticDocuments')->findOrFail($id);
+        $personnel->load('transporter:id,company_name')->loadCount('logisticDocuments');
 
         return new PersonnelResource($personnel);
     }
@@ -82,13 +82,12 @@ class PersonnelController extends Controller
         return (new PersonnelResource($personnel))->response()->setStatusCode(201);
     }
 
-    public function update(Request $request, $id): JsonResponse|PersonnelResource
+    public function update(Request $request, Personnel $personnel): JsonResponse|PersonnelResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $personnel = Personnel::findOrFail($id);
         $data = $request->validate(self::RULES);
 
         if ($request->hasFile('photo')) {
@@ -109,13 +108,12 @@ class PersonnelController extends Controller
         return new PersonnelResource($personnel);
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, Personnel $personnel): JsonResponse
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $personnel = Personnel::findOrFail($id);
         $photo = $personnel->photo;
 
         $this->deleteWithLogisticDocumentFiles($personnel);

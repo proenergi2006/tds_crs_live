@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import Custom1SideMenu from "@/themes/Custom1/SideMenu";
 import RubickSideMenu from "@/themes/Rubick/SideMenu";
 import RubickSimpleMenu from "@/themes/Rubick/SimpleMenu";
 import RubickTopMenu from "@/themes/Rubick/TopMenu";
@@ -27,6 +28,11 @@ export const themes = [
     name: "rubick",
     layout: "top-menu",
     component: RubickTopMenu,
+  },
+  {
+    name: "custom-1",
+    layout: "side-menu",
+    component: Custom1SideMenu,
   },
   {
     name: "icewall",
@@ -77,6 +83,11 @@ export const themes = [
 
 export type Themes = (typeof themes)[number];
 
+export const THEME_OVERRIDE: Themes["name"] | null = "custom-1";
+
+export const isThemeAllowed = (name: string | null | undefined): boolean =>
+  name !== "custom-1" || import.meta.env.DEV || THEME_OVERRIDE === "custom-1";
+
 interface ThemeState {
   themeValue: {
     name: Themes["name"];
@@ -88,19 +99,24 @@ export const getTheme = (search?: {
   name: Themes["name"];
   layout: Themes["layout"];
 }) => {
-  const searchValues =
+  const requested =
     search === undefined
       ? {
           name: localStorage.getItem("theme"),
           layout: localStorage.getItem("layout"),
         }
       : search;
+  const searchValues = {
+    name: THEME_OVERRIDE ?? (isThemeAllowed(requested.name) ? requested.name : "rubick"),
+    layout: requested.layout,
+  };
   return (
-    themes.filter((item, key) => {
-      return (
-        item.name === searchValues.name && item.layout === searchValues.layout
-      );
-    })[0] || themes[0]
+    themes.find(
+      (item) =>
+        item.name === searchValues.name && item.layout === searchValues.layout,
+    ) ||
+    themes.find((item) => item.name === searchValues.name) ||
+    themes[0]
   );
 };
 
@@ -127,7 +143,9 @@ export const useThemeStore = defineStore("theme", {
         localStorage.setItem("layout", "side-menu");
       }
 
-      return state.themeValue;
+      const resolved = getTheme(state.themeValue);
+
+      return { name: resolved.name, layout: resolved.layout };
     },
   },
   actions: {

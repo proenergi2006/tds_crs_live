@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import "@/assets/css/vendors/simplebar.css";
-import "@/assets/css/components/mobile-menu.css";
+import { watch, reactive, computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { twMerge } from "@/utils/tw-merge";
-import defaultLogoUrl from "@/assets/images/logo.png";
-import agenLogoUrl from "@/assets/images/logo-proenergi.png";
+import SimpleBar from "simplebar";
 import Lucide from "@/components/Base/Lucide";
+import { useAccount } from "@/composables/useAccount";
+import { useImpersonation } from "@/composables/useImpersonation";
 import { useMenuStore } from "@/stores/menu";
 import { useThemeStore } from "@/stores/theme";
 import { useAuthStore } from "@/stores/auth";
-import { useAccount } from "@/composables/useAccount";
+import { twMerge } from "@/utils/tw-merge";
+import "@/assets/css/vendors/simplebar.css";
+import "@/assets/css/components/mobile-menu.css";
+import defaultLogoUrl from "@/assets/images/logo.png";
+import agenLogoUrl from "@/assets/images/logo-proenergi.png";
 import {
   type FormattedMenu,
   nestedMenu,
@@ -17,8 +20,6 @@ import {
   enter,
   leave,
 } from "./mobile-menu";
-import { watch, reactive, computed, onMounted, ref } from "vue";
-import SimpleBar from "simplebar";
 
 const route = useRoute();
 const router = useRouter();
@@ -35,10 +36,9 @@ const menu = computed(() =>
   nestedMenu(menuStore.menu(themeStore.theme.layout), route)
 );
 
-// Account (user info + logout) — shared with desktop AccountMenu
 const { userName, userEmail, onLogout } = useAccount();
+const { isImpersonating, adminName, remainingLabel, leaveLoading, leaveImpersonation } = useImpersonation();
 
-// brand proenergi dari backend (UserAuthResource.brand), bukan replikasi bucket role manual
 const isAgenRole = computed(() =>
   authStore.user?.brand === 'proenergi'
 );
@@ -148,7 +148,7 @@ onMounted(() => {
         />
       </a>
       <ul class="py-2">
-        <template v-for="(menu, menuKey) in formattedMenu">
+        <template v-for="menu in formattedMenu">
           <li v-if="menu == 'divider'" class="my-6 menu__divider"></li>
           <li v-else>
             <a
@@ -287,7 +287,6 @@ onMounted(() => {
         </template>
       </ul>
       </div>
-      <!-- Account footer: di luar SimpleBar biar selalu keliatan -->
       <div class="shrink-0 border-t border-white/[0.08] px-6 py-4">
         <div class="min-w-0">
           <div class="text-sm font-medium text-white leading-tight truncate">
@@ -296,6 +295,27 @@ onMounted(() => {
           <div class="text-xs text-white/70 leading-tight mt-0.5 truncate">
             {{ userEmail }}
           </div>
+        </div>
+        <div
+          v-if="isImpersonating"
+          class="mt-3 rounded-md bg-amber-400/20 px-3 py-2 text-amber-100"
+        >
+          <div class="flex items-start gap-2 text-xs">
+            <Lucide icon="UserCog" class="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Impersonate oleh <strong class="text-white">{{ adminName }}</strong></span>
+          </div>
+          <div class="mt-1 text-xs text-amber-200/80">
+            Berakhir dalam {{ remainingLabel }}
+          </div>
+          <button
+            type="button"
+            :disabled="leaveLoading"
+            @click="leaveImpersonation"
+            class="mt-2 flex w-full items-center justify-center rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Lucide icon="Undo2" class="w-4 h-4 mr-2" />
+            Kembali ke Admin
+          </button>
         </div>
         <button
           type="button"

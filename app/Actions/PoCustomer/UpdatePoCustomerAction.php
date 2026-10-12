@@ -3,7 +3,7 @@
 namespace App\Actions\PoCustomer;
 
 use App\Enums\PoCustomerScProcessState;
-use App\Models\Penawaran;
+use App\Models\Quotation;
 use App\Models\PoCustomer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -17,13 +17,13 @@ class UpdatePoCustomerAction
 
         $data['termin_hari'] = $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null;
 
-        if (isset($validated['id_penawaran']) && (int) $validated['id_penawaran'] !== (int) $po->id_penawaran) {
-            $penawaran = Penawaran::with('items')->findOrFail($validated['id_penawaran']);
+        if (isset($validated['quotation_id']) && (int) $validated['quotation_id'] !== (int) $po->quotation_id) {
+            $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
 
-            $data['harga_poc'] = (float) ($penawaran->harga_dasar ?? 0) + (float) ($penawaran->oat ?? 0);
-            $data['produk_poc'] = $penawaran->items->first()?->id_produk;
+            $data['harga_poc'] = round($quotation->weightedFinalPrice(), 4);
+            $data['produk_poc'] = $quotation->items->first()?->product_id;
         } else {
-            unset($data['id_penawaran']);
+            unset($data['quotation_id']);
         }
 
         if ($lampiran) {

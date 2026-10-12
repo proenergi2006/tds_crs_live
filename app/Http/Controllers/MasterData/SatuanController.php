@@ -10,7 +10,6 @@ class SatuanController extends Controller
 {
     public function index(Request $request)
     {
-        // bisa ditambahkan pagination & search kalau perlu
         $perPage = $request->query('per_page', 15);
         $search  = $request->query('search');
 
@@ -42,18 +41,15 @@ class SatuanController extends Controller
         return response()->json($satuan, 201);
     }
 
-    public function show($id)
+    public function show(Satuan $satuan)
     {
-        $satuan = Satuan::findOrFail($id);
         return response()->json($satuan);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Satuan $satuan)
     {
-        $satuan = Satuan::findOrFail($id);
-
         $data = $request->validate([
-            'nama_satuan'     => ['required','string','max:100',"unique:satuans,nama_satuan,{$id},id_satuan"],
+            'nama_satuan'     => ['required','string','max:100',"unique:satuans,nama_satuan,{$satuan->id_satuan},id_satuan"],
             'deskripsi'       => ['nullable','string'],
             'is_active'       => ['boolean'],
             'lastupdate_by'   => ['nullable','string','max:100'],
@@ -66,11 +62,8 @@ class SatuanController extends Controller
         return response()->json($satuan);
     }
 
-    public function destroy($id)
+    public function destroy(Satuan $satuan)
     {
-        $satuan = Satuan::findOrFail($id);
-
-    // kalau masih ada ukuran yang pakai satuan ini
     if ($satuan->ukurans()->exists()) {
         return response()->json([
             'message' => 'Tidak bisa menghapus: masih ada data Ukuran yang menggunakan Satuan ini.'
