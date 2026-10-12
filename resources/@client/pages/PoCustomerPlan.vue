@@ -181,9 +181,9 @@
     const { data } = await axios.get(`/api/sales-confirmations/po/${idPoc}`)
     const poc  = data.poc || {}
     const cust = data.customer || {}
-    const pen  = data.penawaran || {}
-    const awal = pen.periode_awal || pen.start_date || pen.tanggal_mulai
-    const akhir= pen.periode_akhir|| pen.end_date   || pen.tanggal_selesai
+    const quotation = data.quotation || {}
+    const awal = quotation.periode_awal || quotation.start_date || quotation.tanggal_mulai
+    const akhir= quotation.periode_akhir|| quotation.end_date   || quotation.tanggal_selesai
     const periode = (awal && akhir)
       ? new Date(awal).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' - ' +
         new Date(akhir).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'})
@@ -191,7 +191,7 @@
     const vol = Number(poc.volume_poc || 0), harga = Number(poc.harga_poc || 0)
     h.value = {
       doc_code: `PO-${String(poc.id_poc || idPoc).padStart(5,'0')}`,
-      penawaran_code: pen.nomor_penawaran || '-',
+      penawaran_code: quotation.nomor_penawaran || '-',
       periode,
       customer_name: cust.nama_perusahaan || '-',
       tipe_bayar_label: poc.tipe_bayar_label || '-',
@@ -199,7 +199,7 @@
       nomor_poc: poc.nomor_poc || '-',
       tanggal_poc: poc.tanggal_poc || null,
       supply_date: poc.supply_date || null,
-      produk: poc.produk_poc || pen.produk_name || '-',
+      produk: poc.produk_poc || quotation.produk_name || '-',
       harga_per_liter: harga,
       jumlah_volume_liter: vol,
       total_order_rp: vol*harga,

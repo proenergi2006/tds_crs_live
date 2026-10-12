@@ -16,6 +16,8 @@ class TransportTariffResource extends JsonResource
             'transport_area' => $this->transportArea ? ['id' => $this->transportArea->id, 'name' => $this->transportArea->name] : null,
             'volume' => $this->volume ? ['id' => $this->volume->id, 'volume' => $this->volume->volume] : null,
             'rate' => $this->rate,
+            'margin' => $this->margin,
+            'price' => $this->sellingPrice(),
             'note' => $this->note,
             'is_active' => $this->is_active,
             'created_at' => $this->created_at,

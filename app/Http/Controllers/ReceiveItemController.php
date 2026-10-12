@@ -126,12 +126,10 @@ class ReceiveItemController extends Controller
         return response()->json($pos);
     }
 
-    public function indexByPo(int $poId)
+    public function indexByPo(VendorPo $poId)
     {
-        VendorPo::findOrFail($poId);
-
         $receives = ReceiveItem::with('details.produk')
-            ->where('po_id', $poId)
+            ->where('po_id', $poId->id_po)
             ->orderBy('received_at', 'desc')
             ->get()
             ->map(function ($receive) {
@@ -145,9 +143,9 @@ class ReceiveItemController extends Controller
         return response()->json($receives);
     }
 
-    public function store(Request $request, $poId)
+    public function store(Request $request, VendorPo $poId)
     {
-        $po = VendorPo::findOrFail($poId);
+        $po = $poId;
 
         $validator = Validator::make($request->all(), [
             'received_at'             => 'required|date',
@@ -163,14 +161,14 @@ class ReceiveItemController extends Controller
 
         $data = $validator->validated();
 
-        return DB::transaction(function () use ($po, $poId, $data, $request) {
-            $alreadyReceived = ReceiveItemProduk::whereHas('receiveItem', fn($q) => $q->where('po_id', $poId))
+        return DB::transaction(function () use ($po, $data, $request) {
+            $alreadyReceived = ReceiveItemProduk::whereHas('receiveItem', fn($q) => $q->where('po_id', $po->id_po))
                 ->selectRaw('po_produk_id, SUM(volume_terima) as total_terima')
                 ->groupBy('po_produk_id')
                 ->pluck('total_terima', 'po_produk_id');
 
             $receive = new ReceiveItem();
-            $receive->po_id       = $poId;
+            $receive->po_id       = $po->id_po;
             $receive->received_at = $data['received_at'];
             $receive->nama_pic    = $data['nama_pic'];
 
@@ -214,13 +212,14 @@ class ReceiveItemController extends Controller
         });
     }
 
-    public function destroy(Request $request, int $id)
+    // param harus $id, route pakai segmen literal {id}
+    public function destroy(Request $request, ReceiveItem $id)
     {
         if ($request->user()->cant('good-receipt.manage')) {
             return response()->json(['message' => 'Akses ditolak.'], 403);
         }
 
-        $receive = ReceiveItem::with('details')->findOrFail($id);
+        $receive = $id->load('details');
 
         if ($receive->trashed()) {
             return response()->json(['message' => 'GR sudah dibatalkan sebelumnya.'], 422);

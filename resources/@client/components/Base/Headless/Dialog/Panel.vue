@@ -51,14 +51,13 @@ const computedClass = computed(() =>
   />
   <TransitionChild
     as="div"
-    enter="ease-in-out duration-500"
-    enterFrom="opacity-0 -mt-16"
-    enterTo="opacity-100 mt-16"
-    entered="opacity-100 mt-16"
-    leave="ease-in-out duration-[400ms]"
-    leaveFrom="opacity-100 mt-16"
-    leaveTo="opacity-0 -mt-16"
-    class="fixed inset-0"
+    enter="transition-opacity ease-in-out duration-300"
+    enterFrom="opacity-0"
+    enterTo="opacity-100"
+    leave="transition-opacity ease-in-out duration-200"
+    leaveFrom="opacity-100"
+    leaveTo="opacity-0"
+    class="fixed inset-0 mt-16"
   >
     <HeadlessDialogPanel as="template">
       <component

@@ -2,10 +2,11 @@
 import { computed, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 
+import { FormLabel, FormTextarea } from '@/components/Base/Form'
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import DateField from '@/components/SystemDesign/Form/DateField.vue'
 import FileUploadField from '@/components/SystemDesign/Form/FileUploadField.vue'
-import { FormLabel, FormTextarea } from '@/components/Base/Form'
+import RadioCard from '@/components/SystemDesign/Form/RadioCard.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
@@ -20,6 +21,7 @@ const props = defineProps<{
   open: boolean
   mode: 'create' | 'edit'
   periodId?: number | null
+  latestPeriod?: { label: string; end_date: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +39,8 @@ const form = reactive({
   notes: '',
 })
 
+const fillMode = ref<'copy' | 'empty'>('copy')
+
 const errors = reactive<{ start_date?: string; end_date?: string }>({})
 
 const pageLoading = ref(false)
@@ -52,6 +56,8 @@ const existingAttachmentsForUpload = computed(() =>
     .map((att, index) => ({ id: index, name: att.original_filename, url: `/storage/${att.path}` }))
     .filter(file => !removedAttachmentIndexes.value.includes(Number(file.id))),
 )
+
+const showFillMode = computed(() => props.mode === 'create' && !!props.latestPeriod)
 
 const roleSuffix = computed(() =>
   auth.user?.primary_role?.name ? ` (${auth.user.primary_role.name})` : '',
@@ -72,6 +78,10 @@ watch(() => props.open, (isOpen) => {
 
   resetForm()
 
+  if (props.mode === 'create' && props.latestPeriod) {
+    prefillMonthlyDates(props.latestPeriod.end_date)
+  }
+
   if (props.mode === 'edit' && props.periodId) {
     fetchPeriode(props.periodId)
   }
@@ -81,12 +91,29 @@ function resetForm() {
   form.start_date = ''
   form.end_date = ''
   form.notes = ''
+  fillMode.value = 'copy'
   errors.start_date = undefined
   errors.end_date = undefined
   submitError.value = null
   existingAttachments.value = []
   newAttachments.value = []
   removedAttachmentIndexes.value = []
+}
+
+function prefillMonthlyDates(lastEndDate: string) {
+  const [year, month, day] = lastEndDate.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return
+
+  const start = new Date(year, month - 1, day + 1)
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
+
+  form.start_date = formatDateKey(start)
+  form.end_date = formatDateKey(end)
+}
+
+function formatDateKey(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
 async function fetchPeriode(id: number) {
@@ -137,6 +164,9 @@ async function submit() {
     formData.append('price_period[start_date]', form.start_date)
     formData.append('price_period[end_date]', form.end_date)
     formData.append('price_period[notes]', form.notes ?? '')
+    if (showFillMode.value && fillMode.value === 'copy') {
+      formData.append('duplicate_from_latest', '1')
+    }
     newAttachments.value.forEach(file => formData.append('attachments[]', file))
     removedAttachmentIndexes.value.forEach(index => formData.append('remove_attachments[]', String(index)))
 
@@ -146,10 +176,7 @@ async function submit() {
 
     const savedId = response.data.price_period?.id ?? props.periodId
 
-    success(
-      'Berhasil',
-      props.mode === 'create' ? 'Periode harga berhasil dibuat.' : 'Periode harga berhasil diperbarui.',
-    )
+    success('Berhasil', buildSuccessMessage(response.data))
     emit('saved', savedId)
     emit('close')
   } catch (e: any) {
@@ -159,6 +186,19 @@ async function submit() {
   } finally {
     loading.value = false
   }
+}
+
+function buildSuccessMessage(data: any): string {
+  if (props.mode !== 'create') return 'Periode harga berhasil diperbarui.'
+
+  let message = 'Periode harga berhasil dibuat.'
+  if (data.duplicated_from) {
+    message += ` ${data.duplicated_count} harga disalin dari periode ${data.duplicated_from.label}.`
+    if (data.skipped_inactive_count > 0) {
+      message += ` ${data.skipped_inactive_count} dilewati karena produk/cabang nonaktif.`
+    }
+  }
+  return message
 }
 
 function handleClose() {
@@ -174,6 +214,15 @@ function handleClose() {
       <div class="grid grid-cols-2 gap-4">
         <DateField v-model="form.start_date" label="Tanggal Awal Periode" required :error="errors.start_date" />
         <DateField v-model="form.end_date" label="Tanggal Akhir Periode" required :error="errors.end_date" />
+      </div>
+
+      <div v-if="showFillMode">
+        <FormLabel class="block !mb-1 text-form-label">Isi Harga</FormLabel>
+        <div class="flex flex-col gap-2">
+          <RadioCard v-model="fillMode" value="copy" title="Salin dari periode terakhir"
+            :description="`Semua harga dari periode ${latestPeriod?.label} disalin. Produk/cabang nonaktif dilewati. Harga salinan menunggu konfirmasi CEO.`" />
+          <RadioCard v-model="fillMode" value="empty" title="Mulai kosong" />
+        </div>
       </div>
 
       <div>

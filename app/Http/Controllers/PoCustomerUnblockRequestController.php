@@ -22,14 +22,14 @@ class PoCustomerUnblockRequestController extends Controller
         'latestDocumentApproval.steps.actor:id,name',
     ];
 
-    public function store(StorePoCustomerUnblockRequestRequest $request, int $idPoc, SubmitPoCustomerUnblockRequestAction $action): \Illuminate\Http\JsonResponse
+    public function store(StorePoCustomerUnblockRequestRequest $request, PoCustomer $poc, SubmitPoCustomerUnblockRequestAction $action): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
         if ($user->cant('sales-confirmation.manage') || (int) $user->primary_role_id !== self::ROLE_ADMIN_FINANCE) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $po = PoCustomer::findOrFail($idPoc);
+        $po = $poc;
 
         if ($po->sc_process_state !== PoCustomerScProcessState::Blocked) {
             return response()->json(['message' => 'Unblock hanya untuk PO yang diblokir kredit.'], 409);
@@ -53,17 +53,17 @@ class PoCustomerUnblockRequestController extends Controller
         return response()->json($this->formatUnblockRequest($unblockRequest), 201);
     }
 
-    public function unblockContext(Request $request, int $idPoc): \Illuminate\Http\JsonResponse
+    public function unblockContext(Request $request, PoCustomer $poc): \Illuminate\Http\JsonResponse
     {
         if ($request->user()->cant('sales-confirmation.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $po = PoCustomer::with([
+        $po = $poc->load([
             'customer:id_customer,customer_code,company_name',
             'customer.latestApprovedVerification',
             'customer.adminArnya',
-        ])->findOrFail($idPoc);
+        ]);
 
         $activeRequest = $po->activeUnblockRequest();
         $activeRequest?->load(self::APPROVAL_STEP_RELATIONS);

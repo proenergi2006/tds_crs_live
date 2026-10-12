@@ -19,13 +19,14 @@ import FormPage from '@/components/SystemDesign/Form/FormPage.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { QUOTATION_STATUS } from '@/pages/Quotation/status'
 import { formatCurrency, formatDate, formatDateRangeShort, formatNumber, toDateKey, todayDateKey } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-const idPenawaran = String(route.query.id_penawaran ?? '')
+const quotationIdFromQuery = String(route.query.quotation_id ?? '')
 const idPoc = String(route.params.id ?? '')
 const isEditMode = computed(() => route.name === 'po-customers-edit')
 
@@ -33,20 +34,19 @@ const pageLoading = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 const items = ref<any[]>([])
-const hargaDasar = ref(0)
 const volumePoc = ref<number>(0)
-const penawaranOptions = ref<Array<{ id_penawaran: number; nomor_penawaran: string; customer_nama: string }>>([])
+const quotationOptions = ref<Array<{ id: number; nomor_penawaran: string; customer_nama: string }>>([])
 const poRecord = ref<any>(null)
 const existingAttachments = ref<Array<{ name: string; url: string }>>([])
 
 const form = reactive({
   customer_id: '' as number | string,
   customer_nama: '',
-  id_penawaran: idPenawaran as number | string,
+  quotation_id: quotationIdFromQuery as number | string,
   nomor_penawaran: '',
   masa_berlaku: '',
   sampai_dengan: '',
-  oat: 0,
+  dpp: 0,
   nomor_po: '',
   tipe_bayar: '' as string,
   termin_hari: '' as string | number,
@@ -56,11 +56,15 @@ const form = reactive({
   produk_poc: '' as number | string,
 })
 
-const penawaranTotalVolume = computed(() =>
-  Math.round(items.value.reduce((sum, it) => sum + Number(it.volume_order ?? 0), 0)),
+const quotationTotalQuantity = computed<number>(() =>
+  items.value.reduce((sum, it) => sum + Number(it.quantity ?? 0), 0),
 )
-const dppPerM3 = computed(() => hargaDasar.value + Number(form.oat ?? 0))
-const totalHarga = computed(() => dppPerM3.value * volumePoc.value)
+const pricePerM3 = computed<number>(() =>
+  quotationTotalQuantity.value > 0
+    ? Math.round((Number(form.dpp) / quotationTotalQuantity.value) * 10000) / 10000
+    : 0,
+)
+const totalHarga = computed(() => pricePerM3.value * volumePoc.value)
 
 const pageTitle = computed(() => (isEditMode.value ? 'Edit PO Customer' : 'Buat PO Customer'))
 const pageDescription = computed(() =>
@@ -70,14 +74,14 @@ const pageDescription = computed(() =>
 )
 const isPoBlocked = computed(() => isEditMode.value && poRecord.value?.status_key === 'blocked')
 const validityRangeLabel = computed(() => formatDateRangeShort(form.masa_berlaku, form.sampai_dengan))
-const isPenawaranExpiredToday = computed(() => {
-  if (isEditMode.value || !form.id_penawaran || !form.masa_berlaku || !form.sampai_dengan) return false
+const isQuotationExpiredToday = computed(() => {
+  if (isEditMode.value || !form.quotation_id || !form.masa_berlaku || !form.sampai_dengan) return false
   const today = todayDateKey()
   return today < toDateKey(form.masa_berlaku) || today > toDateKey(form.sampai_dengan)
 })
 
 const rules = {
-  id_penawaran: { required: helpers.withMessage('Pilih Penawaran terlebih dahulu', required) },
+  quotation_id: { required: helpers.withMessage('Pilih Penawaran terlebih dahulu', required) },
   nomor_po: { required: helpers.withMessage('Nomor PO Customer wajib diisi', required) },
   tipe_bayar: { required: helpers.withMessage('Tipe pembayaran wajib dipilih', required) },
   termin_hari: {
@@ -90,7 +94,7 @@ const rules = {
   },
   tanggal_po: {
     required: helpers.withMessage('Tanggal PO wajib diisi', required),
-    withinPenawaranValidity: helpers.withMessage(
+    withinQuotationValidity: helpers.withMessage(
       () => `Tanggal PO harus berada dalam masa berlaku penawaran (${validityRangeLabel.value}).`,
       (value: string) => {
         if (!isEditMode.value || !value || !form.masa_berlaku || !form.sampai_dengan) return true
@@ -119,23 +123,23 @@ onMounted(async () => {
   if (isEditMode.value) {
     const ok = await loadPoCustomer()
     if (!ok) return
-  } else if (idPenawaran) {
-    form.id_penawaran = idPenawaran
+  } else if (quotationIdFromQuery) {
+    form.quotation_id = quotationIdFromQuery
   }
 
   await Promise.all([
-    fetchPenawaranOptions(),
-    form.id_penawaran ? fetchPenawaranDetail(form.id_penawaran) : Promise.resolve(),
+    fetchQuotationOptions(),
+    form.quotation_id ? fetchQuotationDetail(form.quotation_id) : Promise.resolve(),
   ])
 
   if (isEditMode.value) {
     applyPoCustomerToForm()
   }
 
-  const selectedIdPenawaran = String(form.id_penawaran || '')
-  if (selectedIdPenawaran && !penawaranOptions.value.some(opt => String(opt.id_penawaran) === selectedIdPenawaran)) {
-    penawaranOptions.value.push({
-      id_penawaran: Number(form.id_penawaran),
+  const selectedQuotationId = String(form.quotation_id || '')
+  if (selectedQuotationId && !quotationOptions.value.some(opt => String(opt.id) === selectedQuotationId)) {
+    quotationOptions.value.push({
+      id: Number(form.quotation_id),
       nomor_penawaran: form.nomor_penawaran,
       customer_nama: form.customer_nama,
     })
@@ -155,7 +159,7 @@ async function loadPoCustomer(): Promise<boolean> {
     }
 
     poRecord.value = data
-    form.id_penawaran = data.id_penawaran
+    form.quotation_id = data.quotation_id
     return true
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data PO Customer')
@@ -183,18 +187,18 @@ function applyPoCustomerToForm() {
   }
 }
 
-async function fetchPenawaranOptions() {
+async function fetchQuotationOptions() {
   try {
     const { data } = await axios.get('/api/penawarans', {
       params: {
-        status: 'approved_om',
+        status: QUOTATION_STATUS.Approved,
         per_page: 200,
         valid_today: 1,
-        ...(isEditMode.value && poRecord.value?.id_customer ? { id_customer: poRecord.value.id_customer } : {}),
+        ...(isEditMode.value && poRecord.value?.id_customer ? { customer_id: poRecord.value.id_customer } : {}),
       },
     })
-    penawaranOptions.value = (data.data ?? []).map((row: any) => ({
-      id_penawaran: row.id_penawaran,
+    quotationOptions.value = (data.data ?? []).map((row: any) => ({
+      id: row.id,
       nomor_penawaran: row.nomor_penawaran,
       customer_nama: row.customer?.company_name || '-',
     }))
@@ -203,7 +207,7 @@ async function fetchPenawaranOptions() {
   }
 }
 
-async function fetchPenawaranDetail(id: string | number) {
+async function fetchQuotationDetail(id: string | number) {
   if (!id) return
 
   pageLoading.value = true
@@ -211,14 +215,13 @@ async function fetchPenawaranDetail(id: string | number) {
   try {
     const { data } = await axios.get(`/api/penawarans/${id}`)
 
-    form.customer_id = data.id_customer
+    form.customer_id = data.customer_id
     form.customer_nama = data.customer?.company_name || '-'
-    form.id_penawaran = data.id_penawaran
+    form.quotation_id = data.id
     form.nomor_penawaran = data.nomor_penawaran || '-'
     form.masa_berlaku = data.masa_berlaku
     form.sampai_dengan = data.sampai_dengan
-    form.oat = Number(data.oat ?? 0)
-    hargaDasar.value = Number(data.harga_dasar ?? 0)
+    form.dpp = Number(data.dpp ?? 0)
 
     if (!isEditMode.value) {
       const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
@@ -227,8 +230,8 @@ async function fetchPenawaranDetail(id: string | number) {
     }
 
     items.value = Array.isArray(data.items) ? data.items : []
-    form.produk_poc = items.value[0]?.produk?.id_produk || ''
-    volumePoc.value = penawaranTotalVolume.value
+    form.produk_poc = items.value[0]?.product_id || ''
+    volumePoc.value = Math.round(quotationTotalQuantity.value)
   } catch {
     notifyError('Gagal', 'Gagal memuat data penawaran')
   } finally {
@@ -246,18 +249,18 @@ function deriveDefaultPayment(tipePembayaran: string | null | undefined, repayme
   return { tipeBayar: 'CREDIT', terminHari: null }
 }
 
-function onPenawaranSelected(value: string | string[]): void {
+function onQuotationSelected(value: string | string[]): void {
   const id = Array.isArray(value) ? value[0] : value
-  if (id && String(id) !== String(form.id_penawaran)) {
-    form.id_penawaran = id
-    fetchPenawaranDetail(id)
+  if (id && String(id) !== String(form.quotation_id)) {
+    form.quotation_id = id
+    fetchQuotationDetail(id)
   }
 }
 
 async function submit() {
   formError.value = ''
 
-  if (isPenawaranExpiredToday.value) return
+  if (isQuotationExpiredToday.value) return
 
   const valid = await v$.value.$validate()
   if (!valid) return
@@ -267,12 +270,12 @@ async function submit() {
   const payload = new FormData()
   if (isEditMode.value) {
     payload.append('_method', 'PUT')
-    if (String(form.id_penawaran) !== String(poRecord.value?.id_penawaran)) {
-      payload.append('id_penawaran', String(form.id_penawaran))
+    if (String(form.quotation_id) !== String(poRecord.value?.quotation_id)) {
+      payload.append('quotation_id', String(form.quotation_id))
     }
   } else {
     payload.append('id_customer', String(form.customer_id))
-    payload.append('id_penawaran', String(form.id_penawaran))
+    payload.append('quotation_id', String(form.quotation_id))
   }
   payload.append('nomor_poc', form.nomor_po)
   payload.append('tipe_bayar', form.tipe_bayar)
@@ -325,12 +328,14 @@ function goBack() {
   router.push({ name: 'penawarans-list' })
 }
 
-function fieldError(field: 'id_penawaran' | 'nomor_po' | 'tipe_bayar' | 'termin_hari' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {
+function fieldError(field: 'quotation_id' | 'nomor_po' | 'tipe_bayar' | 'termin_hari' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {
   return v$.value[field].$errors[0]?.$message?.toString() ?? ''
 }
 
-function poVolumeForItem(it: any) {
-  return Math.round(volumePoc.value * Number(it.persen ?? 0) / 100)
+function poVolumeForItem(it: any): number {
+  return quotationTotalQuantity.value > 0
+    ? Math.round(volumePoc.value * Number(it.quantity ?? 0) / quotationTotalQuantity.value)
+    : 0
 }
 </script>
 
@@ -349,15 +354,15 @@ function poVolumeForItem(it: any) {
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
         <div>
           <div class="text-form-label">Nomor Penawaran</div>
-          <TomSelect :model-value="String(form.id_penawaran)" class="w-full"
+          <TomSelect :model-value="String(form.quotation_id)" class="w-full"
             :options="{ placeholder: 'Pilih penawaran...', dropdownParent: 'body' }"
-            @update:modelValue="onPenawaranSelected">
-            <option v-for="opt in penawaranOptions" :key="opt.id_penawaran" :value="String(opt.id_penawaran)">
+            @update:modelValue="onQuotationSelected">
+            <option v-for="opt in quotationOptions" :key="opt.id" :value="String(opt.id)">
               {{ opt.nomor_penawaran }} — {{ opt.customer_nama }}
             </option>
           </TomSelect>
           <small v-if="isEditMode" class="block text-caption text-slate-500">Hanya penawaran customer ini yang berlaku hari ini.</small>
-          <small v-if="fieldError('id_penawaran')" class="text-caption !text-rose-600">{{ fieldError('id_penawaran') }}</small>
+          <small v-if="fieldError('quotation_id')" class="text-caption !text-rose-600">{{ fieldError('quotation_id') }}</small>
         </div>
         <div>
           <div class="text-form-label">Masa Berlaku Harga</div>
@@ -367,7 +372,7 @@ function poVolumeForItem(it: any) {
       </div>
     </CardSection>
 
-    <CardSection title="Rincian Item Penawaran" description="Produk, rasio, dan volume dari penawaran." icon="Boxes"
+    <CardSection title="Rincian Item Penawaran" description="Produk, quantity, dan volume dari penawaran." icon="Boxes"
       icon-class="bg-indigo-100 text-indigo-600">
       <div class="overflow-x-auto">
         <Table bordered sm class="text-body">
@@ -375,23 +380,22 @@ function poVolumeForItem(it: any) {
             <Table.Tr>
               <Table.Th class="px-4 py-3 text-form-label text-left">Produk</Table.Th>
               <Table.Th class="px-4 py-3 text-form-label text-left">Ukuran</Table.Th>
-              <Table.Th class="px-4 py-3 text-form-label text-right">Rasio</Table.Th>
+              <Table.Th class="px-4 py-3 text-form-label text-right">Quantity</Table.Th>
               <Table.Th class="px-4 py-3 text-form-label text-right">Volume</Table.Th>
             </Table.Tr>
           </Table.Thead>
 
           <Table.Tbody class="bg-white">
-            <Table.Tr v-for="(it, i) in items" :key="it.id_penawaran_item || i">
+            <Table.Tr v-for="(it, i) in items" :key="it.id || i">
               <Table.Td class="px-4 py-3">
-                <div class="text-body-strong">{{ it.produk?.nama_produk || '-' }}</div>
-                <div v-if="it.produk?.jenis?.nama" class="text-caption">{{ it.produk?.jenis?.nama }}</div>
+                <div class="text-body-strong">{{ it.product?.nama_produk || '-' }}</div>
+                <div v-if="it.product?.jenis?.nama" class="text-caption">{{ it.product?.jenis?.nama }}</div>
               </Table.Td>
               <Table.Td class="px-4 py-3">
-                {{ it.produk?.ukuran?.nama_ukuran || '-' }}
-                <span class="text-caption">({{ it.produk?.ukuran?.satuan?.nama_satuan || '-' }})</span>
+                {{ it.product?.ukuran?.nama_ukuran || '-' }}
+                <span class="text-caption">({{ it.product?.ukuran?.satuan?.nama_satuan || '-' }})</span>
               </Table.Td>
-              <Table.Td class="px-4 py-3 num-sm text-right">{{ it.persen != null ? `${Math.round(Number(it.persen ??
-                0))}%` : '-' }}</Table.Td>
+              <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(it.quantity) }}</Table.Td>
               <Table.Td class="px-4 py-3 num-sm text-right">
                 <div>{{ formatNumber(poVolumeForItem(it)) }} m³</div>
               </Table.Td>
@@ -411,11 +415,11 @@ function poVolumeForItem(it: any) {
               </Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td colspan="3" class="px-4 py-2 text-body-strong text-right">Harga per m³</Table.Td>
+              <Table.Td colspan="3" class="px-4 py-2 text-body-strong text-right">Harga per m³ (termasuk transport)</Table.Td>
               <Table.Td class="px-4 py-2 text-right">
                 <div class="num-sm">
                   <span class="num-sm text-xl hover:underline cursor-pointer" :data-tooltip="'po-dpp-breakdown'">{{
-                    formatCurrency(dppPerM3) }}</span>
+                    formatCurrency(pricePerM3) }}</span>
                 </div>
                 <div class="tooltip-content">
                   <TippyContent :to="'po-dpp-breakdown'" :options="{ placement: 'left', interactive: true }">
@@ -425,16 +429,16 @@ function poVolumeForItem(it: any) {
                         <span class="text-form-label text-slate-500 tracking-wide">Komposisi Harga per m³</span>
                       </div>
                       <div class="flex justify-between items-center gap-4">
-                        <span class="text-caption text-slate-500">Harga Dasar</span>
-                        <span class="text-body-strong">{{ formatCurrency(hargaDasar) }}</span>
+                        <span class="text-caption text-slate-500">DPP penawaran</span>
+                        <span class="text-body-strong">{{ formatCurrency(form.dpp) }}</span>
                       </div>
                       <div class="flex justify-between items-center gap-4">
-                        <span class="text-caption text-slate-500">Ongkos Angkut</span>
-                        <span class="text-body-strong">{{ formatCurrency(form.oat) }}</span>
+                        <span class="text-caption text-slate-500">Total quantity penawaran</span>
+                        <span class="text-body-strong">{{ formatNumber(quotationTotalQuantity) }}</span>
                       </div>
                       <div class="flex justify-between items-center gap-4 mt-2 pt-1 border-slate-100 border-t">
-                        <span class="text-caption text-slate-500">Total per m³</span>
-                        <span class="text-body-strong">{{ formatCurrency(dppPerM3) }}</span>
+                        <span class="text-caption text-slate-500">Harga per m³</span>
+                        <span class="text-body-strong">{{ formatCurrency(pricePerM3) }}</span>
                       </div>
                     </div>
                   </TippyContent>
@@ -453,11 +457,11 @@ function poVolumeForItem(it: any) {
     <template #sidebar>
       <CardSection title="Detail PO Customer" description="Lengkapi data wajib untuk memproses PO." icon="ClipboardList"
         icon-class="bg-amber-100 text-amber-600">
-        <template v-if="form.id_penawaran" #action>
+        <template v-if="form.quotation_id" #action>
           <span class="bg-rose-50 px-2.5 py-1 rounded-full text-caption !text-rose-600">Wajib</span>
         </template>
 
-        <div v-if="!form.id_penawaran" class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <div v-if="!form.quotation_id" class="flex flex-col items-center justify-center gap-2 py-10 text-center">
           <Lucide icon="FileSearch" class="h-8 w-8 text-slate-300" />
           <p class="text-body text-slate-500">Pilih Penawaran terlebih dahulu untuk mengisi detail PO Customer.</p>
         </div>
@@ -507,7 +511,7 @@ function poVolumeForItem(it: any) {
             label="Lampiran Dokumen PO" accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="2"
             :hint="isEditMode ? 'Upload file baru untuk mengganti.' : 'Opsional. PDF, JPG, atau PNG maksimal 2MB.'" />
 
-          <Alert v-if="isPenawaranExpiredToday" variant="soft-warning" class="flex items-start gap-2">
+          <Alert v-if="isQuotationExpiredToday" variant="soft-warning" class="flex items-start gap-2">
             <Lucide icon="AlertTriangle" class="mt-0.5 h-4 w-4 shrink-0" />
             <span>Penawaran ini tidak berlaku hari ini (masa berlaku {{ validityRangeLabel }}). PO tidak dapat dibuat.</span>
           </Alert>
@@ -518,7 +522,7 @@ function poVolumeForItem(it: any) {
           </div>
 
           <Button type="submit" variant="primary" class="inline-flex items-center justify-center gap-2 w-full"
-            :disabled="pageLoading || submitting || isPenawaranExpiredToday">
+            :disabled="pageLoading || submitting || isQuotationExpiredToday">
             <Lucide v-if="pageLoading || submitting" icon="Loader2" class="h-4 w-4 animate-spin" />
             <Lucide v-else icon="Save" class="h-4 w-4" />
             Simpan

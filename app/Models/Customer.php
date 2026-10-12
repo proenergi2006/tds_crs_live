@@ -71,9 +71,9 @@ class Customer extends Model
         return $this->hasMany(\App\Models\CustomerLcr::class, 'id_customer', 'id_customer');
     }
 
-    public function penawarans(): HasMany
+    public function quotations(): HasMany
     {
-        return $this->hasMany(Penawaran::class, 'id_customer', 'id_customer');
+        return $this->hasMany(Quotation::class, 'customer_id', 'id_customer');
     }
 
     public function documents(): HasMany

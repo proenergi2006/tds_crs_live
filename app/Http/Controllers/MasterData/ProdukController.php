@@ -52,13 +52,13 @@ class ProdukController extends Controller
     }
 
 
-    public function show($id)
+    public function show(Produk $produk)
     {
-        $produk = Produk::with('ukuran.satuan', 'jenis')->findOrFail($id);
+        $produk->load('ukuran.satuan', 'jenis');
         return response()->json($produk);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Produk $produk)
     {
         $data = $request->validate([
             'nama_produk'  => 'required|string|max:255',
@@ -72,12 +72,12 @@ class ProdukController extends Controller
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name;
 
-        $prod = Produk::findOrFail($id);
-        $prod->update($data);
+        $produk->update($data);
 
-        return response()->json($prod->load('ukuran.satuan', 'jenis'));
+        return response()->json($produk->load('ukuran.satuan', 'jenis'));
     }
 
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         Produk::destroy($id);

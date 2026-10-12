@@ -68,7 +68,7 @@ const progressPercent = computed(() => {
               ]">
               <Lucide v-if="step.hasError" icon="AlertTriangle" class="h-3.5 w-3.5" />
               <Lucide v-else-if="stepStatus(idx) === 'completed'" icon="Check" class="h-3.5 w-3.5" />
-              <span v-else class="font-ubuntu text-xs font-bold">{{ idx + 1 }}</span>
+              <span v-else class="font-oswald text-xs font-bold">{{ idx + 1 }}</span>
             </span>
             <div v-if="idx < props.steps.length - 1" class="w-0.5 flex-1 py-1"
               :class="stepStatus(idx) === 'completed' ? 'bg-white' : 'bg-slate-700'" style="min-height: 1.25rem" />

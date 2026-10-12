@@ -16,7 +16,7 @@ class PricePeriodResource extends JsonResource
 
         $category = match (true) {
             $today->lt($awal)  => 'upcoming',
-            $today->gt($akhir) => 'inactive',
+            $this->resource->isEnded() => 'inactive',
             default            => 'active',
         };
 
@@ -31,6 +31,7 @@ class PricePeriodResource extends JsonResource
             'jumlah_data'          => (int) ($this->jumlah_data ?? 0),
             'jumlah_cabang'        => (int) ($this->jumlah_cabang ?? 0),
             'jumlah_belum_lengkap' => (int) ($this->jumlah_belum_lengkap ?? 0),
+            'jumlah_perlu_konfirmasi' => (int) ($this->jumlah_perlu_konfirmasi ?? 0),
             'terakhir_diupdate'    => $this->terakhir_diupdate ?? null,
             $this->mergeWhen((bool) $request->user()?->can('price-period.view'), fn() => [
                 'attachments' => $this->attachments ?? [],

@@ -18,7 +18,7 @@ use App\Http\Requests\Customer\DecideCustomerVerificationRequest;
 use App\Models\Customer;
 use App\Models\CustomerLcr;
 use App\Models\CustomerVerification;
-use App\Models\Penawaran;
+use App\Models\Quotation;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -184,11 +184,14 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    public function reviewShow(Request $request, int $id, EvaluateCustomerTabCompletenessAction $evaluateTabCompleteness): \Illuminate\Http\JsonResponse
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
+    public function reviewShow(Request $request, CustomerVerification $id, EvaluateCustomerTabCompletenessAction $evaluateTabCompleteness): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
 
-        $cv = CustomerVerification::whereHas('customer')->with(['customer', 'submittedBy:id,name', 'reviewedBy:id,name'])->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
+        $cv->load(['customer', 'submittedBy:id,name', 'reviewedBy:id,name']);
 
         $allowed = $user->can('verification.customer')
             || $user->can('customer.viewAny')
@@ -259,9 +262,11 @@ class CustomerVerificationController extends Controller
         ]);
     }
 
-    public function dataCustomerDocument(Request $request, int $id, GenerateCustomerDataDocumentAction $action)
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
+    public function dataCustomerDocument(Request $request, CustomerVerification $id, GenerateCustomerDataDocumentAction $action)
     {
-        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
 
         if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -282,9 +287,11 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("Data-Customer-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    public function salesReviewDocument(Request $request, int $id, GenerateCustomerSalesReviewDocumentAction $action)
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
+    public function salesReviewDocument(Request $request, CustomerVerification $id, GenerateCustomerSalesReviewDocumentAction $action)
     {
-        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
 
         if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -305,9 +312,11 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("Sales-Review-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    public function creditApplicationDocument(Request $request, int $id, GenerateCustomerCreditApplicationDocumentAction $action)
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
+    public function creditApplicationDocument(Request $request, CustomerVerification $id, GenerateCustomerCreditApplicationDocumentAction $action)
     {
-        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
 
         if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -328,9 +337,11 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("Credit-Application-{$safeName}-{$cv->id_verification}.pdf");
     }
 
-    public function lcrDocument(Request $request, int $id, GenerateCustomerLcrDocumentAction $action)
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
+    public function lcrDocument(Request $request, CustomerVerification $id, GenerateCustomerLcrDocumentAction $action)
     {
-        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
 
         if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -351,16 +362,18 @@ class CustomerVerificationController extends Controller
         return $pdf->stream("LCR-{$safeName}-{$cv->id_verification}.pdf");
     }
 
+    // route literal {id} (bukan apiResource): argumen harus tetap bernama $id agar implicit binding model jalan
     public function bulkDocument(
         Request $request,
-        int $id,
+        CustomerVerification $id,
         GenerateCustomerDataDocumentAction $dataDocumentAction,
         GenerateCustomerSalesReviewDocumentAction $salesReviewAction,
         GenerateCustomerCreditApplicationDocumentAction $creditApplicationAction,
         GenerateCustomerLcrDocumentAction $lcrAction,
         MergeCustomerDocumentsAction $mergeAction,
     ) {
-        $cv = CustomerVerification::whereHas('customer')->findOrFail($id);
+        $cv = $id;
+        abort_unless($cv->customer, 404);
 
         if (!$this->canAccessVerificationDocument($request->user(), $cv)) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -401,20 +414,20 @@ class CustomerVerificationController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $penawarans = $customer->penawarans()
-            ->withSum('items as total_volume', 'volume_order')
-            ->orderByDesc('id_penawaran')
+        $quotations = $customer->quotations()
+            ->withDppAggregates()
+            ->orderByDesc('id')
             ->get();
 
-        $data = $penawarans->map(function (Penawaran $penawaran) {
+        $data = $quotations->map(function (Quotation $quotation) {
             return [
-                'id_penawaran'    => $penawaran->id_penawaran,
-                'nomor_penawaran' => $penawaran->nomor_penawaran,
-                'masa_berlaku'    => $penawaran->masa_berlaku,
-                'sampai_dengan'   => $penawaran->sampai_dengan,
-                'harga_dasar'     => $penawaran->harga_dasar,
-                'oat'             => $penawaran->oat,
-                'total_volume'    => $penawaran->total_volume,
+                'id'              => $quotation->id,
+                'nomor_penawaran' => $quotation->nomor_penawaran,
+                'masa_berlaku'    => $quotation->masa_berlaku,
+                'sampai_dengan'   => $quotation->sampai_dengan,
+                'dpp'             => $quotation->aggregatedDpp(),
+                'transport_total' => $quotation->aggregatedTransportTotal(),
+                'total_volume'    => $quotation->total_volume,
             ];
         });
 

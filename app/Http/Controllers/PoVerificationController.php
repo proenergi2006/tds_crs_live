@@ -55,9 +55,10 @@ class PoVerificationController extends Controller
         return response()->json($q->paginate($perPage));
     }
 
-    public function verify(Request $request, $id)
+    // param harus $id, route pakai segmen literal {id}
+    public function verify(Request $request, VendorPo $id)
     {
-        $po = VendorPo::findOrFail($id);
+        $po = $id;
 
         if ($request->user()->cant('verification.po-supplier')) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -76,13 +77,11 @@ class PoVerificationController extends Controller
         $result = $data['action'] === 'approve' ? 1 : 2;
 
         if ($request->user()->can('po-supplier.verify-cfo')) {
-            // Verifikasi CFO
             $po->cfo_result     = $result;
             $po->cfo_summary    = $data['summary'] ?? null;
             $po->cfo_tgl        = now();
             $po->disposisi_po   = $result === 1 ? 2 : 0;
         } elseif ($request->user()->can('po-supplier.verify-ceo')) {
-            // Verifikasi CEO
             if ($po->disposisi_po !== 2) {
                 return response()->json(['message' => 'PO harus disetujui CFO terlebih dahulu'], 403);
             }

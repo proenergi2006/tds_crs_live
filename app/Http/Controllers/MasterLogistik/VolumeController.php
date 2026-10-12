@@ -50,24 +50,22 @@ class VolumeController extends Controller
         return response()->json($volume, 201);
     }
 
-    public function show(Request $request, $id)
+    public function show(Request $request, Volume $volume)
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $volume = Volume::with('satuan')->findOrFail($id);
+        $volume->load('satuan');
 
         return response()->json($volume);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Volume $volume)
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $volume = Volume::findOrFail($id);
 
         $data = $request->validate([
             'volume' => 'required|numeric|min:0',
@@ -82,13 +80,12 @@ class VolumeController extends Controller
         return response()->json($volume);
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, Volume $volume)
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $volume = Volume::findOrFail($id);
         $volume->delete();
 
         return response()->json(['message' => 'Data volume berhasil dihapus.']);

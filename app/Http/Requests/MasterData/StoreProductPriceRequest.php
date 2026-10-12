@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\MasterData;
 
+use App\Models\PricePeriod;
+use App\Models\ProductPrice;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductPriceRequest extends FormRequest
@@ -14,6 +16,20 @@ class StoreProductPriceRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(array_map(fn ($v) => $v === '' ? null : $v, $this->all()));
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($validator->errors()->isNotEmpty()
+                || PricePeriod::targetIsEnded($this->input('price_period_id'), $this->input('end_date'))) {
+                return;
+            }
+
+            foreach (ProductPrice::tierOrderErrors($this->only(ProductPrice::TIER_ORDER)) as $field => $message) {
+                $validator->errors()->add($field, $message);
+            }
+        });
     }
 
     public function rules(): array
@@ -30,7 +46,8 @@ class StoreProductPriceRequest extends FormRequest
             'cogs_basis'           => 'required|in:loco,franco',
             'cogs_material_price'  => 'required|numeric|min:0',
             'cogs_transport_price' => 'nullable|required_if:cogs_basis,franco|numeric|min:0',
-            'margin_amount'        => 'nullable|numeric|min:0',
+            'margin_material_amount' => 'nullable|numeric|min:0',
+            'margin_transport_amount' => 'nullable|numeric|min:0',
             'om_price'             => 'nullable|numeric|min:0',
             'ceo_price'            => 'nullable|numeric|min:0',
             'notes'                => 'nullable|string',

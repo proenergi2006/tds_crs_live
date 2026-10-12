@@ -19,7 +19,7 @@ class PoCustomer extends Model
 
     protected $fillable = [
         'id_customer',
-        'id_penawaran',
+        'quotation_id',
         'tipe_bayar',
         'termin_hari',
         'nomor_poc',
@@ -45,8 +45,8 @@ class PoCustomer extends Model
     ];
 
     protected $casts = [
-        'tanggal_poc' => 'date',
-        'supply_date' => 'date',
+        'tanggal_poc' => 'date:Y-m-d',
+        'supply_date' => 'date:Y-m-d',
         'harga_poc' => 'decimal:4',
         'volume_poc' => 'integer',
         'created_time' => 'datetime',
@@ -61,19 +61,19 @@ class PoCustomer extends Model
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
     }
 
-    public function penawaran(): BelongsTo
+    public function quotation(): BelongsTo
     {
-        return $this->belongsTo(Penawaran::class, 'id_penawaran', 'id_penawaran');
+        return $this->belongsTo(Quotation::class, 'quotation_id');
     }
 
     public function scopeOwnedBy(Builder $query, User $user): Builder
     {
-        return $query->whereHas('penawaran', fn (Builder $q) => $q->where('user_id', $user->id));
+        return $query->whereHas('quotation', fn (Builder $q) => $q->where('user_id', $user->id));
     }
 
     public function isOwnedBy(User $user): bool
     {
-        return $this->penawaran !== null && (int) $this->penawaran->user_id === (int) $user->id;
+        return $this->quotation !== null && (int) $this->quotation->user_id === (int) $user->id;
     }
 
     public function isWritableBy(User $user): bool

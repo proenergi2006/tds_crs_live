@@ -1,83 +1,66 @@
-import type { NavItem } from "./types";
+import type { NavSection } from "@/stores/menu";
 
-export const masterDataNavigation: NavItem[] = [
-  {
-    icon: "Database",
-    title: "Master Data",
-    subMenu: [
-      {
-        icon: "CreditCard",
-        pageName: "vendors-list",
-        title: "Vendor",
-        activePageNames: ["vendors-create", "vendors-edit"],
-        permission: "master-data.view",
-      },
-      {
-        icon: "Terminal",
-        pageName: "terminals-list",
-        title: "Terminal",
-        permission: "master-data.view",
-      },
-      {
-        icon: "Archive",
-        title: "Produk",
-        subMenu: [
-          {
-            icon: "CornerDownRight",
-            pageName: "produks-list",
-            title: "Produk",
-            permission: "master-data.view",
-          },
-          {
-            icon: "CornerDownRight",
-            pageName: "satuan",
-            title: "Satuan",
-            permission: "master-data.view",
-          },
-          {
-            icon: "CornerDownRight",
-            pageName: "ukuran",
-            title: "Ukuran",
-            permission: "master-data.view",
-          },
-          {
-            icon: "CornerDownRight",
-            pageName: "jenis-produk-list",
-            title: "Jenis",
-            permission: "master-data.view",
-          },
-        ],
-      },
-      {
-        icon: "Building2",
-        pageName: "cabang",
-        title: "Cabang",
-        permission: "master-data.cabang.manage",
-      },
-      {
-        icon: "MapPin",
-        title: "Wilayah",
-        subMenu: [
-          {
-            icon: "Globe",
-            pageName: "master-address",
-            title: "Master Address",
-            permission: "master-data.address.view",
-          },
-        ],
-      },
-      {
-        icon: "Users",
-        title: "Customer",
-        subMenu: [
-          {
-            icon: "FileText",
-            pageName: "customer-document-types",
-            title: "Jenis Dokumen",
-            permission: "master-data.customer-document-type.manage",
-          },
-        ],
-      },
-    ],
-  },
-];
+export const masterDataSection: NavSection = {
+  key: "master-data",
+  title: "Master Data",
+  icon: "Database",
+  items: [
+    {
+      icon: "Store",
+      pageName: "vendors-list",
+      title: "Vendor",
+      activePageNames: ["vendors-create", "vendors-edit"],
+      permission: "master-data.view",
+    },
+    {
+      icon: "Anchor",
+      pageName: "terminals-list",
+      title: "Terminal",
+      permission: "master-data.view",
+    },
+    {
+      icon: "Package",
+      pageName: "produks-list",
+      title: "Product",
+      permission: "master-data.view",
+      children: [
+        {
+          icon: "Scale",
+          pageName: "satuan",
+          title: "Unit",
+          permission: "master-data.view",
+        },
+        {
+          icon: "Ruler",
+          pageName: "ukuran",
+          title: "Size",
+          permission: "master-data.view",
+        },
+        {
+          icon: "Shapes",
+          pageName: "jenis-produk-list",
+          title: "Product Type",
+          permission: "master-data.view",
+        },
+      ],
+    },
+    {
+      icon: "Building2",
+      pageName: "cabang",
+      title: "Branch",
+      permission: "master-data.cabang.manage",
+    },
+    {
+      icon: "Globe",
+      pageName: "master-address",
+      title: "Address",
+      permission: "master-data.address.view",
+    },
+    {
+      icon: "FolderOpen",
+      pageName: "customer-document-types",
+      title: "Customer Document Type",
+      permission: "master-data.customer-document-type.manage",
+    },
+  ],
+};

@@ -14,6 +14,7 @@ import PageHeader from "@/components/SystemDesign/Page/PageHeader.vue";
 import { useNotification } from "@/components/SystemDesign/Notification/useNotification";
 import { createResourceApi } from "@/utils/resourceApi";
 import { formatCurrency, formatNumber } from "@/utils/format";
+import { useAuthStore } from "@/stores/auth";
 
 import TransportTariffFormModal from "./Form.vue";
 import type { TransportTariff, TransportType } from "./types";
@@ -21,6 +22,8 @@ import type { FormMode } from "../types";
 
 const transportTariffApi = createResourceApi("/transport-tariffs");
 const { success, error } = useNotification();
+const auth = useAuthStore();
+const canManage = computed(() => auth.can("logistik.master.manage"));
 
 const table = {
   allRows: ref<TransportTariff[]>([]),
@@ -212,7 +215,7 @@ async function submitDelete() {
   <div class="page-content-wrapper">
     <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Transport Tariff" description="Kelola data tarif angkutan kapal dan truck">
-        <template #action>
+        <template v-if="canManage" #action>
           <Button variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="w-4 h-4" />
             Tambah Data Baru
@@ -222,7 +225,7 @@ async function submitDelete() {
 
       <div>
         <DataList v-model:search="table.searchQuery.value" v-model:per-page="table.perPage.value"
-          :loading="table.loading.value" :empty="paginatedRows.length === 0" :colspan="8" :show-footer="true"
+          :loading="table.loading.value" :empty="paginatedRows.length === 0" :colspan="canManage ? 10 : 9" :show-footer="true"
           :show-toolbar="true" :total="totalRecords" :current-page="table.currentPage.value" :total-pages="totalPages"
           :active-filter-count="activeFilterCount" search-placeholder="Cari transport tariff..."
           loading-text="Memuat data transport tariff..."
@@ -282,9 +285,11 @@ async function submitDelete() {
             <Table.Th>Jenis</Table.Th>
             <Table.Th>Transport Area</Table.Th>
             <Table.Th>Volume</Table.Th>
-            <Table.Th class="text-right">Tarif</Table.Th>
+            <Table.Th class="text-right">COGS/m³</Table.Th>
+            <Table.Th class="text-right">Margin/m³</Table.Th>
+            <Table.Th class="text-right">Harga Jual/m³</Table.Th>
             <Table.Th class="text-center">Status</Table.Th>
-            <Table.Th class="text-center">Aksi</Table.Th>
+            <Table.Th v-if="canManage" class="text-center">Aksi</Table.Th>
           </template>
 
           <template #body>
@@ -299,12 +304,17 @@ async function submitDelete() {
               <Table.Td>{{ item.transport_area?.name ?? "-" }}</Table.Td>
               <Table.Td>{{ item.volume ? formatNumber(item.volume.volume) : "-" }}</Table.Td>
               <Table.Td class="num-sm text-right">{{ formatCurrency(item.rate) }}</Table.Td>
+              <Table.Td class="num-sm text-right">{{ item.margin === null ? "-" : formatCurrency(item.margin) }}</Table.Td>
+              <Table.Td class="num-sm text-right">
+                <Badge v-if="item.price === null" variant="soft-warning">Belum siap dijual</Badge>
+                <template v-else>{{ formatCurrency(item.price) }}</template>
+              </Table.Td>
               <Table.Td class="text-center">
                 <Badge :variant="item.is_active ? 'soft-success' : 'soft-secondary'">
                   {{ item.is_active ? "Active" : "Inactive" }}
                 </Badge>
               </Table.Td>
-              <Table.Td class="text-center">
+              <Table.Td v-if="canManage" class="text-center">
                 <div class="inline-flex justify-center items-center gap-2">
                   <Button variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
                     @click.prevent="openEdit(item)">
@@ -321,10 +331,10 @@ async function submitDelete() {
         </DataList>
       </div>
 
-      <TransportTariffFormModal :open="formModal.isOpen.value" :mode="formModal.mode.value"
+      <TransportTariffFormModal v-if="canManage" :open="formModal.isOpen.value" :mode="formModal.mode.value"
         :item="formModal.selectedItem.value" @close="formModal.isOpen.value = false" @success="handleFormSuccess" />
 
-      <DeleteRecordDialog :open="deleteDialog.isOpen.value" title="Hapus Transport Tariff"
+      <DeleteRecordDialog v-if="canManage" :open="deleteDialog.isOpen.value" title="Hapus Transport Tariff"
         :loading="deleteDialog.isLoading.value" @close="deleteDialog.isOpen.value = false" @confirm="submitDelete" />
     </div>
   </div>

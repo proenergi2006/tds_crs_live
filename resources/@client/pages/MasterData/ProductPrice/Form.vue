@@ -22,7 +22,7 @@ type MoneyField =
   | 'price_list_pe'
   | 'bm_price'
   | 'cogs_price'
-  | 'margin_amount'
+  | 'margin_material_amount'
   | 'om_price'
   | 'ceo_price'
 
@@ -34,7 +34,7 @@ type PriceRow = {
   price_list_pe: number
   bm_price: number
   cogs_price: number
-  margin_amount: number
+  margin_material_amount: number
   om_price: number
   ceo_price: number
   cogs_basis: string
@@ -117,7 +117,7 @@ const visibleMoneyFields = computed<MoneyField[]>(() => {
 
   return [
     'cogs_price',
-    'margin_amount',
+    'margin_material_amount',
     'price_list',
     'price_list_pe',
     'bm_price',
@@ -128,7 +128,7 @@ const visibleMoneyFields = computed<MoneyField[]>(() => {
 
 const showRowNumber = computed(() => mode.value === 'create')
 const showCogsColumn = computed(() => visibleMoneyFields.value.includes('cogs_price'))
-const showMarginColumn = computed(() => visibleMoneyFields.value.includes('margin_amount'))
+const showMarginColumn = computed(() => visibleMoneyFields.value.includes('margin_material_amount'))
 const showPriceListColumn = computed(() =>
   visibleMoneyFields.value.includes('price_list_pe')
   || visibleMoneyFields.value.includes('price_list'),
@@ -176,7 +176,7 @@ const rules = computed(() => ({
           (value: string) => isReadonly('cogs_price') || !!value,
         ),
       },
-      margin_amount: {
+      margin_material_amount: {
         required: helpers.withMessage(
           'Margin wajib diisi',
           (value: number) => !canSetPriceList.value || toIntMoney(value) > 0,
@@ -283,7 +283,7 @@ function makeEmptyRow(): PriceRow {
     price_list_pe: 0,
     bm_price: 0,
     cogs_price: 0,
-    margin_amount: 0,
+    margin_material_amount: 0,
     om_price: 0,
     ceo_price: 0,
     cogs_basis: '',
@@ -302,7 +302,7 @@ function rowFromData(data: any): PriceRow {
     price_list_pe: toIntMoney(data.price_list_pe),
     bm_price: toIntMoney(data.bm_price),
     cogs_price: toIntMoney(data.cogs_price),
-    margin_amount: toIntMoney(data.margin_amount),
+    margin_material_amount: toIntMoney(data.margin_material_amount),
     om_price: toIntMoney(data.om_price),
     ceo_price: toIntMoney(data.ceo_price),
     cogs_basis: data.cogs_basis ?? '',
@@ -351,13 +351,13 @@ function updateMoney(row: PriceRow, field: MoneyField, value: number) {
 
   row[field] = toIntMoney(value)
 
-  if (field === 'cogs_price' || field === 'margin_amount') {
+  if (field === 'cogs_price' || field === 'margin_material_amount') {
     recalculatePriceList(row)
   }
 }
 
 function recalculatePriceList(row: PriceRow) {
-  const total = toIntMoney(row.cogs_price) + toIntMoney(row.margin_amount)
+  const total = toIntMoney(row.cogs_price) + toIntMoney(row.margin_material_amount)
   row.price_list = total
   row.price_list_pe = total
 }
@@ -412,7 +412,7 @@ function appendRowToFormData(formData: FormData, row: PriceRow, index: number) {
   if (canSetPriceList.value) {
     formData.append(`product_prices[${index}][price_list]`, String(toIntMoney(row.price_list)))
     formData.append(`product_prices[${index}][price_list_pe]`, String(toIntMoney(row.price_list_pe)))
-    formData.append(`product_prices[${index}][margin_amount]`, String(toIntMoney(row.margin_amount)))
+    formData.append(`product_prices[${index}][margin_material_amount]`, String(toIntMoney(row.margin_material_amount)))
     formData.append(`product_prices[${index}][bm_price]`, String(toIntMoney(row.bm_price)))
     formData.append(`product_prices[${index}][om_price]`, String(toIntMoney(row.om_price)))
     formData.append(`product_prices[${index}][ceo_price]`, String(toIntMoney(row.ceo_price)))
@@ -559,7 +559,7 @@ function cancel() {
               </th>
               <th v-if="showMarginColumn" class="px-4 py-3 text-form-label text-right">
                 Margin
-                <RequiredAsterisk v-if="!isReadonly('margin_amount')" />
+                <RequiredAsterisk v-if="!isReadonly('margin_material_amount')" />
               </th>
               <th v-if="showPriceListColumn" class="px-4 py-3 text-form-label text-left">
                 Price List
@@ -634,9 +634,9 @@ function cancel() {
               </td>
 
               <td v-if="showMarginColumn" class="px-4 py-3 align-top">
-                <CurrencyField :model-value="row.margin_amount" class="min-w-[150px]" placeholder="0"
-                  :readonly="isReadonly('margin_amount')" :error="getRowFieldError(index, 'margin_amount')"
-                  @update:model-value="updateMoney(row, 'margin_amount', $event)" />
+                <CurrencyField :model-value="row.margin_material_amount" class="min-w-[150px]" placeholder="0"
+                  :readonly="isReadonly('margin_material_amount')" :error="getRowFieldError(index, 'margin_material_amount')"
+                  @update:model-value="updateMoney(row, 'margin_material_amount', $event)" />
               </td>
 
               <td v-if="showPriceListColumn" class="px-4 py-3 align-top">

@@ -33,14 +33,13 @@ class UkuranController extends Controller
         $data['created_time'] = now();
         $data['created_by']   = $request->user()->name;
         $ukuran = Ukuran::create($data);
-        // eager-load relasi 'satuan' sebelum return
     return response()->json(
         $ukuran->load('satuan'),
         201
     );
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Ukuran $ukuran)
     {
         $data = $request->validate([
             'nama_ukuran'      => 'required|string',
@@ -48,14 +47,13 @@ class UkuranController extends Controller
         ]);
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name;
-        $ukuran = Ukuran::findOrFail($id);
         $ukuran->update($data);
-       // fresh() + load relasi untuk memastikan data terbaru
     return response()->json(
         $ukuran->fresh('satuan')
     );
     }
 
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         Ukuran::destroy($id);
