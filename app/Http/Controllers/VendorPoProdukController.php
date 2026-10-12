@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 
 class VendorPoProdukController extends Controller
 {
-    // GET /api/vendor-pos-produks
     public function index(Request $request)
     {
         $q = VendorPoProduk::with(['vendorPo', 'produk']);
@@ -20,7 +19,6 @@ class VendorPoProdukController extends Controller
         return response()->json($q->get());
     }
 
-    // POST /api/vendor-pos-produks
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -38,7 +36,6 @@ class VendorPoProdukController extends Controller
         return response()->json($detail, 201);
     }
 
-    // POST /api/vendor-pos-produks/batch
     public function storeBatch(Request $request)
     {
         $data = $request->validate([
@@ -62,17 +59,14 @@ class VendorPoProdukController extends Controller
         return response()->json(['message' => 'Detail PO berhasil disimpan'], 201);
     }
 
-    // GET /api/vendor-pos-produks/{id}
-    public function show($id)
+    public function show(VendorPoProduk $vendorPosProduk)
     {
-        $detail = VendorPoProduk::with(['vendorPo', 'produk'])
-                    ->findOrFail($id);
+        $detail = $vendorPosProduk->load(['vendorPo', 'produk']);
 
         return response()->json($detail);
     }
 
-    // PUT /api/vendor-pos-produks/{id}
-    public function update(Request $request, $id)
+    public function update(Request $request, VendorPoProduk $vendorPosProduk)
     {
         $data = $request->validate([
             'volume_po'     => 'required|numeric',
@@ -82,13 +76,13 @@ class VendorPoProdukController extends Controller
 
         $data['lastupdate_time'] = now();
 
-        $detail = VendorPoProduk::findOrFail($id);
+        $detail = $vendorPosProduk;
         $detail->update($data);
 
         return response()->json($detail);
     }
 
-    // DELETE /api/vendor-pos-produks/{id}
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         VendorPoProduk::destroy($id);

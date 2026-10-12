@@ -113,7 +113,7 @@ function goToCreate(): void {
             </Table.Td>
 
             <Table.Td class="whitespace-nowrap">
-              {{ row.penawaran?.nomor_penawaran || '-' }}
+              {{ row.quotation?.nomor_penawaran || '-' }}
             </Table.Td>
 
             <Table.Td class="text-center whitespace-nowrap">

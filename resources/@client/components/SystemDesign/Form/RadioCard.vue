@@ -46,7 +46,7 @@ const emit = defineEmits<{
       <span class="block font-medium" :class="modelValue === value ? 'text-slate-900' : 'text-slate-700'">
         {{ title }}
       </span>
-      <span v-if="description" class="text-slate-500">{{ description }}</span>
+      <span v-if="description" class="block mt-0.5 text-caption text-slate-500">{{ description }}</span>
     </span>
   </label>
 </template>

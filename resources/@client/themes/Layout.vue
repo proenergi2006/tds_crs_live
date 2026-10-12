@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useThemeStore, getTheme, themes, type Themes } from "@/stores/theme";
+import { useThemeStore, getTheme, isThemeAllowed, themes, type Themes } from "@/stores/theme";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useRoute } from "vue-router";
 import { onMounted, computed } from "vue";
@@ -16,7 +16,8 @@ onMounted(() => {
   const theme = route.query.theme as Themes["name"];
   if (
     route.query.theme !== undefined &&
-    themes.map((theme) => theme.name).includes(theme)
+    themes.map((theme) => theme.name).includes(theme) &&
+    isThemeAllowed(theme)
   ) {
     switchTheme(theme);
   }

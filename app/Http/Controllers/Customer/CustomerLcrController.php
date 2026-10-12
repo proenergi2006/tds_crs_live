@@ -291,8 +291,8 @@ class CustomerLcrController extends Controller
             'id_wil_oa' => ['required_if:decision,approve', 'nullable', 'integer', 'exists:transport_areas,id'],
         ]);
 
-        $template  = $this->approvalService->activeTemplate(self::APPROVAL_TEMPLATE_CODE);
-        $stepOrder = $template ? $this->approvalService->resolveStepOrderForRole($template, self::ROLE_LOGISTIK) : null;
+        $activeCycle = $this->approvalService->activeCycle($lcrSite);
+        $stepOrder   = $activeCycle ? $this->approvalService->stepOrderForRole($activeCycle, self::ROLE_LOGISTIK) : null;
 
         if ($stepOrder === null) {
             return response()->json(['message' => 'Approval template customer_lcr_survey belum ter-setup dengan benar.'], 422);

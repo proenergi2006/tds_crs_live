@@ -20,9 +20,29 @@ class DocumentApprovalService
             ->first();
     }
 
-    public function resolveStepOrderForRole(ApprovalTemplate $template, int $idRole): ?int
+    public function stepOrderForRole(DocumentApproval $cycle, int $roleId): ?int
     {
-        return $template->steps->firstWhere('id_role', $idRole)?->step_order;
+        return $cycle->steps->firstWhere('id_role', $roleId)?->step_order;
+    }
+
+    public function startSingleStepCycle(Model $approvable, int $roleId): DocumentApproval
+    {
+        $approval = $approvable->documentApprovals()->create([
+            'id_template'        => null,
+            'status'             => DocumentApprovalStatus::InProgress,
+            'current_step_order' => 1,
+            'started_at'         => now(),
+        ]);
+
+        DocumentApprovalStep::create([
+            'id_approval'      => $approval->id_approval,
+            'id_template_step' => null,
+            'id_role'          => $roleId,
+            'step_order'       => 1,
+            'status'           => DocumentApprovalStepStatus::Pending,
+        ]);
+
+        return $approval;
     }
 
     public function startCycle(Model $approvable, string $templateCode, ?array $stepOrders = null): DocumentApproval
@@ -57,6 +77,7 @@ class DocumentApprovalService
             DocumentApprovalStep::create([
                 'id_approval'      => $approval->id_approval,
                 'id_template_step' => $step->id_step,
+                'id_role'          => $step->id_role,
                 'step_order'       => $step->step_order,
                 'status'           => DocumentApprovalStepStatus::Pending,
             ]);
@@ -68,7 +89,7 @@ class DocumentApprovalService
     public function activeCycle(Model $approvable): ?DocumentApproval
     {
         return $approvable->documentApprovals()
-            ->with('template.steps')
+            ->with('steps')
             ->where('status', DocumentApprovalStatus::InProgress)
             ->latest('id_approval')
             ->first();
@@ -161,22 +182,6 @@ class DocumentApprovalService
         }
 
         $approval->update(['current_step_order' => $nextStepOrder]);
-
-        return $approval;
-    }
-
-    public function cancelActiveCycle(Model $approvable): ?DocumentApproval
-    {
-        $approval = $this->activeCycle($approvable);
-
-        if (!$approval) {
-            return null;
-        }
-
-        $approval->update([
-            'status'       => DocumentApprovalStatus::Cancelled,
-            'completed_at' => now(),
-        ]);
 
         return $approval;
     }

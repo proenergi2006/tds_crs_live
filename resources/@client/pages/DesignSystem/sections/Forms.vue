@@ -67,7 +67,7 @@ const richTextValue = ref("");
           <option value="b">Opsi B</option>
           <option value="c">Opsi C</option>
         </TomSelect>
-        <p class="mt-1 text-caption">Dipakai luas untuk select searchable/multi (Users, Customer/Form, Penawaran/Form,
+        <p class="mt-1 text-caption">Dipakai luas untuk select searchable/multi (Users, Customer/Form, Quotation/Form,
           dll). Mendukung error state lewat class `input-error` juga.</p>
       </div>
     </div>

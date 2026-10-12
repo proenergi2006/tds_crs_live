@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, required } from "@vuelidate/validators";
 
+import Button from "@/components/Base/Button";
+import Lucide from "@/components/Base/Lucide";
 import FormModal from "@/components/SystemDesign/Form/FormModal.vue";
 import RequiredAsterisk from "@/components/SystemDesign/Form/RequiredAsterisk.vue";
 import CurrencyField from "@/components/SystemDesign/Form/CurrencyField.vue";
 import { FormLabel, FormSelect, FormSwitch, FormTextarea } from "@/components/Base/Form";
 import { useNotification } from "@/components/SystemDesign/Notification/useNotification";
 import { createResourceApi } from "@/utils/resourceApi";
-import { formatNumber } from "@/utils/format";
+import { formatCurrency, formatNumber } from "@/utils/format";
 
 import type { EnumOption, FormMode, TransporterRef } from "../types";
 import type { TransportAreaRef, TransportTariff, TransportType, VolumeRef } from "./types";
@@ -56,6 +58,7 @@ const form = reactive({
   transport_area_id: "" as number | "",
   volume_id: "" as number | "",
   rate: 0,
+  margin: null as number | null,
   note: "",
   is_active: true,
 });
@@ -66,6 +69,7 @@ const serverErrors = reactive({
   transport_area_id: "",
   volume_id: "",
   rate: "",
+  margin: "",
   note: "",
   is_active: "",
 });
@@ -84,11 +88,15 @@ const rules = {
     required: helpers.withMessage("Volume wajib dipilih", required),
   },
   rate: {
-    required: helpers.withMessage("Tarif wajib diisi", required),
+    required: helpers.withMessage("COGS transport wajib diisi", required),
   },
 };
 
 const v$ = useVuelidate(rules, form);
+
+const sellingPrice = computed<number | null>(() =>
+  form.margin === null ? null : Number(form.rate) + Number(form.margin),
+);
 
 watch(
   () => [props.open, props.mode, props.item],
@@ -128,6 +136,7 @@ function resetForm() {
     form.transport_area_id = item.transport_area?.id ?? "";
     form.volume_id = item.volume?.id ?? "";
     form.rate = Number(item.rate);
+    form.margin = item.margin !== null ? Number(item.margin) : null;
     form.note = item.note ?? "";
     form.is_active = item.is_active;
     return;
@@ -138,8 +147,13 @@ function resetForm() {
   form.transport_area_id = "";
   form.volume_id = "";
   form.rate = 0;
+  form.margin = null;
   form.note = "";
   form.is_active = true;
+}
+
+function clearMargin() {
+  form.margin = null;
 }
 
 function resetErrors() {
@@ -161,6 +175,7 @@ function buildPayload() {
     volume_id: form.volume_id,
     transport_type: form.transport_type,
     rate: Number(form.rate),
+    margin: form.margin === null ? null : Number(form.margin),
     note: form.note.trim() === "" ? null : form.note.trim(),
     is_active: form.is_active,
   };
@@ -274,7 +289,24 @@ async function submitForm() {
           }}</small>
       </div>
 
-      <CurrencyField id="tariff-rate" v-model="form.rate" label="Tarif" required :error="getFieldError('rate')" />
+      <CurrencyField id="tariff-rate" v-model="form.rate" label="COGS Transport/m³" required
+        :error="getFieldError('rate')" />
+
+      <div class="flex items-end gap-1">
+        <div class="flex-1">
+          <CurrencyField id="tariff-margin" :model-value="form.margin" label="Margin/m³" placeholder="Belum diisi"
+            :error="getFieldError('margin')" @update:model-value="(v) => (form.margin = v)" />
+        </div>
+        <Button v-if="form.margin !== null" type="button" variant="outline-secondary" rounded
+          class="mb-1 !shadow-none !p-0 !w-8 !h-8 shrink-0" title="Kosongkan" @click="clearMargin">
+          <Lucide icon="X" class="w-4 h-4" />
+        </Button>
+      </div>
+
+      <div>
+        <FormLabel>Harga Jual/m³</FormLabel>
+        <div class="mt-1 text-body-strong">{{ sellingPrice === null ? "-" : formatCurrency(sellingPrice) }}</div>
+      </div>
 
       <div>
         <FormLabel htmlFor="tariff-note">Catatan</FormLabel>

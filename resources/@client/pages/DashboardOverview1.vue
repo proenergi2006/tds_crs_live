@@ -16,10 +16,10 @@ const auth = useAuthStore();
 const loading = ref(false);
 
 const summary = ref({
-  totalPenawaran: 0,
-  draftPenawaran: 0,
-  pendingPenawaran: 0,
-  approvedPenawaran: 0,
+  totalQuotations: 0,
+  draftQuotations: 0,
+  pendingQuotations: 0,
+  approvedQuotations: 0,
 });
 
 const currentUser = computed(() => auth.user || {});
@@ -29,7 +29,6 @@ const isMarketingRole = computed(
   () => currentUser.value?.roles?.some((r) => [4, 12].includes(r.id)) ?? false,
 );
 
-// akses cepat modul admin -- secukupnya, bukan analytics/KPI baru
 const adminQuickLinks: {
   routeName: string;
   icon: Icon;
@@ -68,7 +67,6 @@ const adminQuickLinks: {
   },
 ];
 
-// tab per role (bukan switcher) -- user dengan >1 permission dashboard lihat semua tab sekaligus, bukan cabang pertama-match saja
 const availableDashboardTabs = computed<
   { key: "ceo" | "om"; label: string; component: Component }[]
 >(() => {
@@ -120,10 +118,10 @@ async function fetchSummary() {
   try {
     const { data } = await axios.get("/api/dashboard/agent-summary");
     summary.value = {
-      totalPenawaran: Number(data.total_penawaran || 0),
-      draftPenawaran: Number(data.draft_penawaran || 0),
-      pendingPenawaran: Number(data.pending_penawaran || 0),
-      approvedPenawaran: Number(data.approved_penawaran || 0),
+      totalQuotations: Number(data.total_penawaran || 0),
+      draftQuotations: Number(data.draft_penawaran || 0),
+      pendingQuotations: Number(data.pending_penawaran || 0),
+      approvedQuotations: Number(data.approved_penawaran || 0),
     };
   } catch (error) {
     console.error("Gagal memuat dashboard agent", error);
@@ -148,7 +146,6 @@ onMounted(async () => {
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <!-- DASHBOARD KHUSUS ADMINISTRATOR -->
       <template v-if="isAdministrator">
         <div class="box rounded-2xl p-6 shadow-sm">
           <div class="flex items-center gap-3">
@@ -187,17 +184,14 @@ onMounted(async () => {
         </div>
       </template>
 
-      <!-- DASHBOARD KHUSUS MARKETING / KEY ACCOUNT -->
       <template v-else-if="isMarketingRole">
         <Marketing />
       </template>
 
-      <!-- DASHBOARD SATU TAB (CEO ATAU OM SAJA) -->
       <template v-else-if="availableDashboardTabs.length === 1">
         <component :is="availableDashboardTabs[0].component" />
       </template>
 
-      <!-- DASHBOARD MULTI TAB (CEO + OM SEKALIGUS) -->
       <template v-else-if="availableDashboardTabs.length > 1">
         <Tab.Group :default-index="defaultTabIndex">
           <Tab.List variant="link-tabs" class="gap-1 border-b border-slate-200">
@@ -218,9 +212,7 @@ onMounted(async () => {
         </Tab.Group>
       </template>
 
-      <!-- DASHBOARD KHUSUS AGENT -->
       <template v-else-if="isAgenRole">
-        <!-- HERO -->
         <div
           class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-theme-1 via-sky-600 to-cyan-700 px-8 py-8 text-white shadow-xl">
           <div class="absolute -top-12 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
@@ -295,7 +287,6 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- SUMMARY CARDS -->
         <div class="grid grid-cols-12 gap-6">
           <div class="col-span-12 sm:col-span-6 xl:col-span-3">
             <div class="box rounded-2xl p-5 shadow-sm">
@@ -309,7 +300,7 @@ onMounted(async () => {
               </div>
               <div class="mt-4 text-sm text-slate-500">Total Penawaran</div>
               <div class="mt-1 text-2xl font-bold">
-                {{ summary.totalPenawaran.toLocaleString("id-ID") }}
+                {{ summary.totalQuotations.toLocaleString("id-ID") }}
               </div>
               <div class="mt-1 text-xs text-slate-400">
                 Semua data penawaran agent
@@ -329,7 +320,7 @@ onMounted(async () => {
               </div>
               <div class="mt-4 text-sm text-slate-500">Draft</div>
               <div class="mt-1 text-2xl font-bold">
-                {{ summary.draftPenawaran.toLocaleString("id-ID") }}
+                {{ summary.draftQuotations.toLocaleString("id-ID") }}
               </div>
               <div class="mt-1 text-xs text-slate-400">
                 Penawaran belum diajukan
@@ -349,7 +340,7 @@ onMounted(async () => {
               </div>
               <div class="mt-4 text-sm text-slate-500">Menunggu Approval</div>
               <div class="mt-1 text-2xl font-bold">
-                {{ summary.pendingPenawaran.toLocaleString("id-ID") }}
+                {{ summary.pendingQuotations.toLocaleString("id-ID") }}
               </div>
               <div class="mt-1 text-xs text-slate-400">
                 Perlu tindak lanjut approval
@@ -369,7 +360,7 @@ onMounted(async () => {
               </div>
               <div class="mt-4 text-sm text-slate-500">Disetujui</div>
               <div class="mt-1 text-2xl font-bold">
-                {{ summary.approvedPenawaran.toLocaleString("id-ID") }}
+                {{ summary.approvedQuotations.toLocaleString("id-ID") }}
               </div>
               <div class="mt-1 text-xs text-slate-400">
                 Penawaran yang sudah lolos
@@ -378,7 +369,6 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- INFO PANEL -->
         <div class="box rounded-2xl p-6 shadow-sm">
           <div class="flex items-center gap-3">
             <div class="flex h-12 w-12 items-center justify-center rounded-full bg-theme-1/10 text-theme-1">
@@ -425,7 +415,6 @@ onMounted(async () => {
         </div>
       </template>
 
-      <!-- DASHBOARD DEFAULT SELAIN AGENT -->
       <template v-else>
         <div class="box rounded-2xl p-8 shadow-sm">
           <div class="flex items-center gap-3">

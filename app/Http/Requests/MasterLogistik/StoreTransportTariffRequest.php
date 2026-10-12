@@ -21,6 +21,7 @@ class StoreTransportTariffRequest extends FormRequest
             'transport_area_id' => 'required|exists:transport_areas,id',
             'volume_id' => 'required|exists:volumes,id',
             'rate' => 'required|numeric|min:0',
+            'margin' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
             'is_active' => 'boolean',
         ];

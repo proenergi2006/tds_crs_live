@@ -11,29 +11,28 @@ import DashboardSummaryCard from '@/pages/Dashboard/components/DashboardSummaryC
 import { useAuthStore } from '@/stores/auth'
 import { getColor, getDonutColors } from '@/utils/colors'
 
-/* Types */
-interface PenawaranQueueItem {
-  id_penawaran: number
+interface QuotationQueueItem {
+  quotation_id: number
   nomor_penawaran: string
 }
 
-interface PenawaranFunnel {
+interface QuotationFunnel {
   draft: number
   waiting_bm: number
   waiting_om: number
+  waiting_ceo: number
   approved: number
   rejected_bm: number
   rejected_om: number
 }
 
 interface OmSummary {
-  penawaran_approval_queue: { total: number; items: PenawaranQueueItem[] }
-  penawaran_funnel: PenawaranFunnel
+  penawaran_approval_queue: { total: number; items: QuotationQueueItem[] }
+  penawaran_funnel: QuotationFunnel
 }
 
 const auth = useAuthStore()
 
-/* State: summary dari API */
 const summary = ref<OmSummary | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -48,29 +47,28 @@ const greeting = computed(() => {
   return 'Selamat Malam'
 })
 
-/* Computed: KPI stat strip */
 const kpiApprovalQueueTotal = computed(() => summary.value?.penawaran_approval_queue.total ?? 0)
 const kpiApprovedTotal = computed(() => summary.value?.penawaran_funnel.approved ?? 0)
 
-/* Label & urutan funnel: selalu tampil 6 key, konsisten dengan backend */
-const funnelLabels: Record<keyof PenawaranFunnel, string> = {
+const funnelLabels: Record<keyof QuotationFunnel, string> = {
   draft: 'Draft',
   waiting_bm: 'Menunggu BM',
   waiting_om: 'Menunggu OM',
+  waiting_ceo: 'Menunggu CEO',
   approved: 'Disetujui',
   rejected_bm: 'Ditolak BM',
   rejected_om: 'Ditolak OM',
 }
-const funnelOrder: Array<keyof PenawaranFunnel> = [
+const funnelOrder: Array<keyof QuotationFunnel> = [
   'draft',
   'waiting_bm',
   'waiting_om',
+  'waiting_ceo',
   'approved',
   'rejected_bm',
   'rejected_om',
 ]
 
-/* Computed: chart doughnut funnel penawaran (selalu 6 slice, termasuk yang 0) */
 const funnelChartData = computed<ChartData<'doughnut'>>(() => {
   const values = funnelOrder.map(key => summary.value?.penawaran_funnel[key] ?? 0)
   return {
@@ -78,7 +76,6 @@ const funnelChartData = computed<ChartData<'doughnut'>>(() => {
     datasets: [
       {
         data: values,
-        // warna diurutin berdasar RANK, bukan semantik tetap per status -- konsisten sama donut Ceo.vue
         backgroundColor: getDonutColors(values),
         borderWidth: 2,
         borderColor: getColor('white'),
@@ -97,7 +94,6 @@ const funnelChartOptions = computed<ChartOptions<'doughnut'>>(() => ({
         color: getColor('slate.600'),
         boxWidth: 10,
         padding: 12,
-        // itung persentase dari dataset chart langsung, bukan summary luar -- pola sama kayak donut Ceo.vue
         generateLabels(chart) {
           const dataset = chart.data.datasets[0]
           const values = (dataset.data as number[]) ?? []
@@ -122,7 +118,6 @@ const funnelChartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   },
 }))
 
-// error-nya ditampilin, bukan disembunyiin
 onMounted(async () => {
   loading.value = true
   error.value = null
@@ -151,7 +146,6 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="summary">
-      <!-- kolom kanan (Quick Links) row-span-2 biar tingginya nyamain greeting+Penawaran Disetujui+Funnel digabung -->
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <div
           class="relative flex flex-col justify-center bg-gradient-to-br from-theme-1 via-theme-2 to-emerald-900 shadow-sm p-5 rounded-2xl overflow-hidden">
@@ -184,8 +178,8 @@ onMounted(async () => {
                 <div class="text-caption">Tidak ada Penawaran menunggu approval.</div>
               </div>
               <div v-else class="flex flex-col gap-2">
-                <RouterLink v-for="p in summary.penawaran_approval_queue.items" :key="p.id_penawaran"
-                  :to="{ name: 'penawarans-verifikasi-om-detail', params: { id: p.id_penawaran } }"
+                <RouterLink v-for="p in summary.penawaran_approval_queue.items" :key="p.quotation_id"
+                  :to="{ name: 'penawarans-verifikasi-om-detail', params: { id: p.quotation_id } }"
                   class="flex justify-between items-center bg-white hover:bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl text-body text-sm">
                   {{ p.nomor_penawaran }}
                   <Lucide icon="ArrowRight" class="w-3.5 h-3.5 text-slate-400 shrink-0" />

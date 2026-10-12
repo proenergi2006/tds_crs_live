@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Actions\Dashboard\BuildMarketingRecentActivityAction;
 use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\QuotationStatus;
+use App\Enums\QuotationVerifierRole;
 use App\Enums\VendorPoApprovalState;
 use App\Models\Customer;
-use App\Models\Penawaran;
+use App\Models\Quotation;
 use App\Models\VendorPo;
 use App\Support\ProductPrice\PricePeriodCompletenessQuery;
 use Illuminate\Http\Request;
@@ -25,10 +28,10 @@ class DashboardController extends Controller
             ->count();
         $customerUnverified = $customerTotal - $customerVerified;
 
-        $penawaranBase = Penawaran::where('user_id', $userId);
-        $penawaranTotal = (clone $penawaranBase)->count();
-        $penawaranApproved = (clone $penawaranBase)->where('status', 'approved_om')->count();
-        $penawaranUnapproved = $penawaranTotal - $penawaranApproved;
+        $quotationBase = Quotation::where('user_id', $userId);
+        $quotationTotal = (clone $quotationBase)->count();
+        $quotationApproved = (clone $quotationBase)->where('status', QuotationStatus::Approved)->count();
+        $quotationUnapproved = $quotationTotal - $quotationApproved;
 
         return response()->json([
             'customers' => [
@@ -37,9 +40,9 @@ class DashboardController extends Controller
                 'unverified' => $customerUnverified,
             ],
             'penawarans' => [
-                'total'      => $penawaranTotal,
-                'approved'   => $penawaranApproved,
-                'unapproved' => $penawaranUnapproved,
+                'total'      => $quotationTotal,
+                'approved'   => $quotationApproved,
+                'unapproved' => $quotationUnapproved,
             ],
             'recent_activities' => app(BuildMarketingRecentActivityAction::class)->execute($userId, 10),
         ]);
@@ -47,20 +50,20 @@ class DashboardController extends Controller
 
     public function agentSummary(Request $request)
     {
-        $query = Penawaran::where('brand', 'proenergi');
+        $query = Quotation::where('brand', 'proenergi');
 
         $total = (clone $query)->count();
 
         $draft = (clone $query)
-            ->where('disposisi_penawaran', 1)
+            ->where('status', QuotationStatus::Draft)
             ->count();
 
         $pending = (clone $query)
-            ->whereIn('disposisi_penawaran', [2, 3])
+            ->where('status', QuotationStatus::WaitingVerification)
             ->count();
 
         $approved = (clone $query)
-            ->where('disposisi_penawaran', 4)
+            ->where('status', QuotationStatus::Approved)
             ->count();
 
         return response()->json([
@@ -178,7 +181,6 @@ class DashboardController extends Controller
         $start = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
         $end   = \Carbon\Carbon::create($year, 12, 31)->endOfDay();
 
-        // TO_CHAR, bukan DATE_FORMAT -- ini Postgres bukan MySQL
         $counts = VendorPo::whereBetween('tanggal_inven', [$start, $end])
             ->selectRaw("TO_CHAR(tanggal_inven, 'MM') as m, COUNT(*) as total")
             ->groupBy('m')
@@ -222,25 +224,26 @@ class DashboardController extends Controller
         }
 
         return response()->json([
-            'penawaran_approval_queue' => $this->penawaranApprovalQueue(),
+            'penawaran_approval_queue' => $this->quotationApprovalQueue(),
             'bm_queue_context'         => $this->bmQueueContext(),
-            'penawaran_funnel'         => $this->penawaranFunnel(),
+            'penawaran_funnel'         => $this->quotationFunnel(),
         ]);
     }
 
-    private function penawaranApprovalQueue(): array
+    private function quotationApprovalQueue(): array
     {
-        $total = Penawaran::where('disposisi_penawaran', 3)->count();
+        $roles = QuotationVerifierRole::operationManagerRoles();
+        $total = Quotation::waitingAtRoles($roles)->count();
 
-        $items = Penawaran::where('disposisi_penawaran', 3)
+        $items = Quotation::waitingAtRoles($roles)
             ->with(['customer', 'latestDocumentApproval.steps'])
             ->get()
             ->map(fn ($p) => [
-                'id_penawaran'    => $p->id_penawaran,
+                'quotation_id'    => $p->id,
                 'nomor_penawaran' => $p->nomor_penawaran,
                 'customer_name'   => optional($p->customer)->company_name,
-                'waiting_since'   => $p->actedAtForStep(1),
-                'aging_days'      => $p->actedAtForStep(1) ? now()->diffInDays($p->actedAtForStep(1)) : null,
+                'waiting_since'   => $p->waitingSince(),
+                'aging_days'      => $p->waitingSince() ? now()->diffInDays($p->waitingSince()) : null,
             ])
             ->sortBy('waiting_since')
             ->take(10)
@@ -251,22 +254,41 @@ class DashboardController extends Controller
 
     private function bmQueueContext(): array
     {
-        return ['total' => Penawaran::where('disposisi_penawaran', 2)->count()];
+        return ['total' => Quotation::waitingAtRoles(QuotationVerifierRole::branchManagerRoles())->count()];
     }
 
-    private function penawaranFunnel(): array
+    private function quotationFunnel(): array
     {
-        $counts = Penawaran::selectRaw('disposisi_penawaran, count(*) as total')
-            ->groupBy('disposisi_penawaran')
-            ->pluck('total', 'disposisi_penawaran');
+        $funnel = ['draft' => 0, 'waiting_bm' => 0, 'waiting_om' => 0, 'waiting_ceo' => 0, 'approved' => 0, 'rejected_bm' => 0, 'rejected_om' => 0];
+        $bmRoles = QuotationVerifierRole::branchManagerRoles();
+        $omRoles = QuotationVerifierRole::operationManagerRoles();
 
-        return [
-            'draft'       => (int) ($counts->get(0, 0) + $counts->get(1, 0)),
-            'waiting_bm'  => (int) $counts->get(2, 0),
-            'waiting_om'  => (int) $counts->get(3, 0),
-            'approved'    => (int) $counts->get(4, 0),
-            'rejected_bm' => (int) $counts->get(5, 0),
-            'rejected_om' => (int) $counts->get(6, 0),
-        ];
+        foreach (Quotation::with('latestDocumentApproval.steps')->get(['id', 'status']) as $quotation) {
+            $roleId = (int) $quotation->activeVerificationStep()?->id_role;
+
+            $key = match ($quotation->status) {
+                QuotationStatus::Draft    => 'draft',
+                QuotationStatus::Approved => 'approved',
+                QuotationStatus::Rejected => in_array($this->rejectedStepRole($quotation), $bmRoles, true) ? 'rejected_bm' : 'rejected_om',
+                QuotationStatus::WaitingVerification => match (true) {
+                    in_array($roleId, $bmRoles, true) => 'waiting_bm',
+                    in_array($roleId, $omRoles, true) => 'waiting_om',
+                    default                           => 'waiting_ceo',
+                },
+                default => null,
+            };
+
+            if ($key) {
+                $funnel[$key]++;
+            }
+        }
+
+        return $funnel;
+    }
+
+    private function rejectedStepRole(Quotation $quotation): int
+    {
+        return (int) $quotation->latestDocumentApproval?->steps
+            ->firstWhere('status', DocumentApprovalStepStatus::Rejected)?->id_role;
     }
 }

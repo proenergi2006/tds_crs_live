@@ -57,9 +57,9 @@ const confirmOpen = ref(false)
 const downloadModalOpen = ref(false)
 const downloadingDocument = ref(false)
 
-const penawarans = ref<any[]>([])
-const penawaranLoading = ref(true)
-const penawaranError = ref<string | null>(null)
+const quotations = ref<any[]>([])
+const quotationsLoading = ref(true)
+const quotationsError = ref<string | null>(null)
 
 const pageTitle = computed(() =>
   detail.value?.customer?.company_name ? `Verifikasi Customer — ${detail.value.customer.company_name}` : 'Verifikasi Customer',
@@ -97,7 +97,7 @@ const decisionSubmitDisabled = computed<boolean>(() =>
 onMounted(async () => {
   await fetchDetail()
   if (detail.value) {
-    fetchPenawarans()
+    fetchQuotations()
   }
 })
 
@@ -114,21 +114,20 @@ async function fetchDetail(): Promise<void> {
   }
 }
 
-async function fetchPenawarans(): Promise<void> {
-  penawaranLoading.value = true
-  penawaranError.value = null
+async function fetchQuotations(): Promise<void> {
+  quotationsLoading.value = true
+  quotationsError.value = null
   try {
     const { data } = await axios.get(`/api/customers/${detail.value.customer.id_customer}/penawarans`)
-    penawarans.value = Array.isArray(data?.data) ? data.data : []
+    quotations.value = Array.isArray(data?.data) ? data.data : []
   } catch (e: any) {
-    penawaranError.value = e.response?.data?.message ?? 'Gagal memuat Penawaran.'
+    quotationsError.value = e.response?.data?.message ?? 'Gagal memuat Penawaran.'
   } finally {
-    penawaranLoading.value = false
+    quotationsLoading.value = false
   }
 }
 
 async function openDocument(category: DownloadableDocument): Promise<void> {
-  // window.open() langsung ke URL gak bisa -- bukan lewat axios jadi gak kebaca middleware auth:sanctum, makanya pola blob+tab pre-open (lihat pdfPreviewTab.ts)
   const tab = openPdfLoadingTab()
   try {
     const response = await axios.get(`/api/review/customer-verifications/${idVerification}/document/${category}`, {
@@ -351,17 +350,17 @@ function statusBadgeClass(status?: string): string {
           <Tab.Panel>
             <CardSection title="Penawaran" description="Daftar Penawaran milik customer ini." icon="FileText"
               icon-class="bg-cyan-100 text-cyan-600">
-              <div v-if="penawaranLoading" class="flex justify-center items-center gap-3 min-h-[100px] text-slate-500">
+              <div v-if="quotationsLoading" class="flex justify-center items-center gap-3 min-h-[100px] text-slate-500">
                 <Lucide icon="Loader2" class="w-5 h-5 animate-spin" />
                 <span class="text-body">Memuat Penawaran...</span>
               </div>
 
-              <div v-else-if="penawaranError"
+              <div v-else-if="quotationsError"
                 class="bg-rose-50 px-4 py-3 border border-rose-200 rounded-lg text-body !text-rose-700">
-                {{ penawaranError }}
+                {{ quotationsError }}
               </div>
 
-              <div v-else-if="penawarans.length === 0"
+              <div v-else-if="quotations.length === 0"
                 class="flex flex-col items-center gap-2 bg-slate-50 px-6 py-10 border border-slate-300 border-dashed rounded-lg text-center">
                 <Lucide icon="Inbox" class="w-6 h-6 text-slate-400" />
                 <div class="text-body">Belum ada Penawaran tercatat.</div>
@@ -373,16 +372,16 @@ function statusBadgeClass(status?: string): string {
                     <Table.Th class="text-form-label">Nomor Penawaran</Table.Th>
                     <Table.Th class="text-form-label">Masa Berlaku</Table.Th>
                     <Table.Th class="text-form-label text-right">Volume</Table.Th>
-                    <Table.Th class="text-form-label text-right">Harga Dasar</Table.Th>
-                    <Table.Th class="text-form-label text-right">Ongkos Angkut</Table.Th>
+                    <Table.Th class="text-form-label text-right">DPP</Table.Th>
+                    <Table.Th class="text-form-label text-right">Total Transport</Table.Th>
                   </Table.Thead>
                   <Table.Tbody class="bg-white">
-                    <Table.Tr v-for="p in penawarans" :key="p.id_penawaran">
+                    <Table.Tr v-for="p in quotations" :key="p.id">
                       <Table.Td class="text-body-strong">{{ p.nomor_penawaran || '-' }}</Table.Td>
                       <Table.Td>{{ formatDate(p.masa_berlaku) }} &ndash; {{ formatDate(p.sampai_dengan) }}</Table.Td>
                       <Table.Td class="num-sm text-right">{{ formatNumber(p.total_volume) }}</Table.Td>
-                      <Table.Td class="num-sm text-right">{{ formatCurrency(p.harga_dasar) }}</Table.Td>
-                      <Table.Td class="num-sm text-right">{{ formatCurrency(p.oat) }}</Table.Td>
+                      <Table.Td class="num-sm text-right">{{ formatCurrency(p.dpp) }}</Table.Td>
+                      <Table.Td class="num-sm text-right">{{ formatCurrency(p.transport_total) }}</Table.Td>
                     </Table.Tr>
                   </Table.Tbody>
                 </Table>

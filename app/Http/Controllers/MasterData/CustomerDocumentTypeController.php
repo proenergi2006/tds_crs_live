@@ -26,9 +26,6 @@ class CustomerDocumentTypeController extends Controller
         $q->orderBy('name');
 
         if ($request->boolean('as_list')) {
-            // Primary key kolomnya id_document_type (bukan id) -- FE (Customer/Detail.vue)
-            // match dokumen ke tipe lewat `id`, jadi di-alias di sini tanpa
-            // menghapus field aslinya (non-breaking untuk consumer lain).
             return response()->json(
                 $q->get()->map(fn (CustomerDocumentType $type) => $this->withIdAlias($type))
             );
@@ -46,35 +43,29 @@ class CustomerDocumentTypeController extends Controller
         return response()->json($this->withIdAlias($documentType), 201);
     }
 
-    public function show($id)
+    public function show(CustomerDocumentType $customerDocumentType)
     {
-        $documentType = CustomerDocumentType::findOrFail($id);
-
-        return response()->json($this->withIdAlias($documentType));
+        return response()->json($this->withIdAlias($customerDocumentType));
     }
 
-    public function update(UpdateCustomerDocumentTypeRequest $request, $id)
+    public function update(UpdateCustomerDocumentTypeRequest $request, CustomerDocumentType $customerDocumentType)
     {
-        $documentType = CustomerDocumentType::findOrFail($id);
+        $documentType = $customerDocumentType;
         $documentType->update($request->validated());
 
         return response()->json($this->withIdAlias($documentType->fresh()));
     }
 
-    // Primary key kolomnya id_document_type (bukan id) -- FE match row via `id`
-    // di semua response (list, store, show, update), jadi di-alias konsisten
-    // tanpa menghapus field aslinya (non-breaking untuk consumer lain).
     private function withIdAlias(CustomerDocumentType $type): array
     {
         return array_merge($type->toArray(), ['id' => $type->id_document_type]);
     }
 
-    public function destroy($id)
+    public function destroy(CustomerDocumentType $customerDocumentType)
     {
-        $documentType = CustomerDocumentType::findOrFail($id);
+        $documentType = $customerDocumentType;
 
         DB::transaction(function () use ($documentType) {
-            // Reassign ke dokumen bebas dulu sebelum delete -- FK restrict tidak lagi jadi penghalang, data lama tetap keliatan (bukan hilang).
             CustomerDocument::where('id_document_type', $documentType->id_document_type)
                 ->update([
                     'id_document_type' => null,

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Storage;
 
 class QrCodeService
 {
-    public function deleteFiles(int $idPenawaran, ?string $qrUrl = null): void
+    public function deleteFiles(int $quotationId, ?string $qrUrl = null): void
     {
         if (!empty($qrUrl)) {
             $path = parse_url($qrUrl, PHP_URL_PATH);
@@ -16,7 +16,7 @@ class QrCodeService
             }
         }
 
-        $prefix = \Illuminate\Support\Str::slug("penawaran-{$idPenawaran}");
+        $prefix = \Illuminate\Support\Str::slug("penawaran-{$quotationId}");
         $all = Storage::disk('public')->allFiles('qrcodes');
         foreach ($all as $file) {
             $base = basename($file);

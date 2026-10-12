@@ -1,23 +1,26 @@
-import type { NavItem } from "./types";
-import { dashboardNavigation } from "./dashboard";
-import { customerNavigation } from "./customer";
-import { procurementNavigation } from "./procurement";
-import { verificationNavigation } from "./verification";
-import { logistikNavigation } from "./logistik";
-import { masterDataNavigation } from "./master-data";
-import { pricePeriodNavigation } from "./price-period";
-import { adminNavigation } from "./admin";
+import type { NavSection } from "@/stores/menu";
+import { generalSection } from "./dashboard";
+import { commercialSection } from "./customer";
+import { procurementSection } from "./procurement";
+import { inventorySection } from "./inventory";
+import { verificationSection } from "./verification";
+import { logistikSection } from "./logistik";
+import { pricingSection } from "./price-period";
+import { masterDataSection } from "./master-data";
+import { accessControlSection, configSection, dataManagementSection } from "./admin";
 
-const navigation: NavItem[] = [
-  ...dashboardNavigation,
-  ...customerNavigation,
-  ...procurementNavigation,
-  ...verificationNavigation,
-  ...logistikNavigation,
-  ...pricePeriodNavigation,
-  ...masterDataNavigation,
-  ...adminNavigation,
+const navigation: NavSection[] = [
+  generalSection,
+  commercialSection,
+  procurementSection,
+  inventorySection,
+  verificationSection,
+  logistikSection,
+  pricingSection,
+  masterDataSection,
+  accessControlSection,
+  configSection,
+  dataManagementSection,
 ];
 
 export default navigation;
-export type { NavItem };

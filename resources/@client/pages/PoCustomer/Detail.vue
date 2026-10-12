@@ -81,7 +81,10 @@ const statusSteps = computed<StepItem[]>(() => {
   return steps
 })
 
-const penawaranItems = computed<any[]>(() => poCustomer.value?.penawaran?.items ?? [])
+const quotationItems = computed<any[]>(() => poCustomer.value?.quotation?.items ?? [])
+const quotationTotalQuantity = computed<number>(() =>
+  quotationItems.value.reduce((sum, it) => sum + Number(it.quantity ?? 0), 0),
+)
 
 const totalNilaiPo = computed<number>(
   () => Number(poCustomer.value?.harga_poc ?? 0) * Number(poCustomer.value?.volume_poc ?? 0),
@@ -142,8 +145,8 @@ function goToEdit(): void {
 }
 
 function poVolumeForItem(it: any): number {
-  if (!poCustomer.value) return 0
-  return Math.round((poCustomer.value.volume_poc ?? 0) * Number(it.persen ?? 0) / 100)
+  if (!poCustomer.value || quotationTotalQuantity.value <= 0) return 0
+  return Math.round(Number(poCustomer.value.volume_poc ?? 0) * Number(it.quantity ?? 0) / quotationTotalQuantity.value)
 }
 </script>
 
@@ -199,7 +202,7 @@ function poVolumeForItem(it: any): number {
             <div>
               <div class="text-overline">Total Volume</div>
               <div class="mt-1 num-lg">{{ formatNumber(poCustomer.volume_poc) }} m³</div>
-              <div class="text-body text-xs">{{ penawaranItems.length }} Variasi Ukuran</div>
+              <div class="text-body text-xs">{{ quotationItems.length }} Variasi Ukuran</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
               <Lucide icon="Boxes" class="h-4 w-4" />
@@ -274,7 +277,7 @@ function poVolumeForItem(it: any): number {
                         </div>
                         <div>
                           <div class="text-form-label">Nomor Penawaran</div>
-                          <div class="mt-1 text-body-strong">{{ poCustomer.penawaran?.nomor_penawaran || '-' }}</div>
+                          <div class="mt-1 text-body-strong">{{ poCustomer.quotation?.nomor_penawaran || '-' }}</div>
                         </div>
                       </div>
                     </div>
@@ -283,7 +286,7 @@ function poVolumeForItem(it: any): number {
               </div>
             </CardSection>
 
-            <CardSection title="Rincian Produk & Item PO" description="Breakdown rasio, volume, dan harga per item"
+            <CardSection title="Rincian Produk & Item PO" description="Breakdown quantity, volume, dan harga per item"
               icon="Layers" icon-class="bg-indigo-100 text-indigo-600">
               <div class="overflow-x-auto">
                 <Table bordered sm class="text-body">
@@ -291,23 +294,23 @@ function poVolumeForItem(it: any): number {
                     <Table.Tr>
                       <Table.Th class="px-4 py-3 text-form-label text-left">Produk</Table.Th>
                       <Table.Th class="px-4 py-3 text-form-label text-left">Ukuran</Table.Th>
-                      <Table.Th class="px-4 py-3 text-form-label text-right">Rasio</Table.Th>
+                      <Table.Th class="px-4 py-3 text-form-label text-right">Quantity</Table.Th>
                       <Table.Th class="px-4 py-3 text-form-label text-right">Volume</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
 
                   <Table.Tbody class="bg-white">
-                    <Table.Tr v-for="(it, i) in penawaranItems" :key="it.id_penawaran_item || i">
+                    <Table.Tr v-for="(it, i) in quotationItems" :key="it.id || i">
                       <Table.Td class="px-4 py-3">
-                        <div class="text-body-strong">{{ it.produk?.nama_produk || '-' }}</div>
-                        <div v-if="it.produk?.jenis?.nama" class="text-caption">{{ it.produk?.jenis?.nama }}</div>
+                        <div class="text-body-strong">{{ it.product?.nama_produk || '-' }}</div>
+                        <div v-if="it.product?.jenis?.nama" class="text-caption">{{ it.product?.jenis?.nama }}</div>
                       </Table.Td>
-                      <Table.Td class="px-4 py-3">{{ it.produk?.ukuran?.nama_ukuran || '-' }}</Table.Td>
-                      <Table.Td class="px-4 py-3 num-sm text-right">{{ Math.round(Number(it.persen ?? 0)) }}%</Table.Td>
+                      <Table.Td class="px-4 py-3">{{ it.product?.ukuran?.nama_ukuran || '-' }}</Table.Td>
+                      <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(it.quantity) }}</Table.Td>
                       <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(poVolumeForItem(it)) }} m³</Table.Td>
                     </Table.Tr>
 
-                    <Table.Tr v-if="!penawaranItems.length">
+                    <Table.Tr v-if="!quotationItems.length">
                       <Table.Td colspan="4" class="px-4 py-6 text-body text-center">Belum ada item penawaran.</Table.Td>
                     </Table.Tr>
                   </Table.Tbody>

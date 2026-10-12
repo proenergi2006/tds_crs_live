@@ -55,7 +55,7 @@ class CustomerController extends Controller
             $list = (clone $base)
                 ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang'])
                 ->withExists(['lcr as has_lcr'])
-                ->withCount(['penawarans as quotation_count'])
+                ->withCount(['quotations as quotation_count'])
                 ->get();
 
             return CustomerIndexResource::collection($list);
@@ -72,7 +72,7 @@ class CustomerController extends Controller
         $q = (clone $base)
             ->with(['user', 'headOfficeAddress.province', 'headOfficeAddress.regency', 'headOfficeAddress.district', 'headOfficeAddress.village', 'cabang', 'latestVerification', 'latestApprovedVerification'])
             ->withExists(['lcr as has_lcr'])
-            ->withCount(['penawarans as quotation_count'])
+            ->withCount(['quotations as quotation_count'])
             ->orderBy('company_name');
 
         $this->applyStatusFilter($q, $request->query('status', 'all'));
@@ -299,7 +299,7 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        if ($customer->penawarans()->exists()) {
+        if ($customer->quotations()->exists()) {
             return response()->json([
                 'message' => 'Customer tidak dapat dihapus karena memiliki data penawaran terkait.',
             ], 422);

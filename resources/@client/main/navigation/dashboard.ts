@@ -1,9 +1,14 @@
-import type { NavItem } from './types'
+import type { NavSection } from "@/stores/menu";
 
-export const dashboardNavigation: NavItem[] = [
-  {
-    icon: 'Home',
-    pageName: 'dashboard-overview-1',
-    title: 'Dashboard',
-  },
-]
+export const generalSection: NavSection = {
+  key: "general",
+  title: "General",
+  icon: "LayoutDashboard",
+  items: [
+    {
+      icon: "LayoutDashboard",
+      pageName: "dashboard-overview-1",
+      title: "Dashboard",
+    },
+  ],
+};
