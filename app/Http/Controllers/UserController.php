@@ -51,10 +51,8 @@ class UserController extends Controller
         }
         $data['primary_role_id'] = $this->resolvePrimaryRoleId($roleIds, $primaryRoleId);
 
-        // hash password
         $data['password'] = Hash::make($data['password']);
 
-        // audit fields
         $data['created_by'] = $request->user()->name;
         $data['created_at'] = now();
 
@@ -64,7 +62,6 @@ class UserController extends Controller
         return response()->json($user, 201);
     }
 
-    // multi-role: primary_role_id nentuin brand+tab default, default ke role pertama kalau ga dipilih eksplisit
     private function resolvePrimaryRoleId(array $roleIds, ?int $primaryRoleId): ?int
     {
         return $primaryRoleId ?? ($roleIds[0] ?? null);
@@ -104,7 +101,6 @@ class UserController extends Controller
             unset($data['password']);
         }
 
-        // audit
         $data['lastupdate_by'] = $request->user()->name;
         $data['updated_at']    = now();
 
@@ -120,19 +116,20 @@ class UserController extends Controller
         return response()->json(null, 204);
     }
 
-    public function resetPassword(Request $request, $id)
+    // param harus $id, route pakai segmen literal {id}
+    public function resetPassword(Request $request, User $id)
     {
         $validator = Validator::make($request->all(), [
             'password' => 'required|string|min:6',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'message' => $validator->errors()->first()
             ], 422);
         }
-    
-        $user = User::findOrFail($id);
+
+        $user = $id;
         $user->password = Hash::make($request->password);
         $user->save();
     

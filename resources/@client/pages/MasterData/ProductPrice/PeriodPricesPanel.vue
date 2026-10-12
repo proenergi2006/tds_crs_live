@@ -17,8 +17,12 @@ type ProductPriceRow = {
   om_price: string | number | null
   ceo_price: string | number | null
   cogs_price: string | number | null
-  margin_amount: string | number | null
+  margin_material_amount: string | number | null
+  margin_transport_amount?: string | number | null
+  cogs_basis?: string | null
+  transport_price?: number | null
   notes: string | null
+  needs_reverification?: boolean
   branch?: { id: number; name: string }
   product?: {
     id_produk: number
@@ -35,11 +39,14 @@ const props = defineProps<{
   canEdit: boolean
   canDelete: boolean
   view: 'procurement' | 'ceo'
+  canConfirm?: boolean
+  confirmingId?: number | null
 }>()
 
 const emit = defineEmits<{
   (e: 'delete', id: number): void
   (e: 'edit', id: number): void
+  (e: 'confirm', id: number): void
 }>()
 
 const search = ref('')
@@ -54,7 +61,7 @@ const activeFilterCount = computed(() =>
 
 function needsAction(row: ProductPriceRow): boolean {
   const num = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? 0 : Number(v))
-  return num(row.ceo_price) === 0 || num(row.margin_amount) === 0 || num(row.price_list) === 0
+  return num(row.ceo_price) === 0 || num(row.margin_material_amount) === 0 || num(row.price_list) === 0 || !!row.needs_reverification
 }
 
 const filteredRows = computed(() => {
@@ -155,7 +162,7 @@ function ukuranText(row: ProductPriceRow) {
       <Table.Th>Cabang</Table.Th>
       <Table.Th>Produk</Table.Th>
       <Table.Th class="text-right">COGS</Table.Th>
-      <Table.Th class="text-right">Margin</Table.Th>
+      <Table.Th class="text-right">Margin Material</Table.Th>
       <template v-if="view === 'ceo'">
         <Table.Th class="text-right">Price List</Table.Th>
         <Table.Th class="text-right">Approval Tier</Table.Th>
@@ -180,6 +187,10 @@ function ukuranText(row: ProductPriceRow) {
               class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md num-sm text-slate-600 text-xs break-words whitespace-normal">
               {{ ukuranText(item) }}
             </span>
+            <span v-if="item.needs_reverification"
+              class="inline-flex items-center bg-amber-100 px-2 py-0.5 rounded-full text-caption text-amber-600 whitespace-nowrap">
+              Perlu konfirmasi
+            </span>
           </div>
         </Table.Td>
 
@@ -187,8 +198,11 @@ function ukuranText(row: ProductPriceRow) {
           {{ formatNumber(item.cogs_price) }}
         </Table.Td>
 
-        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.margin_amount)">
-          {{ formatNumber(item.margin_amount) }}
+        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.margin_material_amount)">
+          {{ formatNumber(item.margin_material_amount) }}
+          <div v-if="item.cogs_basis === 'franco'" class="mt-0.5 text-caption whitespace-nowrap">
+            Transport {{ formatNumber(item.margin_transport_amount) }} · Harga Transport (franco) {{ formatNumber(item.transport_price) }}
+          </div>
         </Table.Td>
 
         <template v-if="view === 'ceo'">
@@ -236,6 +250,13 @@ function ukuranText(row: ProductPriceRow) {
 
         <Table.Td class="text-center">
           <div class="inline-flex justify-center items-center gap-1.5">
+            <Button v-if="canConfirm && item.needs_reverification" variant="soft-success" rounded
+              class="!shadow-none !p-0 !w-8 !h-8" title="Konfirmasi harga" :disabled="confirmingId === item.id"
+              @click="emit('confirm', item.id)">
+              <Lucide :icon="confirmingId === item.id ? 'Loader2' : 'CheckCircle2'" class="w-4 h-4"
+                :class="{ 'animate-spin': confirmingId === item.id }" />
+            </Button>
+
             <Button v-if="canEdit" variant="soft-warning" rounded class="!shadow-none !p-0 !w-8 !h-8" title="Edit"
               @click="emit('edit', item.id)">
               <Lucide icon="Edit" class="w-4 h-4" />

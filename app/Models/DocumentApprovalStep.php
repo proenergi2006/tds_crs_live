@@ -13,6 +13,7 @@ class DocumentApprovalStep extends Model
     protected $fillable = [
         'id_approval',
         'id_template_step',
+        'id_role',
         'step_order',
         'status',
         'actor_id',
@@ -36,8 +37,18 @@ class DocumentApprovalStep extends Model
         return $this->belongsTo(ApprovalTemplateStep::class, 'id_template_step', 'id_step');
     }
 
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'id_role');
+    }
+
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id', 'id');
+    }
+
+    public function displayName(): ?string
+    {
+        return $this->templateStep?->step_name ?? $this->role?->name;
     }
 }

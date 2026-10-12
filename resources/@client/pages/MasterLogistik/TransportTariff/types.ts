@@ -19,6 +19,8 @@ export interface TransportTariff {
   transport_area: TransportAreaRef | null;
   volume: VolumeRef | null;
   rate: string;
+  margin: string | null;
+  price: string | null;
   note: string | null;
   is_active: boolean;
   created_at: string;

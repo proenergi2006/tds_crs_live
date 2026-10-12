@@ -17,7 +17,7 @@ class ApprovalTemplatePenawaranSeeder extends Seeder
 
         $this->seedTemplate('penawaran_proenergi', 'Approval Penawaran Proenergi', [
             ['step_order' => 1, 'step_name' => 'Branch Manager Proenergi', 'id_role' => 15],
-            ['step_order' => 2, 'step_name' => 'OM Proenergi', 'id_role' => 16],
+            ['step_order' => 2, 'step_name' => 'Operation Manager Proenergi', 'id_role' => 16],
         ]);
 
         $this->seedTemplate('penawaran_polimer', 'Approval Penawaran Polimer', [

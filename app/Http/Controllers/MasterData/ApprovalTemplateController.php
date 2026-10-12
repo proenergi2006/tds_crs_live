@@ -12,24 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Master data CRUD untuk approval_templates/approval_template_steps
- * (Prioritas H4, .claude/plans/approval-system-customer-verification.md).
- *
- * Layar admin-only untuk mengelola konfigurasi workflow approval yang
- * benar-benar dipakai runtime oleh CustomerVerificationController (dan
- * template lain di masa depan) setelah refactor data-driven H1-H3 selesai.
- *
- * Step management: nested payload, replace-on-save TAPI update-in-place
- * (matched by step_order), BUKAN delete-and-recreate blind. Ini penting
- * karena document_approval_steps.id_template_step -> approval_template_steps.id_step
- * pakai onDelete('restrict') -- kalau delete-and-recreate step yang sudah
- * pernah dipakai di cycle historis, delete-nya akan gagal kena FK restrict.
- * Update-in-place (updateOrCreate keyed by [id_template, step_order]) menjaga
- * id_step existing tetap sama sehingga FK historis tidak pernah tersentuh,
- * konsisten dengan pola yang sudah dipakai di
- * ApprovalTemplateCustomerVerificationSeeder.
- */
 class ApprovalTemplateController extends Controller
 {
     public function index(Request $request)
@@ -79,22 +61,18 @@ class ApprovalTemplateController extends Controller
         return response()->json($template->fresh(['steps.role']), 201);
     }
 
-    public function show($id)
+    public function show(ApprovalTemplate $approvalTemplate)
     {
-        $template = ApprovalTemplate::with(['steps.role'])->findOrFail($id);
+        $approvalTemplate->load(['steps.role']);
 
-        return response()->json($template);
+        return response()->json($approvalTemplate);
     }
 
-    public function update(UpdateApprovalTemplateRequest $request, $id)
+    public function update(UpdateApprovalTemplateRequest $request, ApprovalTemplate $approvalTemplate)
     {
-        $template = ApprovalTemplate::findOrFail($id);
+        $template = $approvalTemplate;
         $data = $request->validated();
 
-        // Pre-flight guard: step_order yang dihapus dari payload tapi sudah
-        // pernah dipakai di document_approval_steps (cycle historis) tidak
-        // boleh dihapus -- kembalikan error bersih di sini alih-alih
-        // membiarkan raw FK constraint exception (restrict) bocor ke response.
         $incomingOrders = collect($data['steps'])->pluck('step_order')->all();
 
         $stepsToRemove = $template->steps()
@@ -139,9 +117,7 @@ class ApprovalTemplateController extends Controller
                 }
             });
         } catch (QueryException $e) {
-            // Defense-in-depth terhadap race condition (document_approval_steps
-            // baru dibuat di antara pre-flight check dan transaction di atas).
-            // SQLSTATE 23503 = foreign_key_violation (Postgres).
+            // 23503 = foreign_key_violation (Postgres)
             if ($e->getCode() === '23503') {
                 Log::warning('ApprovalTemplateController@update: FK restrict saat sync steps', [
                     'id_template' => $template->id_template,
@@ -160,9 +136,9 @@ class ApprovalTemplateController extends Controller
         return response()->json($template->fresh(['steps.role']));
     }
 
-    public function destroy($id)
+    public function destroy(ApprovalTemplate $approvalTemplate)
     {
-        $template = ApprovalTemplate::findOrFail($id);
+        $template = $approvalTemplate;
 
         if ($template->documentApprovals()->exists()) {
             return response()->json([
@@ -171,12 +147,6 @@ class ApprovalTemplateController extends Controller
             ], 409);
         }
 
-        // approval_template_steps_id_template_foreign -> onDelete('cascade'),
-        // aman: steps ikut terhapus otomatis di level DB. Karena sudah
-        // dipastikan tidak ada document_approvals yang mereferensikan
-        // template ini, tidak mungkin ada document_approval_steps yang
-        // mereferensikan steps-nya juga (document_approval_steps selalu
-        // anak dari document_approvals via id_approval).
         $template->delete();
 
         return response()->json(null, 204);

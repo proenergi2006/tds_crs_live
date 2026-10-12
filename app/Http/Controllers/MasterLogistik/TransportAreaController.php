@@ -43,13 +43,13 @@ class TransportAreaController extends Controller
         return TransportAreaResource::collection($query->paginate($perPage));
     }
 
-    public function show(Request $request, $id): JsonResponse|TransportAreaResource
+    public function show(Request $request, TransportArea $transportArea): JsonResponse|TransportAreaResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transportArea = TransportArea::with(self::EAGER_RELATIONS)->findOrFail($id);
+        $transportArea->load(self::EAGER_RELATIONS);
 
         return new TransportAreaResource($transportArea);
     }
@@ -67,26 +67,23 @@ class TransportAreaController extends Controller
         return (new TransportAreaResource($transportArea))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateTransportAreaRequest $request, $id): JsonResponse|TransportAreaResource
+    public function update(UpdateTransportAreaRequest $request, TransportArea $transportArea): JsonResponse|TransportAreaResource
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transportArea = TransportArea::findOrFail($id);
         $transportArea->update($request->validated() + ['updated_by' => $request->user()->id]);
         $transportArea->refresh()->load(self::EAGER_RELATIONS);
 
         return new TransportAreaResource($transportArea);
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, TransportArea $transportArea): JsonResponse
     {
         if ($request->user()->cant('logistik.master.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
-
-        $transportArea = TransportArea::findOrFail($id);
 
         $tariffCount = TransportTariff::where('transport_area_id', $transportArea->id)->count();
         $lcrCount = CustomerLcr::where('id_wil_oa', $transportArea->id)->count();

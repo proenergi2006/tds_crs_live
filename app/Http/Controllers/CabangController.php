@@ -67,18 +67,15 @@ class CabangController extends Controller
         return response()->json($cabang, 201);
     }
 
-    public function show($id)
+    public function show(Cabang $cabang)
     {
-        $cabang = Cabang::findOrFail($id);
         return response()->json($cabang);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Cabang $cabang)
     {
-        $cabang = Cabang::findOrFail($id);
-
         $data = $request->validate([
-            'nama_cabang'     => "required|string|max:150|unique:cabangs,nama_cabang,{$id},id_cabang",
+            'nama_cabang'     => "required|string|max:150|unique:cabangs,nama_cabang,{$cabang->id_cabang},id_cabang",
             'is_active'       => 'boolean',
             'lastupdate_by'   => 'nullable|string',
             'inisial_cabang'  => 'nullable|string|max:10',
@@ -92,6 +89,7 @@ class CabangController extends Controller
         return response()->json($cabang);
     }
 
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         Cabang::destroy($id);

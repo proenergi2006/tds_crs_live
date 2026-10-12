@@ -14,6 +14,7 @@ class TransportTariff extends Model
         'transport_area_id',
         'volume_id',
         'rate',
+        'margin',
         'note',
         'is_active',
         'created_by',
@@ -23,6 +24,7 @@ class TransportTariff extends Model
     protected $casts = [
         'transport_type' => TransportType::class,
         'rate' => 'decimal:2',
+        'margin' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
@@ -39,5 +41,14 @@ class TransportTariff extends Model
     public function volume(): BelongsTo
     {
         return $this->belongsTo(Volume::class);
+    }
+
+    public function sellingPrice(): ?string
+    {
+        if ($this->margin === null) {
+            return null;
+        }
+
+        return number_format((float) $this->rate + (float) $this->margin, 2, '.', '');
     }
 }

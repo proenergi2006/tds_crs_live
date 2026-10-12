@@ -6,10 +6,14 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import RadioCard from '@/components/SystemDesign/Form/RadioCard.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
+import InfoTip from '@/components/SystemDesign/Data/InfoTip.vue'
 import TomSelect from '@/components/Base/TomSelect'
 import { FormLabel, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
+import { formatCurrency } from '@/utils/format'
+
+import { PRICE_FIELD_HINTS, francoTransportPrice } from './priceFieldHints'
 
 type MoneyField =
   | 'price_list'
@@ -17,7 +21,7 @@ type MoneyField =
   | 'bm_price'
   | 'cogs_material_price'
   | 'cogs_transport_price'
-  | 'margin_amount'
+  | 'margin_material_amount'
   | 'om_price'
   | 'ceo_price'
 
@@ -31,7 +35,8 @@ type EditableProductPrice = {
   bm_price: string | number | null
   cogs_material_price: string | number | null
   cogs_transport_price: string | number | null
-  margin_amount: string | number | null
+  margin_material_amount: string | number | null
+  margin_transport_amount?: string | number | null
   om_price: string | number | null
   ceo_price: string | number | null
   cogs_basis: string | null
@@ -72,7 +77,7 @@ const form = reactive({
   bm_price: 0,
   cogs_material_price: 0,
   cogs_transport_price: 0,
-  margin_amount: 0,
+  margin_material_amount: 0,
   om_price: 0,
   ceo_price: 0,
   cogs_basis: '',
@@ -114,7 +119,7 @@ const visibleMoneyFields = computed<MoneyField[]>(() => {
   return [
     'cogs_material_price',
     'cogs_transport_price',
-    'margin_amount',
+    'margin_material_amount',
     'price_list',
     'price_list_pe',
     'bm_price',
@@ -123,10 +128,15 @@ const visibleMoneyFields = computed<MoneyField[]>(() => {
   ]
 })
 
+const marginTransport = computed(() => props.mode === 'edit' ? props.productPrice?.margin_transport_amount ?? null : null)
+const francoTransportPriceValue = computed(() =>
+  form.cogs_basis === 'franco' ? francoTransportPrice(form.cogs_transport_price || null, marginTransport.value) : null,
+)
+
 const procurementLocked = computed(() => !canSetCogs.value)
 
 const showCogs = computed(() => visibleMoneyFields.value.includes('cogs_material_price'))
-const showMargin = computed(() => visibleMoneyFields.value.includes('margin_amount'))
+const showMargin = computed(() => visibleMoneyFields.value.includes('margin_material_amount'))
 const showPriceList = computed(() =>
   visibleMoneyFields.value.includes('price_list') || visibleMoneyFields.value.includes('price_list_pe'),
 )
@@ -152,7 +162,7 @@ function fillFromRow(row: EditableProductPrice) {
   form.notes = row.notes ?? ''
   form.cogs_material_price = toIntMoney(row.cogs_material_price)
   form.cogs_transport_price = toIntMoney(row.cogs_transport_price)
-  form.margin_amount = toIntMoney(row.margin_amount)
+  form.margin_material_amount = toIntMoney(row.margin_material_amount)
   form.price_list = toIntMoney(row.price_list)
   form.price_list_pe = toIntMoney(row.price_list_pe)
   form.bm_price = toIntMoney(row.bm_price)
@@ -168,7 +178,7 @@ function resetForm() {
   form.bm_price = 0
   form.cogs_material_price = 0
   form.cogs_transport_price = 0
-  form.margin_amount = 0
+  form.margin_material_amount = 0
   form.om_price = 0
   form.ceo_price = 0
   form.cogs_basis = ''
@@ -201,14 +211,8 @@ function toIntMoney(value: unknown): number {
   return normalized ? parseInt(normalized, 10) : 0
 }
 
-function totalCogs(): number {
-  return form.cogs_basis === 'franco'
-    ? toIntMoney(form.cogs_material_price) + toIntMoney(form.cogs_transport_price)
-    : toIntMoney(form.cogs_material_price)
-}
-
 function recomputePriceList() {
-  const total = totalCogs() + toIntMoney(form.margin_amount)
+  const total = toIntMoney(form.cogs_material_price) + toIntMoney(form.margin_material_amount)
   form.price_list = total
   form.price_list_pe = total
 }
@@ -218,7 +222,7 @@ function updateMoney(field: MoneyField, value: number) {
 
   form[field] = toIntMoney(value)
 
-  if (field === 'cogs_material_price' || field === 'cogs_transport_price' || field === 'margin_amount') {
+  if (field === 'cogs_material_price' || field === 'cogs_transport_price' || field === 'margin_material_amount') {
     recomputePriceList()
   }
 }
@@ -235,10 +239,10 @@ function validate(): boolean {
 
   if (!form.branch_id) errors.branch_id = 'Cabang wajib dipilih'
   if (!form.product_id) errors.product_id = 'Produk wajib dipilih'
-  if (!form.cogs_basis) errors.cogs_basis = 'Tipe Harga COGS wajib dipilih'
+  if (!form.cogs_basis) errors.cogs_basis = 'Basis Harga Beli wajib dipilih'
 
   if (showCogs.value && !isReadonly('cogs_material_price') && toIntMoney(form.cogs_material_price) <= 0) {
-    errors.cogs_material_price = form.cogs_basis === 'franco' ? 'COGS Material wajib diisi' : 'COGS wajib diisi'
+    errors.cogs_material_price = 'COGS Material wajib diisi'
   }
 
   if (form.cogs_basis === 'franco' && !isReadonly('cogs_transport_price') && toIntMoney(form.cogs_transport_price) <= 0) {
@@ -246,12 +250,12 @@ function validate(): boolean {
   }
 
   if (canSetPriceList.value) {
-    if (toIntMoney(form.margin_amount) <= 0) errors.margin_amount = 'Margin wajib diisi'
-    if (toIntMoney(form.price_list_pe) <= 0) errors.price_list_pe = 'Price List PE wajib diisi'
-    if (toIntMoney(form.price_list) <= 0) errors.price_list = 'Price List TDS wajib diisi'
-    if (toIntMoney(form.bm_price) <= 0) errors.bm_price = 'Approval BM wajib diisi'
-    if (toIntMoney(form.om_price) <= 0) errors.om_price = 'Approval OM wajib diisi'
-    if (toIntMoney(form.ceo_price) <= 0) errors.ceo_price = 'Approval CEO wajib diisi'
+    if (toIntMoney(form.margin_material_amount) <= 0) errors.margin_material_amount = 'Margin Material wajib diisi'
+    if (toIntMoney(form.price_list_pe) <= 0) errors.price_list_pe = 'Price List Material PE wajib diisi'
+    if (toIntMoney(form.price_list) <= 0) errors.price_list = 'Price List Material TDS wajib diisi'
+    if (toIntMoney(form.bm_price) <= 0) errors.bm_price = 'Batas Approval BM wajib diisi'
+    if (toIntMoney(form.om_price) <= 0) errors.om_price = 'Batas Approval OM wajib diisi'
+    if (toIntMoney(form.ceo_price) <= 0) errors.ceo_price = 'Batas Approval CEO wajib diisi'
   }
 
   return !Object.values(errors).some(Boolean)
@@ -284,7 +288,7 @@ async function submit() {
   if (canSetPriceList.value) {
     payload.price_list = toIntMoney(form.price_list)
     payload.price_list_pe = toIntMoney(form.price_list_pe)
-    payload.margin_amount = toIntMoney(form.margin_amount)
+    payload.margin_material_amount = toIntMoney(form.margin_material_amount)
     payload.bm_price = toIntMoney(form.bm_price)
     payload.om_price = toIntMoney(form.om_price)
     payload.ceo_price = toIntMoney(form.ceo_price)
@@ -362,8 +366,9 @@ function handleClose() {
           <div class="gap-4 grid grid-cols-1" :class="{ 'sm:grid-cols-2': form.cogs_basis === 'franco' }">
             <div v-if="form.cogs_basis !== 'franco'">
               <FormLabel class="block !mb-1 text-form-label">
-                Harga COGS
+                COGS Material
                 <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
+                <InfoTip :content="PRICE_FIELD_HINTS.cogs_material_price" />
               </FormLabel>
               <CurrencyField :model-value="form.cogs_material_price" placeholder="0"
                 :readonly="isReadonly('cogs_material_price')" :error="errors.cogs_material_price"
@@ -375,6 +380,7 @@ function handleClose() {
                 <FormLabel class="block !mb-1 text-form-label">
                   COGS Material
                   <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
+                  <InfoTip :content="PRICE_FIELD_HINTS.cogs_material_price" />
                 </FormLabel>
                 <CurrencyField :model-value="form.cogs_material_price" placeholder="0"
                   :readonly="isReadonly('cogs_material_price')" :error="errors.cogs_material_price"
@@ -385,6 +391,7 @@ function handleClose() {
                 <FormLabel class="block !mb-1 text-form-label">
                   COGS Transport
                   <RequiredAsterisk v-if="!isReadonly('cogs_transport_price')" />
+                  <InfoTip :content="PRICE_FIELD_HINTS.cogs_transport_price" />
                 </FormLabel>
                 <CurrencyField :model-value="form.cogs_transport_price" placeholder="0"
                   :readonly="isReadonly('cogs_transport_price')" :error="errors.cogs_transport_price"
@@ -395,8 +402,9 @@ function handleClose() {
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 text-form-label">Tipe Harga COGS
+          <FormLabel class="block !mb-1 text-form-label">Basis Harga Beli
             <RequiredAsterisk />
+            <InfoTip :content="PRICE_FIELD_HINTS.cogs_basis" />
           </FormLabel>
           <div class="gap-3 grid grid-cols-2">
             <RadioCard v-model="form.cogs_basis" value="loco" title="Loco" :disabled="isReadonly('cogs_material_price')"
@@ -408,6 +416,26 @@ function handleClose() {
         </div>
       </div>
 
+      <div v-if="form.cogs_basis === 'franco' && mode === 'edit'"
+        class="gap-4 grid grid-cols-1 sm:grid-cols-3 bg-slate-50 p-3 border border-slate-200 rounded-lg">
+        <div>
+          <div class="text-form-label">
+            Margin Transport
+            <InfoTip :content="PRICE_FIELD_HINTS.margin_transport_amount" />
+          </div>
+          <div class="mt-1 num-md">{{ marginTransport !== null ? formatCurrency(marginTransport) : '-' }}</div>
+          <div class="text-caption">Diisi Logistik</div>
+        </div>
+        <div>
+          <div class="text-form-label">
+            Harga Transport (franco)
+            <InfoTip :content="PRICE_FIELD_HINTS.transport_price" />
+          </div>
+          <div class="mt-1 num-md">{{ francoTransportPriceValue !== null ? formatCurrency(francoTransportPriceValue) : '-' }}</div>
+          <div v-if="francoTransportPriceValue === null" class="text-caption">Menunggu margin transport dari Logistik</div>
+        </div>
+      </div>
+
       <div>
         <FormLabel class="block !mb-1 text-form-label">Catatan</FormLabel>
         <FormTextarea v-model="form.notes" rows="2" placeholder="Catatan (opsional)" :disabled="procurementLocked" />
@@ -415,22 +443,26 @@ function handleClose() {
 
       <div v-if="showMargin || showPriceList" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
         <div v-if="showMargin">
-          <FormLabel class="block !mb-1 text-form-label">Margin
+          <FormLabel class="block !mb-1 text-form-label">Margin Material
             <RequiredAsterisk v-if="canSetPriceList" />
+            <InfoTip :content="PRICE_FIELD_HINTS.margin_material_amount" />
           </FormLabel>
-          <CurrencyField :model-value="form.margin_amount" placeholder="0" :readonly="isReadonly('margin_amount')"
-            :error="errors.margin_amount" @update:model-value="updateMoney('margin_amount', $event)" />
+          <CurrencyField :model-value="form.margin_material_amount" placeholder="0" :readonly="isReadonly('margin_material_amount')"
+            :error="errors.margin_material_amount" @update:model-value="updateMoney('margin_material_amount', $event)" />
         </div>
 
         <div v-if="visibleMoneyFields.includes('price_list')">
-          <FormLabel class="block !mb-1 text-form-label">Price List TDS</FormLabel>
+          <FormLabel class="block !mb-1 text-form-label">Price List Material TDS
+            <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
+          </FormLabel>
           <CurrencyField :model-value="form.price_list" placeholder="0" readonly />
         </div>
 
         <div v-if="visibleMoneyFields.includes('price_list_pe')">
           <FormLabel class="block !mb-1 text-form-label">
-            Price List PE
+            Price List Material PE
             <RequiredAsterisk v-if="canSetPriceList" />
+            <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
           </FormLabel>
           <CurrencyField :model-value="form.price_list_pe" placeholder="0" :readonly="isReadonly('price_list_pe')"
             :error="errors.price_list_pe" @update:model-value="updateMoney('price_list_pe', $event)" />
@@ -439,24 +471,27 @@ function handleClose() {
 
       <div v-if="showApproval" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
         <div>
-          <FormLabel class="block !mb-1 text-form-label">Approval BM
+          <FormLabel class="block !mb-1 text-form-label">Batas Approval BM
             <RequiredAsterisk v-if="canSetPriceList" />
+            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
           </FormLabel>
           <CurrencyField :model-value="form.bm_price" placeholder="0" :readonly="isReadonly('bm_price')"
             :error="errors.bm_price" @update:model-value="updateMoney('bm_price', $event)" />
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 text-form-label">Approval OM
+          <FormLabel class="block !mb-1 text-form-label">Batas Approval OM
             <RequiredAsterisk v-if="canSetPriceList" />
+            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
           </FormLabel>
           <CurrencyField :model-value="form.om_price" placeholder="0" :readonly="isReadonly('om_price')"
             :error="errors.om_price" @update:model-value="updateMoney('om_price', $event)" />
         </div>
 
         <div>
-          <FormLabel class="block !mb-1 text-form-label">Approval CEO
+          <FormLabel class="block !mb-1 text-form-label">Batas Approval CEO
             <RequiredAsterisk v-if="canSetPriceList" />
+            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
           </FormLabel>
           <CurrencyField :model-value="form.ceo_price" placeholder="0" :readonly="isReadonly('ceo_price')"
             :error="errors.ceo_price" @update:model-value="updateMoney('ceo_price', $event)" />

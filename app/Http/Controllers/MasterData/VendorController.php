@@ -30,7 +30,6 @@ class VendorController extends Controller
 
     public function store(Request $request)
     {
-        // Normalisasi: ambil digit saja
         $cleanNpwp  = preg_replace('/\D/', '', (string) $request->input('npwp_number'));
         $cleanNib   = preg_replace('/\D/', '', (string) $request->input('nib_number'));
         $cleanSppkp = preg_replace('/\D/', '', (string) $request->input('sppkp_number'));
@@ -64,7 +63,6 @@ class VendorController extends Controller
             'sppkp_number.digits_between' => 'Nomor SPPKP harus 8–20 digit.',
         ]);
 
-        // simpan file
         if ($request->hasFile('npwp_file'))  $data['npwp_file']  = $request->file('npwp_file')->store('vendors/npwp', 'public');
         if ($request->hasFile('nib_file'))   $data['nib_file']   = $request->file('nib_file')->store('vendors/nib', 'public');
         if ($request->hasFile('sppkp_file')) $data['sppkp_file'] = $request->file('sppkp_file')->store('vendors/sppkp', 'public');
@@ -80,13 +78,12 @@ class VendorController extends Controller
         return response()->json($vendor, 201);
     }
 
-    public function show($id)
+    public function show(Vendor $vendor)
     {
-        $vendor = Vendor::findOrFail($id);
         return response()->json($vendor);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Vendor $vendor)
     {
         $cleanNpwp  = preg_replace('/\D/', '', (string) $request->input('npwp_number'));
         $cleanNib   = preg_replace('/\D/', '', (string) $request->input('nib_number'));
@@ -132,8 +129,6 @@ class VendorController extends Controller
         $data['lastupdate_time'] = now();
         $data['lastupdate_by']   = $request->user()->name ?? 'system';
 
-        $vendor = Vendor::findOrFail($id);
-
         $removeFlags = [
             'npwp_file' => $request->boolean('remove_npwp_file'),
             'nib_file' => $request->boolean('remove_nib_file'),
@@ -159,6 +154,7 @@ class VendorController extends Controller
         return response()->json($vendor);
     }
 
+    // destroy($id) sengaja, Model::destroy no-op kalau id gak ada jadi tetap 204 (bukan 404)
     public function destroy($id)
     {
         Vendor::destroy($id);

@@ -1,34 +1,27 @@
-import type { NavItem } from './types'
+import type { NavSection } from "@/stores/menu";
 
-export const procurementNavigation: NavItem[] = [
-  {
-    icon: 'Receipt',
-    title: 'Procurement',
-    subMenu: [
-      {
-        icon: 'Inbox',
-        pageName: 'vendor-pos-list',
-        title: 'PO Supplier',
-        activePageNames: [
-          'vendor-pos-create',
-          'vendor-pos-edit',
-          'vendor-pos-detail',
-          'vendor-pos-receive',
-        ],
-        permission: 'po-supplier.manage',
-      },
-      {
-        icon: 'FileCheck',
-        pageName: 'good-receipt-list',
-        title: 'Good Receipts',
-        permission: 'good-receipt.manage',
-      },
-    ],
-  },
-  {
-    icon: 'Boxes',
-    pageName: 'StockInventory',
-    title: 'Inventory',
-    permission: 'inventory.view',
-  },
-]
+export const procurementSection: NavSection = {
+  key: "procurement",
+  title: "Procurement",
+  icon: "Receipt",
+  items: [
+    {
+      icon: "PackagePlus",
+      pageName: "vendor-pos-list",
+      title: "PO Supplier",
+      activePageNames: [
+        "vendor-pos-create",
+        "vendor-pos-edit",
+        "vendor-pos-detail",
+        "vendor-pos-receive",
+      ],
+      permission: "po-supplier.manage",
+    },
+    {
+      icon: "PackageCheck",
+      pageName: "good-receipt-list",
+      title: "Goods Receipt",
+      permission: "good-receipt.manage",
+    },
+  ],
+};

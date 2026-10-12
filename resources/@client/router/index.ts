@@ -10,6 +10,7 @@ declare module "vue-router" {
     brand?: string;
     role?: string;
     permission?: string | string[];
+    anyPermission?: string[];
     guestOnly?: boolean;
   }
 }
@@ -40,7 +41,7 @@ const routes = [
   {
     path: "/verifikasi-penawaran/:token",
     name: "penawaran-verification",
-    component: () => import("@/pages/PenawaranVerification/Index.vue"),
+    component: () => import("@/pages/QuotationPublicVerification/Index.vue"),
   },
 
   {
@@ -114,6 +115,12 @@ const routes = [
         name: "product-prices",
         component: () => import("@/pages/MasterData/ProductPrice/Index.vue"),
         meta: { permission: "price-period.view" },
+      },
+      {
+        path: "transport-margins",
+        name: "transport-margins",
+        component: () => import("@/pages/MasterData/TransportMargin/Index.vue"),
+        meta: { permission: "product-price.manage-transport-margin" },
       },
       {
         path: "product-prices/create",
@@ -272,51 +279,51 @@ const routes = [
       {
         path: "/penawarans",
         name: "penawarans-list",
-        component: () => import("@/pages/Penawaran/Index.vue"),
+        component: () => import("@/pages/Quotation/Index.vue"),
         meta: { brand: "tds", permission: "penawaran.viewOwn" },
       },
       {
         path: "/penawarans-proenergi",
         name: "penawarans-list-proenergi",
-        component: () => import("@/pages/Penawaran/Index.vue"),
+        component: () => import("@/pages/Quotation/Index.vue"),
         meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
       },
       {
         path: "/penawarans/create",
         name: "penawarans-create",
-        component: () => import("@/pages/Penawaran/Form.vue"),
+        component: () => import("@/pages/Quotation/Form.vue"),
         meta: { brand: "tds", permission: "penawaran.manage" },
       },
       {
         path: "/penawarans-proenergi/create",
         name: "penawarans-create-proenergi",
-        component: () => import("@/pages/Penawaran/Form.vue"),
+        component: () => import("@/pages/Quotation/Form.vue"),
         meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
       },
 
       {
         path: "/penawarans/:id/edit",
         name: "penawarans-edit",
-        component: () => import("@/pages/Penawaran/Form.vue"),
+        component: () => import("@/pages/Quotation/Form.vue"),
         meta: { brand: "tds", permission: "penawaran.manage" },
       },
 
       {
         path: "/penawarans-proenergi/:id/edit",
         name: "penawarans-edit-proenergi",
-        component: () => import("@/pages/Penawaran/Form.vue"),
+        component: () => import("@/pages/Quotation/Form.vue"),
         meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
       },
       {
         path: "/penawarans/:id",
         name: "penawarans-detail",
-        component: () => import("@/pages/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Quotation/Detail.vue"),
         meta: { brand: "tds", permission: "penawaran.viewOwn" },
       },
       {
         path: "/penawarans-proenergi/:id",
         name: "penawarans-detail-proenergi",
-        component: () => import("@/pages/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Quotation/Detail.vue"),
         meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
       },
 
@@ -366,44 +373,56 @@ const routes = [
         path: "/transport-tariffs",
         name: "transport-tariffs-list",
         component: () => import("@/pages/MasterLogistik/TransportTariff/Index.vue"),
-        meta: { permission: "logistik.master.manage" },
+        meta: { anyPermission: ["logistik.master.manage", "logistik.transport-tariff.view"] },
       },
 
       {
         path: "/penawarans/verifikasi",
         name: "penawarans-verifikasi",
-        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { brand: "tds", permission: "penawaran.verify" },
+        component: () => import("@/pages/Verification/Quotation/Index.vue"),
+        meta: { brand: "tds", anyPermission: ["penawaran.verify", "penawaran.verify-ceo"] },
       },
       {
         path: "/penawarans-proenergi/verifikasi",
         name: "penawarans-verifikasi-proenergi",
-        component: () => import("@/pages/Verification/Penawaran/Index.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.verify" },
+        component: () => import("@/pages/Verification/Quotation/Index.vue"),
+        meta: { brand: "proenergi", anyPermission: ["penawaran.proenergi.verify", "penawaran.verify-ceo"] },
       },
       {
         path: "/penawarans/verifikasi/bm/:id",
         name: "penawarans-verifikasi-bm-detail",
-        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
         meta: { role: "bm", brand: "tds", permission: "penawaran.verify" },
       },
       {
         path: "/penawarans-proenergi/verifikasi/bm/:id",
         name: "penawarans-verifikasi-bm-detail-proenergi",
-        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
         meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
       },
       {
         path: "/penawarans/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail",
-        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
         meta: { role: "om", brand: "tds", permission: ["penawaran.verify", "penawaran.verify-om"] },
       },
       {
         path: "/penawarans-proenergi/verifikasi/om/:id",
         name: "penawarans-verifikasi-om-detail-proenergi",
-        component: () => import("@/pages/Verification/Penawaran/Detail.vue"),
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
         meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
+      },
+      {
+        path: "/penawarans/verifikasi/ceo/:id",
+        name: "penawarans-verifikasi-ceo-detail",
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
+        meta: { role: "ceo", brand: "tds", permission: "penawaran.verify-ceo" },
+      },
+      {
+        path: "/penawarans-proenergi/verifikasi/ceo/:id",
+        name: "penawarans-verifikasi-ceo-detail-proenergi",
+        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
+        meta: { role: "ceo", brand: "proenergi", permission: "penawaran.verify-ceo" },
       },
 
       {
@@ -463,7 +482,7 @@ const routes = [
         path: "/sales-confirmations",
         name: "sales-confirmations",
         component: () => import("@/pages/SalesConfirmation/Index.vue"),
-        meta: { permission: "sales-confirmation.manage" },
+        meta: { anyPermission: ["sales-confirmation.manage", "sales-confirmation.view"] },
       },
       {
         path: "/sales-confirmations/delivery-queue",
@@ -475,7 +494,7 @@ const routes = [
         path: "/sales-confirmations/:id",
         name: "sales-confirmations-detail",
         component: () => import("@/pages/SalesConfirmation/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail Sales Confirmation", permission: "sales-confirmation.manage" },
+        meta: { breadcrumbTitle: "Detail Sales Confirmation", anyPermission: ["sales-confirmation.manage", "sales-confirmation.view"] },
       },
       {
         path: "/ar-agings",
@@ -609,7 +628,11 @@ router.beforeEach(async (to, from, next) => {
 
   const requiredPermission = to.meta.permission;
   const required = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
-  if (requiredPermission && !required.every((p) => auth.can(p))) {
+  const anyPermission = to.meta.anyPermission;
+  if (
+    (requiredPermission && !required.every((p) => auth.can(p)))
+    || (anyPermission && !anyPermission.some((p) => auth.can(p)))
+  ) {
     stopRouteLoading(150);
     return next({ name: "dashboard-overview-1" });
   }

@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests\PoCustomer;
 
-use App\Models\Penawaran;
+use App\Enums\QuotationStatus;
+use App\Models\Quotation;
 use App\Models\PoCustomer;
 use App\Models\User;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ class UpdatePoCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $po = PoCustomer::with('penawaran')->find($this->route('customer_po'));
+        $po = $this->boundPoCustomer(['quotation']);
 
         return ! $po || $po->isWritableBy($this->user());
     }
@@ -28,7 +29,7 @@ class UpdatePoCustomerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_penawaran' => 'sometimes|integer|exists:penawarans,id_penawaran',
+            'quotation_id' => 'sometimes|integer|exists:quotations,id',
             'nomor_poc'    => 'required|string|max:50',
             'tanggal_poc'  => 'required|date',
             'supply_date'  => 'required|date',
@@ -43,47 +44,58 @@ class UpdatePoCustomerRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $po = PoCustomer::with(['penawaran', 'customer'])->find($this->route('customer_po'));
+            $po = $this->boundPoCustomer(['quotation', 'customer']);
 
             if (! $po) {
                 return;
             }
 
-            $penawaran = $po->penawaran;
+            $quotation = $po->quotation;
 
-            if ($this->filled('id_penawaran') && (int) $this->input('id_penawaran') !== (int) $po->id_penawaran) {
-                if ($validator->errors()->has('id_penawaran')) {
+            if ($this->filled('quotation_id') && (int) $this->input('quotation_id') !== (int) $po->quotation_id) {
+                if ($validator->errors()->has('quotation_id')) {
                     return;
                 }
 
-                $replacement = Penawaran::find($this->input('id_penawaran'));
+                $replacement = Quotation::find($this->input('quotation_id'));
                 $replacementError = $this->replacementError($po, $replacement, $this->user());
 
                 if ($replacementError) {
-                    $validator->errors()->add('id_penawaran', $replacementError);
+                    $validator->errors()->add('quotation_id', $replacementError);
 
                     return;
                 }
 
-                $penawaran = $replacement;
+                $quotation = $replacement;
             }
 
-            if ($validator->errors()->has('tanggal_poc') || ! $penawaran || ! $this->filled('tanggal_poc')) {
+            if ($validator->errors()->has('tanggal_poc') || ! $quotation || ! $this->filled('tanggal_poc')) {
                 return;
             }
 
-            if (! $penawaran->isValidOn(Carbon::parse($this->input('tanggal_poc')))) {
+            if (! $quotation->isValidOn(Carbon::parse($this->input('tanggal_poc')))) {
                 $validator->errors()->add(
                     'tanggal_poc',
-                    "Tanggal PO harus berada dalam masa berlaku penawaran ({$penawaran->validityPeriodLabel()})."
+                    "Tanggal PO harus berada dalam masa berlaku penawaran ({$quotation->validityPeriodLabel()})."
                 );
             }
         });
     }
 
-    private function replacementError(PoCustomer $po, ?Penawaran $replacement, User $user): ?string
+    private function boundPoCustomer(array $relations): ?PoCustomer
     {
-        if (! $replacement || (int) $replacement->id_customer !== (int) $po->id_customer) {
+        $bound = $this->route('customer_po');
+
+        if ($bound instanceof PoCustomer) {
+            return $bound->loadMissing($relations);
+        }
+
+        return PoCustomer::with($relations)->find($bound);
+    }
+
+    private function replacementError(PoCustomer $po, ?Quotation $replacement, User $user): ?string
+    {
+        if (! $replacement || (int) $replacement->customer_id !== (int) $po->id_customer) {
             return 'Penawaran harus milik customer yang sama dengan PO.';
         }
 
@@ -91,8 +103,8 @@ class UpdatePoCustomerRequest extends FormRequest
             return 'Penawaran ini bukan milik Anda.';
         }
 
-        if ($replacement->status !== 'approved_om') {
-            return 'PO Customer hanya bisa dibuat dari Penawaran yang sudah disetujui OM.';
+        if ($replacement->status !== QuotationStatus::Approved) {
+            return 'PO Customer hanya bisa dibuat dari Penawaran yang sudah disetujui.';
         }
 
         if (! $replacement->isValidOn(Carbon::today())) {

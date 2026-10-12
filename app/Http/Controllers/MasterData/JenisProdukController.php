@@ -45,17 +45,15 @@ class JenisProdukController extends Controller
         return response()->json($jenis, 201);
     }
 
-    public function show($id)
+    public function show(JenisProduk $jenisProduk)
     {
-        $jenis = JenisProduk::findOrFail($id);
-        return response()->json($jenis);
+        return response()->json($jenisProduk);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, JenisProduk $jenisProduk)
     {
-        $jenis = JenisProduk::findOrFail($id);
         $validator = Validator::make($request->all(), [
-            'nama'      => 'required|string|max:255|unique:jenis_produks,nama,' . $id . ',id_jenis',
+            'nama'      => 'required|string|max:255|unique:jenis_produks,nama,' . $jenisProduk->id_jenis . ',id_jenis',
             'deskripsi' => 'nullable|string',
             'is_active' => 'required|boolean',
         ]);
@@ -65,15 +63,14 @@ class JenisProdukController extends Controller
 
         $data = $validator->validated();
         $data['updated_by'] = $request->user()->name ?? null;
-        $jenis->update($data);
+        $jenisProduk->update($data);
 
-        return response()->json($jenis);
+        return response()->json($jenisProduk);
     }
 
-    public function destroy($id)
+    public function destroy(JenisProduk $jenisProduk)
     {
-        $jenis = JenisProduk::findOrFail($id);
-        $jenis->delete();
+        $jenisProduk->delete();
         return response()->json(null, 204);
     }
 }

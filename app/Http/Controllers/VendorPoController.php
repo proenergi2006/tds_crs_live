@@ -26,8 +26,8 @@ class VendorPoController extends Controller
         if ($search = $request->query('search')) {
             $q->where(function ($sub) use ($search) {
                 $sub->where('nomor_po', 'like', "%{$search}%")
-                    ->orWhere('vendor.nama_vendor', 'like', "%{$search}%")
-                    ->orWhere('terminal.nama_terminal', 'like', "%{$search}%");
+                    ->orWhereRelation('vendor', 'nama_vendor', 'like', "%{$search}%")
+                    ->orWhereRelation('terminal', 'nama_terminal', 'like', "%{$search}%");
             });
         }
 
@@ -54,10 +54,9 @@ class VendorPoController extends Controller
         );
     }
 
-    public function show($id)
+    public function show(VendorPo $vendorPo)
     {
-        $po = VendorPo::with(['vendor', 'terminal', 'produks.produk', 'produks.produk.ukuran.satuan', 'produks.produk.jenis'])
-            ->findOrFail($id);
+        $po = $vendorPo->load(['vendor', 'terminal', 'produks.produk', 'produks.produk.ukuran.satuan', 'produks.produk.jenis']);
 
         return response()->json($po);
     }
@@ -101,7 +100,6 @@ class VendorPoController extends Controller
                 . '/' . $bulanRomawi
                 . '/' . $tahun;
 
-            // Header PO
             $vendorPo = VendorPo::create([
                 'id_vendor'         => $validated['id_vendor'],
                 'id_terminal'       => $validated['id_terminal'],
@@ -119,7 +117,6 @@ class VendorPoController extends Controller
             ]);
             $vendor->increment('urut_po');
 
-            // Detail PO
             $detailRows = [];
             foreach ($validated['items'] as $item) {
                 $detailRows[] = [
@@ -144,7 +141,7 @@ class VendorPoController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, VendorPo $vendorPo)
     {
         $validated = $request->validate([
             'id_vendor'             => 'required|exists:vendors,id_vendor',
@@ -168,7 +165,7 @@ class VendorPoController extends Controller
             'items.*.tax_amount'    => 'nullable|numeric',
         ]);
 
-        $po = VendorPo::findOrFail($id);
+        $po = $vendorPo;
 
         DB::transaction(function () use ($validated, $request, $po) {
             $po->update([
@@ -219,11 +216,10 @@ class VendorPoController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, VendorPo $vendorPo)
     {
-        $po = VendorPo::findOrFail($id);
+        $po = $vendorPo;
 
-        // Guard 1: hanya Draft yang boleh dihapus
         if ((int) $po->disposisi_po !== 0 || $po->cfo_result !== null) {
             return response()->json([
                 'message' => 'PO tidak dapat dihapus karena sudah dalam proses approval.',
@@ -244,13 +240,14 @@ class VendorPoController extends Controller
         return response()->json(null, 204);
     }
 
-    public function approve(Request $request, $id)
+    // param harus $id, route pakai segmen literal {id}
+    public function approve(Request $request, VendorPo $id)
     {
         if ($request->user()->cant('po-supplier.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $po = VendorPo::findOrFail($id);
+        $po = $id;
         // cfo_result auto keisi 1: posisi CFO masih kosong, approval langsung ke CEO buat sementara
         $po->disposisi_po      = 2;
         $po->cfo_result        = 1;
@@ -303,11 +300,10 @@ class VendorPoController extends Controller
             ->stream($filename);
     }
 
-    // endpoint publik nampilin data PO (json)
-    public function publicShow($id)
+    // param harus $id, route pakai segmen literal {id}
+    public function publicShow(VendorPo $id)
     {
-        $po = VendorPo::with(['vendor', 'terminal', 'produks.produk'])
-            ->findOrFail($id);
+        $po = $id->load(['vendor', 'terminal', 'produks.produk']);
 
         return response()->json($po);
     }
