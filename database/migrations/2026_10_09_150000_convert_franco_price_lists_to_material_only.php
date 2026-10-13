@@ -39,6 +39,11 @@ return new class extends Migration
                 }
             }
 
+            if ($update === []) {
+                $skipped[] = $row->id;
+                continue;
+            }
+
             DB::table('product_prices')->where('id', $row->id)->update($update);
             $converted[] = $row->id;
         }
