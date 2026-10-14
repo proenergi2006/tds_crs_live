@@ -16,11 +16,8 @@ type ProductPriceRow = {
   bm_price: string | number | null
   om_price: string | number | null
   ceo_price: string | number | null
-  cogs_price: string | number | null
+  cogs_material_price: string | number | null
   margin_material_amount: string | number | null
-  margin_transport_amount?: string | number | null
-  cogs_basis?: string | null
-  transport_price?: number | null
   notes: string | null
   needs_reverification?: boolean
   branch?: { id: number; name: string }
@@ -113,6 +110,11 @@ function zeroClass(value: string | number | null | undefined) {
   return Number(value) === 0 ? 'text-danger' : ''
 }
 
+function samePriceList(row: ProductPriceRow) {
+  const toNum = (v: string | number | null) => (v === null || v === '' ? null : Number(v))
+  return toNum(row.price_list) === toNum(row.price_list_pe)
+}
+
 function ukuranText(row: ProductPriceRow) {
   const ukuran = row.product?.ukuran?.nama_ukuran ?? ''
   const satuan = row.product?.ukuran?.satuan?.nama_satuan ?? ''
@@ -122,7 +124,7 @@ function ukuranText(row: ProductPriceRow) {
 
 <template>
   <DataList v-model:search="search" v-model:per-page="perPage" :loading="loading" :empty="filteredRows.length === 0"
-    :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords" :current-page="currentPage"
+    :colspan="view === 'ceo' ? 7 : 6" :show-footer="true" :show-toolbar="true" :total="totalRecords" :current-page="currentPage"
     :total-pages="totalPages" :active-filter-count="activeFilterCount" search-placeholder="Cari produk / cabang..."
     loading-text="Memuat data harga..." empty-description="Tidak ada data harga untuk filter ini."
     @page-change="(p) => { currentPage = p }">
@@ -161,16 +163,10 @@ function ukuranText(row: ProductPriceRow) {
     <template #head>
       <Table.Th>Cabang</Table.Th>
       <Table.Th>Produk</Table.Th>
-      <Table.Th class="text-right">COGS</Table.Th>
+      <Table.Th class="text-right">COGS Material</Table.Th>
       <Table.Th class="text-right">Margin Material</Table.Th>
-      <template v-if="view === 'ceo'">
-        <Table.Th class="text-right">Price List</Table.Th>
-        <Table.Th class="text-right">Approval Tier</Table.Th>
-      </template>
-      <template v-else>
-        <Table.Th class="text-right">Price List TDS</Table.Th>
-        <Table.Th class="text-right">Price List PE</Table.Th>
-      </template>
+      <Table.Th class="text-right">Price List</Table.Th>
+      <Table.Th v-if="view === 'ceo'" class="text-right">Approval Tier</Table.Th>
       <Table.Th class="text-center">Aksi</Table.Th>
     </template>
 
@@ -194,57 +190,48 @@ function ukuranText(row: ProductPriceRow) {
           </div>
         </Table.Td>
 
-        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.cogs_price)">
-          {{ formatNumber(item.cogs_price) }}
+        <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.cogs_material_price)">
+          {{ formatNumber(item.cogs_material_price) }}
         </Table.Td>
 
         <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.margin_material_amount)">
           {{ formatNumber(item.margin_material_amount) }}
-          <div v-if="item.cogs_basis === 'franco'" class="mt-0.5 text-caption whitespace-nowrap">
-            Transport {{ formatNumber(item.margin_transport_amount) }} · Harga Transport (franco) {{ formatNumber(item.transport_price) }}
+        </Table.Td>
+
+        <Table.Td v-if="samePriceList(item)" class="num-sm text-body-strong text-base text-right"
+          :class="zeroClass(item.price_list)">
+          {{ formatNumber(item.price_list) }}
+        </Table.Td>
+        <Table.Td v-else class="num-sm text-right">
+          <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
+            <span class="text-caption text-slate-400">TDS</span>
+            <span class="text-body-strong text-base" :class="zeroClass(item.price_list)">{{ formatNumber(item.price_list)
+            }}</span>
+          </div>
+          <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
+            <span class="text-caption text-slate-400">PE</span>
+            <span class="text-body-strong text-base" :class="zeroClass(item.price_list_pe)">{{
+              formatNumber(item.price_list_pe) }}</span>
           </div>
         </Table.Td>
 
         <template v-if="view === 'ceo'">
           <Table.Td class="num-sm text-right">
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="text-caption text-slate-400">TDS</span>
-              <span class="text-body-strong text-base" :class="zeroClass(item.price_list)">{{ formatNumber(item.price_list)
-              }}</span>
-            </div>
-            <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="text-caption text-slate-400">PE</span>
-              <span class="text-body-strong text-base" :class="zeroClass(item.price_list_pe)">{{
-                formatNumber(item.price_list_pe) }}</span>
-            </div>
-          </Table.Td>
-
-          <Table.Td class="num-sm text-right">
-            <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="text-caption text-slate-400">BM</span>
+              <span class="text-caption text-slate-400">Tier I · BM</span>
               <span class="text-body-strong text-base" :class="zeroClass(item.bm_price)">{{ formatNumber(item.bm_price)
               }}</span>
             </div>
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="text-caption text-slate-400">OM</span>
+              <span class="text-caption text-slate-400">Tier II · OM</span>
               <span class="text-body-strong text-base" :class="zeroClass(item.om_price)">{{ formatNumber(item.om_price)
               }}</span>
             </div>
             <div class="flex justify-between items-baseline gap-3 whitespace-nowrap">
-              <span class="text-caption text-slate-400">CEO</span>
+              <span class="text-caption text-slate-400">Tier III · CEO</span>
               <span class="text-body-strong text-base" :class="zeroClass(item.ceo_price)">{{ formatNumber(item.ceo_price)
               }}</span>
             </div>
-          </Table.Td>
-        </template>
-
-        <template v-else>
-          <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.price_list)">
-            {{ formatNumber(item.price_list) }}
-          </Table.Td>
-
-          <Table.Td class="num-sm text-body-strong text-base text-right" :class="zeroClass(item.price_list_pe)">
-            {{ formatNumber(item.price_list_pe) }}
           </Table.Td>
         </template>
 
