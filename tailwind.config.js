@@ -37,7 +37,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        oswald: ["Oswald", "ui-sans-serif", "system-ui", "sans-serif"],
+        ubuntu: ["Ubuntu", "ui-sans-serif", "system-ui", "sans-serif"],
         lexend: ["Lexend", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       container: { center: true },

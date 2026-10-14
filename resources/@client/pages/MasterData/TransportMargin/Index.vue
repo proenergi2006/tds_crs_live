@@ -131,9 +131,10 @@ function periodLabel(p: TransportMarginPeriod): string {
       <PageHeader title="Margin Transport"
         description="Keuntungan transport untuk produk franco. Harga Transport (franco) = COGS transport + margin transport, menjadi harga transport terkunci di Penawaran." />
 
-      <DataList v-model:search="search" v-model:per-page="perPage" :loading="loading" :empty="paginatedRows.length === 0"
-        :colspan="7" :show-footer="true" :show-toolbar="true" :total="filteredRows.length" :current-page="currentPage"
-        :total-pages="totalPages" search-placeholder="Cari cabang / produk..." loading-text="Memuat margin transport..."
+      <DataList v-model:search="search" v-model:per-page="perPage" :loading="loading"
+        :empty="paginatedRows.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true"
+        :total="filteredRows.length" :current-page="currentPage" :total-pages="totalPages"
+        search-placeholder="Cari cabang / produk..." loading-text="Memuat margin transport..."
         empty-description="Tidak ada produk franco di periode ini." @page-change="(p) => { currentPage = p }">
         <template #toolbar>
           <div class="flex items-center gap-2">
@@ -157,7 +158,7 @@ function periodLabel(p: TransportMarginPeriod): string {
             <InfoTip :content="PRICE_FIELD_HINTS.margin_transport_amount" />
           </Table.Th>
           <Table.Th class="text-right whitespace-nowrap">
-            Harga Transport (franco)
+            Harga Transport
             <InfoTip :content="PRICE_FIELD_HINTS.transport_price" />
           </Table.Th>
           <Table.Th>Diperbarui</Table.Th>
@@ -170,12 +171,13 @@ function periodLabel(p: TransportMarginPeriod): string {
             <Table.Td>
               <span class="text-body-strong">{{ row.product.nama_produk }}</span>
               <span v-if="row.product.ukuran"
-                class="inline-block bg-slate-50 ml-2 px-1.5 py-0.5 border border-slate-300 rounded-md num-sm text-slate-600 text-xs">
+                class="inline-block bg-slate-50 ml-2 px-1.5 py-0.5 border border-slate-300 rounded-md text-slate-600 text-xs num-sm">
                 {{ row.product.ukuran }}
               </span>
             </Table.Td>
-            <Table.Td class="num-sm text-right whitespace-nowrap">
-              <template v-if="row.cogs_transport_price !== null">{{ formatCurrency(row.cogs_transport_price) }}</template>
+            <Table.Td class="text-right whitespace-nowrap num-sm">
+              <template v-if="row.cogs_transport_price !== null">{{ formatCurrency(row.cogs_transport_price)
+                }}</template>
               <span v-else class="text-caption">Belum diisi Procurement</span>
             </Table.Td>
             <Table.Td>
@@ -188,11 +190,12 @@ function periodLabel(p: TransportMarginPeriod): string {
                 </Button>
               </div>
             </Table.Td>
-            <Table.Td class="num-sm text-body-strong text-right whitespace-nowrap">
+            <Table.Td class="text-body-strong text-right whitespace-nowrap num-sm">
               {{ draftFrancoTransportPrice(row) !== null ? formatCurrency(draftFrancoTransportPrice(row)) : '-' }}
             </Table.Td>
             <Table.Td class="text-caption whitespace-nowrap">
-              <template v-if="row.updated_at">{{ formatDateTime(row.updated_at) }}<br>{{ row.updated_by ?? '' }}</template>
+              <template v-if="row.updated_at">{{ formatDateTime(row.updated_at) }}<br>{{ row.updated_by ?? ''
+                }}</template>
               <template v-else>-</template>
             </Table.Td>
             <Table.Td class="text-center">

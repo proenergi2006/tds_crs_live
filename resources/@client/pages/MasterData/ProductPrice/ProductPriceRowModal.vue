@@ -4,11 +4,10 @@ import axios from 'axios'
 
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
-import RadioCard from '@/components/SystemDesign/Form/RadioCard.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import InfoTip from '@/components/SystemDesign/Data/InfoTip.vue'
 import TomSelect from '@/components/Base/TomSelect'
-import { FormLabel, FormTextarea } from '@/components/Base/Form'
+import { FormCheck, FormLabel, FormTextarea } from '@/components/Base/Form'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/utils/format'
@@ -96,7 +95,7 @@ function renderProdukRow(data: any, escape: (v: string) => string, wrapClass: st
     ? `${escape(data.ukuran)}${data.satuan ? ' ' + escape(data.satuan) : ''}`
     : ''
   const badge = ukuran
-    ? `<span class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md num-sm text-slate-600 text-xs break-words whitespace-normal">${ukuran}</span>`
+    ? `<span class="inline-block bg-slate-50 px-1.5 py-0.5 border border-slate-300 rounded-md text-slate-600 text-xs break-words whitespace-normal num-sm">${ukuran}</span>`
     : ''
 
   return `<div class="flex flex-wrap items-start gap-x-2 gap-y-1 ${wrapClass}">
@@ -143,6 +142,7 @@ const showPriceList = computed(() =>
 const showApproval = computed(() =>
   (['bm_price', 'om_price', 'ceo_price'] as MoneyField[]).some(f => visibleMoneyFields.value.includes(f)),
 )
+const showPricingSection = computed(() => showMargin.value || showPriceList.value || showApproval.value)
 
 watch(() => props.open, (isOpen) => {
   if (!isOpen) return
@@ -251,11 +251,11 @@ function validate(): boolean {
 
   if (canSetPriceList.value) {
     if (toIntMoney(form.margin_material_amount) <= 0) errors.margin_material_amount = 'Margin Material wajib diisi'
-    if (toIntMoney(form.price_list_pe) <= 0) errors.price_list_pe = 'Price List Material PE wajib diisi'
-    if (toIntMoney(form.price_list) <= 0) errors.price_list = 'Price List Material TDS wajib diisi'
-    if (toIntMoney(form.bm_price) <= 0) errors.bm_price = 'Batas Approval BM wajib diisi'
-    if (toIntMoney(form.om_price) <= 0) errors.om_price = 'Batas Approval OM wajib diisi'
-    if (toIntMoney(form.ceo_price) <= 0) errors.ceo_price = 'Batas Approval CEO wajib diisi'
+    if (toIntMoney(form.price_list_pe) <= 0) errors.price_list_pe = 'Price List PE wajib diisi'
+    if (toIntMoney(form.price_list) <= 0) errors.price_list = 'Price List TDS wajib diisi'
+    if (toIntMoney(form.bm_price) <= 0) errors.bm_price = 'Tier I wajib diisi'
+    if (toIntMoney(form.om_price) <= 0) errors.om_price = 'Tier II wajib diisi'
+    if (toIntMoney(form.ceo_price) <= 0) errors.ceo_price = 'Tier III wajib diisi'
   }
 
   return !Object.values(errors).some(Boolean)
@@ -327,56 +327,68 @@ function handleClose() {
 
 <template>
   <FormModal :open="open" :title="title" :description="periodLabel ? `Periode: ${periodLabel}` : undefined"
-    :loading="loading" :error="submitError" size="lg" :submit-text="submitText" submit-icon="Save" @close="handleClose"
-    @submit="submit">
-    <div class="space-y-5">
-      <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Cabang
-            <RequiredAsterisk />
-          </FormLabel>
-          <TomSelect v-model="form.branch_id" class="w-full" :disabled="procurementLocked"
-            :class="errors.branch_id ? 'border-rose-500' : ''">
-            <option value="">-- Pilih Cabang --</option>
-            <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="String(cabang.id_cabang)">
-              {{ cabang.nama_cabang }}
-            </option>
-          </TomSelect>
-          <small v-if="errors.branch_id" class="text-caption !text-rose-600">{{ errors.branch_id }}</small>
-        </div>
+    :loading="loading" :error="submitError" :size="showPricingSection ? 'xl' : 'md'" :submit-text="submitText"
+    submit-icon="Save" @close="handleClose" @submit="submit">
+    <div class="gap-y-6 grid grid-cols-1" :class="{ 'lg:grid-cols-2': showPricingSection }">
+      <section :class="{ 'lg:pr-8': showPricingSection }">
+        <div class="mb-3 pb-2 border-slate-100 border-b text-overline">Informasi Utama &amp; Modal</div>
 
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Produk
-            <RequiredAsterisk />
-          </FormLabel>
-          <TomSelect v-model="form.product_id" class="w-full" :options="produkSelectOptions"
-            :disabled="procurementLocked" :class="errors.product_id ? 'border-rose-500' : ''">
-            <option value="">-- Pilih Produk --</option>
-            <option v-for="produk in produks" :key="produk.id_produk" :value="String(produk.id_produk)"
-              :data-ukuran="produk.ukuran?.nama_ukuran || ''" :data-satuan="produk.ukuran?.satuan?.nama_satuan || ''">
-              {{ produk.nama_produk }}
-            </option>
-          </TomSelect>
-          <small v-if="errors.product_id" class="text-caption !text-rose-600">{{ errors.product_id }}</small>
-        </div>
-      </div>
-
-      <div v-if="showCogs" class="gap-4 grid grid-cols-3">
-        <div class="col-span-2">
-          <div class="gap-4 grid grid-cols-1" :class="{ 'sm:grid-cols-2': form.cogs_basis === 'franco' }">
-            <div v-if="form.cogs_basis !== 'franco'">
-              <FormLabel class="block !mb-1 text-form-label">
-                COGS Material
-                <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
-                <InfoTip :content="PRICE_FIELD_HINTS.cogs_material_price" />
+        <div class="space-y-4">
+          <div class="gap-4 grid grid-cols-1 sm:grid-cols-3">
+            <div>
+              <FormLabel class="block !mb-1 text-form-label">Cabang
+                <RequiredAsterisk />
               </FormLabel>
-              <CurrencyField :model-value="form.cogs_material_price" placeholder="0"
-                :readonly="isReadonly('cogs_material_price')" :error="errors.cogs_material_price"
-                @update:model-value="updateMoney('cogs_material_price', $event)" />
+              <TomSelect v-model="form.branch_id" class="w-full" :disabled="procurementLocked"
+                :class="errors.branch_id ? 'border-rose-500' : ''">
+                <option value="">-- Pilih Cabang --</option>
+                <option v-for="cabang in cabangs" :key="cabang.id_cabang" :value="String(cabang.id_cabang)">
+                  {{ cabang.nama_cabang }}
+                </option>
+              </TomSelect>
+              <small v-if="errors.branch_id" class="!text-rose-600 text-caption">{{ errors.branch_id }}</small>
             </div>
 
-            <template v-else>
-              <div>
+            <div class="sm:col-span-2">
+              <FormLabel class="block !mb-1 text-form-label">Produk
+                <RequiredAsterisk />
+              </FormLabel>
+              <TomSelect v-model="form.product_id" class="w-full" :options="produkSelectOptions"
+                :disabled="procurementLocked" :class="errors.product_id ? 'border-rose-500' : ''">
+                <option value="">-- Pilih Produk --</option>
+                <option v-for="produk in produks" :key="produk.id_produk" :value="String(produk.id_produk)"
+                  :data-ukuran="produk.ukuran?.nama_ukuran || ''"
+                  :data-satuan="produk.ukuran?.satuan?.nama_satuan || ''">
+                  {{ produk.nama_produk }}
+                </option>
+              </TomSelect>
+              <small v-if="errors.product_id" class="!text-rose-600 text-caption">{{ errors.product_id }}</small>
+            </div>
+          </div>
+
+          <template v-if="showCogs">
+            <div>
+              <FormLabel class="block !mb-1 text-form-label">Basis Harga Beli
+                <RequiredAsterisk />
+                <InfoTip :content="PRICE_FIELD_HINTS.cogs_basis" />
+              </FormLabel>
+              <div class="flex flex-wrap gap-x-6 gap-y-2 pt-1">
+                <FormCheck>
+                  <FormCheck.Input id="cogs-basis-loco" v-model="form.cogs_basis" type="radio" value="loco"
+                    :disabled="isReadonly('cogs_material_price')" @update:model-value="handleCogsBasisChange" />
+                  <FormCheck.Label htmlFor="cogs-basis-loco">Loco</FormCheck.Label>
+                </FormCheck>
+                <FormCheck>
+                  <FormCheck.Input id="cogs-basis-franco" v-model="form.cogs_basis" type="radio" value="franco"
+                    :disabled="isReadonly('cogs_material_price')" @update:model-value="handleCogsBasisChange" />
+                  <FormCheck.Label htmlFor="cogs-basis-franco">Franco</FormCheck.Label>
+                </FormCheck>
+              </div>
+              <small v-if="errors.cogs_basis" class="!text-rose-600 text-caption">{{ errors.cogs_basis }}</small>
+            </div>
+
+            <div class="flex sm:flex-row flex-col">
+              <div class="flex-1 min-w-0">
                 <FormLabel class="block !mb-1 text-form-label">
                   COGS Material
                   <RequiredAsterisk v-if="!isReadonly('cogs_material_price')" />
@@ -387,116 +399,137 @@ function handleClose() {
                   @update:model-value="updateMoney('cogs_material_price', $event)" />
               </div>
 
-              <div>
-                <FormLabel class="block !mb-1 text-form-label">
-                  COGS Transport
-                  <RequiredAsterisk v-if="!isReadonly('cogs_transport_price')" />
-                  <InfoTip :content="PRICE_FIELD_HINTS.cogs_transport_price" />
-                </FormLabel>
-                <CurrencyField :model-value="form.cogs_transport_price" placeholder="0"
-                  :readonly="isReadonly('cogs_transport_price')" :error="errors.cogs_transport_price"
-                  @update:model-value="updateMoney('cogs_transport_price', $event)" />
+              <Transition enter-active-class="overflow-hidden transition-all duration-300 ease-out"
+                leave-active-class="overflow-hidden transition-all duration-200 ease-in"
+                enter-from-class="opacity-0 max-h-0 !mt-0 sm:!ml-0 sm:!basis-0"
+                leave-to-class="opacity-0 max-h-0 !mt-0 sm:!ml-0 sm:!basis-0">
+                <div v-if="form.cogs_basis === 'franco'"
+                  class="sm:flex-none mt-4 sm:mt-0 sm:ml-4 min-w-0 max-h-40 sm:basis-[calc(50%-0.5rem)]">
+                  <FormLabel class="block !mb-1 text-form-label whitespace-nowrap">
+                    COGS Transport
+                    <RequiredAsterisk v-if="!isReadonly('cogs_transport_price')" />
+                    <InfoTip :content="PRICE_FIELD_HINTS.cogs_transport_price" />
+                  </FormLabel>
+                  <CurrencyField :model-value="form.cogs_transport_price" placeholder="0"
+                    :readonly="isReadonly('cogs_transport_price')" :error="errors.cogs_transport_price"
+                    @update:model-value="updateMoney('cogs_transport_price', $event)" />
+                </div>
+              </Transition>
+            </div>
+          </template>
+
+          <Transition enter-active-class="overflow-hidden transition-all duration-300 ease-out"
+            leave-active-class="overflow-hidden transition-all duration-200 ease-in"
+            enter-from-class="opacity-0 max-h-0 !mt-0" leave-to-class="opacity-0 max-h-0 !mt-0">
+            <div v-if="showCogs && form.cogs_basis === 'franco' && mode === 'edit'" class="max-h-60">
+              <div class="gap-3 grid grid-cols-1 sm:grid-cols-2 bg-slate-50 p-3 border border-slate-200 rounded-lg">
+                <div>
+                  <div class="text-form-label">
+                    Margin Transport
+                    <InfoTip :content="PRICE_FIELD_HINTS.margin_transport_amount" />
+                  </div>
+                  <div class="mt-1 num-md">{{ marginTransport !== null ? formatCurrency(marginTransport) : '-' }}</div>
+                  <div class="text-caption">Diisi Logistik</div>
+                </div>
+                <div>
+                  <div class="text-form-label">
+                    Harga Transport
+                    <InfoTip :content="PRICE_FIELD_HINTS.transport_price" />
+                  </div>
+                  <div class="mt-1 num-md">{{ francoTransportPriceValue !== null ?
+                    formatCurrency(francoTransportPriceValue) : '-' }}</div>
+                  <div v-if="francoTransportPriceValue === null" class="text-caption">Menunggu margin transport dari
+                    Logistik</div>
+                  <div v-else class="text-caption">Harga untuk Penawaran</div>
+                </div>
               </div>
-            </template>
+            </div>
+          </Transition>
+
+          <div>
+            <FormLabel class="block !mb-1 text-form-label">Catatan (Opsional)</FormLabel>
+            <FormTextarea v-model="form.notes" rows="2" placeholder="Catatan tambahan baris harga..."
+              :disabled="procurementLocked" />
           </div>
         </div>
+      </section>
 
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Basis Harga Beli
-            <RequiredAsterisk />
-            <InfoTip :content="PRICE_FIELD_HINTS.cogs_basis" />
-          </FormLabel>
-          <div class="gap-3 grid grid-cols-2">
-            <RadioCard v-model="form.cogs_basis" value="loco" title="Loco" :disabled="isReadonly('cogs_material_price')"
-              @update:model-value="handleCogsBasisChange" />
-            <RadioCard v-model="form.cogs_basis" value="franco" title="Franco"
-              :disabled="isReadonly('cogs_material_price')" @update:model-value="handleCogsBasisChange" />
+      <section v-if="showPricingSection" class="lg:pl-8 lg:border-slate-200 lg:border-l">
+        <div class="mb-3 pb-2 border-slate-100 border-b">
+          <div class="text-overline">Struktur Harga &amp; Tier Approval</div>
+        </div>
+
+        <div class="space-y-4">
+          <div v-if="showMargin || showPriceList" class="items-start gap-4 grid grid-cols-1 sm:grid-cols-2">
+            <div v-if="showMargin">
+              <FormLabel class="block !mb-1 text-form-label">Margin Material
+                <RequiredAsterisk v-if="canSetPriceList" />
+                <InfoTip :content="PRICE_FIELD_HINTS.margin_material_amount" />
+              </FormLabel>
+              <CurrencyField :model-value="form.margin_material_amount" placeholder="0"
+                :readonly="isReadonly('margin_material_amount')" :error="errors.margin_material_amount"
+                @update:model-value="updateMoney('margin_material_amount', $event)" />
+            </div>
+
+            <div v-if="showPriceList" class="space-y-4">
+              <div v-if="visibleMoneyFields.includes('price_list')">
+                <FormLabel class="block !mb-1 text-form-label">Price List TDS
+                  <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
+                </FormLabel>
+                <CurrencyField :model-value="form.price_list" placeholder="0" readonly />
+              </div>
+
+              <div v-if="visibleMoneyFields.includes('price_list_pe')">
+                <FormLabel class="block !mb-1 text-form-label">
+                  Price List PE
+                  <RequiredAsterisk v-if="canSetPriceList" />
+                  <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
+                </FormLabel>
+                <CurrencyField :model-value="form.price_list_pe" placeholder="0" :readonly="isReadonly('price_list_pe')"
+                  :error="errors.price_list_pe" @update:model-value="updateMoney('price_list_pe', $event)" />
+              </div>
+            </div>
           </div>
-          <small v-if="errors.cogs_basis" class="text-caption !text-rose-600">{{ errors.cogs_basis }}</small>
-        </div>
-      </div>
 
-      <div v-if="form.cogs_basis === 'franco' && mode === 'edit'"
-        class="gap-4 grid grid-cols-1 sm:grid-cols-3 bg-slate-50 p-3 border border-slate-200 rounded-lg">
-        <div>
-          <div class="text-form-label">
-            Margin Transport
-            <InfoTip :content="PRICE_FIELD_HINTS.margin_transport_amount" />
+          <div v-if="showApproval" class="bg-slate-50 p-4 border border-slate-200 rounded-lg">
+            <div class="mb-3 text-form-label">
+              Price Tier Approval
+              <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
+            </div>
+            <div class="space-y-3">
+              <div class="items-start gap-4 grid grid-cols-3">
+                <FormLabel class="!mb-0 pt-3 text-form-label">Tier I (BM)
+                  <RequiredAsterisk v-if="canSetPriceList" />
+                </FormLabel>
+                <div class="col-span-2">
+                  <CurrencyField :model-value="form.bm_price" placeholder="0" :readonly="isReadonly('bm_price')"
+                    :error="errors.bm_price" @update:model-value="updateMoney('bm_price', $event)" />
+                </div>
+              </div>
+
+              <div class="items-start gap-4 grid grid-cols-3">
+                <FormLabel class="!mb-0 pt-3 text-form-label">Tier II (OM)
+                  <RequiredAsterisk v-if="canSetPriceList" />
+                </FormLabel>
+                <div class="col-span-2">
+                  <CurrencyField :model-value="form.om_price" placeholder="0" :readonly="isReadonly('om_price')"
+                    :error="errors.om_price" @update:model-value="updateMoney('om_price', $event)" />
+                </div>
+              </div>
+
+              <div class="items-start gap-4 grid grid-cols-3">
+                <FormLabel class="!mb-0 pt-3 text-form-label">Tier III (CEO)
+                  <RequiredAsterisk v-if="canSetPriceList" />
+                </FormLabel>
+                <div class="col-span-2">
+                  <CurrencyField :model-value="form.ceo_price" placeholder="0" :readonly="isReadonly('ceo_price')"
+                    :error="errors.ceo_price" @update:model-value="updateMoney('ceo_price', $event)" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="mt-1 num-md">{{ marginTransport !== null ? formatCurrency(marginTransport) : '-' }}</div>
-          <div class="text-caption">Diisi Logistik</div>
         </div>
-        <div>
-          <div class="text-form-label">
-            Harga Transport (franco)
-            <InfoTip :content="PRICE_FIELD_HINTS.transport_price" />
-          </div>
-          <div class="mt-1 num-md">{{ francoTransportPriceValue !== null ? formatCurrency(francoTransportPriceValue) : '-' }}</div>
-          <div v-if="francoTransportPriceValue === null" class="text-caption">Menunggu margin transport dari Logistik</div>
-        </div>
-      </div>
-
-      <div>
-        <FormLabel class="block !mb-1 text-form-label">Catatan</FormLabel>
-        <FormTextarea v-model="form.notes" rows="2" placeholder="Catatan (opsional)" :disabled="procurementLocked" />
-      </div>
-
-      <div v-if="showMargin || showPriceList" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
-        <div v-if="showMargin">
-          <FormLabel class="block !mb-1 text-form-label">Margin Material
-            <RequiredAsterisk v-if="canSetPriceList" />
-            <InfoTip :content="PRICE_FIELD_HINTS.margin_material_amount" />
-          </FormLabel>
-          <CurrencyField :model-value="form.margin_material_amount" placeholder="0" :readonly="isReadonly('margin_material_amount')"
-            :error="errors.margin_material_amount" @update:model-value="updateMoney('margin_material_amount', $event)" />
-        </div>
-
-        <div v-if="visibleMoneyFields.includes('price_list')">
-          <FormLabel class="block !mb-1 text-form-label">Price List Material TDS
-            <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
-          </FormLabel>
-          <CurrencyField :model-value="form.price_list" placeholder="0" readonly />
-        </div>
-
-        <div v-if="visibleMoneyFields.includes('price_list_pe')">
-          <FormLabel class="block !mb-1 text-form-label">
-            Price List Material PE
-            <RequiredAsterisk v-if="canSetPriceList" />
-            <InfoTip :content="PRICE_FIELD_HINTS.price_list" />
-          </FormLabel>
-          <CurrencyField :model-value="form.price_list_pe" placeholder="0" :readonly="isReadonly('price_list_pe')"
-            :error="errors.price_list_pe" @update:model-value="updateMoney('price_list_pe', $event)" />
-        </div>
-      </div>
-
-      <div v-if="showApproval" class="gap-4 grid grid-cols-1 sm:grid-cols-3">
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Batas Approval BM
-            <RequiredAsterisk v-if="canSetPriceList" />
-            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
-          </FormLabel>
-          <CurrencyField :model-value="form.bm_price" placeholder="0" :readonly="isReadonly('bm_price')"
-            :error="errors.bm_price" @update:model-value="updateMoney('bm_price', $event)" />
-        </div>
-
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Batas Approval OM
-            <RequiredAsterisk v-if="canSetPriceList" />
-            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
-          </FormLabel>
-          <CurrencyField :model-value="form.om_price" placeholder="0" :readonly="isReadonly('om_price')"
-            :error="errors.om_price" @update:model-value="updateMoney('om_price', $event)" />
-        </div>
-
-        <div>
-          <FormLabel class="block !mb-1 text-form-label">Batas Approval CEO
-            <RequiredAsterisk v-if="canSetPriceList" />
-            <InfoTip :content="PRICE_FIELD_HINTS.tier_limits" />
-          </FormLabel>
-          <CurrencyField :model-value="form.ceo_price" placeholder="0" :readonly="isReadonly('ceo_price')"
-            :error="errors.ceo_price" @update:model-value="updateMoney('ceo_price', $event)" />
-        </div>
-      </div>
+      </section>
     </div>
   </FormModal>
 </template>
