@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 <template>
   <label
-    class="flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition"
+    class="flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 transition"
     :class="[
       modelValue === value ? 'border-primary bg-primary/5' : 'border-slate-200 hover:bg-slate-50',
       disabled ? 'cursor-not-allowed opacity-60 hover:bg-transparent' : '',
