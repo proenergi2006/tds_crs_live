@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, useSlots } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
 import Button from '@/components/Base/Button'
@@ -9,7 +9,6 @@ import { FormSelect } from "@/components/Base/Form";
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
-import RichTextField from '@/components/SystemDesign/Form/RichTextField.vue'
 import RequiredAsterisk from "@/components/SystemDesign/Form/RequiredAsterisk.vue";
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { formatCurrency } from '@/utils/format'
@@ -21,7 +20,6 @@ interface CreditRequestSnapshot {
   requested_top: number | null;
   requested_qty: string | number | null;
   product_category: string | null;
-  financial_review: string | null;
 }
 
 const props = withDefaults(
@@ -32,8 +30,7 @@ const props = withDefaults(
     latestApprovedVerification: {
       approved_limit: number | null
       approved_top: number | null
-      financial_review_snapshot: string | null
-      notes: string | null
+      financial_review: string | null
       finance_attachments: FinanceAttachment[]
       reviewed_at: string | null
     } | null
@@ -45,7 +42,6 @@ const props = withDefaults(
 const emit = defineEmits<{ (e: 'saved'): void }>()
 
 const { success, error: notifyError } = useNotification()
-const slots = useSlots()
 
 const CREDIT_PRODUCT_CATEGORIES = [
   { value: "crushed_stone", title: "Crushed Stone", unit: "m³" },
@@ -58,18 +54,10 @@ const requestedLimit = ref<number | null>(null)
 const requestedTop = ref<number | null>(null)
 const requestedQty = ref<number | null>(null);
 const productCategory = ref<string>("");
-const financialReview = ref<string>("");
 
 const locked = computed<boolean>(() => props.isUnderReview || props.readonly)
 const unit = computed<string>(
   () => CREDIT_PRODUCT_CATEGORIES.find((c) => c.value === productCategory.value)?.unit ?? "",
-);
-const financialReviewDisplay = computed<string>(() => {
-  if (props.snapshot) return financialReview.value;
-  return financialReview.value || props.latestApprovedVerification?.financial_review_snapshot || "";
-});
-const showFinanceNotesBlock = computed<boolean>(
-  () => !!slots['finance-notes'] || !!props.latestApprovedVerification,
 );
 
 onMounted(() => {
@@ -86,7 +74,6 @@ function applySnapshot(snapshot: CreditRequestSnapshot): void {
   requestedTop.value = snapshot.requested_top;
   requestedQty.value = toQtyNumber(snapshot.requested_qty);
   productCategory.value = snapshot.product_category ?? "";
-  financialReview.value = snapshot.financial_review ?? "";
 }
 
 async function fetchCreditRequest(): Promise<void> {
@@ -98,7 +85,6 @@ async function fetchCreditRequest(): Promise<void> {
       requestedTop.value = data.requested_top
       requestedQty.value = toQtyNumber(data.requested_qty);
       productCategory.value = data.product_category ?? "";
-      financialReview.value = data.financial_review ?? "";
     }
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat pengajuan kredit.')
@@ -124,13 +110,11 @@ async function saveCreditRequest(): Promise<void> {
       requested_top: requestedTop.value,
       requested_qty: qtyFilled ? requestedQty.value : null,
       product_category: productCategory.value === "" ? null : productCategory.value,
-      financial_review: financialReview.value || null,
     })
     requestedLimit.value = data.requested_limit
     requestedTop.value = data.requested_top
     requestedQty.value = toQtyNumber(data.requested_qty);
     productCategory.value = data.product_category ?? "";
-    financialReview.value = data.financial_review ?? "";
     success('Berhasil', 'Pengajuan kredit tersimpan.')
     emit('saved')
   } catch (e: any) {
@@ -260,39 +244,32 @@ function formatFileSize(bytes?: number | null): string {
             </table>
           </div>
 
-          <div class="mt-3 p-4 border border-slate-200 rounded-lg">
+          <div v-if="$slots['financial-review'] || props.latestApprovedVerification" class="mt-3 p-4 border border-slate-200 rounded-lg">
             <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
-              <Lucide icon="Info" class="w-3.5 h-3.5 shrink-0" />Financial Review
-              <RequiredAsterisk v-if="!locked" />
+              <Lucide icon="FileText" class="w-3.5 h-3.5 shrink-0" />Financial Review
+              <RequiredAsterisk v-if="$slots['financial-review']" />
             </h3>
-            <RichTextField v-if="!locked" v-model="financialReview" :disabled="saving" />
-            <template v-else>
-              <div v-if="financialReviewDisplay" class="rich-text-content text-body" v-html="financialReviewDisplay" />
-              <div v-else class="bg-slate-50 mt-1 px-3 py-2 border border-slate-200 rounded-lg text-body">-</div>
-            </template>
-          </div>
-
-          <div v-if="showFinanceNotesBlock" class="mt-3 p-4 border border-slate-200 rounded-lg">
-            <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
-              <Lucide icon="FileText" class="w-3.5 h-3.5 shrink-0" />Catatan Admin Finance
-            </h3>
-            <slot name="finance-notes">
-              <div v-if="props.latestApprovedVerification?.notes" class="rich-text-content text-body"
-                v-html="props.latestApprovedVerification.notes" />
+            <slot name="financial-review">
+              <div v-if="props.latestApprovedVerification?.financial_review" class="rich-text-content text-body"
+                v-html="props.latestApprovedVerification.financial_review" />
               <div v-else class="text-body">-</div>
-              <ul v-if="props.latestApprovedVerification?.finance_attachments?.length" class="space-y-1 mt-2">
-                <li v-for="attachment in props.latestApprovedVerification.finance_attachments" :key="attachment.path"
-                  class="flex items-center gap-1.5">
-                  <Lucide icon="Paperclip" class="w-4 h-4 text-slate-400 shrink-0" />
-                  <a v-if="attachment.url" :href="attachment.url" target="_blank" class="text-body-strong text-primary">
-                    {{ attachment.original_name }}
-                  </a>
-                  <span v-else class="text-body-strong">{{ attachment.original_name }}</span>
-                  <span v-if="attachment.size_bytes != null" class="text-caption text-slate-500">
-                    ({{ formatFileSize(attachment.size_bytes) }})
-                  </span>
-                </li>
-              </ul>
+              <div class="mt-3 pt-3 border-slate-200 border-t">
+                <div class="mb-1 text-form-label">Lampiran</div>
+                <ul v-if="props.latestApprovedVerification?.finance_attachments?.length" class="space-y-1">
+                  <li v-for="attachment in props.latestApprovedVerification.finance_attachments" :key="attachment.path"
+                    class="flex items-center gap-1.5">
+                    <Lucide icon="Paperclip" class="w-4 h-4 text-slate-400 shrink-0" />
+                    <a v-if="attachment.url" :href="attachment.url" target="_blank" class="text-body-strong text-primary">
+                      {{ attachment.original_name }}
+                    </a>
+                    <span v-else class="text-body-strong">{{ attachment.original_name }}</span>
+                    <span v-if="attachment.size_bytes != null" class="text-caption text-slate-500">
+                      ({{ formatFileSize(attachment.size_bytes) }})
+                    </span>
+                  </li>
+                </ul>
+                <div v-else class="text-body text-slate-500">Tidak ada lampiran yang diunggah.</div>
+              </div>
             </slot>
           </div>
 

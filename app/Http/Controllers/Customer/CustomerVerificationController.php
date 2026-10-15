@@ -102,7 +102,7 @@ class CustomerVerificationController extends Controller
                 $customerVerification,
                 (int) $data['approved_limit'],
                 (int) $data['approved_top'],
-                $data['notes'] ?? null,
+                $data['financial_review'],
                 $request->file('attachments', []),
                 $user->id
             );
@@ -115,7 +115,7 @@ class CustomerVerificationController extends Controller
             'status'              => $customerVerification->status->value,
             'approved_limit'      => $customerVerification->approved_limit,
             'approved_top'        => $customerVerification->approved_top,
-            'notes'               => $customerVerification->notes,
+            'financial_review'    => $customerVerification->financial_review,
             'finance_attachments' => $customerVerification->formatFinanceAttachments(),
             'reviewed_at'         => $customerVerification->reviewed_at,
             'reviewed_by'         => [
@@ -246,8 +246,7 @@ class CustomerVerificationController extends Controller
             'unit_snapshot'                    => $cv->product_category_snapshot?->unit(),
             'approved_limit'                   => $cv->approved_limit,
             'approved_top'                     => $cv->approved_top,
-            'financial_review_snapshot'        => $cv->financial_review_snapshot,
-            'notes'                            => $cv->notes,
+            'financial_review'                 => $cv->financial_review,
             'finance_attachments'              => $cv->formatFinanceAttachments(),
             'customer'                         => $cv->customer,
             'lcr'                              => [

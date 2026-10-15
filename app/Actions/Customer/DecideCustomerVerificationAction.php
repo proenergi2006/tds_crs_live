@@ -4,7 +4,6 @@ namespace App\Actions\Customer;
 
 use App\Enums\CustomerVerificationStatus;
 use App\Models\Customer;
-use App\Models\CustomerCreditRequest;
 use App\Models\CustomerVerification;
 use App\Services\CustomerCodeGenerator;
 use Illuminate\Http\UploadedFile;
@@ -14,26 +13,24 @@ use Mews\Purifier\Facades\Purifier;
 
 class DecideCustomerVerificationAction
 {
-    public function approve(CustomerVerification $verification, int $approvedLimit, int $approvedTop, ?string $notes, array $attachments, int $reviewedBy): CustomerVerification
+    public function approve(CustomerVerification $verification, int $approvedLimit, int $approvedTop, string $financialReview, array $attachments, int $reviewedBy): CustomerVerification
     {
         $storedAttachments = $this->storeAttachments($verification, $attachments);
 
-        return DB::transaction(function () use ($verification, $approvedLimit, $approvedTop, $notes, $storedAttachments, $reviewedBy) {
+        return DB::transaction(function () use ($verification, $approvedLimit, $approvedTop, $financialReview, $storedAttachments, $reviewedBy) {
             $customer = $verification->customer;
 
             $verification->update([
                 'status'              => CustomerVerificationStatus::Approved,
                 'approved_limit'      => $approvedLimit,
                 'approved_top'        => $approvedTop,
-                'notes'               => filled($notes) ? Purifier::clean($notes, 'ckeditor') : null,
+                'financial_review'    => Purifier::clean($financialReview, 'ckeditor'),
                 'finance_attachments' => $storedAttachments,
                 'reviewed_at'         => now(),
                 'reviewed_by'         => $reviewedBy,
             ]);
 
             $this->assignCustomerCode($customer);
-
-            CustomerCreditRequest::where('id_customer', $customer->id_customer)->update(['financial_review' => null]);
 
             return $verification->fresh();
         });
