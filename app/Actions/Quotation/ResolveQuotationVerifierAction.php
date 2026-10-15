@@ -9,8 +9,6 @@ use Illuminate\Validation\ValidationException;
 
 class ResolveQuotationVerifierAction
 {
-    private const JENIS_PRODUK_POLIMER = 11;
-
     public function execute(Quotation $quotation): array
     {
         $quotation->loadMissing('items.productPrice', 'items.product');
@@ -39,7 +37,7 @@ class ResolveQuotationVerifierAction
         }
 
         $tier      = PriceTier::highest($itemTiers);
-        $isPolimer = $quotation->items->contains(fn ($item) => (int) $item->product?->id_jenis === self::JENIS_PRODUK_POLIMER);
+        $isPolimer = $quotation->isPolimer();
 
         return [
             'item_tiers' => $itemTiers,

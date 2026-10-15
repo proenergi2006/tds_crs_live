@@ -21,6 +21,8 @@ import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vu
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { QUOTATION_STATUS } from '@/pages/Quotation/status'
 import { formatCurrency, formatDate, formatDateRangeShort, formatNumber, toDateKey, todayDateKey } from '@/utils/format'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import type { ApiPaginatedResponse, ApiResponse, QuotationIndexRow } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,7 +30,6 @@ const { success, error: notifyError } = useNotification()
 
 const quotationIdFromQuery = String(route.query.quotation_id ?? '')
 const idPoc = String(route.params.id ?? '')
-const isEditMode = computed(() => route.name === 'po-customers-edit')
 
 const pageLoading = ref(false)
 const submitting = ref(false)
@@ -56,6 +57,7 @@ const form = reactive({
   produk_poc: '' as number | string,
 })
 
+const isEditMode = computed(() => route.name === 'po-customers-edit')
 const quotationTotalQuantity = computed<number>(() =>
   items.value.reduce((sum, it) => sum + Number(it.quantity ?? 0), 0),
 )
@@ -150,7 +152,8 @@ async function loadPoCustomer(): Promise<boolean> {
   pageLoading.value = true
 
   try {
-    const { data } = await axios.get(`/api/customer-pos/${idPoc}`)
+    const { data: body } = await axios.get<ApiResponse<any>>(`/api/customer-pos/${idPoc}`)
+    const data = body.data
 
     if (!['awaiting_process', 'blocked'].includes(data.status_key)) {
       notifyError('Gagal', 'PO Customer tidak bisa diubah karena sudah masuk proses Sales Confirmation.')
@@ -162,7 +165,7 @@ async function loadPoCustomer(): Promise<boolean> {
     form.quotation_id = data.quotation_id
     return true
   } catch (e: any) {
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data PO Customer')
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal memuat data PO Customer'))
     router.push({ name: 'po-customers-detail', params: { id: idPoc } })
     return false
   } finally {
@@ -189,12 +192,13 @@ function applyPoCustomerToForm() {
 
 async function fetchQuotationOptions() {
   try {
-    const { data } = await axios.get('/api/penawarans', {
+    const { data } = await axios.get<ApiPaginatedResponse<QuotationIndexRow>>('/api/quotations', {
       params: {
         status: QUOTATION_STATUS.Approved,
         per_page: 200,
         valid_today: 1,
         ...(isEditMode.value && poRecord.value?.id_customer ? { customer_id: poRecord.value.id_customer } : {}),
+        ...(isEditMode.value && poRecord.value?.quotation?.brand ? { brand: poRecord.value.quotation.brand } : {}),
       },
     })
     quotationOptions.value = (data.data ?? []).map((row: any) => ({
@@ -213,7 +217,8 @@ async function fetchQuotationDetail(id: string | number) {
   pageLoading.value = true
 
   try {
-    const { data } = await axios.get(`/api/penawarans/${id}`)
+    const { data: body } = await axios.get<ApiResponse<any>>(`/api/quotations/${id}`)
+    const data = body.data
 
     form.customer_id = data.customer_id
     form.customer_nama = data.customer?.company_name || '-'
@@ -293,16 +298,16 @@ async function submit() {
 
   try {
     if (isEditMode.value) {
-      await axios.post(`/api/customer-pos/${idPoc}`, payload, {
+      const { data } = await axios.post<ApiResponse<unknown>>(`/api/customer-pos/${idPoc}`, payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      success('Berhasil', 'PO Customer berhasil diperbarui')
+      success('Berhasil', data.message || 'PO Customer berhasil diperbarui')
       router.push({ name: 'po-customers-detail', params: { id: idPoc } })
     } else {
-      await axios.post('/api/customer-pos', payload, {
+      const { data } = await axios.post<ApiResponse<unknown>>('/api/customer-pos', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      success('Berhasil', 'PO Customer berhasil dibuat')
+      success('Berhasil', data.message || 'PO Customer berhasil dibuat')
       router.push({ name: 'po-customers-index' })
     }
   } catch (e: any) {
@@ -313,7 +318,7 @@ async function submit() {
       notifyError('Gagal', e.response?.data?.message ?? 'PO Customer tidak bisa diubah.')
       router.push({ name: 'po-customers-detail', params: { id: idPoc } })
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Terjadi kesalahan saat menyimpan PO')
+      notifyError('Gagal', actionErrorMessage(e, 'Terjadi kesalahan saat menyimpan PO'))
     }
   } finally {
     submitting.value = false
@@ -325,7 +330,7 @@ function goBack() {
     router.push({ name: 'po-customers-detail', params: { id: idPoc } })
     return
   }
-  router.push({ name: 'penawarans-list' })
+  router.push({ name: 'quotations.index' })
 }
 
 function fieldError(field: 'quotation_id' | 'nomor_po' | 'tipe_bayar' | 'termin_hari' | 'tanggal_po' | 'tanggal_kirim' | 'volumePoc') {

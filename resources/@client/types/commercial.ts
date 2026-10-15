@@ -1,6 +1,8 @@
 export type QuotationBrand = 'tds' | 'proenergi'
 
-export type QuotationStatus = 'draft' | 'waiting_verification' | 'approved' | 'rejected'
+export type QuotationPriceTier = 'tier_1' | 'tier_2' | 'tier_3'
+
+export type QuotationStatus ='draft' | 'waiting_verification' | 'approved' | 'rejected'
 
 export type TransportBasis = 'loco' | 'franco'
 
@@ -40,4 +42,45 @@ export interface QuotationItemLine {
   cogs_basis: TransportBasis | null
   transport_price: number | null
   saved_transport_price: number | null
+}
+
+export interface QuotationIndexRowItem {
+  id: number
+  quantity: number | string | null
+  product: {
+    nama_produk: string
+    jenis: { nama: string } | null
+    ukuran: { nama_ukuran: string } | null
+  } | null
+}
+
+export interface QuotationIndexRow {
+  id: number
+  nomor_penawaran: string | null
+  keterangan: string | null
+  user_id: number
+  status: QuotationStatus
+  status_label: string | null
+  brand: QuotationBrand
+  brand_label: string
+  masa_berlaku: string | null
+  sampai_dengan: string | null
+  total_volume: number | string | null
+  customer: { company_name: string } | null
+  marketing: { name: string } | null
+  items: QuotationIndexRowItem[]
+  created_at: string
+}
+
+export interface QuotationQueueRow {
+  id: number
+  nomor_penawaran: string | null
+  status: QuotationStatus
+  brand: QuotationBrand
+  brand_label: string
+  price_tier: QuotationPriceTier | null
+  masa_berlaku: string | null
+  sampai_dengan: string | null
+  customer: { company_name: string } | null
+  branch: { nama_cabang: string } | null
 }

@@ -99,7 +99,11 @@ class UpdatePoCustomerRequest extends FormRequest
             return 'Penawaran harus milik customer yang sama dengan PO.';
         }
 
-        if ($user->cant('penawaran.viewAny') && (int) $replacement->user_id !== (int) $user->id) {
+        if ($replacement->brand !== $po->quotation?->brand) {
+            return 'Penawaran pengganti harus dari brand yang sama dengan penawaran PO.';
+        }
+
+        if ($user->cant($replacement->brand->viewAnyPermission()) && (int) $replacement->user_id !== (int) $user->id) {
             return 'Penawaran ini bukan milik Anda.';
         }
 

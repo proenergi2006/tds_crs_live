@@ -147,6 +147,7 @@
   import Swal from 'sweetalert2'
   import Button from '@/components/Base/Button'
   import Lucide from '@/components/Base/Lucide'
+  import type { ApiResponse } from '@/types'
   
   const route = useRoute()
   const router = useRouter()
@@ -178,7 +179,8 @@
   function money(n:any){ const x=Number(n||0); return `Rp. ${x.toLocaleString('id-ID',{ minimumFractionDigits:2, maximumFractionDigits:2 })}` }
   
   async function loadHeaderFromDetail(){
-    const { data } = await axios.get(`/api/sales-confirmations/po/${idPoc}`)
+    const { data: body } = await axios.get<ApiResponse<any>>(`/api/sales-confirmations/po/${idPoc}`)
+    const data = body.data
     const poc  = data.poc || {}
     const cust = data.customer || {}
     const quotation = data.quotation || {}
@@ -210,7 +212,8 @@
   
   async function loadItems(){
     try{
-      const { data } = await axios.get(`/api/po-customers/${idPoc}/plan`)
+      const { data: body } = await axios.get<ApiResponse<any>>(`/api/po-customers/${idPoc}/plan`)
+      const data = body.data
       rows.value = data.items || []
       if (data.header){
         h.value.shipped_liter        = Number(data.header.shipped_liter || 0)
@@ -235,16 +238,16 @@
     if (volError.value){ Swal.fire('Validasi', volError.value, 'warning'); return }
   
     try{
-      const { data } = await axios.post(`/api/po-customers/${idPoc}/plan`, {
+      const { data } = await axios.post<ApiResponse<{ id: number; header_patch?: Record<string, any> }>>(`/api/po-customers/${idPoc}/plan`, {
         address: form.value.address || null,
         ship_date: form.value.ship_date,
         volume_kirim: Number(form.value.volume_liter),
         notes: form.value.notes || null,
         is_urgent: false,
       })
-      if (data?.header_patch){
-        h.value.shipped_liter        = data.header_patch.shipped_liter
-        h.value.book_remaining_liter = data.header_patch.book_remaining_liter
+      if (data?.data?.header_patch){
+        h.value.shipped_liter        = data.data.header_patch.shipped_liter
+        h.value.book_remaining_liter = data.data.header_patch.book_remaining_liter
       }
       show.value = false
       await loadItems()
@@ -258,10 +261,10 @@
     const ok = await Swal.fire({ title: 'Hapus data?', icon: 'warning', showCancelButton: true })
     if (!ok.isConfirmed) return
     try{
-      const { data } = await axios.delete(`/api/po-customers/${idPoc}/plan/${r.id}`)
-      if (data?.header_patch){
-        h.value.shipped_liter        = data.header_patch.shipped_liter
-        h.value.book_remaining_liter = data.header_patch.book_remaining_liter
+      const { data } = await axios.delete<ApiResponse<{ header_patch?: Record<string, any> }>>(`/api/po-customers/${idPoc}/plan/${r.id}`)
+      if (data?.data?.header_patch){
+        h.value.shipped_liter        = data.data.header_patch.shipped_liter
+        h.value.book_remaining_liter = data.data.header_patch.book_remaining_liter
       }
       await loadItems()
     }catch(e:any){

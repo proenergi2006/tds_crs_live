@@ -4,15 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Actions\PoCustomer\SubmitPoCustomerUnblockRequestAction;
 use App\Enums\PoCustomerScProcessState;
-use App\Http\Requests\PoCustomer\StorePoCustomerUnblockRequestRequest;
+use App\Http\Requests\PoCustomer\StorePoCustomerUnblockRequestRequest as StoreRequest;
+use App\Http\Responses\ApiResponse;
 use App\Models\PoCustomer;
 use App\Models\PoCustomerUnblockRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PoCustomerUnblockRequestController extends Controller
 {
-    private const ROLE_ADMIN_FINANCE = 9;
     private const PPN_RATE = 0.11;
 
     private const APPROVAL_STEP_RELATIONS = [
@@ -22,21 +23,29 @@ class PoCustomerUnblockRequestController extends Controller
         'latestDocumentApproval.steps.actor:id,name',
     ];
 
-    public function store(StorePoCustomerUnblockRequestRequest $request, PoCustomer $poc, SubmitPoCustomerUnblockRequestAction $action): \Illuminate\Http\JsonResponse
-    {
+    public function store(
+        StoreRequest $request,
+        PoCustomer $poc,
+        SubmitPoCustomerUnblockRequestAction $action
+    ): JsonResponse {
+        $this->authorize('submitSalesConfirmation', $poc);
+
         $user = $request->user();
-        if ($user->cant('sales-confirmation.manage') || (int) $user->primary_role_id !== self::ROLE_ADMIN_FINANCE) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
 
         $po = $poc;
 
         if ($po->sc_process_state !== PoCustomerScProcessState::Blocked) {
-            return response()->json(['message' => 'Unblock hanya untuk PO yang diblokir kredit.'], 409);
+            return ApiResponse::error(
+                'Unblock hanya untuk PO yang diblokir kredit.',
+                409
+            );
         }
 
         if ($po->activeUnblockRequest() !== null || $po->approvedUnblockRequest() !== null) {
-            return response()->json(['message' => 'Sudah ada pengajuan Unblock aktif / disetujui untuk PO ini.'], 409);
+            return ApiResponse::error(
+                'Sudah ada pengajuan Unblock aktif / disetujui untuk PO ini.',
+                409
+            );
         }
 
         $unblockRequest = $action->execute(
@@ -50,14 +59,16 @@ class PoCustomerUnblockRequestController extends Controller
 
         $unblockRequest->load(self::APPROVAL_STEP_RELATIONS);
 
-        return response()->json($this->formatUnblockRequest($unblockRequest), 201);
+        return ApiResponse::success(
+            $this->formatUnblockRequest($unblockRequest),
+            'Pengajuan Unblock berhasil dikirim.',
+            201
+        );
     }
 
-    public function unblockContext(Request $request, PoCustomer $poc): \Illuminate\Http\JsonResponse
+    public function unblockContext(Request $request, PoCustomer $poc): JsonResponse
     {
-        if ($request->user()->cant('sales-confirmation.manage')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $this->authorize('viewUnblockContext', $poc);
 
         $po = $poc->load([
             'customer:id_customer,customer_code,company_name',
@@ -68,13 +79,16 @@ class PoCustomerUnblockRequestController extends Controller
         $activeRequest = $po->activeUnblockRequest();
         $activeRequest?->load(self::APPROVAL_STEP_RELATIONS);
 
-        return response()->json([
-            'po' => array_merge($this->formatPoSummary($po), [
-                'status_key'   => $po->status_key,
-                'status_label' => $po->status_label,
-            ]),
-            'active_request' => $activeRequest ? $this->formatUnblockRequest($activeRequest) : null,
-        ]);
+        return ApiResponse::success(
+            [
+                'po' => array_merge($this->formatPoSummary($po), [
+                    'status_key'   => $po->status_key,
+                    'status_label' => $po->status_label,
+                ]),
+                'active_request' => $activeRequest ? $this->formatUnblockRequest($activeRequest) : null,
+            ],
+            'Konteks Unblock berhasil dimuat.'
+        );
     }
 
     private function formatUnblockRequest(PoCustomerUnblockRequest $unblockRequest): array

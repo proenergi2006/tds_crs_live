@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentApprovalStatus;
 use App\Enums\SalesConfirmationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,5 +67,26 @@ class SalesConfirmation extends Model
     public function latestDocumentApproval(): MorphOne
     {
         return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
+
+    public function activeBmStep(): ?DocumentApprovalStep
+    {
+        $cycle = $this->latestDocumentApproval;
+
+        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress || (int) $cycle->current_step_order !== 1) {
+            return null;
+        }
+
+        return $cycle->steps->firstWhere('step_order', 1);
+    }
+
+    public function isDecidableBy(User $user): bool
+    {
+        $step = $this->activeBmStep();
+
+        return $this->disposisi === SalesConfirmationStatus::PendingBm
+            && $step !== null
+            && $user->can('sales-confirmation.approve')
+            && $user->hasRole((int) $step->id_role);
     }
 }

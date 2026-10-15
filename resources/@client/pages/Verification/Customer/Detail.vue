@@ -123,7 +123,7 @@ async function fetchQuotations(): Promise<void> {
   quotationsLoading.value = true
   quotationsError.value = null
   try {
-    const { data } = await axios.get(`/api/customers/${detail.value.customer.id_customer}/penawarans`)
+    const { data } = await axios.get(`/api/customers/${detail.value.customer.id_customer}/quotations`)
     quotations.value = Array.isArray(data?.data) ? data.data : []
   } catch (e: any) {
     quotationsError.value = e.response?.data?.message ?? 'Gagal memuat Penawaran.'

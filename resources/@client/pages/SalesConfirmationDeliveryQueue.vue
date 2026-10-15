@@ -135,6 +135,7 @@
   import { FormInput, FormSelect } from '@/components/Base/Form'
   import Lucide from '@/components/Base/Lucide'
   import { useRouter } from 'vue-router'
+  import type { ApiPaginatedResponse } from '@/types'
   
   const router = useRouter()
   
@@ -165,7 +166,7 @@
   
   async function fetchData(toPage = 1){
     try{
-      const { data } = await axios.get('/api/sales-confirmations', {
+      const { data } = await axios.get<ApiPaginatedResponse<any>>('/api/sales-confirmations', {
         params: {
           page: toPage,
           per_page: perPage.value,
@@ -181,8 +182,8 @@
         book_remaining_liter: Number(r.book_remaining_liter ?? 0),
         close_volume_liter: Number(r.close_volume_liter ?? 0),
       }))
-      page.value = data.current_page
-      lastPage.value = data.last_page
+      page.value = data.meta.current_page
+      lastPage.value = data.meta.last_page
     }catch(e:any){
       Swal.fire('Error', e.response?.data?.message || 'Gagal memuat data', 'error')
     }

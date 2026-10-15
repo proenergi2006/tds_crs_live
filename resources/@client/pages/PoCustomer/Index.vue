@@ -13,6 +13,8 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
+import { canManageQuotationBrand, manageableBrands } from '@/utils/quotation-brand'
+import type { ApiPaginatedResponse } from '@/types'
 
 import { poCustomerStatusBadgeClass } from './status'
 
@@ -29,7 +31,7 @@ const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
 
-const canManage = computed(() => auth.can('penawaran.manage'))
+const canCreatePo = computed<boolean>(() => manageableBrands(auth.can).length > 0)
 
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
@@ -39,15 +41,15 @@ onMounted(() => fetchData(1))
 async function fetchData(page = 1): Promise<void> {
   loading.value = true
   try {
-    const { data } = await poCustomerApi.getAll({
+    const { data }: { data: ApiPaginatedResponse<any> } = await poCustomerApi.getAll({
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
     })
     poCustomers.value = data.data ?? []
-    currentPage.value = data.current_page ?? 1
-    totalPages.value = data.last_page ?? 1
-    totalRecords.value = data.total ?? poCustomers.value.length
+    currentPage.value = data.meta.current_page ?? 1
+    totalPages.value = data.meta.last_page ?? 1
+    totalRecords.value = data.meta.total ?? poCustomers.value.length
   } catch (e: any) {
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data PO Customer.')
   } finally {
@@ -61,7 +63,11 @@ function goToPage(page: number): void {
 }
 
 function canEditRow(row: any): boolean {
-  return canManage.value && ['awaiting_process', 'blocked'].includes(row.status_key)
+  return (
+    ['awaiting_process', 'blocked'].includes(row.status_key) &&
+    !!row.quotation?.brand &&
+    canManageQuotationBrand(auth.can, row.quotation.brand)
+  )
 }
 
 function goToCreate(): void {
@@ -74,7 +80,7 @@ function goToCreate(): void {
     <div class="intro-y flex flex-col gap-4">
       <PageHeader title="PO Customer" description="Daftar PO Customer dan status verifikasinya.">
         <template #action>
-          <Button v-if="canManage" variant="white" class="inline-flex items-center gap-2" @click="goToCreate">
+          <Button v-if="canCreatePo" variant="white" class="inline-flex items-center gap-2" @click="goToCreate">
             <Lucide icon="PlusCircle" class="w-4 h-4" />
             Buat PO Customer
           </Button>

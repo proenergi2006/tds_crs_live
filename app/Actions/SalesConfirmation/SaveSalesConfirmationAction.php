@@ -2,6 +2,7 @@
 
 namespace App\Actions\SalesConfirmation;
 
+use App\Enums\QuotationVerifierRole;
 use App\Enums\SalesConfirmationStatus;
 use App\Models\CustomerAdminArnya;
 use App\Models\PoCustomer;
@@ -71,7 +72,11 @@ class SaveSalesConfirmationAction
 
                 $service = new DocumentApprovalService();
                 if (!$service->activeCycle($sc)) {
-                    $service->startCycle($sc, 'sales_confirmation');
+                    $quotation = $po->loadMissing('quotation')->quotation;
+                    $service->startSingleStepCycle(
+                        $sc,
+                        QuotationVerifierRole::branchManagerFor($quotation->brand, $quotation->isPolimer())->value
+                    );
                 }
 
                 return $sc->refresh();

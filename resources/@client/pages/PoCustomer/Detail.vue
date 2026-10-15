@@ -12,6 +12,9 @@ import { useNotification } from '@/components/SystemDesign/Notification/useNotif
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import { canManageQuotationBrand } from '@/utils/quotation-brand'
+import type { ApiResponse, QuotationBrand } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,13 +28,19 @@ const poCustomer = ref<any>(null)
 const loading = ref(true)
 const processing = ref(false)
 
+const quotationBrand = computed<QuotationBrand | null>(() => poCustomer.value?.quotation?.brand ?? null)
+
+const canManagePoBrand = computed<boolean>(() =>
+  quotationBrand.value ? canManageQuotationBrand(auth.can, quotationBrand.value) : false,
+)
+
 const canProcessSc = computed<boolean>(
-  () => poCustomer.value?.status_key === 'awaiting_process' && auth.can('penawaran.manage'),
+  () => poCustomer.value?.status_key === 'awaiting_process' && canManagePoBrand.value,
 )
 
 const canEditPo = computed<boolean>(
   () =>
-    auth.can('penawaran.manage') &&
+    canManagePoBrand.value &&
     ['awaiting_process', 'blocked'].includes(poCustomer.value?.status_key),
 )
 
@@ -106,12 +115,20 @@ const attachmentIsPdf = computed<boolean>(() =>
 onMounted(load)
 
 async function load(): Promise<void> {
+  if (!Number.isInteger(idPoc) || idPoc <= 0) {
+    poCustomer.value = null
+    loading.value = false
+    redirectToErrorPage(router, 404)
+    return
+  }
+
   loading.value = true
   try {
-    const { data } = await poCustomerApi.getById(idPoc)
-    poCustomer.value = data
+    const { data }: { data: ApiResponse<any> } = await poCustomerApi.getById(idPoc)
+    poCustomer.value = data.data
   } catch (e: any) {
     poCustomer.value = null
+    if (redirectToErrorPage(router, e.response?.status)) return
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat PO Customer.')
   } finally {
     loading.value = false
@@ -121,15 +138,15 @@ async function load(): Promise<void> {
 async function processSalesConfirmation(): Promise<void> {
   processing.value = true
   try {
-    const { data } = await axios.post(`/api/po-customers/${idPoc}/process-sc`)
-    success('Berhasil', data.status_label ?? 'Proses SC selesai.')
+    const { data } = await axios.post<ApiResponse<unknown>>(`/api/po-customers/${idPoc}/process-sc`)
+    success('Berhasil', data.message || 'Proses SC selesai.')
     await load()
   } catch (e: any) {
     if (e.response?.status === 409) {
       notifyError('Gagal', e.response?.data?.message ?? 'Status PO Customer sudah berubah.')
       await load()
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal memproses gerbang Sales Confirmation.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal memproses gerbang Sales Confirmation.'))
     }
   } finally {
     processing.value = false

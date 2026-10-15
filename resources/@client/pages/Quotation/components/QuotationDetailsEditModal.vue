@@ -6,6 +6,8 @@ import TomSelect from '@/components/Base/TomSelect'
 import { FormLabel, FormTextarea } from '@/components/Base/Form'
 import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import type { ApiResponse } from '@/types'
 
 const TEXT_FIELDS = ['lokasi_pengiriman', 'keterangan', 'catatan', 'syarat_ketentuan', 'lampiran_tambahan'] as const
 
@@ -13,7 +15,6 @@ type TextField = (typeof TEXT_FIELDS)[number]
 
 const props = defineProps<{
   open: boolean
-  apiBase: string
   quotation: {
     id: number
     nomor_penawaran: string | null
@@ -117,8 +118,8 @@ async function submitForm() {
     serverErrors[key as keyof typeof serverErrors] = ''
   })
   try {
-    await axios.patch(`${props.apiBase}/${props.quotation.id}/details`, payload)
-    success('Berhasil', 'Info penawaran diperbarui.')
+    const { data } = await axios.patch<ApiResponse<unknown>>(`/api/quotations/${props.quotation.id}/details`, payload)
+    success('Berhasil', data.message || 'Info penawaran diperbarui.')
     emit('saved')
   } catch (e: any) {
     if (e.response?.status === 422 && e.response.data?.errors) {
@@ -127,7 +128,7 @@ async function submitForm() {
       }
       formError.value = e.response.data.message ?? 'Periksa kembali isian Anda.'
     } else {
-      notifyError('Gagal', e.response?.data?.message || 'Gagal memperbarui info penawaran.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal memperbarui info penawaran.'))
       emit('close')
     }
   } finally {

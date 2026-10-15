@@ -12,6 +12,9 @@ import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { FORBIDDEN_ACTION_MESSAGE, actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import { quotationPermission } from '@/utils/quotation-brand'
+import type { ApiResponse } from '@/types'
 
 import { salesConfirmationBadgeClass } from './status'
 
@@ -20,6 +23,19 @@ type AdminAttachment = {
   original_name: string | null
   url: string | null
   size_bytes: number | null
+}
+
+interface SalesConfirmationBmApproval {
+  current_step_order: number
+  can_decide: boolean
+  steps: {
+    step_order: number
+    step_name: string | null
+    status: string
+    actor_name: string | null
+    acted_at: string | null
+    decision_note: string | null
+  }[]
 }
 
 type ArBucketKey =
@@ -35,8 +51,9 @@ const auth = useAuthStore()
 const { success, error: notifyError } = useNotification()
 
 const ROLE_ADMIN_FINANCE = 9
-const ROLE_BM = 8
 const idPoc = Number(route.params.id)
+
+const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
 const arBuckets = [
   { key: 'outstanding_current', label: 'Belum Jatuh Tempo' },
@@ -88,12 +105,9 @@ const isAdminEditable = computed<boolean>(
     (scDisposisi.value === null || scDisposisi.value === 1),
 )
 
-const isBmDecidable = computed<boolean>(
-  () =>
-    auth.hasRole(ROLE_BM) &&
-    scDisposisi.value === 2 &&
-    detail.value?.bm_approval?.current_step_order === 1,
-)
+const bmApproval = computed<SalesConfirmationBmApproval | null>(() => detail.value?.bm_approval ?? null)
+
+const isBmDecidable = computed<boolean>(() => bmApproval.value?.can_decide === true)
 
 const bmSubmitDisabled = computed<boolean>(
   () => bmSubmitting.value || (bmDecision.value === 'reject' && bmNote.value.trim() === ''),
@@ -101,7 +115,7 @@ const bmSubmitDisabled = computed<boolean>(
 
 const bmRejectionStep = computed<any>(() => {
   if (scDisposisi.value !== 1) return null
-  const step = detail.value?.bm_approval?.steps?.[0]
+  const step = bmApproval.value?.steps?.[0]
   return step?.decision_note ? step : null
 })
 
@@ -127,18 +141,9 @@ const approvalSteps = computed<Array<{ label: string; text: string }>>(() => {
 
 const quotationLink = computed<{ name: string } | null>(() => {
   const p = detail.value?.quotation
-  if (!p?.id) return null
-  if (p.brand === 'tds') {
-    if (auth.can('penawaran.viewOwn')) return { name: 'penawarans-detail' }
-    if (auth.can('penawaran.verify-ceo')) return { name: 'penawarans-verifikasi-ceo-detail' }
-    if (auth.can('penawaran.verify')) return { name: 'penawarans-verifikasi-bm-detail' }
-  } else if (p.brand === 'proenergi') {
-    if (auth.can('penawaran.proenergi.viewOwn')) return { name: 'penawarans-detail-proenergi' }
-    if (auth.can('penawaran.verify-ceo')) return { name: 'penawarans-verifikasi-ceo-detail-proenergi' }
-    if (auth.can('penawaran.proenergi.verify-bm')) {
-      return { name: 'penawarans-verifikasi-bm-detail-proenergi' }
-    }
-  }
+  if (!p?.id || !p.brand) return null
+  if (auth.can(quotationPermission(p.brand, 'viewOwn'))) return { name: 'quotations.show' }
+  if (auth.can(quotationPermission(p.brand, 'verify'))) return { name: 'verification.quotations.show' }
   return null
 })
 
@@ -171,8 +176,6 @@ const headerTheme = computed<{ banner: string; icon: string }>(() => {
       return { banner: 'border-blue-200 bg-blue-50', icon: 'bg-blue-600 text-white' }
   }
 })
-
-const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
 const priceValidity = computed<string>(() => {
   const p = detail.value?.quotation
@@ -220,6 +223,10 @@ const existingAdminFiles = computed(() =>
   })),
 )
 
+const attachmentKind = computed(() => resolveAttachmentKind(attachmentName.value))
+
+onMounted(load)
+
 function resolveAttachmentKind(name: string): { icon: 'FileText' | 'FileImage' | 'File'; iconClass: string; label: string } {
   const ext = name.split('.').pop()?.toLowerCase() ?? ''
   if (ext === 'pdf') return { icon: 'FileText', iconClass: 'bg-red-100 text-red-600', label: 'PDF file' }
@@ -229,8 +236,6 @@ function resolveAttachmentKind(name: string): { icon: 'FileText' | 'FileImage' |
   return { icon: 'File', iconClass: 'bg-slate-100 text-slate-600', label: 'File' }
 }
 
-const attachmentKind = computed(() => resolveAttachmentKind(attachmentName.value))
-
 function adminAttachmentName(file: AdminAttachment): string {
   return file.original_name || file.path.split('/').pop() || file.path
 }
@@ -239,19 +244,25 @@ function markAdminAttachmentRemoved(file: { id?: string | number }): void {
   if (typeof file.id === 'string') removedAttachments.value.push(file.id)
 }
 
-onMounted(load)
-
 async function load(): Promise<void> {
+  if (!Number.isInteger(idPoc) || idPoc <= 0) {
+    detail.value = null
+    loading.value = false
+    redirectToErrorPage(router, 404)
+    return
+  }
+
   loading.value = true
   try {
-    const { data } = await axios.get(`/api/sales-confirmations/po/${idPoc}`)
-    detail.value = data
+    const { data } = await axios.get<ApiResponse<any>>(`/api/sales-confirmations/po/${idPoc}`)
+    detail.value = data.data
     newAttachments.value = []
     removedAttachments.value = []
-    prefillForm(data)
+    prefillForm(data.data)
   } catch (e: any) {
     detail.value = null
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat Sales Confirmation.')
+    if (redirectToErrorPage(router, e.response?.status)) return
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal memuat Sales Confirmation.'))
   } finally {
     loading.value = false
   }
@@ -289,10 +300,10 @@ async function submitAdmin(): Promise<void> {
   formError.value = null
   submitting.value = true
   try {
-    await axios.post(`/api/sales-confirmations/po/${idPoc}`, buildAdminPayload(), {
+    const { data } = await axios.post<ApiResponse<unknown>>(`/api/sales-confirmations/po/${idPoc}`, buildAdminPayload(), {
       headers: { Accept: 'application/json' },
     })
-    success('Berhasil', 'Sales Confirmation berhasil disimpan.')
+    success('Berhasil', data.message || 'Sales Confirmation berhasil disimpan.')
     backToIndex()
   } catch (e: any) {
     const status = e.response?.status
@@ -306,7 +317,7 @@ async function submitAdmin(): Promise<void> {
       notifyError('Gagal', e.response?.data?.message ?? 'Status Sales Confirmation sudah berubah.')
       load()
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal menyimpan Sales Confirmation.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal menyimpan Sales Confirmation.'))
     }
   } finally {
     submitting.value = false
@@ -320,9 +331,9 @@ function openReturnDialog(): void {
 async function submitReturn(): Promise<void> {
   returning.value = true
   try {
-    await axios.post(`/api/sales-confirmations/po/${idPoc}/return`)
+    const { data } = await axios.post<ApiResponse<unknown>>(`/api/sales-confirmations/po/${idPoc}/return`)
     returnDialogOpen.value = false
-    success('Berhasil', 'PO dikembalikan ke Marketing.')
+    success('Berhasil', data.message || 'PO dikembalikan ke Marketing.')
     router.push({ name: 'sales-confirmations' })
   } catch (e: any) {
     const status = e.response?.status
@@ -331,7 +342,7 @@ async function submitReturn(): Promise<void> {
       returnDialogOpen.value = false
       load()
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal mengembalikan PO ke Marketing.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal mengembalikan PO ke Marketing.'))
     }
   } finally {
     returning.value = false
@@ -348,11 +359,11 @@ async function submitBmDecision(): Promise<void> {
   formError.value = null
   bmSubmitting.value = true
   try {
-    await axios.post(`/api/sales-confirmations/po/${idPoc}/bm`, {
+    const { data } = await axios.post<ApiResponse<unknown>>(`/api/sales-confirmations/po/${idPoc}/bm`, {
       decision: bmDecision.value,
       note: bmNote.value,
     })
-    success('Berhasil', 'Keputusan Branch Manager berhasil disimpan.')
+    success('Berhasil', data.message || 'Keputusan Branch Manager berhasil disimpan.')
     load()
   } catch (e: any) {
     const status = e.response?.status
@@ -366,9 +377,9 @@ async function submitBmDecision(): Promise<void> {
       notifyError('Gagal', e.response?.data?.message ?? 'Status Sales Confirmation sudah berubah.')
       load()
     } else if (status === 403) {
-      notifyError('Gagal', e.response?.data?.message ?? 'Anda tidak berwenang melakukan aksi ini.')
+      notifyError('Gagal', FORBIDDEN_ACTION_MESSAGE)
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal menyimpan keputusan Branch Manager.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal menyimpan keputusan Branch Manager.'))
     }
   } finally {
     bmSubmitting.value = false
@@ -875,7 +886,7 @@ function backToIndex(): void {
               </div>
             </div>
 
-            <div v-if="detail.bm_approval?.steps?.[0]?.decision_note" class="pt-2 border-t border-slate-100">
+            <div v-if="bmApproval?.steps?.[0]?.decision_note" class="pt-2 border-t border-slate-100">
               <span class="text-form-label">Catatan Branch Manager</span>
               <div class="mt-1 rounded-lg border border-slate-200 bg-slate-50 p-3 text-body">
                 {{ detail.bm_approval.steps[0].decision_note }}

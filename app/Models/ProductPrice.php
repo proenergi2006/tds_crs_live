@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProductPriceCogsBasis;
+use App\Enums\QuotationBrand;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -191,11 +192,18 @@ class ProductPrice extends Model
         return $this->cogs_price !== null ? (float) $this->cogs_price : null;
     }
 
-    public function priceListForBrand(string $brand): float
+    public function priceListForBrand(QuotationBrand $brand): float
     {
-        return $brand === 'proenergi' && (float) $this->price_list_pe > 0
+        return $brand === QuotationBrand::Proenergi && (float) $this->price_list_pe > 0
             ? (float) $this->price_list_pe
             : (float) $this->price_list;
+    }
+
+    public function isBelowCeoLimit(float $unitPrice): bool
+    {
+        $ceoPrice = $this->ceo_price === null ? 0.0 : (float) $this->ceo_price;
+
+        return $ceoPrice > 0 && $unitPrice < $ceoPrice;
     }
 
     public function pricePeriod(): BelongsTo

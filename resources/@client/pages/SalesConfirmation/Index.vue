@@ -12,6 +12,8 @@ import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import type { ApiPaginatedResponse } from '@/types'
 
 import { salesConfirmationBadgeClass } from './status'
 import UnblockModal from "./components/UnblockModal.vue";
@@ -20,7 +22,6 @@ const router = useRouter()
 const auth = useAuthStore()
 const { error: notifyError, info } = useNotification()
 
-const ROLE_BM = 8
 const ROLE_ADMIN_FINANCE = 9
 
 const disposisiFilter = ref<number | null>(null)
@@ -33,7 +34,7 @@ const totalRecords = ref(0)
 const loading = ref(false)
 const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) };
 
-const isBranchManager = computed(() => auth.hasRole(ROLE_BM))
+const canApproveSalesConfirmation = computed<boolean>(() => auth.can('sales-confirmation.approve'))
 
 watch(disposisiFilter, () => fetchData(1))
 watch(searchQuery, debounce(() => fetchData(1), 300))
@@ -44,7 +45,7 @@ onMounted(() => fetchData(1))
 async function fetchData(page = 1): Promise<void> {
   loading.value = true
   try {
-    const { data } = await axios.get('/api/sales-confirmations', {
+    const { data } = await axios.get<ApiPaginatedResponse<any>>('/api/sales-confirmations', {
       params: {
         page,
         per_page: perPage.value,
@@ -53,11 +54,11 @@ async function fetchData(page = 1): Promise<void> {
       },
     })
     salesConfirmations.value = data.data ?? []
-    currentPage.value = data.current_page ?? 1
-    totalPages.value = data.last_page ?? 1
-    totalRecords.value = data.total ?? salesConfirmations.value.length
+    currentPage.value = data.meta.current_page ?? 1
+    totalPages.value = data.meta.last_page ?? 1
+    totalRecords.value = data.meta.total ?? salesConfirmations.value.length
   } catch (e: any) {
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data Sales Confirmation.')
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal memuat data Sales Confirmation.'))
   } finally {
     loading.value = false
   }
@@ -123,7 +124,7 @@ function rowBadgeClass(row: any): string {
     <div class="intro-y flex flex-col gap-4">
       <PageHeader title="Sales Confirmation" description="Daftar Sales Confirmation dan status verifikasinya." />
 
-      <div v-if="isBranchManager" class="inline-flex w-fit gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      <div v-if="canApproveSalesConfirmation" class="inline-flex w-fit gap-1 rounded-lg border border-slate-200 bg-white p-1">
         <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium transition"
           :class="disposisiFilter === 2 ? 'bg-theme-1 text-white' : 'text-slate-600 hover:bg-slate-100'"
           @click="disposisiFilter = 2">

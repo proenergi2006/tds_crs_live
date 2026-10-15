@@ -6,6 +6,7 @@ use App\Enums\PriceTier;
 use App\Enums\ProductPriceCogsBasis;
 use App\Enums\QuotationBrand;
 use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QuotationDisposisi;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationTransportMode;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\DB;
 class Quotation extends Model
 {
     public const PPN_RATE = 0.11;
+
+    private const JENIS_PRODUK_POLIMER = 11;
 
     protected $table   = 'quotations';
     public $timestamps = false;
@@ -123,6 +126,11 @@ class Quotation extends Model
         return $this->hasMany(QuotationTransport::class);
     }
 
+    public function poCustomers(): HasMany
+    {
+        return $this->hasMany(PoCustomer::class, 'quotation_id');
+    }
+
     public function transportMode(): ?QuotationTransportMode
     {
         $snapshotted = $this->items->first(fn ($item) => $item->transport_snapshot !== null);
@@ -135,16 +143,56 @@ class Quotation extends Model
         return in_array($this->status, [QuotationStatus::WaitingVerification, QuotationStatus::Approved], true);
     }
 
+    public function isReopenableStatus(): bool
+    {
+        return in_array($this->status, [QuotationStatus::Approved, QuotationStatus::WaitingVerification], true);
+    }
+
+    public function isAwaitingVerification(): bool
+    {
+        return $this->status === QuotationStatus::WaitingVerification
+            && $this->activeVerificationStep() !== null;
+    }
+
+    public function isReopenable(): bool
+    {
+        return $this->isReopenableStatus()
+            && $this->isValidOn(now())
+            && ! $this->poCustomers()->exists();
+    }
+
     public function isManagedBy(User $user): bool
     {
-        $permission = $this->brand === QuotationBrand::Proenergi ? 'penawaran.proenergi.manage' : 'penawaran.manage';
+        return $user->can($this->brand->managePermission()) && (int) $this->user_id === (int) $user->id;
+    }
 
-        return $user->can($permission) && (int) $this->user_id === (int) $user->id;
+    public function isViewableBy(User $user): bool
+    {
+        return $user->can($this->brand->viewAnyPermission())
+            || ((int) $this->user_id === (int) $user->id && QuotationBrand::viewableBy($user) !== []);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (QuotationBrand::viewableBy($user) === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $anyBrands = QuotationBrand::viewableAnyBy($user);
+
+        return $query->where(fn (Builder $q) => $q->whereIn('brand', $anyBrands)->orWhere('user_id', $user->id));
+    }
+
+    public function isPolimer(): bool
+    {
+        $this->loadMissing('items.product');
+
+        return $this->items->contains(fn (QuotationItem $item) => (int) $item->product?->id_jenis === self::JENIS_PRODUK_POLIMER);
     }
 
     public function canEditNonCommercialDetails(User $user): bool
     {
-        return $this->isNonCommercialEditableStatus() && $this->isManagedBy($user);
+        return $this->isNonCommercialEditableStatus() && $user->can('update', $this);
     }
 
     public function documentApprovals(): MorphMany
@@ -242,7 +290,10 @@ class Quotation extends Model
 
     public function finalApprovedAt(): ?\Illuminate\Support\Carbon
     {
-        return $this->latestDocumentApproval?->steps->sortByDesc('step_order')->first()?->acted_at;
+        return $this->latestDocumentApproval?->steps
+            ->filter(fn ($s) => $s->status === DocumentApprovalStepStatus::Approved)
+            ->sortByDesc('step_order')
+            ->first()?->acted_at;
     }
 
     public function scopeWaitingAtRoles(Builder $query, array $roleIds): Builder

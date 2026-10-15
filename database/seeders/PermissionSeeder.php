@@ -176,89 +176,53 @@ class PermissionSeeder extends Seeder
         ],
 
         [
-            'name'        => 'penawaran.viewOwn',
-            'module'      => 'penawaran',
-            'description' => 'Lihat penawaran milik sendiri (Marketing/Key Account) — juga jadi gate akses menu/route Quotation, sehingga role dengan penawaran.viewAny (mis. Admin Finance) turut ditambahkan di sini',
+            'name'        => 'quotation.viewOwn',
+            'module'      => 'quotation',
+            'description' => 'Lihat penawaran milik sendiri (Marketing/Key Account) — juga jadi gate akses menu/route Quotation, sehingga role dengan quotation.viewAny (mis. Admin Finance) turut ditambahkan di sini',
             'roles'       => [4, 12, 9],
         ],
         [
-            'name'        => 'penawaran.viewAny',
-            'module'      => 'penawaran',
+            'name'        => 'quotation.viewAny',
+            'module'      => 'quotation',
             'description' => 'Lihat semua penawaran lintas-marketing (Administrator/Admin Finance/BM/OM, CEO merangkap OM)',
             'roles'       => [1, 9, 8, 10, 2, 17],
         ],
         [
-            'name'        => 'penawaran.manage',
-            'module'      => 'penawaran',
+            'name'        => 'quotation.manage',
+            'module'      => 'quotation',
             'description' => 'Tambah, edit, hapus penawaran',
             'roles'       => [4, 12],
         ],
         [
-            'name'        => 'penawaran.verify',
-            'module'      => 'penawaran',
-            'description' => 'Akses modul approval penawaran (BM/CFO/OM)',
-            'roles'       => [8, 3, 10, 17],
-        ],
-        [
-            'name'        => 'penawaran.verify-bm',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran TDS sebagai Branch Manager',
-            'roles'       => [8],
-        ],
-        [
-            'name'        => 'penawaran.verify-om',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran TDS sebagai Operation Manager',
-            'roles'       => [10],
-        ],
-        [
-            'name'        => 'penawaran.verify-bm-polimer',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran Polimer sebagai Branch Manager Polimer',
-            'roles'       => [17],
-        ],
-        [
-            'name'        => 'penawaran.verify-ceo',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Quotation Tier III / di luar batas tier sebagai CEO',
-            'roles'       => [2],
+            'name'        => 'quotation.verify',
+            'module'      => 'quotation',
+            'description' => 'Verifikasi Quotation TDS (BM, BM Polimer, OM, CEO; tahap ditentukan role pada step)',
+            'roles'       => [8, 10, 17, 2],
         ],
 
         [
-            'name'        => 'penawaran.proenergi.viewOwn',
-            'module'      => 'penawaran',
+            'name'        => 'quotation.proenergi.viewOwn',
+            'module'      => 'quotation',
             'description' => 'Lihat penawaran Proenergi milik sendiri (Marketing/KAE Proenergi)',
             'roles'       => [13, 14],
         ],
         [
-            'name'        => 'penawaran.proenergi.viewAny',
-            'module'      => 'penawaran',
+            'name'        => 'quotation.proenergi.viewAny',
+            'module'      => 'quotation',
             'description' => 'Lihat semua penawaran Proenergi lintas-marketing (Administrator/Admin Finance/CEO/BM/OM Proenergi)',
             'roles'       => [1, 9, 2, 15, 16],
         ],
         [
-            'name'        => 'penawaran.proenergi.manage',
-            'module'      => 'penawaran',
+            'name'        => 'quotation.proenergi.manage',
+            'module'      => 'quotation',
             'description' => 'Kelola Penawaran Proenergi',
             'roles'       => [13, 14],
         ],
         [
-            'name'        => 'penawaran.proenergi.verify-bm',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran Proenergi sebagai BM Proenergi',
-            'roles'       => [15],
-        ],
-        [
-            'name'        => 'penawaran.proenergi.verify-om',
-            'module'      => 'penawaran',
-            'description' => 'Verifikasi Penawaran Proenergi sebagai OM Proenergi',
-            'roles'       => [16],
-        ],
-        [
-            'name'        => 'penawaran.proenergi.verify',
-            'module'      => 'penawaran',
-            'description' => 'Akses menu Verifikasi Quotation Proenergi (gabungan BM & OM, data dibedakan per tahap)',
-            'roles'       => [15, 16],
+            'name'        => 'quotation.proenergi.verify',
+            'module'      => 'quotation',
+            'description' => 'Verifikasi Quotation Proenergi (BM, OM, CEO; tahap ditentukan role pada step)',
+            'roles'       => [15, 16, 2],
         ],
 
         [
@@ -272,6 +236,12 @@ class PermissionSeeder extends Seeder
             'module'      => 'sales-confirmation',
             'description' => 'Lihat daftar & detail Sales Confirmation tanpa aksi (CEO)',
             'roles'       => [2],
+        ],
+        [
+            'name'        => 'sales-confirmation.approve',
+            'module'      => 'sales-confirmation',
+            'description' => 'Setujui/tolak Sales Confirmation sebagai Branch Manager sesuai brand/produk penawaran',
+            'roles'       => [8, 15, 17],
         ],
 
         [
@@ -363,7 +333,7 @@ class PermissionSeeder extends Seeder
     private function renameLegacyPermissionNames(): void
     {
         $renames = [
-            'verification.quotation'       => 'penawaran.verify',
+            'verification.quotation'       => 'quotation.verify',
             'harga-produk.view'            => 'price-period.view',
             'harga-produk.manage'          => 'product-price.manage',
             'harga-produk.set-cogs'        => 'product-price.set-cogs',
@@ -383,10 +353,10 @@ class PermissionSeeder extends Seeder
     private function cleanupRevokedRolePermissions(): void
     {
         $revoked = [
-            ['permission' => 'penawaran.verify', 'role_id' => 2],
             ['permission' => 'price-period.view', 'role_id' => 8],
             ['permission' => 'price-period.view', 'role_id' => 10],
             ['permission' => 'product-price.manage', 'role_id' => 2],
+            ['permission' => 'quotation.verify', 'role_id' => 3],
         ];
 
         foreach ($revoked as $entry) {

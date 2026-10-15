@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Quotation;
 
 use App\Actions\Quotation\UpdateQuotationNonCommercialDetailsAction;
-use App\Models\Quotation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,14 +10,12 @@ class UpdateQuotationDetailsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Quotation::where('brand', $this->route('brand'))
-            ->findOrFail($this->route('id'))
-            ->isManagedBy($this->user());
+        return $this->user()->can('update', $this->route('quotation'));
     }
 
     public function rules(): array
     {
-        $customerId = Quotation::where('brand', $this->route('brand'))->whereKey($this->route('id'))->value('customer_id');
+        $customerId = $this->route('quotation')->customer_id;
 
         return [
             'customer_contact_id' => [

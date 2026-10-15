@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Quotation\Concerns;
+namespace App\Actions\Quotation\Traits;
 
 use App\Models\Quotation;
 use App\Models\QuotationItem;

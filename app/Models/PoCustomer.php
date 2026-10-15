@@ -66,11 +66,6 @@ class PoCustomer extends Model
         return $this->belongsTo(Quotation::class, 'quotation_id');
     }
 
-    public function scopeOwnedBy(Builder $query, User $user): Builder
-    {
-        return $query->whereHas('quotation', fn (Builder $q) => $q->where('user_id', $user->id));
-    }
-
     public function isOwnedBy(User $user): bool
     {
         return $this->quotation !== null && (int) $this->quotation->user_id === (int) $user->id;
@@ -78,12 +73,50 @@ class PoCustomer extends Model
 
     public function isWritableBy(User $user): bool
     {
-        return $user->can('penawaran.viewAny') || $this->isOwnedBy($user);
+        $brand = $this->quotation?->brand;
+
+        return $brand !== null
+            && $user->can($brand->managePermission())
+            && ($user->can($brand->viewAnyPermission()) || $this->isOwnedBy($user));
     }
 
     public function isReadableBy(User $user): bool
     {
-        return $user->can('penawaran.viewAny') || $user->can('sales-confirmation.manage') || $this->isOwnedBy($user);
+        $brand = $this->quotation?->brand;
+
+        return ($brand !== null && $user->can($brand->viewAnyPermission()))
+            || static::readsAllPosAs($user)
+            || $this->isOwnedBy($user);
+    }
+
+    public static function readsAllPosAs(User $user): bool
+    {
+        return $user->can('sales-confirmation.manage') && $user->cant('sales-confirmation.approve');
+    }
+
+    public function scopeSalesConfirmationVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can('sales-confirmation.view')) {
+            return $query;
+        }
+
+        if ($user->can('sales-confirmation.approve')) {
+            return $query->whereHas(
+                'salesConfirmation.documentApprovals.steps',
+                fn (Builder $steps) => $steps->whereIn('id_role', $user->roles->pluck('id')->all())
+            );
+        }
+
+        if ($user->can('sales-confirmation.manage')) {
+            return $query;
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    public function isSalesConfirmationVisibleTo(User $user): bool
+    {
+        return static::whereKey($this->getKey())->salesConfirmationVisibleTo($user)->exists();
     }
 
     public function salesConfirmation(): HasOne
@@ -91,17 +124,17 @@ class PoCustomer extends Model
         return $this->hasOne(SalesConfirmation::class, 'po_customer_id', 'id_poc');
     }
 
-    public function poCustomerPlans(): HasMany
-    {
-        return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
-    }
-
     public function unblockRequests(): HasMany
     {
         return $this->hasMany(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc');
     }
 
-    public function activeUnblockRequest(): ?PoCustomerUnblockRequest
+    public function plans(): HasMany
+    {
+        return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
+    }
+
+    public function activeUnblockRequest():?PoCustomerUnblockRequest
     {
         return $this->unblockRequests()->where('status', DocumentApprovalStatus::InProgress)->latest('id')->first();
     }

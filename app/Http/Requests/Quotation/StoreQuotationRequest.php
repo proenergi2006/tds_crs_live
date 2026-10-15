@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Quotation;
 
 use App\Models\ProductPrice;
+use App\Models\Quotation;
+use App\Enums\QuotationBrand;
 use App\Enums\QuotationTransportMode;
 use App\Enums\TransportType;
 use Illuminate\Foundation\Http\FormRequest;
@@ -12,15 +14,28 @@ class StoreQuotationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $brand = $this->route('brand');
-        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.manage' : 'penawaran.manage';
+        if (! $this->user()->can('create', Quotation::class)) {
+            return false;
+        }
 
-        return $this->user()->can($permission);
+        $managed = QuotationBrand::managedBy($this->user());
+
+        $requested = is_string($this->input('brand')) ? QuotationBrand::tryFrom($this->input('brand')) : null;
+
+        return $requested === null || in_array($requested, $managed, true);
+    }
+
+    public function resolvedBrand(): QuotationBrand
+    {
+        $validated = $this->validated('brand');
+
+        return $validated !== null ? QuotationBrand::from($validated) : QuotationBrand::managedBy($this->user())[0];
     }
 
     public function rules(): array
     {
         $rules = [
+            'brand'                => [count(QuotationBrand::managedBy($this->user())) > 1 ? 'required' : 'nullable', Rule::enum(QuotationBrand::class)],
             'customer_id'          => 'required|exists:customers,id_customer',
             'customer_contact_id' => [
                 'required',

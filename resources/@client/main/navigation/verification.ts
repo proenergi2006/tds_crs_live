@@ -1,4 +1,5 @@
 import type { NavSection } from "@/stores/menu";
+import { quotationPermissionsForAllBrands } from "@/utils/quotation-brand";
 
 export const verificationSection: NavSection = {
   key: "verification",
@@ -34,26 +35,11 @@ export const verificationSection: NavSection = {
     },
     {
       icon: "FileText",
-      pageName: "penawarans-verifikasi",
+      pageName: "verification.quotations.index",
       title: "Quotation",
-      permission: ["penawaran.verify", "penawaran.verify-ceo"],
-      activePageNames: [
-        "penawarans-verifikasi-bm-detail",
-        "penawarans-verifikasi-om-detail",
-        "penawarans-verifikasi-ceo-detail",
-      ],
+      permission: quotationPermissionsForAllBrands("verify"),
+      activePageNames: ["verification.quotations.show"],
       badgeKey: "penawaran",
-    },
-    {
-      icon: "FileSignature",
-      pageName: "penawarans-verifikasi-proenergi",
-      title: "Quotation Proenergi",
-      permission: ["penawaran.proenergi.verify", "penawaran.verify-ceo"],
-      activePageNames: [
-        "penawarans-verifikasi-bm-detail-proenergi",
-        "penawarans-verifikasi-om-detail-proenergi",
-        "penawarans-verifikasi-ceo-detail-proenergi",
-      ],
     },
   ],
 };

@@ -95,6 +95,50 @@ class DocumentApprovalService
             ->first();
     }
 
+    public function cancelCycle(DocumentApproval $cycle, int $actorId, ?int $roleId, string $note): DocumentApproval
+    {
+        $stepOrder = ((int) $cycle->steps()->max('step_order')) + 1;
+
+        $this->appendCancellationStep($cycle, $stepOrder, $actorId, $roleId, $note);
+
+        $cycle->update([
+            'status'             => DocumentApprovalStatus::Cancelled,
+            'current_step_order' => null,
+            'completed_at'       => now(),
+        ]);
+
+        return $cycle->refresh();
+    }
+
+    public function startCancelledCycle(Model $approvable, int $actorId, ?int $roleId, string $note): DocumentApproval
+    {
+        $cycle = $approvable->documentApprovals()->create([
+            'id_template'        => null,
+            'status'             => DocumentApprovalStatus::Cancelled,
+            'current_step_order' => null,
+            'started_at'         => now(),
+            'completed_at'       => now(),
+        ]);
+
+        $this->appendCancellationStep($cycle, 1, $actorId, $roleId, $note);
+
+        return $cycle->refresh();
+    }
+
+    private function appendCancellationStep(DocumentApproval $cycle, int $stepOrder, int $actorId, ?int $roleId, string $note): void
+    {
+        DocumentApprovalStep::create([
+            'id_approval'      => $cycle->id_approval,
+            'id_template_step' => null,
+            'id_role'          => $roleId,
+            'step_order'       => $stepOrder,
+            'status'           => DocumentApprovalStepStatus::Cancelled,
+            'actor_id'         => $actorId,
+            'acted_at'         => now(),
+            'decision_note'    => $note,
+        ]);
+    }
+
     public function decideStep(
         Model $approvable,
         int $stepOrder,

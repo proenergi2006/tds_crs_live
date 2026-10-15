@@ -10,9 +10,11 @@ import Chart from '@/components/Base/Chart'
 import DashboardSummaryCard from '@/pages/Dashboard/components/DashboardSummaryCard.vue'
 import { useAuthStore } from '@/stores/auth'
 import { getColor, getDonutColors } from '@/utils/colors'
+import type { QuotationBrand } from '@/types'
 
 interface QuotationQueueItem {
   quotation_id: number
+  brand: QuotationBrand
   nomor_penawaran: string
 }
 
@@ -167,7 +169,7 @@ onMounted(async () => {
 
         <DashboardSummaryCard label="Penawaran Disetujui" :value="kpiApprovedTotal" icon="BadgeCheck"
           icon-class="bg-emerald-100 text-emerald-600" description="Total Penawaran yang sudah disetujui"
-          :link-to="{ name: 'penawarans-verifikasi' }" link-label="Lihat semua" />
+          :link-to="{ name: 'verification.quotations.index' }" link-label="Lihat semua" />
 
         <DashboardSummaryCard class="lg:row-span-2" label="Antrian Approval Penawaran" :value="kpiApprovalQueueTotal"
           icon="ClipboardCheck" icon-class="bg-blue-100 text-blue-600" description="Menunggu verifikasi OM">
@@ -179,7 +181,7 @@ onMounted(async () => {
               </div>
               <div v-else class="flex flex-col gap-2">
                 <RouterLink v-for="p in summary.penawaran_approval_queue.items" :key="p.quotation_id"
-                  :to="{ name: 'penawarans-verifikasi-om-detail', params: { id: p.quotation_id } }"
+                  :to="{ name: 'verification.quotations.show', params: { id: p.quotation_id } }"
                   class="flex justify-between items-center bg-white hover:bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl text-body text-sm">
                   {{ p.nomor_penawaran }}
                   <Lucide icon="ArrowRight" class="w-3.5 h-3.5 text-slate-400 shrink-0" />

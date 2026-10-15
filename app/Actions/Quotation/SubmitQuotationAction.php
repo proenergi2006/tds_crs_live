@@ -6,6 +6,7 @@ use App\Enums\ProductPriceCogsBasis;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationTransportSource;
 use App\Enums\QuotationVerifierRole;
+use App\Exceptions\BusinessRuleException;
 use App\Mail\QuotationApprovalRequestMail;
 use App\Models\Quotation;
 use App\Models\User;
@@ -21,14 +22,14 @@ class SubmitQuotationAction
     {
     }
 
-    public function execute(Quotation $quotation, \Closure $verificationUrlFor): array
+    public function execute(Quotation $quotation, string $verificationUrl): string
     {
         if ($quotation->status !== QuotationStatus::Draft) {
-            return [
-                'success' => false,
-                'status'  => 400,
-                'message' => 'Penawaran sudah diajukan sebelumnya',
-            ];
+            throw new BusinessRuleException('Penawaran sudah diajukan sebelumnya');
+        }
+
+        if (! $quotation->isValidOn(now())) {
+            throw new BusinessRuleException('Masa berlaku penawaran tidak mencakup hari ini. Ubah periode ke periode aktif sebelum diajukan.');
         }
 
         $this->assertTransportPricingReady($quotation);
@@ -36,9 +37,7 @@ class SubmitQuotationAction
         $resolution = $this->resolveVerifier->execute($quotation);
         $verifier   = $resolution['verifier'];
 
-        DB::beginTransaction();
-
-        try {
+        return DB::transaction(function () use ($quotation, $resolution, $verifier, $verificationUrl) {
             foreach ($quotation->items as $item) {
                 $item->update(['price_tier' => $resolution['item_tiers'][$item->id]]);
             }
@@ -54,56 +53,31 @@ class SubmitQuotationAction
             $recipients = $this->recipientsFor($verifier);
 
             if (empty($recipients)) {
-                DB::commit();
-
-                return [
-                    'message' => "Penawaran berhasil diajukan, tetapi email {$verifier->label()} tidak ditemukan.",
-                ];
+                return "Penawaran berhasil diajukan, tetapi email {$verifier->label()} tidak ditemukan.";
             }
 
             try {
                 Mail::to($recipients)->send(new QuotationApprovalRequestMail(
                     $quotation->load('items', 'customer', 'branch', 'user'),
-                    $verificationUrlFor($verifier),
+                    $verificationUrl,
                     $verifier->label()
                 ));
             } catch (\Throwable $mailErr) {
-                DB::rollBack();
-
                 Log::error('AJUKAN PENAWARAN - GAGAL KIRIM EMAIL VERIFIKATOR', [
                     'quotation_id' => $quotation->id,
                     'verifier'     => $verifier->label(),
                     'error'        => $mailErr->getMessage(),
                 ]);
 
-                return [
-                    'success' => false,
-                    'status'  => 500,
-                    'message' => "Penawaran gagal diajukan karena email {$verifier->label()} gagal dikirim.",
-                    'error'   => $mailErr->getMessage(),
-                ];
+                throw new BusinessRuleException(
+                    "Penawaran gagal diajukan karena email {$verifier->label()} gagal dikirim.",
+                    500,
+                    $mailErr
+                );
             }
 
-            DB::commit();
-
-            return [
-                'message' => "Penawaran berhasil diajukan dan email berhasil dikirim ke {$verifier->label()}.",
-            ];
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            Log::error('AJUKAN PENAWARAN - ERROR', [
-                'quotation_id' => $quotation->id ?? null,
-                'error'        => $e->getMessage(),
-            ]);
-
-            return [
-                'success' => false,
-                'status'  => 500,
-                'message' => 'Gagal mengajukan penawaran',
-                'error'   => $e->getMessage(),
-            ];
-        }
+            return "Penawaran berhasil diajukan dan email berhasil dikirim ke {$verifier->label()}.";
+        });
     }
 
     private function assertTransportPricingReady(Quotation $quotation): void

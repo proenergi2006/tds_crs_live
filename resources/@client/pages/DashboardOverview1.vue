@@ -236,7 +236,7 @@ onMounted(async () => {
 
               <div class="mt-5 flex flex-wrap gap-3">
                 <Button variant="secondary" class="border-0 bg-white text-slate-800 shadow hover:bg-slate-100"
-                  @click="router.push({ name: 'penawarans-list-proenergi' })">
+                  @click="router.push({ name: 'quotations.index' })">
                   <Lucide icon="FileText" class="mr-2 h-4 w-4" />
                   Penawaran Agent
                 </Button>

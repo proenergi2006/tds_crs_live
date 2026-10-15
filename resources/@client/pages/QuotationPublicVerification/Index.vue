@@ -5,6 +5,7 @@ import axios from 'axios'
 
 import Lucide from '@/components/Base/Lucide'
 import { formatDate } from '@/utils/format'
+import type { ApiResponse } from '@/types'
 
 const route = useRoute()
 const token = route.params.token as string
@@ -21,12 +22,11 @@ interface VerificationResponse {
 const pageState = ref<PageState>('loading')
 const verification = ref<VerificationResponse | null>(null)
 
-// verified:false dan 404 sengaja dipetakan ke state 'invalid' yang sama, biar gak bocorin status dokumen ke publik
 async function fetchVerification(): Promise<void> {
   try {
-    const { data } = await axios.get<VerificationResponse>(`/api/verifikasi-penawaran/${token}`)
-    if (data.verified) {
-      verification.value = data
+    const { data } = await axios.get<ApiResponse<VerificationResponse>>(`/api/quotation-verifications/public/${token}`)
+    if (data.data.verified) {
+      verification.value = data.data
       pageState.value = 'verified'
     } else {
       pageState.value = 'invalid'
