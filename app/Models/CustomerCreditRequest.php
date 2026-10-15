@@ -18,7 +18,6 @@ class CustomerCreditRequest extends Model
         'requested_top',
         'requested_qty',
         'product_category',
-        'financial_review',
         'created_by',
         'updated_by',
     ];
@@ -33,11 +32,6 @@ class CustomerCreditRequest extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'id_customer', 'id_customer');
-    }
-
-    public function hasFinancialReview(): bool
-    {
-        return trim(strip_tags((string) $this->financial_review)) !== '';
     }
 
     public function createdBy(): BelongsTo
