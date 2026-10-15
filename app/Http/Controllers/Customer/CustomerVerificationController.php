@@ -15,6 +15,7 @@ use App\Enums\CustomerVerificationStatus;
 use App\Enums\DocumentApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\DecideCustomerVerificationRequest;
+use App\Http\Requests\Customer\SaveFinancialReviewDraftRequest;
 use App\Models\Customer;
 use App\Models\CustomerLcr;
 use App\Models\CustomerVerification;
@@ -107,7 +108,13 @@ class CustomerVerificationController extends Controller
                 $user->id
             );
         } else {
-            $customerVerification = $action->reject($customerVerification, $data['reject_note'], $user->id);
+            $customerVerification = $action->reject(
+                $customerVerification,
+                $data['reject_note'],
+                $user->id,
+                $data['financial_review'] ?? null,
+                array_key_exists('financial_review', $data)
+            );
         }
 
         return response()->json([
@@ -122,6 +129,27 @@ class CustomerVerificationController extends Controller
                 'id'   => $customerVerification->reviewedBy->id,
                 'name' => $customerVerification->reviewedBy->name,
             ],
+        ]);
+    }
+
+    public function saveFinancialReview(SaveFinancialReviewDraftRequest $request, CustomerVerification $customerVerification, DecideCustomerVerificationAction $action): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->cant('verification.customer') || (int) $user->primary_role_id !== self::ROLE_ADMIN_FINANCE) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($customerVerification->status !== CustomerVerificationStatus::InReview) {
+            return response()->json(['message' => 'Verifikasi ini sudah tidak berstatus dalam review.'], 409);
+        }
+
+        $customerVerification = $action->saveFinancialReviewDraft($customerVerification, $request->validated()['financial_review'] ?? null);
+
+        return response()->json([
+            'id_verification'  => $customerVerification->id_verification,
+            'financial_review' => $customerVerification->financial_review,
+            'updated_at'       => $customerVerification->updated_at,
         ]);
     }
 

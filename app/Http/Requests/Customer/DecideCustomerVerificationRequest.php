@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Customer;
 
+use App\Support\RichText;
 use Illuminate\Foundation\Http\FormRequest;
-use Mews\Purifier\Facades\Purifier;
 
 class DecideCustomerVerificationRequest extends FormRequest
 {
@@ -23,7 +23,7 @@ class DecideCustomerVerificationRequest extends FormRequest
                 'nullable',
                 'string',
                 function (string $attribute, mixed $value, \Closure $fail) {
-                    if ($this->input('action') === 'approve' && $this->isBlankRichText((string) $value)) {
+                    if ($this->input('action') === 'approve' && RichText::isBlank((string) $value)) {
                         $fail('Financial Review wajib diisi.');
                     }
                 },
@@ -39,13 +39,5 @@ class DecideCustomerVerificationRequest extends FormRequest
         return [
             'financial_review.required_if' => 'Financial Review wajib diisi.',
         ];
-    }
-
-    private function isBlankRichText(string $html): bool
-    {
-        $text = html_entity_decode(strip_tags((string) Purifier::clean($html, 'ckeditor')),ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = str_replace("\u{00A0}", ' ', $text);
-
-        return trim($text) === '';
     }
 }
