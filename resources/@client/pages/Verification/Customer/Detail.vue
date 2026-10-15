@@ -52,6 +52,7 @@ const financialReview = ref<string>('')
 const attachments = ref<File[]>([])
 const rejectNote = ref<string>('')
 const submitting = ref(false)
+const savingDraft = ref(false)
 const confirmOpen = ref(false)
 
 const downloadModalOpen = ref(false)
@@ -161,6 +162,22 @@ async function handleDocumentSelect(category: DownloadableDocument): Promise<voi
   }
 }
 
+async function saveFinancialReviewDraft(): Promise<void> {
+  savingDraft.value = true
+  try {
+    const { data } = await axios.patch(`/api/customer-verifications/${idVerification}/financial-review`, {
+      financial_review: financialReview.value,
+    })
+    detail.value.financial_review = data.financial_review
+    financialReview.value = data.financial_review ?? ''
+    success('Berhasil', 'Draft Financial Review tersimpan.')
+  } catch (e: any) {
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menyimpan draft Financial Review.')
+  } finally {
+    savingDraft.value = false
+  }
+}
+
 async function submitDecision(): Promise<void> {
   submitting.value = true
   try {
@@ -174,6 +191,7 @@ async function submitDecision(): Promise<void> {
       attachments.value.forEach((file) => formData.append('attachments[]', file))
     } else {
       formData.append('reject_note', rejectNote.value)
+      formData.append('financial_review', financialReview.value)
     }
 
     await axios.post(`/api/customer-verifications/${idVerification}/decision`, formData)
@@ -289,16 +307,24 @@ function statusBadgeClass(status?: string): string {
               :class="isInReview ? 'lg:grid-cols-[minmax(0,1fr)_380px]' : ''">
               <div class="min-w-0">
                 <CreditDataTab :id-customer="detail.customer.id_customer" :is-under-review="false" readonly
-                  :latest-approved-verification="approvedResult" :snapshot="creditRequestSnapshot">
+                  :latest-approved-verification="approvedResult" :snapshot="creditRequestSnapshot"
+                  :financial-review-required="decisionMode === 'approve'">
                   <template v-if="isInReview && decisionMode === 'approve'" #approval-limit>
                     <CurrencyField v-model="approvedLimit" :disabled="submitting" />
                   </template>
                   <template v-if="isInReview && decisionMode === 'approve'" #approval-top>
                     <NumberField v-model="approvedTop" suffix="hari" :decimals="0" :disabled="submitting" />
                   </template>
-                  <template v-if="isInReview && decisionMode === 'approve'" #financial-review>
-                    <RichTextField v-model="financialReview" :disabled="submitting" />
-                    <div class="mt-3">
+                  <template v-if="isInReview" #financial-review>
+                    <RichTextField v-model="financialReview" :disabled="submitting || savingDraft" />
+                    <div class="flex justify-end mt-3">
+                      <Button variant="outline-secondary" class="inline-flex items-center gap-2"
+                        :disabled="submitting || savingDraft" @click="saveFinancialReviewDraft">
+                        <Lucide v-if="savingDraft" icon="Loader2" class="w-4 h-4 animate-spin" />
+                        Simpan Draft
+                      </Button>
+                    </div>
+                    <div v-if="decisionMode === 'approve'" class="mt-3">
                       <FileUploadField v-model="attachments" multiple accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="2"
                         label="Lampiran" hint="Opsional, mendukung multiple file (2MB per file)."
                         :disabled="submitting" />

@@ -260,6 +260,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications',       [CustomerVerificationController::class, 'reviewIndex']);
     Route::get('review/customer-verifications/{id}',               [CustomerVerificationController::class, 'reviewShow'])->whereNumber('id');
     Route::patch('customer-verifications/{customerVerification}/decision', [CustomerVerificationController::class, 'decision']);
+    Route::patch('customer-verifications/{customerVerification}/financial-review', [CustomerVerificationController::class, 'saveFinancialReview']);
 
     Route::get('review/customer-verifications/{id}/document/data-customer', [CustomerVerificationController::class, 'dataCustomerDocument'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document/sales-review', [CustomerVerificationController::class, 'salesReviewDocument'])->whereNumber('id');
