@@ -4,12 +4,6 @@ import { defineAsyncComponent, h } from 'vue'
 import { FormLabel } from '@/components/Base/Form'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 
-// CKEditor5 classic build lumayan berat (~500KB+), makanya Base/Ckeditor
-// gak di-static-import langsung dari sini. defineAsyncComponent bikin Vite
-// motong jadi chunk terpisah -- baru di-fetch browser kalau field ini
-// bener-bener kepake (gak ikut nempel ke chunk halaman pemanggilnya), dan
-// browser otomatis nge-cache-nya, jadi mount berikutnya di sesi yang sama
-// gak fetch ulang.
 const ClassicEditor = defineAsyncComponent({
   loader: () => import('@/components/Base/Ckeditor/ClassicEditor.vue'),
   loadingComponent: {
@@ -18,28 +12,25 @@ const ClassicEditor = defineAsyncComponent({
   delay: 0,
 })
 
-// Toolbar sengaja dipangkas -- field ini cuma butuh word formatting + list,
-// bukan editor dokumen lengkap. bold/italic/bulletedList/numberedList itu
-// plugin standar bawaan classic build, aman dipakai. underline/strikethrough
-// sengaja gak diikutkan soalnya butuh plugin tambahan yang gak ada di paket
-// classic build bawaan ini.
 const editorConfig = {
   toolbar: ['bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'undo', 'redo'],
 }
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     modelValue: string;
     label?: string;
     required?: boolean;
     disabled?: boolean;
     error?: string;
+    maxHeight?: string;
   }>(),
   {
     label: '',
     required: false,
     disabled: false,
     error: '',
+    maxHeight: '400px',
   },
 )
 
@@ -49,7 +40,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div>
+  <div class="rich-text-field" :style="{ '--rich-text-max-height': props.maxHeight }">
     <FormLabel v-if="label">
       {{ label }}
       <RequiredAsterisk v-if="required" />
@@ -63,3 +54,11 @@ defineEmits<{
     </small>
   </div>
 </template>
+
+<style scoped>
+.rich-text-field :deep(.ck-editor__editable),
+.rich-text-field :deep(.ck-editor__editable.ck-focused) {
+  max-height: var(--rich-text-max-height);
+  overflow-y: auto;
+}
+</style>

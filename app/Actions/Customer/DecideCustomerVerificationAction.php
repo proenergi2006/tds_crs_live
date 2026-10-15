@@ -6,10 +6,10 @@ use App\Enums\CustomerVerificationStatus;
 use App\Models\Customer;
 use App\Models\CustomerVerification;
 use App\Services\CustomerCodeGenerator;
+use App\Support\RichText;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Mews\Purifier\Facades\Purifier;
 
 class DecideCustomerVerificationAction
 {
@@ -24,7 +24,7 @@ class DecideCustomerVerificationAction
                 'status'              => CustomerVerificationStatus::Approved,
                 'approved_limit'      => $approvedLimit,
                 'approved_top'        => $approvedTop,
-                'financial_review'    => Purifier::clean($financialReview, 'ckeditor'),
+                'financial_review'    => RichText::purify($financialReview),
                 'finance_attachments' => $storedAttachments,
                 'reviewed_at'         => now(),
                 'reviewed_by'         => $reviewedBy,
@@ -59,17 +59,30 @@ class DecideCustomerVerificationAction
         $customer->save();
     }
 
-    public function reject(CustomerVerification $verification, string $rejectNote, int $reviewedBy): CustomerVerification
+    public function reject(CustomerVerification $verification, string $rejectNote, int $reviewedBy, ?string $financialReview = null, bool $hasFinancialReview = false): CustomerVerification
     {
-        return DB::transaction(function () use ($verification, $rejectNote, $reviewedBy) {
-            $verification->update([
+        return DB::transaction(function () use ($verification, $rejectNote, $reviewedBy, $financialReview, $hasFinancialReview) {
+            $attributes = [
                 'status'      => CustomerVerificationStatus::Rejected,
                 'reject_note' => $rejectNote,
                 'reviewed_at' => now(),
                 'reviewed_by' => $reviewedBy,
-            ]);
+            ];
+
+            if ($hasFinancialReview) {
+                $attributes['financial_review'] = RichText::purifyOrNull($financialReview);
+            }
+
+            $verification->update($attributes);
 
             return $verification->fresh();
         });
+    }
+
+    public function saveFinancialReviewDraft(CustomerVerification $verification, ?string $financialReview): CustomerVerification
+    {
+        $verification->update(['financial_review' => RichText::purifyOrNull($financialReview)]);
+
+        return $verification->fresh();
     }
 }

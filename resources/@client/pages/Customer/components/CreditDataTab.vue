@@ -27,6 +27,7 @@ const props = withDefaults(
     idCustomer: number
     isUnderReview: boolean
     readonly?: boolean
+    financialReviewRequired?: boolean
     latestApprovedVerification: {
       approved_limit: number | null
       approved_top: number | null
@@ -36,7 +37,7 @@ const props = withDefaults(
     } | null
     snapshot?: CreditRequestSnapshot | null
   }>(),
-  { readonly: false, snapshot: null },
+  { readonly: false, financialReviewRequired: false, snapshot: null },
 )
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
@@ -188,7 +189,7 @@ function formatFileSize(bytes?: number | null): string {
                     <RequiredAsterisk />
                   </th>
                   <th rowspan="2" class="px-3 py-2 text-form-label text-left align-middle">
-                    Volume per PO
+                    Volume
                     <RequiredAsterisk />
                   </th>
                   <th colspan="2" class="px-3 py-2 text-form-label text-center">Credit Limit</th>
@@ -247,7 +248,7 @@ function formatFileSize(bytes?: number | null): string {
           <div v-if="$slots['financial-review'] || props.latestApprovedVerification" class="mt-3 p-4 border border-slate-200 rounded-lg">
             <h3 class="flex items-center gap-1.5 mb-3 pb-2 border-slate-200 border-b text-overline">
               <Lucide icon="FileText" class="w-3.5 h-3.5 shrink-0" />Financial Review
-              <RequiredAsterisk v-if="$slots['financial-review']" />
+              <RequiredAsterisk v-if="props.financialReviewRequired" />
             </h3>
             <slot name="financial-review">
               <div v-if="props.latestApprovedVerification?.financial_review" class="rich-text-content text-body"
