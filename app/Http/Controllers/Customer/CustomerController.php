@@ -148,8 +148,7 @@ class CustomerController extends Controller
         return [
             'approved_limit'            => $verification->approved_limit,
             'approved_top'              => $verification->approved_top,
-            'financial_review_snapshot' => $verification->financial_review_snapshot,
-            'notes'                     => $verification->notes,
+            'financial_review'          => $verification->financial_review,
             'finance_attachments'       => $verification->formatFinanceAttachments(),
             'reviewed_at'               => optional($verification->reviewed_at)->toISOString(),
         ];

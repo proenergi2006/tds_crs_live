@@ -252,8 +252,8 @@
 
 <div class="section-title">2. Financial Review</div>
 <div class="rich-text-content section-content" style="min-height: 100px;">
-    @if ($verification->financial_review_snapshot ?? $verification->notes)
-        {!! $verification->financial_review_snapshot ?? $verification->notes !!}
+    @if ($verification->financial_review)
+        {!! $verification->financial_review !!}
     @else
         <div class="muted">Belum ada Financial Review tercatat.</div>
     @endif

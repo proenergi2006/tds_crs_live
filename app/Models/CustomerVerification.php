@@ -30,8 +30,7 @@ class CustomerVerification extends Model
         'product_category_snapshot',
         'approved_limit',
         'approved_top',
-        'financial_review_snapshot',
-        'notes',
+        'financial_review',
         'finance_attachments',
     ];
 
