@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\MasterLogistik\Concerns;
+namespace App\Http\Controllers\MasterLogistik\Traits;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\MasterLogistik;
 
 use App\Actions\MasterLogistik\CreateWithDocumentsAction;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\MasterLogistik\Concerns\DeletesLogisticDocumentFiles;
+use App\Http\Controllers\MasterLogistik\Traits\DeletesLogisticDocumentFiles;
 use App\Http\Requests\MasterLogistik\StoreTransporterRequest;
 use App\Http\Requests\MasterLogistik\UpdateTransporterRequest;
 use App\Http\Resources\MasterLogistik\TransporterResource;

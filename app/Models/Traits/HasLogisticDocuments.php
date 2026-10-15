@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Concerns;
+namespace App\Models\Traits;
 
 use App\Models\LogisticDocument;
 use Illuminate\Database\Eloquent\Model;

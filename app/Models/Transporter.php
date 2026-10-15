@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\TransportCapability;
 use App\Enums\TransporterOwnership;
-use App\Models\Concerns\HasLogisticDocuments;
+use App\Models\Traits\HasLogisticDocuments;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Customer\Concerns;
+namespace App\Http\Controllers\Customer\Traits;
 
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;

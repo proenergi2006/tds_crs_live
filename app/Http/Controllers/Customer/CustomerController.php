@@ -7,7 +7,7 @@ use App\Actions\Customer\UpsertCustomerAddressAction;
 use App\Enums\CustomerAddressType;
 use App\Enums\CustomerVerificationStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
+use App\Http\Controllers\Customer\Traits\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerAddressByTypeRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
