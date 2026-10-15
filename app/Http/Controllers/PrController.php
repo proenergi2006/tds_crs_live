@@ -34,7 +34,6 @@ class PrController extends Controller
             $tanggalPr     = now()->toDateString();
             $nomorPr       = $this->generateNomorPr($inisialCabang);
 
-            // insertGetId wajib sebut PK 'id_pr' di Postgres
             $idPr = DB::table('pro_pr')->insertGetId([
                 'id_wilayah'        => null,
                 'id_group'          => null,
@@ -64,7 +63,7 @@ class PrController extends Controller
                     ->leftJoin('customers as cu','cu.id_customer','=','po.id_customer')
                     ->selectRaw('
                         p.id_plan, p.id_poc, p.volume_kirim, p.realisasi_kirim,
-                        po.quotation_id, cu.nama_perusahaan
+                        po.quotation_id, cu.company_name
                     ')
                     ->where('p.id_plan', $it['id_plan'])
                     ->first();
@@ -87,7 +86,7 @@ class PrController extends Controller
                     'pr_mobil'          => 1,
                     'pr_top'            => null,
                     'pr_actual_top'     => null,
-                    'pr_pelanggan'      => substr((string)$plan->nama_perusahaan, 0, 30),
+                    'pr_pelanggan'      => substr((string)$plan->company_name, 0, 30),
                     'pr_ar_notyet'      => null,
                     'pr_ar_satu'        => null,
                     'pr_ar_dua'         => null,

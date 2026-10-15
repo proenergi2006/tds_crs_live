@@ -33,13 +33,13 @@ class DeliveryPlanController extends Controller
                 p.ar_notyet, p.ar_satu, p.ar_dua, p.kredit_limit,
                 po.nomor_poc, po.tanggal_poc,
                 po.quotation_id AS id_penawaran,
-                c.nama_perusahaan,
+                c.company_name,
                 CONCAT('PO-', LPAD(p.id_poc::text, 5, '0')) as doc_code
             ");
 
         if ($q !== '') {
             $base->where(function($w) use ($q) {
-                $w->where('c.nama_perusahaan','ILIKE',"%{$q}%")
+                $w->where('c.company_name','ILIKE',"%{$q}%")
                   ->orWhere('po.nomor_poc',$q)
                   ->orWhereRaw("CONCAT('PO-', LPAD(p.id_poc::text, 5, '0')) = ?", [$q]);
             });
@@ -130,7 +130,7 @@ class DeliveryPlanController extends Controller
                 p.ar_notyet, p.ar_satu, p.ar_dua, p.kredit_limit,
                 po.nomor_poc, po.tanggal_poc,
                 po.quotation_id AS id_penawaran,
-                c.nama_perusahaan,
+                c.company_name,
                 CONCAT('PO-', LPAD(p.id_poc::text, 5, '0')) as doc_code
             ")->first();
 
@@ -273,7 +273,7 @@ class DeliveryPlanController extends Controller
             'doc_code'         => $r->doc_code,
             'nomor_poc'        => $r->nomor_poc,
             'tanggal_poc'      => $r->tanggal_poc,
-            'customer'         => $r->nama_perusahaan,
+            'customer'         => $r->company_name,
             'issued_at'        => $r->created_time,
             'ship_date'        => $r->tanggal_kirim,
             'address'          => $address ?: ($r->status_jadwal ?? '-'),
