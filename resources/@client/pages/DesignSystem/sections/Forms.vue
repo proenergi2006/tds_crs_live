@@ -131,7 +131,7 @@ const richTextValue = ref("");
     <div>
       <h3 class="mb-3 text-overline">Rich Text (CKEditor)</h3>
       <RichTextField v-model="richTextValue" label="Catatan" />
-      <p class="mt-1 text-caption">Dipakai untuk draft review Marketing (field financial_review di CreditDataTab.vue) dan catatan approval Admin Finance (field notes di Verify.vue).
+      <p class="mt-1 text-caption">Dipakai untuk Financial Review Admin Finance di Verification/Customer/Detail.vue.
         Toolbar sengaja dipangkas (bold/italic/list saja), lazy-loaded terpisah karena bundle CKEditor lumayan besar.
       </p>
     </div>

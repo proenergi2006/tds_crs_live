@@ -48,7 +48,7 @@ const detail = ref<any>(null)
 const decisionMode = ref<'approve' | 'reject'>('approve')
 const approvedLimit = ref<number | null>(null)
 const approvedTop = ref<number | null>(null)
-const notes = ref<string>('')
+const financialReview = ref<string>('')
 const attachments = ref<File[]>([])
 const rejectNote = ref<string>('')
 const submitting = ref(false)
@@ -71,8 +71,7 @@ const approvedResult = computed(() =>
     ? {
       approved_limit: detail.value.approved_limit,
       approved_top: detail.value.approved_top,
-      financial_review_snapshot: detail.value.financial_review_snapshot,
-      notes: detail.value.notes,
+      financial_review: detail.value.financial_review,
       finance_attachments: (detail.value.finance_attachments ?? []) as FinanceAttachment[],
       reviewed_at: detail.value.reviewed_at,
     }
@@ -85,13 +84,17 @@ const creditRequestSnapshot = computed(() =>
       requested_top: detail.value.requested_top_snapshot,
       requested_qty: detail.value.requested_qty_snapshot,
       product_category: detail.value.product_category_snapshot,
-      financial_review: detail.value.financial_review_snapshot,
     }
     : null,
 )
 const canDownloadDocument = computed<boolean>(() => detail.value?.status === 'in_review' || detail.value?.status === 'approved')
+const financialReviewEmpty = computed<boolean>(
+  () => financialReview.value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '',
+)
 const decisionSubmitDisabled = computed<boolean>(() =>
-  submitting.value || (decisionMode.value === 'reject' && !rejectNote.value.trim()),
+  submitting.value
+  || (decisionMode.value === 'reject' && !rejectNote.value.trim())
+  || (decisionMode.value === 'approve' && financialReviewEmpty.value),
 )
 
 onMounted(async () => {
@@ -107,6 +110,7 @@ async function fetchDetail(): Promise<void> {
   try {
     const { data } = await axios.get(`/api/review/customer-verifications/${idVerification}`)
     detail.value = data
+    if (data.status === 'in_review') financialReview.value = data.financial_review ?? ''
   } catch (e: any) {
     bootstrapError.value = e.response?.data?.message ?? 'Gagal memuat data verifikasi.'
   } finally {
@@ -166,7 +170,7 @@ async function submitDecision(): Promise<void> {
     if (decisionMode.value === 'approve') {
       formData.append('approved_limit', String(approvedLimit.value ?? ''))
       formData.append('approved_top', String(approvedTop.value ?? ''))
-      if (notes.value.trim()) formData.append('notes', notes.value)
+      formData.append('financial_review', financialReview.value)
       attachments.value.forEach((file) => formData.append('attachments[]', file))
     } else {
       formData.append('reject_note', rejectNote.value)
@@ -292,8 +296,8 @@ function statusBadgeClass(status?: string): string {
                   <template v-if="isInReview && decisionMode === 'approve'" #approval-top>
                     <NumberField v-model="approvedTop" suffix="hari" :decimals="0" :disabled="submitting" />
                   </template>
-                  <template v-if="isInReview && decisionMode === 'approve'" #finance-notes>
-                    <RichTextField v-model="notes" :disabled="submitting" />
+                  <template v-if="isInReview && decisionMode === 'approve'" #financial-review>
+                    <RichTextField v-model="financialReview" :disabled="submitting" />
                     <div class="mt-3">
                       <FileUploadField v-model="attachments" multiple accept=".pdf,.jpg,.jpeg,.png" :max-size-mb="2"
                         label="Lampiran" hint="Opsional, mendukung multiple file (2MB per file)."

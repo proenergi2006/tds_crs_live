@@ -9,7 +9,6 @@ use App\Models\Customer;
 use App\Models\CustomerCreditRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Mews\Purifier\Facades\Purifier;
 
 class CustomerCreditRequestController extends Controller
 {
@@ -54,7 +53,6 @@ class CustomerCreditRequestController extends Controller
             'requested_top'    => $data['requested_top'] ?? null,
             'requested_qty'    => $data['requested_qty'] ?? null,
             'product_category' => $data['product_category'] ?? null,
-            'financial_review' => filled($data['financial_review'] ?? null) ? Purifier::clean($data['financial_review'], 'ckeditor') : null,
             'updated_by'       => $user->id,
         ];
 
@@ -86,7 +84,6 @@ class CustomerCreditRequestController extends Controller
             'product_category'        => $creditRequest->product_category?->value,
             'product_category_label'  => $creditRequest->product_category?->label(),
             'unit'                    => $creditRequest->product_category?->unit(),
-            'financial_review'        => $creditRequest->financial_review,
             'created_by'              => $creditRequest->createdBy ? [
                 'id'   => $creditRequest->createdBy->id,
                 'name' => $creditRequest->createdBy->name,

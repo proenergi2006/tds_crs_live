@@ -138,8 +138,7 @@ class EvaluateCustomerTabCompletenessAction
             && $request->requested_limit > 0
             && $request->requested_top !== null
             && $request->requested_qty > 0
-            && $request->product_category !== null
-            && $request->hasFinancialReview();
+            && $request->product_category !== null;
 
         if (!$dataFilled) {
             return CustomerTabStatus::Empty;

@@ -27,7 +27,6 @@ class SubmitCustomerVerificationAction
                 'requested_top_snapshot'     => $creditRequest?->requested_top,
                 'requested_qty_snapshot'     => $creditRequest?->requested_qty,
                 'product_category_snapshot'  => $creditRequest?->product_category,
-                'financial_review_snapshot'  => $creditRequest?->financial_review,
             ]);
 
             return $verification->fresh();
@@ -43,8 +42,7 @@ class SubmitCustomerVerificationAction
             && $creditRequest->requested_limit > 0
             && $creditRequest->requested_top !== null
             && $creditRequest->requested_qty > 0
-            && $creditRequest->product_category !== null
-            && $creditRequest->hasFinancialReview();
+            && $creditRequest->product_category !== null;
 
         return collect([
             'data_customer' => (bool) $completeness['data_customer'],
