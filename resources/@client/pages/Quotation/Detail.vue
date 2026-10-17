@@ -14,7 +14,7 @@ import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
-import { formatDate, formatDateTime, toDateKey, todayDateKey } from '@/utils/format'
+import { formatDate, formatDateTime, formatPercentRate, toDateKey, todayDateKey } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
 import { FORBIDDEN_ACTION_MESSAGE, actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
 import { canManageQuotationBrand } from '@/utils/quotation-brand'
@@ -455,7 +455,7 @@ function formatNumber(v: number | string = 0) {
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg grow">
                     <div class="flex justify-between items-start">
-                      <dt class="text-form-label">PPN 11%</dt>
+                      <dt class="text-form-label">PPN ({{ formatPercentRate(quotation.ppn_rate) }})</dt>
                       <dd class="mt-1 num-md !text-slate-800 text-xl">{{ formatCurrency(quotation.ppn) }}</dd>
                     </div>
                   </div>

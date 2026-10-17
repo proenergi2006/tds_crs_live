@@ -72,7 +72,7 @@
                   <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $dppText }}</td>
                 </tr>
                 <tr>
-                  <td style="padding:8px 0;color:#6b7280;">Total (termasuk PPN 11%)</td>
+                  <td style="padding:8px 0;color:#6b7280;">Total (termasuk PPN {{ $p->ppnPercentLabel() }})</td>
                   <td style="padding:8px 0;font-weight:600;color:#111827;">{{ $totalText }}</td>
                 </tr>
                 <tr>

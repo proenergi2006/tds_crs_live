@@ -19,7 +19,6 @@ use App\Http\Resources\QuotationDetailResource;
 use App\Http\Resources\QuotationIndexResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Quotation;
-use App\Services\QrCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -163,7 +162,7 @@ class QuotationController extends Controller
         );
     }
 
-    public function destroy(Quotation $quotation, QrCodeService $qrCodeService): JsonResponse
+    public function destroy(Quotation $quotation): JsonResponse
     {
         $this->authorize('update', $quotation);
 
@@ -172,12 +171,6 @@ class QuotationController extends Controller
                 'Hanya penawaran draft yang bisa dihapus.',
                 409
             );
-        }
-
-        try {
-            $qrCodeService->deleteFiles($quotation->id, $quotation->qr_code);
-        } catch (\Throwable $e) {
-            report($e);
         }
 
         $quotation->delete();

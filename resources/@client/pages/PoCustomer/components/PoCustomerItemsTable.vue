@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Table from '@/components/Base/Table'
 import Tippy from '@/components/Base/Tippy'
-import { formatCurrency, formatNumber } from '@/utils/format'
+import { formatCurrency, formatNumber, formatPercentRate } from '@/utils/format'
 import type { PoCustomerItem, PoCustomerTotals } from '@/types'
 
 defineProps<{
@@ -82,7 +82,7 @@ function isNotTaken(item: PoCustomerItem): boolean {
             </Table.Td>
           </Table.Tr>
           <Table.Tr>
-            <Table.Td colspan="4" class="px-4 py-2 text-body-strong text-right">PPN (11%)</Table.Td>
+            <Table.Td colspan="4" class="px-4 py-2 text-body-strong text-right">PPN ({{ formatPercentRate(totals.ppn_rate) }})</Table.Td>
             <Table.Td class="px-4 py-2 num-sm text-right whitespace-nowrap">{{ formatCurrency(totals.ppn) }}</Table.Td>
           </Table.Tr>
           <Table.Tr>

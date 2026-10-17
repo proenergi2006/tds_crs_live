@@ -110,6 +110,7 @@ export interface PoCustomerTotals {
   material_subtotal: number
   transport_total: number
   dpp: number
+  ppn_rate: number
   ppn: number
   grand_total: number
 }

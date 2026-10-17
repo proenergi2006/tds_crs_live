@@ -20,6 +20,7 @@ import RadioCard from '@/components/SystemDesign/Form/RadioCard.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
+import { DEFAULT_PPN_RATE, formatPercentRate } from '@/utils/format'
 import { actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
 import { defaultCreateBrand } from '@/utils/quotation-brand'
 import { createResourceApi, http } from "@/utils/resourceApi";
@@ -128,6 +129,7 @@ const selectedPeriodId = ref<string>('')
 const clonedFromNomor = ref<string | null>(null)
 
 const isEditingExpiredPeriod = ref(false)
+const ppnRate = ref<number>(DEFAULT_PPN_RATE)
 
 const itemsModalOpen = ref(false)
 
@@ -266,7 +268,7 @@ const dppPreview = computed<number | null>(() => {
   }
   return round2(sum)
 })
-const ppnPreview = computed<number | null>(() => (dppPreview.value === null ? null : round2(dppPreview.value * 0.11)))
+const ppnPreview = computed<number | null>(() => (dppPreview.value === null ? null : round2(dppPreview.value * ppnRate.value)))
 const totalPreview = computed<number | null>(() =>
   dppPreview.value === null || ppnPreview.value === null ? null : round2(dppPreview.value + ppnPreview.value),
 )
@@ -598,6 +600,7 @@ async function fetchQuotation() {
     activeBrand.value = data.brand
 
     isEditingExpiredPeriod.value = isDateExpired(data.sampai_dengan)
+    ppnRate.value = Number(data.ppn_rate ?? DEFAULT_PPN_RATE)
     selectedPeriodId.value = data.price_period_id != null ? String(data.price_period_id) : ''
 
     Object.assign(form, {
@@ -1756,7 +1759,7 @@ function formatCurrency(v: number | string = 0) {
             <dd class="text-right num-md">{{ dppPreview === null ? '-' : formatCurrency(dppPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">
-            <dt class="text-body-strong">PPN (11%)</dt>
+            <dt class="text-body-strong">PPN ({{ formatPercentRate(ppnRate) }})</dt>
             <dd class="text-right num-md">{{ ppnPreview === null ? '-' : formatCurrency(ppnPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">

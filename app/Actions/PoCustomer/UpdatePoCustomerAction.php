@@ -41,9 +41,8 @@ class UpdatePoCustomerAction
 
                 $targetId         = (int) ($validated['quotation_id'] ?? $locked->quotation_id);
                 $quotationChanged = $targetId !== (int) $locked->quotation_id;
-                $quotationItems   = $quotationChanged
-                    ? $this->lockReplacement($locked, $targetId)->items()->orderBy('id')->get()
-                    : $locked->quotation->items()->orderBy('id')->get();
+                $replacement      = $quotationChanged ? $this->lockReplacement($locked, $targetId) : null;
+                $quotationItems   = ($replacement ?? $locked->quotation)->items()->orderBy('id')->get();
 
                 $this->assertItemInvariants(
                     $quotationItems,
@@ -53,6 +52,7 @@ class UpdatePoCustomerAction
 
                 if ($quotationChanged) {
                     $data['quotation_id'] = $targetId;
+                    $data['ppn_rate']     = $replacement->ppn_rate;
                     $data['harga_poc']    = null;
                     $data['produk_poc']   = null;
                 }

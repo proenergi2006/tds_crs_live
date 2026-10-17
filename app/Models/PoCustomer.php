@@ -20,7 +20,12 @@ class PoCustomer extends Model
     protected $primaryKey = 'id_poc';
     public $timestamps = false;
 
+    protected $attributes = [
+        'ppn_rate' => Tax::PPN_RATE,
+    ];
+
     protected $fillable = [
+        'ppn_rate',
         'id_customer',
         'quotation_id',
         'tipe_bayar',
@@ -48,6 +53,7 @@ class PoCustomer extends Model
     ];
 
     protected $casts = [
+        'ppn_rate' => 'decimal:4',
         'tanggal_poc' => 'date:Y-m-d',
         'supply_date' => 'date:Y-m-d',
         'harga_poc' => 'decimal:4',
@@ -195,7 +201,7 @@ class PoCustomer extends Model
 
     public function orderPpn(): float
     {
-        return round($this->orderValue() * Tax::PPN_RATE, 2);
+        return round($this->orderValue() * (float) $this->ppn_rate, 2);
     }
 
     public function orderValueWithPpn(): float
@@ -210,6 +216,7 @@ class PoCustomer extends Model
             'material_subtotal' => $this->materialSubtotal(),
             'transport_total'   => $this->transportTotal(),
             'dpp'               => $this->orderValue(),
+            'ppn_rate'          => (float) $this->ppn_rate,
             'ppn'               => $this->orderPpn(),
             'grand_total'       => $this->orderValueWithPpn(),
         ];

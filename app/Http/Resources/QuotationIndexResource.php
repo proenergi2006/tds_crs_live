@@ -29,8 +29,6 @@ class QuotationIndexResource extends JsonResource
             'brand_label'         => $this->brand?->label(),
             ...($canSeeInternals ? ['price_tier' => $this->price_tier?->value] : []),
             ...$summary,
-            'disposisi_penawaran' => $this->disposisi_penawaran,
-            'disposisi_label'     => $this->disposisi_label,
             'masa_berlaku'        => $this->masa_berlaku,
             'sampai_dengan'       => $this->sampai_dengan,
             'total_volume'        => $this->total_volume,

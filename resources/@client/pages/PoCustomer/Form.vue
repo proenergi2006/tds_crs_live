@@ -20,7 +20,16 @@ import NumberField from '@/components/SystemDesign/Form/NumberField.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { QUOTATION_STATUS } from '@/pages/Quotation/status'
-import { formatCurrency, formatDate, formatDateRangeShort, formatNumber, toDateKey, todayDateKey } from '@/utils/format'
+import {
+  DEFAULT_PPN_RATE,
+  formatCurrency,
+  formatDate,
+  formatDateRangeShort,
+  formatNumber,
+  formatPercentRate,
+  toDateKey,
+  todayDateKey,
+} from '@/utils/format'
 import { actionErrorMessage } from '@/utils/http-error-route'
 import type {
   ApiPaginatedResponse,
@@ -69,6 +78,7 @@ interface QuotationDetailResponse {
   sampai_dengan: string
   tipe_pembayaran: string | null
   repayment_hari: number | string | null
+  ppn_rate: number | string | null
   items: QuotationDetailItem[]
 }
 
@@ -78,8 +88,6 @@ const { success, error: notifyError } = useNotification()
 
 const quotationIdFromQuery = String(route.query.quotation_id ?? '')
 const idPoc = String(route.params.id ?? '')
-
-const PPN_RATE = 0.11
 
 const HEADER_ERROR_KEYS = [
   'nomor_poc',
@@ -98,6 +106,7 @@ const submitting = ref(false)
 const formError = ref('')
 const rowsTouched = ref(false)
 const unavailableQuotationAlert = ref(false)
+const ppnRate = ref<number>(DEFAULT_PPN_RATE)
 const rows = ref<PoFormRow[]>([])
 const serverErrors = ref<Record<string, string>>({})
 const quotationOptions = ref<Array<{ id: number; nomor_penawaran: string; customer_nama: string }>>([])
@@ -126,13 +135,14 @@ const checkedRows = computed(() => rows.value.filter(row => row.checked))
 const previewTotals = computed<PoCustomerTotals>(() => {
   const taken = checkedRows.value
   const dpp = round2(taken.reduce((sum, row) => sum + rowLineTotal(row), 0))
-  const ppn = round2(dpp * PPN_RATE)
+  const ppn = round2(dpp * ppnRate.value)
 
   return {
     volume: round2(taken.reduce((sum, row) => sum + row.volume, 0)),
     material_subtotal: round2(taken.reduce((sum, row) => sum + round2(row.volume * row.unitPrice), 0)),
     transport_total: round2(taken.reduce((sum, row) => sum + round2(row.volume * row.transportPrice), 0)),
     dpp,
+    ppn_rate: ppnRate.value,
     ppn,
     grand_total: round2(dpp + ppn),
   }
@@ -330,6 +340,7 @@ function applyPoCustomerToForm(): void {
   form.customer_id = po.id_customer
   form.customer_nama = po.customer?.company_name || '-'
   applyQuotationHeaderFromPo(po)
+  ppnRate.value = Number(po.totals.ppn_rate)
   form.nomor_po = po.nomor_poc ?? ''
   form.tanggal_po = po.tanggal_poc ?? ''
   form.tanggal_kirim = po.supply_date ?? ''
@@ -390,6 +401,7 @@ async function fetchQuotationDetail(id: string | number): Promise<void> {
     form.nomor_penawaran = data.nomor_penawaran || '-'
     form.masa_berlaku = data.masa_berlaku
     form.sampai_dengan = data.sampai_dengan
+    ppnRate.value = Number(data.ppn_rate ?? DEFAULT_PPN_RATE)
 
     if (!isEditMode.value) {
       const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
@@ -416,6 +428,7 @@ function onQuotationSelected(value: string | string[]): void {
 
   if (isEditMode.value && poRecord.value && String(id) === String(poRecord.value.quotation_id)) {
     applyQuotationHeaderFromPo(poRecord.value)
+    ppnRate.value = Number(poRecord.value.totals.ppn_rate)
     rows.value = rowsFromPoItems(poRecord.value.items)
     rowsTouched.value = false
     return
@@ -675,7 +688,7 @@ function deriveDefaultPayment(tipePembayaran: string | null | undefined, repayme
               </Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td colspan="5" class="px-4 py-2 text-body-strong text-right">PPN (11%)</Table.Td>
+              <Table.Td colspan="5" class="px-4 py-2 text-body-strong text-right">PPN ({{ formatPercentRate(ppnRate) }})</Table.Td>
               <Table.Td class="px-4 py-2 num-sm text-right whitespace-nowrap">{{ formatCurrency(previewTotals.ppn) }}</Table.Td>
             </Table.Tr>
             <Table.Tr>

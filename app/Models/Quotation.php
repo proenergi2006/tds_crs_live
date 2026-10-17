@@ -7,7 +7,6 @@ use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\PriceTier;
 use App\Enums\ProductPriceCogsBasis;
 use App\Enums\QuotationBrand;
-use App\Enums\QuotationDisposisi;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationTransportMode;
 use App\Enums\QuotationTransportSource;
@@ -28,19 +27,18 @@ class Quotation extends Model
     protected $table   = 'quotations';
     public $timestamps = false;
 
+    protected $attributes = [
+        'ppn_rate' => Tax::PPN_RATE,
+    ];
+
     protected $fillable = [
         'customer_id',
         'customer_contact_id',
         'branch_id',
         'price_period_id',
         'nomor_penawaran',
-        'qr_code',
         'masa_berlaku',
         'sampai_dengan',
-        'subtotal',
-        'ppn11',
-        'total',
-        'fax',
         'type_pengiriman',
         'dp_persen',
         'dp_keterangan',
@@ -53,22 +51,15 @@ class Quotation extends Model
         'metode',
         'refund',
         'other_cost',
-        'perhitungan',
         'keterangan',
         'catatan',
         'syarat_ketentuan',
         'lampiran_tambahan',
-        'discount',
-        'harga_tebus_setelah_diskon',
-        'total_with_oat',
-        'oat',
         'created_at',
         'created_by',
         'updated_at',
         'updated_by',
-        'jenis_penawaran',
         'status',
-        'disposisi_penawaran',
         'token_verifikasi',
         'abrasi',
         'user_id',
@@ -76,18 +67,15 @@ class Quotation extends Model
         'acuan_pembayaran',
         'price_tier',
         'transport_basis',
+        'ppn_rate',
     ];
 
     protected $casts = [
         'brand'               => QuotationBrand::class,
-        'disposisi_penawaran' => QuotationDisposisi::class,
         'price_tier'          => PriceTier::class,
         'status'              => QuotationStatus::class,
         'transport_basis'     => ProductPriceCogsBasis::class,
-    ];
-
-    protected $appends = [
-        'disposisi_label',
+        'ppn_rate'            => 'decimal:4',
     ];
 
     public function customer(): BelongsTo
@@ -244,7 +232,12 @@ class Quotation extends Model
 
     public function ppnAmount(): float
     {
-        return round($this->dpp() * Tax::PPN_RATE, 2);
+        return round($this->dpp() * (float) $this->ppn_rate, 2);
+    }
+
+    public function ppnPercentLabel(): string
+    {
+        return Tax::percentLabel((float) $this->ppn_rate);
     }
 
     public function grandTotal(): float
@@ -303,11 +296,6 @@ class Quotation extends Model
                 ->whereHas('steps', fn ($step) => $step
                     ->whereColumn('document_approval_steps.step_order', 'document_approvals.current_step_order')
                     ->whereIn('id_role', $roleIds)));
-    }
-
-    public function getDisposisiLabelAttribute(): ?string
-    {
-        return $this->disposisi_penawaran?->label();
     }
 
     public function scopeValidOn(Builder $query, Carbon|string $date): Builder

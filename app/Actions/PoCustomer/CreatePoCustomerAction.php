@@ -45,6 +45,7 @@ class CreatePoCustomerAction
                         'supply_date',
                         'tipe_bayar'
                     ]),
+                    'ppn_rate'     => $quotation->ppn_rate,
                     'termin_hari'  => $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null,
                     'created_time' => now(),
                     'created_by'   => $user->name ?? 'system',

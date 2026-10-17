@@ -5,7 +5,6 @@ namespace App\Actions\SalesConfirmation;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\PoCustomerPaymentType;
 use App\Models\PoCustomer;
-use App\Support\Tax;
 
 class BuildSalesConfirmationDetailAction
 {
@@ -22,7 +21,6 @@ class BuildSalesConfirmationDetailAction
             'items.quotationItem.sourceBranch',
         ]);
 
-        $ppnMultiplier = 1 + Tax::PPN_RATE;
         $nilaiOrderPpn = $po->orderValueWithPpn();
         $creditLimit   = (float) ($po->customer?->current_credit_limit ?? 0);
 
@@ -34,7 +32,7 @@ class BuildSalesConfirmationDetailAction
                 'created_time'     => $po->created_time?->format('Y-m-d H:i:s'),
                 'totals'           => $po->orderTotals(),
             ],
-            'quotation' => $this->quotationDetail($po, $ppnMultiplier),
+            'quotation' => $this->quotationDetail($po),
             'credit'    => [
                 'approved_top'             => $po->customer?->latestApprovedVerification?->approved_top,
                 'nilai_order_ppn'          => $nilaiOrderPpn,
@@ -44,7 +42,7 @@ class BuildSalesConfirmationDetailAction
         ];
     }
 
-    private function quotationDetail(PoCustomer $po, float $ppnMultiplier): array
+    private function quotationDetail(PoCustomer $po): array
     {
         $quotation = $po->quotation;
 
@@ -71,7 +69,8 @@ class BuildSalesConfirmationDetailAction
             'lokasi_pengiriman'     => $quotation->lokasi_pengiriman,
             'total_volume'          => $totalVolume,
             'total_harga'           => $totalHarga,
-            'total_harga_ppn'       => round($totalHarga * $ppnMultiplier, 2),
+            'ppn_rate'              => (float) $quotation->ppn_rate,
+            'total_harga_ppn'       => round($totalHarga * (1 + (float) $quotation->ppn_rate), 2),
             'items'                 => $quotation->items->map(fn ($item) => [
                 'produk'       => $item->product?->nama_produk,
                 'ukuran'       => $item->product?->ukuran?->nama_ukuran,

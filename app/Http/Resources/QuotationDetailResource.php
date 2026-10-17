@@ -128,6 +128,7 @@ class QuotationDetailResource extends JsonResource
         $data['subtotal_material'] = $this->subtotalMaterial();
         $data['transport_total']   = $this->transportTotal();
         $data['dpp']               = $this->dpp();
+        $data['ppn_rate']          = (float) $this->ppn_rate;
         $data['ppn']               = $this->ppnAmount();
         $data['total']             = $this->grandTotal();
 
