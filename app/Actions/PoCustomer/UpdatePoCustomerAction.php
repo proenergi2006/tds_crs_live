@@ -2,50 +2,114 @@
 
 namespace App\Actions\PoCustomer;
 
+use App\Actions\PoCustomer\Traits\ManagesPoCustomerItems;
 use App\Enums\PoCustomerScProcessState;
-use App\Models\Quotation;
+use App\Enums\QuotationStatus;
+use App\Exceptions\BusinessRuleException;
 use App\Models\PoCustomer;
+use App\Models\Quotation;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UpdatePoCustomerAction
 {
-    public function execute(PoCustomer $po, array $validated, ?UploadedFile $lampiran, string $updatedBy, string $ip): PoCustomer
-    {
-        $data = Arr::except($validated, ['lampiran_poc']);
+    use ManagesPoCustomerItems;
 
-        $data['termin_hari'] = $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null;
+    public function execute(
+        PoCustomer $po,
+        array $validated,
+        ?UploadedFile $lampiran,
+        string $updatedBy,
+        string $ip
+    ): PoCustomer {
+        $newAttachment = $lampiran ? $this->storeAttachment($lampiran) : null;
+        $oldPath       = null;
 
-        if (isset($validated['quotation_id']) && (int) $validated['quotation_id'] !== (int) $po->quotation_id) {
-            $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
+        try {
+            $updated = DB::transaction(function () use ($po, $validated, $newAttachment, $updatedBy, $ip, &$oldPath) {
+                $locked = PoCustomer::whereKey($po->getKey())->lockForUpdate()->firstOrFail();
 
-            $data['harga_poc'] = round($quotation->weightedFinalPrice(), 4);
-            $data['produk_poc'] = $quotation->items->first()?->product_id;
-        } else {
-            unset($data['quotation_id']);
-        }
+                if ($locked->is_locked) {
+                    throw new BusinessRuleException('PO Customer sudah terkunci dan tidak bisa diubah.');
+                }
 
-        if ($lampiran) {
-            if ($po->lampiran_poc && Storage::disk('public')->exists($po->lampiran_poc)) {
-                Storage::disk('public')->delete($po->lampiran_poc);
+                $data = Arr::except($validated, ['lampiran_poc', 'items', 'quotation_id']);
+
+                $data['termin_hari'] = $validated['tipe_bayar'] === 'CREDIT' ? $validated['termin_hari'] : null;
+
+                $targetId         = (int) ($validated['quotation_id'] ?? $locked->quotation_id);
+                $quotationChanged = $targetId !== (int) $locked->quotation_id;
+                $quotationItems   = $quotationChanged
+                    ? $this->lockReplacement($locked, $targetId)->items()->orderBy('id')->get()
+                    : $locked->quotation->items()->orderBy('id')->get();
+
+                $this->assertItemInvariants(
+                    $quotationItems,
+                    $validated['items'],
+                    $quotationChanged ? [] : $locked->items()->pluck('volume', 'quotation_item_id')->all()
+                );
+
+                if ($quotationChanged) {
+                    $data['quotation_id'] = $targetId;
+                    $data['harga_poc']    = null;
+                    $data['produk_poc']   = null;
+                }
+
+                if ($newAttachment) {
+                    $oldPath = $locked->lampiran_poc;
+                    $data    = [...$data, ...$newAttachment];
+                }
+
+                if ($locked->sc_process_state === PoCustomerScProcessState::Blocked) {
+                    $data['sc_process_state'] = null;
+                }
+
+                $data['lastupdate_time'] = now();
+                $data['lastupdate_by']   = $updatedBy;
+                $data['lastupdate_ip']   = $ip;
+
+                $locked->update($data);
+
+                if ($quotationChanged) {
+                    $locked->items()->delete();
+                    $this->createItems($locked, $quotationItems, $validated['items']);
+                } else {
+                    $this->updateItemVolumes($locked, $validated['items']);
+                }
+
+                $this->syncVolumePoc($locked);
+
+                return $locked->refresh();
+            });
+        } catch (\Throwable $e) {
+            if ($newAttachment) {
+                Storage::disk('public')->delete($newAttachment['lampiran_poc']);
             }
 
-            $filename = time().'_'.$lampiran->getClientOriginalName();
-            $data['lampiran_poc'] = $lampiran->storeAs('lampiran_po', $filename, 'public');
-            $data['lampiran_poc_ori'] = $lampiran->getClientOriginalName();
+            throw $this->translateDuplicateQuotation($e);
         }
 
-        if ($po->sc_process_state === PoCustomerScProcessState::Blocked) {
-            $data['sc_process_state'] = null;
+        if ($oldPath) {
+            Storage::disk('public')->delete($oldPath);
         }
 
-        $data['lastupdate_time'] = now();
-        $data['lastupdate_by'] = $updatedBy;
-        $data['lastupdate_ip'] = $ip;
+        return $updated;
+    }
 
-        $po->update($data);
+    private function lockReplacement(PoCustomer $locked, int $quotationId): Quotation
+    {
+        $quotation = Quotation::whereKey($quotationId)->lockForUpdate()->firstOrFail();
 
-        return $po->refresh();
+        if ($quotation->status !== QuotationStatus::Approved) {
+            throw new BusinessRuleException('Penawaran ini sudah tidak berstatus disetujui.');
+        }
+
+        if (PoCustomer::where('quotation_id', $quotationId)->whereKeyNot($locked->getKey())->exists()) {
+            throw new BusinessRuleException('Penawaran ini sudah memiliki PO Customer.');
+        }
+
+        return $quotation;
     }
 }

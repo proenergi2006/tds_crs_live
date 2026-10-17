@@ -69,23 +69,39 @@ class SalesConfirmation extends Model
         return $this->documentApprovals()->one()->latestOfMany('id_approval');
     }
 
-    public function activeBmStep(): ?DocumentApprovalStep
+    public function activeApprovalStep(): ?DocumentApprovalStep
     {
         $cycle = $this->latestDocumentApproval;
 
-        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress || (int) $cycle->current_step_order !== 1) {
+        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress) {
             return null;
         }
 
-        return $cycle->steps->firstWhere('step_order', 1);
+        return $cycle->steps->firstWhere('step_order', $cycle->current_step_order);
+    }
+
+    public function expectedStepOrder(): ?int
+    {
+        return match ($this->disposisi) {
+            SalesConfirmationStatus::PendingBm => 1,
+            SalesConfirmationStatus::PendingOm => 2,
+            default                            => null,
+        };
+    }
+
+    public function isAwaitingDecision(): bool
+    {
+        return $this->expectedStepOrder() !== null;
     }
 
     public function isDecidableBy(User $user): bool
     {
-        $step = $this->activeBmStep();
+        $expected = $this->expectedStepOrder();
+        $step     = $this->activeApprovalStep();
 
-        return $this->disposisi === SalesConfirmationStatus::PendingBm
+        return $expected !== null
             && $step !== null
+            && (int) $step->step_order === $expected
             && $user->can('sales-confirmation.approve')
             && $user->hasRole((int) $step->id_role);
     }

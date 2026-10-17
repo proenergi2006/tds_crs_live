@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\PriceTier;
 use App\Enums\ProductPriceCogsBasis;
 use App\Enums\QuotationBrand;
-use App\Enums\DocumentApprovalStatus;
-use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QuotationDisposisi;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationTransportMode;
 use App\Enums\QuotationTransportSource;
+use App\Support\Tax;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -22,8 +23,6 @@ use Illuminate\Support\Facades\DB;
 
 class Quotation extends Model
 {
-    public const PPN_RATE = 0.11;
-
     private const JENIS_PRODUK_POLIMER = 11;
 
     protected $table   = 'quotations';
@@ -245,7 +244,7 @@ class Quotation extends Model
 
     public function ppnAmount(): float
     {
-        return round($this->dpp() * self::PPN_RATE, 2);
+        return round($this->dpp() * Tax::PPN_RATE, 2);
     }
 
     public function grandTotal(): float

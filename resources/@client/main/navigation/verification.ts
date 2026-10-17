@@ -41,5 +41,20 @@ export const verificationSection: NavSection = {
       activePageNames: ["verification.quotations.show"],
       badgeKey: "penawaran",
     },
+    {
+      icon: "ClipboardCheck",
+      pageName: "sales-confirmations",
+      title: "Sales Confirmation",
+      activePageNames: [
+        "sales-confirmations-detail",
+        "sales-confirmations-delivery-queue",
+        "po-customer-plan",
+      ],
+      permission: [
+        "sales-confirmation.manage",
+        "sales-confirmation.view",
+        "sales-confirmation.approve",
+      ],
+    },
   ],
 };

@@ -35,6 +35,7 @@ class QuotationIndexResource extends JsonResource
             'sampai_dengan'       => $this->sampai_dengan,
             'total_volume'        => $this->total_volume,
             'dpp'                 => $this->aggregatedDpp(),
+            'has_po_customer'     => (bool) $this->has_po_customer,
             'customer'            => $this->customer ? [
                 'company_name' => $this->customer->company_name,
             ] : null,

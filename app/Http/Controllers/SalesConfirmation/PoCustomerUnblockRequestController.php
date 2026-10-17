@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\SalesConfirmation;
 
 use App\Actions\PoCustomer\SubmitPoCustomerUnblockRequestAction;
 use App\Enums\PoCustomerScProcessState;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\PoCustomer\StorePoCustomerUnblockRequestRequest as StoreRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\PoCustomer;
@@ -14,8 +15,6 @@ use Illuminate\Support\Facades\Storage;
 
 class PoCustomerUnblockRequestController extends Controller
 {
-    private const PPN_RATE = 0.11;
-
     private const APPROVAL_STEP_RELATIONS = [
         'requestedBy:id,name,primary_role_id',
         'requestedBy.primaryRole:id,name',
@@ -74,6 +73,7 @@ class PoCustomerUnblockRequestController extends Controller
             'customer:id_customer,customer_code,company_name',
             'customer.latestApprovedVerification',
             'customer.adminArnya',
+            'items',
         ]);
 
         $activeRequest = $po->activeUnblockRequest();
@@ -138,6 +138,9 @@ class PoCustomerUnblockRequestController extends Controller
 
     private function formatPoSummary(?PoCustomer $po): array
     {
+        $creditLimit = (float) ($po?->customer?->current_credit_limit ?? 0);
+        $exposure    = (float) ($po?->customer?->adminArnya?->total_ar ?? 0);
+
         return [
             'id_poc'    => $po?->id_poc,
             'nomor_poc' => $po?->nomor_poc,
@@ -145,10 +148,10 @@ class PoCustomerUnblockRequestController extends Controller
                 'customer_code' => $po?->customer?->customer_code,
                 'company_name'  => $po?->customer?->company_name,
             ],
-            'nilai_order'          => round((float) ($po?->harga_poc ?? 0) * (float) ($po?->volume_poc ?? 0) * (1 + self::PPN_RATE), 2),
-            'current_credit_limit' => (float) ($po?->customer?->current_credit_limit ?? 0),
-            'exposure'             => (float) ($po?->customer?->adminArnya?->total_ar ?? 0),
-            'headroom'             => (float) ($po?->customer?->current_credit_limit ?? 0) - (float) ($po?->customer?->adminArnya?->total_ar ?? 0),
+            'nilai_order'          => $po?->orderValueWithPpn() ?? 0.0,
+            'current_credit_limit' => $creditLimit,
+            'exposure'             => $exposure,
+            'headroom'             => $creditLimit - $exposure,
         ];
     }
 }

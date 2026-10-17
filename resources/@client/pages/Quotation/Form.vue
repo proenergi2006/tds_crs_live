@@ -188,6 +188,8 @@ const itemsBasis = computed<ItemsBasis>(() => {
 
 const isMetodeLocked = computed<boolean>(() => itemsBasis.value === 'franco')
 
+const itemsEditable = computed<boolean>(() => !isEditingExpiredPeriod.value)
+
 const metodeOptions = computed<Array<{ value: string; code: string; label: string }>>(() => {
   if (itemsBasis.value === 'franco') return [metodeOption('FRANCO')]
   if (form.type_pengiriman === 'PROJECT') return (['FOB', 'CIF', 'DAP'] as const).map(metodeOption)
@@ -1086,6 +1088,24 @@ function isDateExpired(dateStr: string | null | undefined): boolean {
   return end < today
 }
 
+function produkName(id: string | number): string {
+  const p = produkById.value[String(id)]
+  return p ? p.nama_produk : `#${id}`
+}
+
+function produkSize(id: string | number): string {
+  const ukuran = produkById.value[String(id)]?.ukuran
+  if (!ukuran?.nama_ukuran) return ''
+  return `${ukuran.nama_ukuran}${ukuran.satuan?.nama_satuan ? ' ' + ukuran.satuan.nama_satuan : ''}`
+}
+
+function itemFieldError(index: number, field: 'quantity' | 'unit_price'): string {
+  const items = v$.value.items as any
+  if (!items?.$dirty) return ''
+  const rowErrors = items.$each?.$response?.$errors?.[index]?.[field] ?? []
+  return rowErrors[0]?.$message?.toString() ?? ''
+}
+
 function produkLabel(id: string | number): string {
   const p = produkById.value[String(id)]
   if (!p) return `#${id}`
@@ -1352,10 +1372,10 @@ function formatCurrency(v: number | string = 0) {
             <h4 class="mb-3 text-overline">Transport</h4>
 
             <p v-if="itemsBasis === null" class="text-caption">Pilih item penawaran untuk menentukan angkutan.</p>
-            <p v-else-if="itemsBasis === 'mixed'" class="text-caption !text-rose-600">
+            <p v-else-if="itemsBasis === 'mixed'" class="!text-rose-600 text-caption">
               Produk loco dan franco tidak boleh dalam satu penawaran.
             </p>
-            <p v-else-if="itemsBasis === 'missing'" class="text-caption !text-rose-600">
+            <p v-else-if="itemsBasis === 'missing'" class="!text-rose-600 text-caption">
               Sebagian produk belum memiliki basis harga (loco/franco). Lengkapi di Periode Harga.
             </p>
 
@@ -1423,13 +1443,13 @@ function formatCurrency(v: number | string = 0) {
                         {{ formatCurrency(Number(transportLegs[type].check?.price ?? 0)) }}
                       </span>
                       <span v-else-if="transportLegs[type].status === 'loading'" class="text-body">Memuat tarif…</span>
-                      <span v-else-if="transportLegs[type].status === 'unavailable'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'unavailable'" class="!text-rose-600 text-body">
                         Tarif belum siap. Margin belum diisi Logistik
                       </span>
-                      <span v-else-if="transportLegs[type].status === 'not_found'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'not_found'" class="!text-rose-600 text-body">
                         Tarif tidak ditemukan
                       </span>
-                      <span v-else-if="transportLegs[type].status === 'error'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'error'" class="!text-rose-600 text-body">
                         Gagal memuat tarif
                       </span>
                       <span v-else class="text-body">-</span>
@@ -1452,7 +1472,7 @@ function formatCurrency(v: number | string = 0) {
 
       <div class="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
         <p class="!text-slate-500 text-body">
-          Item penawaran disusun lewat modal generator berdasarkan periode & source harga.
+          Susun daftar produk penawaran terlebih dahulu.
         </p>
         <Button type="button" variant="primary" class="inline-flex justify-center items-center gap-2 whitespace-nowrap"
           @click="openItemsModal">
@@ -1479,21 +1499,36 @@ function formatCurrency(v: number | string = 0) {
               <tr class="hover:bg-slate-50 transition">
                 <td class="px-4 py-3 text-center num-sm">{{ idx + 1 }}.</td>
                 <td class="px-4 py-3">
+                  <span v-if="item.source_name"
+                    class="inline-block bg-slate-100 mb-1 px-2 rounded-full text-caption">Source: {{ item.source_name }}</span>
                   <div class="flex items-start gap-1.5">
-                    <span class="text-body-strong">{{ produkLabel(item.product_id) }}</span>
+                    <span class="text-body-strong">{{ produkName(item.product_id) }}</span>
                     <Tippy v-if="itemsBasis === 'mixed' || itemsBasis === 'missing'"
                       :content="item.cogs_basis ? `Basis harga: ${transportBasisLabel(item.cogs_basis)}` : 'Belum ada basis harga (loco/franco)'"
                       as="span" class="inline-flex mt-0.5 text-danger cursor-help shrink-0">
                       <Lucide icon="AlertCircle" class="w-4 h-4" />
                     </Tippy>
                   </div>
-                  <div class="text-caption">{{ item.source_name || '-' }}</div>
+                  <div v-if="produkSize(item.product_id)" class="text-caption">{{ produkSize(item.product_id) }}</div>
                 </td>
-                <td class="px-4 py-3 text-right num-sm">{{ Number(item.quantity).toLocaleString('id-ID') }}</td>
-                <td class="px-4 py-3 text-right num-sm">{{ formatCurrency(item.unit_price || 0) }}</td>
                 <td class="px-4 py-3 text-right num-sm">
-                  <template v-if="itemTransportPrice(item) !== null">{{ formatCurrency(itemTransportPrice(item) ?? 0) }}</template>
-                  <span v-else-if="requiresFreshPricing && itemsBasis === 'franco'" class="text-caption !text-rose-600">
+                  <NumberField v-if="itemsEditable" v-model="item.quantity" :min="0" :decimals="2"
+                    :error="itemFieldError(idx, 'quantity')" />
+                  <template v-else>{{ Number(item.quantity).toLocaleString('id-ID') }}</template>
+                </td>
+                <td class="px-4 py-3 text-right num-sm">
+                  <Tippy v-if="itemsEditable && Number(item.harga_price_list) > 0"
+                    :content="`Harga price list: ${formatCurrency(item.harga_price_list)}`" as="div">
+                    <CurrencyField v-model="item.unit_price" :error="itemFieldError(idx, 'unit_price')" />
+                  </Tippy>
+                  <CurrencyField v-else-if="itemsEditable" v-model="item.unit_price"
+                    :error="itemFieldError(idx, 'unit_price')" />
+                  <template v-else>{{ formatCurrency(item.unit_price || 0) }}</template>
+                </td>
+                <td class="px-4 py-3 text-right num-sm">
+                  <template v-if="itemTransportPrice(item) !== null">{{ formatCurrency(itemTransportPrice(item) ?? 0)
+                  }}</template>
+                  <span v-else-if="requiresFreshPricing && itemsBasis === 'franco'" class="!text-rose-600 text-caption">
                     Margin transport belum diisi Logistik
                   </span>
                   <template v-else>—</template>
@@ -1718,15 +1753,15 @@ function formatCurrency(v: number | string = 0) {
         <dl class="divide-y divide-slate-100">
           <div class="flex justify-between items-baseline gap-3 py-2">
             <dt class="text-body-strong">DPP</dt>
-            <dd class="num-md text-right">{{ dppPreview === null ? '-' : formatCurrency(dppPreview) }}</dd>
+            <dd class="text-right num-md">{{ dppPreview === null ? '-' : formatCurrency(dppPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">
             <dt class="text-body-strong">PPN (11%)</dt>
-            <dd class="num-md text-right">{{ ppnPreview === null ? '-' : formatCurrency(ppnPreview) }}</dd>
+            <dd class="text-right num-md">{{ ppnPreview === null ? '-' : formatCurrency(ppnPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">
             <dt class="text-section-title">TOTAL</dt>
-            <dd class="!text-emerald-700 text-lg num-md text-right">{{
+            <dd class="!text-emerald-700 text-lg text-right num-md">{{
               totalPreview === null ? '-' : formatCurrency(totalPreview) }}</dd>
           </div>
         </dl>

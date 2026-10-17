@@ -35,6 +35,11 @@ enum QuotationVerifierRole: int
         };
     }
 
+    public static function operationManagerFor(QuotationBrand $brand): self
+    {
+        return $brand === QuotationBrand::Proenergi ? self::OperationManagerProenergi : self::OperationManager;
+    }
+
     public static function permission(QuotationBrand $brand): string
     {
         return $brand->verifyPermission();

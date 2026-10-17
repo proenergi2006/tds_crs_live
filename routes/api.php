@@ -47,7 +47,8 @@ use App\Http\Controllers\MasterLogistik\TruckController;
 use App\Http\Controllers\MasterLogistik\TransportTariffController;
 use App\Http\Controllers\MasterLogistik\LogisticDocumentController;
 use App\Http\Controllers\PoCustomer\PoCustomerController;
-use App\Http\Controllers\PoCustomerUnblockRequestController;
+use App\Http\Controllers\SalesConfirmation\PoCustomerUnblockRequestController;
+use App\Http\Controllers\SalesConfirmation\SalesConfirmationController;
 use App\Http\Controllers\CustomerArAgingController;
 use App\Http\Controllers\Customer\CustomerLcrController;
 use App\Http\Controllers\Customer\CustomerReviewController;
@@ -269,14 +270,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications/{id}/document/lcr', [CustomerVerificationController::class, 'lcrDocument'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document/bulk', [CustomerVerificationController::class, 'bulkDocument'])->whereNumber('id');
 
-    Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
+    Route::get('/sales-confirmations', [SalesConfirmationController::class, 'index']);
 
-    Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
-    Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
-    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'decideSalesConfirmationBm']);
-    Route::post('/sales-confirmations/po/{poc}/return', [PoCustomerController::class, 'returnSalesConfirmationToMarketing']);
+    Route::get('/sales-confirmations/po/{poc}', [SalesConfirmationController::class, 'show']);
+    Route::post('/sales-confirmations/po/{poc}', [SalesConfirmationController::class, 'submit']);
+    Route::post('/sales-confirmations/po/{poc}/decision', [SalesConfirmationController::class, 'decide']);
+    Route::post('/sales-confirmations/po/{poc}/return', [SalesConfirmationController::class, 'returnToMarketing']);
 
-    Route::post('/po-customers/{poc}/process-sc', [PoCustomerController::class, 'processSalesConfirmation']);
+    Route::post('/po-customers/{poc}/process-sc', [SalesConfirmationController::class, 'process']);
 
     Route::get('/po-customers/{poc}/unblock-context', [PoCustomerUnblockRequestController::class, 'unblockContext']);
     Route::post('/po-customers/{poc}/unblock-requests', [PoCustomerUnblockRequestController::class, 'store']);

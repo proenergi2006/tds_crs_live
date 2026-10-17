@@ -240,8 +240,8 @@ class PermissionSeeder extends Seeder
         [
             'name'        => 'sales-confirmation.approve',
             'module'      => 'sales-confirmation',
-            'description' => 'Setujui/tolak Sales Confirmation sebagai Branch Manager sesuai brand/produk penawaran',
-            'roles'       => [8, 15, 17],
+            'description' => 'Setujui/tolak Sales Confirmation sebagai BM atau OM sesuai brand penawaran',
+            'roles'       => [8, 10, 15, 16, 17],
         ],
 
         [

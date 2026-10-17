@@ -2,10 +2,10 @@
 
 namespace App\Actions\SalesConfirmation;
 
-use App\Actions\PoCustomer\ProcessSalesConfirmationGateAction;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\PoCustomerPaymentType;
 use App\Models\PoCustomer;
+use App\Support\Tax;
 
 class BuildSalesConfirmationDetailAction
 {
@@ -18,11 +18,12 @@ class BuildSalesConfirmationDetailAction
             'quotation.latestDocumentApproval.steps.role',
             'quotation.latestDocumentApproval.steps.actor',
             'unblockRequests.requestedBy',
+            'items.quotationItem.product.ukuran.satuan',
+            'items.quotationItem.sourceBranch',
         ]);
 
-        $ppnMultiplier = 1 + ProcessSalesConfirmationGateAction::PPN_RATE;
-        $totalNilai    = (float) $po->harga_poc * (float) $po->volume_poc;
-        $nilaiOrderPpn = round($totalNilai * $ppnMultiplier, 2);
+        $ppnMultiplier = 1 + Tax::PPN_RATE;
+        $nilaiOrderPpn = $po->orderValueWithPpn();
         $creditLimit   = (float) ($po->customer?->current_credit_limit ?? 0);
 
         return [
@@ -31,8 +32,7 @@ class BuildSalesConfirmationDetailAction
                 'lampiran_poc_ori' => $po->lampiran_poc_ori,
                 'created_by'       => $po->created_by,
                 'created_time'     => $po->created_time?->format('Y-m-d H:i:s'),
-                'total_nilai'      => round($totalNilai, 2),
-                'total_nilai_ppn'  => $nilaiOrderPpn,
+                'totals'           => $po->orderTotals(),
             ],
             'quotation' => $this->quotationDetail($po, $ppnMultiplier),
             'credit'    => [

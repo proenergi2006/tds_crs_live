@@ -5,11 +5,14 @@ namespace App\Models;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\PoCustomerPaymentType;
 use App\Enums\PoCustomerScProcessState;
+use App\Enums\SalesConfirmationStatus;
+use App\Support\Tax;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 class PoCustomer extends Model
 {
@@ -48,7 +51,7 @@ class PoCustomer extends Model
         'tanggal_poc' => 'date:Y-m-d',
         'supply_date' => 'date:Y-m-d',
         'harga_poc' => 'decimal:4',
-        'volume_poc' => 'integer',
+        'volume_poc' => 'decimal:2',
         'created_time' => 'datetime',
         'lastupdate_time' => 'datetime',
         'sc_process_state' => PoCustomerScProcessState::class,
@@ -64,6 +67,11 @@ class PoCustomer extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class, 'quotation_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PoCustomerItem::class, 'po_customer_id', 'id_poc');
     }
 
     public function isOwnedBy(User $user): bool
@@ -134,7 +142,80 @@ class PoCustomer extends Model
         return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
     }
 
-    public function activeUnblockRequest():?PoCustomerUnblockRequest
+    public function scopeWithOrderAggregates(Builder $query): Builder
+    {
+        return $query
+            ->withSum('items as total_volume_sum', 'volume')
+            ->withSum(
+                'items as order_value_sum',
+                DB::raw(
+                    'ROUND(po_customer_items.volume * '
+                    . '(po_customer_items.unit_price + po_customer_items.transport_price), 2)'
+                )
+            );
+    }
+
+    public function aggregatedTotalVolume(): float
+    {
+        return round((float) $this->total_volume_sum, 2);
+    }
+
+    public function aggregatedOrderValue(): float
+    {
+        return round((float) $this->order_value_sum, 2);
+    }
+
+    public function totalVolume(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => (float) $item->volume), 2);
+    }
+
+    public function materialSubtotal(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->materialTotal()), 2);
+    }
+
+    public function transportTotal(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->transportLineTotal()), 2);
+    }
+
+    public function orderValue(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->lineTotal()), 2);
+    }
+
+    public function orderPpn(): float
+    {
+        return round($this->orderValue() * Tax::PPN_RATE, 2);
+    }
+
+    public function orderValueWithPpn(): float
+    {
+        return round($this->orderValue() + $this->orderPpn(), 2);
+    }
+
+    public function orderTotals(): array
+    {
+        return [
+            'volume'            => $this->totalVolume(),
+            'material_subtotal' => $this->materialSubtotal(),
+            'transport_total'   => $this->transportTotal(),
+            'dpp'               => $this->orderValue(),
+            'ppn'               => $this->orderPpn(),
+            'grand_total'       => $this->orderValueWithPpn(),
+        ];
+    }
+
+    public function activeUnblockRequest(): ?PoCustomerUnblockRequest
     {
         return $this->unblockRequests()->where('status', DocumentApprovalStatus::InProgress)->latest('id')->first();
     }
@@ -155,8 +236,11 @@ class PoCustomer extends Model
     {
         $sc = $this->salesConfirmation;
 
+        $isConfirmed = $sc !== null
+            && (int) $sc->getRawOriginal('disposisi') === SalesConfirmationStatus::Confirmed->value;
+
         return match (true) {
-            $sc !== null && (int) $sc->getRawOriginal('disposisi') === 4 => 'done',
+            $isConfirmed                                                 => 'done',
             $sc !== null                                                 => 'sc_in_progress',
             $this->sc_process_state === PoCustomerScProcessState::Blocked => 'blocked',
             $this->sc_process_state === PoCustomerScProcessState::Cleared => 'awaiting_sc',

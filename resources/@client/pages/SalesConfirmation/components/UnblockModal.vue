@@ -18,8 +18,7 @@ import {
   unblockStepStatusLabel,
   UNBLOCK_ROLE_ADMIN_FINANCE,
 } from "../status";
-import type { ApiResponse } from "@/types";
-import type { UnblockContext, UnblockRequest } from "../types";
+import type { ApiResponse, UnblockContext, UnblockRequest } from "@/types";
 
 const props = defineProps<{ open: boolean; idPoc: number | null }>();
 

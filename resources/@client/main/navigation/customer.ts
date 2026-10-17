@@ -36,21 +36,6 @@ export const commercialSection: NavSection = {
       ],
     },
     {
-      icon: "ClipboardCheck",
-      pageName: "sales-confirmations",
-      title: "Sales Confirmation",
-      activePageNames: [
-        "sales-confirmations-detail",
-        "sales-confirmations-delivery-queue",
-        "po-customer-plan",
-      ],
-      permission: [
-        "sales-confirmation.manage",
-        "sales-confirmation.view",
-        "sales-confirmation.approve",
-      ],
-    },
-    {
       icon: "CalendarClock",
       pageName: "ar-agings-index",
       title: "AR Aging Customer",

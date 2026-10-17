@@ -8,28 +8,36 @@ import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import { Menu } from '@/components/Base/Headless'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format'
-import { canManageQuotationBrand, manageableBrands } from '@/utils/quotation-brand'
-import type { ApiPaginatedResponse } from '@/types'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import { manageableBrands } from '@/utils/quotation-brand'
+import type { ApiPaginatedResponse, ApiResponse, PoCustomerIndexRow } from '@/types'
 
 import { poCustomerStatusBadgeClass } from './status'
 
 const router = useRouter()
 const auth = useAuthStore()
-const { error: notifyError } = useNotification()
+const { success, error: notifyError } = useNotification()
 const poCustomerApi = createResourceApi('/customer-pos')
 
-const poCustomers = ref<any[]>([])
+const poCustomers = ref<PoCustomerIndexRow[]>([])
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
+
+const deleteDialog = {
+  isOpen: ref(false),
+  isLoading: ref(false),
+  target: ref<PoCustomerIndexRow | null>(null),
+}
 
 const canCreatePo = computed<boolean>(() => manageableBrands(auth.can).length > 0)
 
@@ -41,7 +49,7 @@ onMounted(() => fetchData(1))
 async function fetchData(page = 1): Promise<void> {
   loading.value = true
   try {
-    const { data }: { data: ApiPaginatedResponse<any> } = await poCustomerApi.getAll({
+    const { data }: { data: ApiPaginatedResponse<PoCustomerIndexRow> } = await poCustomerApi.getAll({
       page,
       per_page: perPage.value,
       search: searchQuery.value || undefined,
@@ -62,12 +70,33 @@ function goToPage(page: number): void {
   fetchData(page)
 }
 
-function canEditRow(row: any): boolean {
-  return (
-    ['awaiting_process', 'blocked'].includes(row.status_key) &&
-    !!row.quotation?.brand &&
-    canManageQuotationBrand(auth.can, row.quotation.brand)
-  )
+function canModifyRow(row: PoCustomerIndexRow): boolean {
+  return row.can_update && ['awaiting_process', 'blocked'].includes(row.status_key)
+}
+
+function confirmDelete(row: PoCustomerIndexRow): void {
+  deleteDialog.target.value = row
+  deleteDialog.isOpen.value = true
+}
+
+async function submitDelete(): Promise<void> {
+  const target = deleteDialog.target.value
+  if (!target) return
+
+  deleteDialog.isLoading.value = true
+  try {
+    const { data }: { data: ApiResponse<null> } = await poCustomerApi.destroy(target.id_poc)
+    deleteDialog.isOpen.value = false
+    success('Berhasil', data.message || 'PO Customer berhasil dihapus.')
+    const isLastRowOfPage = poCustomers.value.length === 1 && currentPage.value > 1
+    await fetchData(isLastRowOfPage ? currentPage.value - 1 : currentPage.value)
+  } catch (e: any) {
+    deleteDialog.isOpen.value = false
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal menghapus PO Customer.'))
+  } finally {
+    deleteDialog.isLoading.value = false
+    deleteDialog.target.value = null
+  }
 }
 
 function goToCreate(): void {
@@ -89,7 +118,7 @@ function goToCreate(): void {
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="poCustomers.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true" :total="totalRecords"
-        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor PO atau customer..."
+        :current-page="currentPage" :total-pages="totalPages" search-placeholder="Cari nomor PO"
         loading-text="Memuat data PO Customer..." empty-description="Belum ada PO Customer."
         @page-change="goToPage">
         <template #head>
@@ -97,7 +126,7 @@ function goToCreate(): void {
           <Table.Th>Nomor PO</Table.Th>
           <Table.Th>Customer</Table.Th>
           <Table.Th>Nomor Penawaran</Table.Th>
-          <Table.Th class="text-center">Volume / Harga</Table.Th>
+          <Table.Th class="text-center">Total Volume / Total Nilai (DPP)</Table.Th>
           <Table.Th class="text-center">Disposisi</Table.Th>
           <Table.Th class="right-0 z-10 sticky bg-slate-50 text-center">Aksi</Table.Th>
         </template>
@@ -123,8 +152,8 @@ function goToCreate(): void {
             </Table.Td>
 
             <Table.Td class="text-center whitespace-nowrap">
-              <div>{{ formatNumber(row.volume_poc) }} m³</div>
-              <div class="text-slate-500">{{ formatCurrency(row.harga_poc) }} /m³</div>
+              <div>{{ formatNumber(row.total_volume) }} m³</div>
+              <div class="text-slate-500">{{ formatCurrency(row.total_value) }}</div>
             </Table.Td>
 
             <Table.Td class="text-center">
@@ -145,17 +174,29 @@ function goToCreate(): void {
                     Detail
                   </Menu.Item>
 
-                  <Menu.Item v-if="canEditRow(row)" :as="RouterLink"
+                  <Menu.Item v-if="canModifyRow(row)" :as="RouterLink"
                     :to="{ name: 'po-customers-edit', params: { id: row.id_poc } }">
                     <Lucide icon="Pencil" class="mr-2 w-4 h-4" />
                     Edit
                   </Menu.Item>
+
+                  <template v-if="canModifyRow(row)">
+                    <Menu.Divider />
+                    <Menu.Item class="!text-danger" @click="confirmDelete(row)">
+                      <Lucide icon="Trash2" class="mr-2 w-4 h-4" />
+                      Hapus
+                    </Menu.Item>
+                  </template>
                 </Menu.Items>
               </Menu>
             </Table.Td>
           </Table.Tr>
         </template>
       </DataList>
+
+      <DeleteRecordDialog :open="deleteDialog.isOpen.value" :title="`Hapus PO ${deleteDialog.target.value?.nomor_poc ?? ''}`"
+        description="PO Customer beserta itemnya dan lampirannya akan dihapus." :loading="deleteDialog.isLoading.value"
+        @close="deleteDialog.isOpen.value = false" @confirm="submitDelete" />
     </div>
   </div>
 </template>

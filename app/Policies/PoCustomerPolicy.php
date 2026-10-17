@@ -38,6 +38,11 @@ class PoCustomerPolicy
         return $poCustomer->isWritableBy($user);
     }
 
+    public function delete(User $user, PoCustomer $poCustomer): bool
+    {
+        return $poCustomer->isWritableBy($user);
+    }
+
     public function viewSalesConfirmation(User $user, PoCustomer $poCustomer): bool
     {
         return $user->canAny(SalesConfirmationPolicy::ACCESS_PERMISSIONS)

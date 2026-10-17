@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PriceTier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QuotationItem extends Model
 {
@@ -63,5 +64,10 @@ class QuotationItem extends Model
     public function productPrice(): BelongsTo
     {
         return $this->belongsTo(ProductPrice::class, 'product_price_id');
+    }
+
+    public function poCustomerItems(): HasMany
+    {
+        return $this->hasMany(PoCustomerItem::class, 'quotation_item_id');
     }
 }
