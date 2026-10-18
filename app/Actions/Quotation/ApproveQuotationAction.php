@@ -19,6 +19,10 @@ use Illuminate\Support\Str;
 
 class ApproveQuotationAction
 {
+    public function __construct(private readonly DocumentApprovalService $approvalService)
+    {
+    }
+
     public function execute(Quotation $quotation, User $actor, ?string $note, string $detailUrl, string $verificationUrl): string
     {
         return DB::transaction(function () use ($quotation, $actor, $note, $detailUrl, $verificationUrl) {
@@ -33,7 +37,7 @@ class ApproveQuotationAction
                 throw new BusinessRuleException('Masa berlaku penawaran sudah lewat, penawaran tidak bisa disetujui. Tolak agar Marketing membuat penawaran baru.');
             }
 
-            $cycle   = (new DocumentApprovalService())->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Approved, $actor->id, $note);
+            $cycle   = $this->approvalService->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Approved, $actor->id, $note);
             $isFinal = $cycle?->status === DocumentApprovalStatus::Approved;
 
             if ($isFinal) {

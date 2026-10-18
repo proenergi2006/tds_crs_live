@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StorePoCustomerUnblockRequestRequest extends FormRequest
 {
+    // NOTE: otorisasi Policy di controller, konsisten dengan ability yang sama dicek di sana.
     public function authorize(): bool
     {
         return true;

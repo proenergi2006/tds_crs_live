@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReopenQuotationAction
 {
+    public function __construct(private readonly DocumentApprovalService $approvalService)
+    {
+    }
+
     public function execute(Quotation $quotation, User $actor, string $note): void
     {
         DB::transaction(function () use ($quotation, $actor, $note) {
@@ -30,13 +34,12 @@ class ReopenQuotationAction
             }
 
             $roleId  = $actor->roles->firstWhere('name', 'Administrator')?->id;
-            $cycle   = $quotation->latestDocumentApproval;
-            $service = new DocumentApprovalService();
+            $cycle  = $quotation->latestDocumentApproval;
 
             if ($cycle && in_array($cycle->status, [DocumentApprovalStatus::InProgress, DocumentApprovalStatus::Approved], true)) {
-                $service->cancelCycle($cycle, $actor->id, $roleId, $note);
+                $this->approvalService->cancelCycle($cycle, $actor->id, $roleId, $note);
             } else {
-                $service->startCancelledCycle($quotation, $actor->id, $roleId, $note);
+                $this->approvalService->startCancelledCycle($quotation, $actor->id, $roleId, $note);
             }
 
             $quotation->update([

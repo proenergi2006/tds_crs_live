@@ -5,14 +5,18 @@ namespace App\Support\Approval;
 use App\Actions\Quotation\ResolveQuotationVerifierAction;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\QuotationStatus;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
-use App\Enums\QuotationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class QuotationApprovalStepsBuilder
 {
+    public function __construct(private readonly ResolveQuotationVerifierAction $resolveVerifier)
+    {
+    }
+
     public function buildAttempts(Model $quotation): array
     {
         $cycles = $quotation->documentApprovals->sortBy('id_approval')->values();
@@ -147,7 +151,7 @@ class QuotationApprovalStepsBuilder
         ];
 
         try {
-            $title = 'Verifikasi ' . app(ResolveQuotationVerifierAction::class)->execute($quotation)['verifier']->label();
+            $title = 'Verifikasi ' . $this->resolveVerifier->execute($quotation)['verifier']->label();
         } catch (ValidationException) {
             $title = 'Verifikasi';
         }

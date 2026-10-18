@@ -4,13 +4,17 @@ namespace App\Http\Resources;
 
 use App\Enums\QuotationTransportSource;
 use App\Models\QuotationItem;
-use App\Support\Approval\QuotationApprovalStepsBuilder;
 use App\Support\Approval\QuotationVerifierSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class QuotationDetailResource extends JsonResource
 {
+    public function __construct($resource, private readonly array $approvalAttempts)
+    {
+        parent::__construct($resource);
+    }
+
     public function toArray(Request $request): array
     {
         $canSeeInternals = QuotationVerifierSummary::canSeeInternals($request->user());
@@ -149,7 +153,7 @@ class QuotationDetailResource extends JsonResource
             unset($data['verifier_role']);
         }
 
-        $data['approval_attempts'] = app(QuotationApprovalStepsBuilder::class)->buildAttempts($this->resource);
+        $data['approval_attempts'] = $this->approvalAttempts;
 
         return $data;
     }

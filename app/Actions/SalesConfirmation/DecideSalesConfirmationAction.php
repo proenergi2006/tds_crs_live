@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 class DecideSalesConfirmationAction
 {
+    public function __construct(private readonly DocumentApprovalService $approvalService)
+    {
+    }
+
     public function execute(
         SalesConfirmation $sc,
         DocumentApprovalStepStatus $status,
@@ -26,8 +30,7 @@ class DecideSalesConfirmationAction
                 throw new BusinessRuleException('Sales Confirmation ini tidak sedang menunggu keputusan.');
             }
 
-            $service = new DocumentApprovalService();
-            $cycle   = $service->activeCycle($locked);
+            $cycle   = $this->approvalService->activeCycle($locked);
             $step    = $cycle?->steps->firstWhere('step_order', $expected);
 
             if ($cycle === null || (int) $cycle->current_step_order !== $expected || $step === null) {
@@ -44,7 +47,7 @@ class DecideSalesConfirmationAction
                 );
             }
 
-            $service->decideStep($locked, $expected, $status, $actorId, $note);
+            $this->approvalService->decideStep($locked, $expected, $status, $actorId, $note);
 
             $locked->update([
                 ...$this->outcome($status, $expected, $step->id_role),

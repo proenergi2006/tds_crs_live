@@ -56,6 +56,22 @@ interface PoFormRow {
   overOrderLegacy: boolean
 }
 
+interface QuotationPickerOption {
+  id: number
+  nomor_penawaran: string
+  customer_id: string
+  customer_nama: string
+  lokasi: string
+  produk: string
+  produkSummary: string
+}
+
+interface QuotationInfo {
+  lokasi: string
+  metode: string
+  keterangan: string
+}
+
 interface QuotationDetailItem {
   id: number
   quantity: number | string | null
@@ -76,6 +92,9 @@ interface QuotationDetailResponse {
   nomor_penawaran: string | null
   masa_berlaku: string
   sampai_dengan: string
+  lokasi_pengiriman: string | null
+  metode: string | null
+  keterangan: string | null
   tipe_pembayaran: string | null
   repayment_hari: number | string | null
   ppn_rate: number | string | null
@@ -101,6 +120,25 @@ const HEADER_ERROR_KEYS = [
   'items',
 ]
 
+const quotationSelectOptions = {
+  dropdownParent: 'body' as const,
+  placeholder: 'Pilih penawaran...',
+  searchField: ['text', 'lokasi', 'produk'],
+  render: {
+    option: (data: any, escape: (value: string) => string) => {
+      const line2 = data.line2 ? `<div class="text-caption text-slate-500 truncate" title="${escape(data.line2Title ?? '')}">${escape(data.line2)}</div>` : ''
+      return `<div class="py-1"><div class="text-body-strong">${escape(data.text)}</div>${line2}</div>`
+    },
+    item: (data: any, escape: (value: string) => string) => `<div>${escape(data.text)}</div>`,
+  },
+}
+
+const customerSelectOptions = {
+  dropdownParent: 'body' as const,
+  placeholder: 'Semua customer',
+  allowEmptyOption: true,
+}
+
 const pageLoading = ref(false)
 const submitting = ref(false)
 const formError = ref('')
@@ -109,7 +147,9 @@ const unavailableQuotationAlert = ref(false)
 const ppnRate = ref<number>(DEFAULT_PPN_RATE)
 const rows = ref<PoFormRow[]>([])
 const serverErrors = ref<Record<string, string>>({})
-const quotationOptions = ref<Array<{ id: number; nomor_penawaran: string; customer_nama: string }>>([])
+const quotationOptions = ref<QuotationPickerOption[]>([])
+const customerFilter = ref('')
+const quotationInfo = ref<QuotationInfo>(emptyQuotationInfo())
 const poRecord = ref<PoCustomerDetail | null>(null)
 const existingAttachments = ref<Array<{ name: string; url: string }>>([])
 
@@ -130,6 +170,16 @@ const form = reactive({
 
 const isEditMode = computed(() => route.name === 'po-customers-edit')
 const canEditPo = computed<boolean>(() => !!poRecord.value?.can_update && !poRecord.value.is_locked)
+const customerOptions = computed<Array<{ id: string; name: string }>>(() => {
+  const unique = new Map<string, string>()
+  for (const opt of quotationOptions.value) unique.set(opt.customer_id, opt.customer_nama)
+  return [...unique].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'id'))
+})
+const filteredQuotationOptions = computed<QuotationPickerOption[]>(() =>
+  customerFilter.value
+    ? quotationOptions.value.filter(opt => opt.customer_id === customerFilter.value)
+    : quotationOptions.value,
+)
 const checkedRows = computed(() => rows.value.filter(row => row.checked))
 
 const previewTotals = computed<PoCustomerTotals>(() => {
@@ -222,6 +272,7 @@ onMounted(async () => {
   if (isEditMode.value) {
     applyPoCustomerToForm()
     ensureCurrentQuotationOption()
+    await fetchQuotationInfo(form.quotation_id)
     return
   }
 
@@ -339,6 +390,7 @@ function applyPoCustomerToForm(): void {
 
   form.customer_id = po.id_customer
   form.customer_nama = po.customer?.company_name || '-'
+  customerFilter.value = String(po.id_customer)
   applyQuotationHeaderFromPo(po)
   ppnRate.value = Number(po.totals.ppn_rate)
   form.nomor_po = po.nomor_poc ?? ''
@@ -359,7 +411,11 @@ function ensureCurrentQuotationOption(): void {
     quotationOptions.value.push({
       id: Number(form.quotation_id),
       nomor_penawaran: form.nomor_penawaran,
+      customer_id: String(form.customer_id),
       customer_nama: form.customer_nama,
+      lokasi: '',
+      produk: '',
+      produkSummary: '',
     })
   }
 }
@@ -379,7 +435,10 @@ async function fetchQuotationOptions(): Promise<void> {
     quotationOptions.value = (data.data ?? []).map(row => ({
       id: row.id,
       nomor_penawaran: row.nomor_penawaran ?? '-',
+      customer_id: String(row.customer?.id_customer ?? ''),
       customer_nama: row.customer?.company_name || '-',
+      lokasi: row.lokasi_pengiriman?.trim() ?? '',
+      ...summarizeQuotationProducts(row),
     }))
   } catch {
     notifyError('Gagal', 'Gagal memuat daftar penawaran')
@@ -402,6 +461,8 @@ async function fetchQuotationDetail(id: string | number): Promise<void> {
     form.masa_berlaku = data.masa_berlaku
     form.sampai_dengan = data.sampai_dengan
     ppnRate.value = Number(data.ppn_rate ?? DEFAULT_PPN_RATE)
+    customerFilter.value = String(data.customer_id)
+    quotationInfo.value = quotationInfoFrom(data)
 
     if (!isEditMode.value) {
       const { tipeBayar, terminHari } = deriveDefaultPayment(data.tipe_pembayaran, data.repayment_hari)
@@ -431,11 +492,51 @@ function onQuotationSelected(value: string | string[]): void {
     ppnRate.value = Number(poRecord.value.totals.ppn_rate)
     rows.value = rowsFromPoItems(poRecord.value.items)
     rowsTouched.value = false
+    fetchQuotationInfo(id)
     return
   }
 
+  const picked = quotationOptions.value.find(opt => String(opt.id) === String(id))
+  if (picked) customerFilter.value = picked.customer_id
+
   form.quotation_id = id
   fetchQuotationDetail(id)
+}
+
+function onCustomerSelected(value: string | string[]): void {
+  const name = (Array.isArray(value) ? value[0] : value) ?? ''
+  if (name === customerFilter.value) return
+
+  customerFilter.value = name
+  unavailableQuotationAlert.value = false
+
+  const selected = quotationOptions.value.find(opt => String(opt.id) === String(form.quotation_id))
+  const selectedCustomerId = selected?.customer_id ?? String(form.customer_id)
+  if (name && form.quotation_id && selectedCustomerId !== name) {
+    clearQuotationSelection()
+  }
+}
+
+function clearQuotationSelection(): void {
+  form.quotation_id = ''
+  form.customer_id = ''
+  form.customer_nama = ''
+  form.nomor_penawaran = ''
+  form.masa_berlaku = ''
+  form.sampai_dengan = ''
+  rows.value = []
+  rowsTouched.value = false
+  serverErrors.value = {}
+  quotationInfo.value = emptyQuotationInfo()
+}
+
+async function fetchQuotationInfo(id: string | number): Promise<void> {
+  try {
+    const { data: body } = await axios.get<ApiResponse<QuotationDetailResponse>>(`/api/quotations/${id}`)
+    quotationInfo.value = quotationInfoFrom(body.data)
+  } catch {
+    quotationInfo.value = emptyQuotationInfo()
+  }
 }
 
 function buildPayload(): FormData {
@@ -478,14 +579,14 @@ async function reloadAfterConflict(): Promise<void> {
     applyPoCustomerToForm()
     await fetchQuotationOptions()
     ensureCurrentQuotationOption()
+    await fetchQuotationInfo(form.quotation_id)
     return
   }
 
   await fetchQuotationOptions()
   const stillAvailable = quotationOptions.value.some(opt => String(opt.id) === String(form.quotation_id))
   if (!stillAvailable) {
-    form.quotation_id = ''
-    rows.value = []
+    clearQuotationSelection()
     unavailableQuotationAlert.value = true
   }
 }
@@ -554,6 +655,43 @@ function subtotalBreakdown(materialSubtotal: number, transportTotal: number): st
   return `Subtotal Material: ${formatCurrency(materialSubtotal)}<br>Total Transport: ${formatCurrency(transportTotal)}`
 }
 
+function emptyQuotationInfo(): QuotationInfo {
+  return { lokasi: '', metode: '', keterangan: '' }
+}
+
+function quotationInfoFrom(data: QuotationDetailResponse): QuotationInfo {
+  return {
+    lokasi: data.lokasi_pengiriman?.trim() ?? '',
+    metode: data.metode ?? '',
+    keterangan: data.keterangan?.trim() ?? '',
+  }
+}
+
+function summarizeQuotationProducts(row: QuotationIndexRow): { produk: string; produkSummary: string } {
+  const names = row.items
+    .map(item => {
+      const nama = item.product?.nama_produk
+      if (!nama) return ''
+      const ukuran = item.product?.ukuran?.nama_ukuran
+      return ukuran ? `${nama} ${ukuran}` : nama
+    })
+    .filter(Boolean)
+  if (!names.length) return { produk: '', produkSummary: '' }
+  return {
+    produk: names.join(' '),
+    produkSummary: names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0],
+  }
+}
+
+function quotationOptionAttrs(opt: QuotationPickerOption): Record<string, string> {
+  return {
+    'data-lokasi': opt.lokasi,
+    'data-produk': opt.produk,
+    'data-line2': opt.lokasi || opt.produkSummary,
+    'data-line2-title': opt.lokasi || opt.produk,
+  }
+}
+
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
@@ -592,12 +730,22 @@ function deriveDefaultPayment(tipePembayaran: string | null | undefined, repayme
     <CardSection title="Sumber Penawaran" description="Data penawaran yang menjadi dasar PO Customer." icon="FileText">
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2">
         <div>
+          <div class="text-form-label">Customer</div>
+          <TomSelect :model-value="customerFilter" class="w-full" :options="customerSelectOptions"
+            :disabled="isEditMode" @update:modelValue="onCustomerSelected">
+            <option value="">Semua customer</option>
+            <option v-for="customer in customerOptions" :key="customer.id" :value="customer.id">{{ customer.name }}</option>
+          </TomSelect>
+          <small v-if="isEditMode" class="block text-caption text-slate-500">Customer mengikuti PO dan tidak dapat diubah.</small>
+        </div>
+        <div>
           <div class="text-form-label">Nomor Penawaran</div>
-          <TomSelect :model-value="String(form.quotation_id)" class="w-full"
-            :options="{ placeholder: 'Pilih penawaran...', dropdownParent: 'body' }"
+          <TomSelect :key="customerFilter" :model-value="String(form.quotation_id)" class="w-full"
+            :options="quotationSelectOptions"
             @update:modelValue="onQuotationSelected">
-            <option v-for="opt in quotationOptions" :key="opt.id" :value="String(opt.id)">
-              {{ opt.nomor_penawaran }} — {{ opt.customer_nama }}
+            <option v-for="opt in filteredQuotationOptions" :key="opt.id" :value="String(opt.id)"
+              v-bind="quotationOptionAttrs(opt)">
+              {{ customerFilter ? opt.nomor_penawaran : `${opt.nomor_penawaran} — ${opt.customer_nama}` }}
             </option>
           </TomSelect>
           <small v-if="isEditMode" class="block text-caption text-slate-500">Hanya penawaran customer ini yang berlaku hari ini.</small>
@@ -609,10 +757,24 @@ function deriveDefaultPayment(tipePembayaran: string | null | undefined, repayme
             <span>Penawaran ini sudah memiliki PO Customer atau tidak tersedia.</span>
           </Alert>
         </div>
+      </div>
+
+      <div v-if="form.quotation_id" class="gap-4 grid grid-cols-1 mt-4 pt-4 border-slate-100 border-t sm:grid-cols-2">
         <div>
           <div class="text-form-label">Masa Berlaku Harga</div>
-          <FormInput type="text" :value="`${formatDate(form.masa_berlaku)} – ${formatDate(form.sampai_dengan)}`"
-            readonly class="w-full !bg-white dark:!bg-darkmode-800" />
+          <div class="mt-1 text-body-strong">{{ formatDate(form.masa_berlaku) }} – {{ formatDate(form.sampai_dengan) }}</div>
+        </div>
+        <div>
+          <div class="text-form-label">Metode</div>
+          <div class="mt-1 text-body-strong">{{ quotationInfo.metode || '-' }}</div>
+        </div>
+        <div>
+          <div class="text-form-label">Lokasi Pengiriman</div>
+          <div class="mt-1 text-body-strong whitespace-pre-line break-words">{{ quotationInfo.lokasi || '-' }}</div>
+        </div>
+        <div>
+          <div class="text-form-label">Titik Serah Terima & T&C Bongkar</div>
+          <div class="mt-1 text-body whitespace-pre-line break-words">{{ quotationInfo.keterangan || '-' }}</div>
         </div>
       </div>
     </CardSection>

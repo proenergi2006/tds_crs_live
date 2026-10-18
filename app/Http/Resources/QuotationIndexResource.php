@@ -22,6 +22,7 @@ class QuotationIndexResource extends JsonResource
             'id'                  => $this->id,
             'nomor_penawaran'     => $this->nomor_penawaran,
             'keterangan'          => $this->keterangan,
+            'lokasi_pengiriman'   => $this->lokasi_pengiriman,
             'user_id'             => $this->user_id,
             'status'              => $this->status?->value,
             'status_label'        => $this->status?->label(),
@@ -35,6 +36,7 @@ class QuotationIndexResource extends JsonResource
             'dpp'                 => $this->aggregatedDpp(),
             'has_po_customer'     => (bool) $this->has_po_customer,
             'customer'            => $this->customer ? [
+                'id_customer'  => $this->customer->id_customer,
                 'company_name' => $this->customer->company_name,
             ] : null,
             'marketing'          => $this->user ? ['name' => $this->user->name] : null,

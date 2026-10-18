@@ -19,6 +19,7 @@ use App\Http\Resources\QuotationDetailResource;
 use App\Http\Resources\QuotationIndexResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Quotation;
+use App\Support\Approval\QuotationApprovalStepsBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -48,6 +49,10 @@ class QuotationController extends Controller
         'documentApprovals.steps.actor',
         'latestDocumentApproval.steps.role',
     ];
+
+    public function __construct(private readonly QuotationApprovalStepsBuilder $stepsBuilder)
+    {
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -93,7 +98,7 @@ class QuotationController extends Controller
             $query->where('customer_id', (int) $validated['customer_id']);
         }
 
-        if (! empty($validated['valid_today'])) {
+        if ($request->boolean('valid_today')) {
             $query->validOn(now());
         }
 
@@ -116,7 +121,7 @@ class QuotationController extends Controller
         $quotation->load(self::DETAIL_RELATIONS);
 
         return ApiResponse::success(
-            new QuotationDetailResource($quotation),
+            $this->detailResource($quotation),
             'Detail penawaran berhasil dimuat.'
         );
     }
@@ -126,7 +131,7 @@ class QuotationController extends Controller
         $quotation = $action->execute($request->validated(), $request->resolvedBrand(), $request->user());
 
         return ApiResponse::success(
-            new QuotationDetailResource($quotation->load(self::DETAIL_RELATIONS)),
+            $this->detailResource($quotation->load(self::DETAIL_RELATIONS)),
             'Penawaran berhasil dibuat.',
             201
         );
@@ -141,7 +146,7 @@ class QuotationController extends Controller
             : 'Penawaran berhasil diperbarui.';
 
         return ApiResponse::success(
-            new QuotationDetailResource($result['quotation']->load(self::DETAIL_RELATIONS)),
+            $this->detailResource($result['quotation']->load(self::DETAIL_RELATIONS)),
             $message,
             meta: ['transport_recalculated' => $result['transport_recalculated']]
         );
@@ -157,7 +162,7 @@ class QuotationController extends Controller
         $quotation->refresh()->load(self::DETAIL_RELATIONS);
 
         return ApiResponse::success(
-            new QuotationDetailResource($quotation),
+            $this->detailResource($quotation),
             'Detail penawaran berhasil diperbarui.'
         );
     }
@@ -200,7 +205,7 @@ class QuotationController extends Controller
         $action->execute($quotation, $request->user(), $request->validated()['catatan']);
 
         return ApiResponse::success(
-            new QuotationDetailResource($quotation->refresh()->load(self::DETAIL_RELATIONS)),
+            $this->detailResource($quotation->refresh()->load(self::DETAIL_RELATIONS)),
             'Penawaran dikembalikan ke Draft.'
         );
     }
@@ -218,5 +223,10 @@ class QuotationController extends Controller
         $priceDetail = ($validated['price_format'] ?? null) === 'detail';
 
         return $action->execute($quotation, $lang, $priceDetail);
+    }
+
+    private function detailResource(Quotation $quotation): QuotationDetailResource
+    {
+        return new QuotationDetailResource($quotation, $this->stepsBuilder->buildAttempts($quotation));
     }
 }

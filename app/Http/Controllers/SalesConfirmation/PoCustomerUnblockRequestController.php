@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\SalesConfirmation;
 
 use App\Actions\PoCustomer\SubmitPoCustomerUnblockRequestAction;
-use App\Enums\PoCustomerScProcessState;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PoCustomer\StorePoCustomerUnblockRequestRequest as StoreRequest;
 use App\Http\Responses\ApiResponse;
@@ -31,24 +30,8 @@ class PoCustomerUnblockRequestController extends Controller
 
         $user = $request->user();
 
-        $po = $poc;
-
-        if ($po->sc_process_state !== PoCustomerScProcessState::Blocked) {
-            return ApiResponse::error(
-                'Unblock hanya untuk PO yang diblokir kredit.',
-                409
-            );
-        }
-
-        if ($po->activeUnblockRequest() !== null || $po->approvedUnblockRequest() !== null) {
-            return ApiResponse::error(
-                'Sudah ada pengajuan Unblock aktif / disetujui untuk PO ini.',
-                409
-            );
-        }
-
         $unblockRequest = $action->execute(
-            $po,
+            $poc,
             $request->validated(),
             $request->file('attachments', []),
             $user->id,

@@ -66,8 +66,9 @@ export interface QuotationIndexRow {
   masa_berlaku: string | null
   sampai_dengan: string | null
   total_volume: number | string | null
-  customer: { company_name: string } | null
+  customer: { id_customer: number; company_name: string } | null
   marketing: { name: string } | null
+  lokasi_pengiriman: string | null
   items: QuotationIndexRowItem[]
   has_po_customer: boolean
   created_at: string

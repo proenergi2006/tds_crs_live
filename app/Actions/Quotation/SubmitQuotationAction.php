@@ -15,11 +15,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class SubmitQuotationAction
 {
-    public function __construct(private readonly ResolveQuotationVerifierAction $resolveVerifier)
-    {
+    public function __construct(
+        private readonly ResolveQuotationVerifierAction $resolveVerifier,
+        private readonly DocumentApprovalService $approvalService
+    ) {
     }
 
     public function execute(Quotation $quotation, string $verificationUrl): string
@@ -48,7 +51,7 @@ class SubmitQuotationAction
                 'updated_at' => now(),
             ]);
 
-            (new DocumentApprovalService())->startSingleStepCycle($quotation, $verifier->value);
+            $this->approvalService->startSingleStepCycle($quotation, $verifier->value);
 
             $recipients = $this->recipientsFor($verifier);
 
@@ -62,7 +65,7 @@ class SubmitQuotationAction
                     $verificationUrl,
                     $verifier->label()
                 ));
-            } catch (\Throwable $mailErr) {
+            } catch (TransportExceptionInterface $mailErr) {
                 Log::error('AJUKAN PENAWARAN - GAGAL KIRIM EMAIL VERIFIKATOR', [
                     'quotation_id' => $quotation->id,
                     'verifier'     => $verifier->label(),

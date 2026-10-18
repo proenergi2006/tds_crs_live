@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Schema;
 
 class RejectQuotationAction
 {
+    public function __construct(private readonly DocumentApprovalService $approvalService)
+    {
+    }
+
     public function execute(Quotation $quotation, User $actor, string $note, string $detailUrl): void
     {
         [$quotation, $verifier] = DB::transaction(function () use ($quotation, $actor, $note) {
@@ -30,7 +34,7 @@ class RejectQuotationAction
 
             $quotation->update(['status' => QuotationStatus::Rejected]);
 
-            (new DocumentApprovalService())->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Rejected, $actor->id, $note);
+            $this->approvalService->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Rejected, $actor->id, $note);
 
             return [$quotation, $verifier];
         });

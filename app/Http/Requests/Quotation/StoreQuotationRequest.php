@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\Quotation;
 
-use App\Models\ProductPrice;
-use App\Models\Quotation;
 use App\Enums\QuotationBrand;
 use App\Enums\QuotationTransportMode;
 use App\Enums\TransportType;
+use App\Models\ProductPrice;
+use App\Models\Quotation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreQuotationRequest extends FormRequest
 {
@@ -105,7 +106,7 @@ class StoreQuotationRequest extends FormRequest
         return $rules;
     }
 
-    private function rejectUnconfirmedPrices(\Illuminate\Validation\Validator $validator, array $allowedIds = []): void
+    private function rejectUnconfirmedPrices(Validator $validator, array $allowedIds = []): void
     {
         $items = (array) $this->input('items', []);
 
@@ -129,9 +130,9 @@ class StoreQuotationRequest extends FormRequest
         }
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $validator) {
+        $validator->after(function (Validator $validator) {
             $this->rejectUnconfirmedPrices($validator);
 
             $seen = [];

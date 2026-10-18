@@ -143,6 +143,12 @@ class PoCustomer extends Model
         return $this->hasMany(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc');
     }
 
+    public function activeUnblockRequestRelation(): HasOne
+    {
+        return $this->hasOne(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc')
+            ->ofMany(['id' => 'max'], fn (Builder $query) => $query->where('status', DocumentApprovalStatus::InProgress));
+    }
+
     public function plans(): HasMany
     {
         return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');

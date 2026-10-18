@@ -18,6 +18,10 @@ use Illuminate\Support\Str;
 
 class SaveSalesConfirmationAction
 {
+    public function __construct(private readonly DocumentApprovalService $approvalService)
+    {
+    }
+
     public function execute(
         PoCustomer $po,
         array $data,
@@ -88,10 +92,9 @@ class SaveSalesConfirmationAction
                     ]
                 );
 
-                $service = new DocumentApprovalService();
-                if (!$service->activeCycle($sc)) {
+                if (!$this->approvalService->activeCycle($sc)) {
                     $quotation = $po->loadMissing('quotation')->quotation;
-                    $service->startCycleForRoles($sc, [
+                    $this->approvalService->startCycleForRoles($sc, [
                         QuotationVerifierRole::branchManagerFor($quotation->brand, $quotation->isPolimer())->value,
                         QuotationVerifierRole::operationManagerFor($quotation->brand)->value
                     ]);
