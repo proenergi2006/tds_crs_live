@@ -45,6 +45,7 @@ class SalesConfirmationController extends Controller
                 'customer:id_customer,customer_code,company_name',
                 'quotation',
                 'salesConfirmation:id,po_customer_id,disposisi,lastupdate_time,created_time',
+                'salesConfirmation.latestDocumentApproval.steps',
                 'activeUnblockRequestRelation.latestDocumentApproval',
             ])
             ->whereIn('sc_process_state', [
@@ -131,7 +132,7 @@ class SalesConfirmationController extends Controller
 
         return ApiResponse::success(
             ['id_sales_confirmation' => $sc->id],
-            'Sales Confirmation berhasil diajukan untuk approval BM dan OM.'
+            'Sales Confirmation berhasil diajukan untuk approval.'
         );
     }
 
@@ -164,18 +165,12 @@ class SalesConfirmationController extends Controller
             $user->name ?? 'system'
         );
 
-        $message = match ($sc->disposisi) {
-            SalesConfirmationStatus::PendingOm => 'Sales Confirmation diteruskan ke Operation Manager.',
-            SalesConfirmationStatus::Confirmed => 'Sales Confirmation berhasil dikonfirmasi.',
-            default                            => 'Sales Confirmation ditolak dan dikembalikan ke Admin Finance.',
-        };
-
         return ApiResponse::success(
             [
                 'disposisi'       => $sc->disposisi->value,
-                'disposisi_label' => $sc->disposisi->label()
+                'disposisi_label' => $sc->statusLabel()
             ],
-            $message
+            $this->decisionMessage($sc)
         );
     }
 
@@ -225,5 +220,15 @@ class SalesConfirmationController extends Controller
             ],
             "Proses gerbang Sales Confirmation selesai: {$po->status_label}."
         );
+    }
+
+    private function decisionMessage(SalesConfirmation $sc): string
+    {
+        return match ($sc->disposisi) {
+            SalesConfirmationStatus::InApproval => 'Sales Confirmation diteruskan ke '
+                . ($sc->activeApproverRole()?->shortLabel() ?? 'approver berikutnya') . '.',
+            SalesConfirmationStatus::Confirmed => 'Sales Confirmation berhasil dikonfirmasi.',
+            default => 'Sales Confirmation ditolak dan dikembalikan ke Admin Finance.',
+        };
     }
 }

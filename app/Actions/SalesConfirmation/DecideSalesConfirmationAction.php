@@ -37,20 +37,12 @@ class DecideSalesConfirmationAction
                 throw new BusinessRuleException('Step approval aktif tidak sesuai dengan status Sales Confirmation.');
             }
 
-            $isMissingOmStep = $status === DocumentApprovalStepStatus::Approved
-                && $expected === 1
-                && $cycle->steps->doesntContain('step_order', 2);
-
-            if ($isMissingOmStep) {
-                throw new BusinessRuleException(
-                    'Siklus approval Sales Confirmation tidak memiliki step Operation Manager.'
-                );
-            }
+            $isFinalStep = $expected === (int) $cycle->steps->max('step_order');
 
             $this->approvalService->decideStep($locked, $expected, $status, $actorId, $note);
 
             $locked->update([
-                ...$this->outcome($status, $expected, $step->id_role),
+                ...$this->outcome($status, $isFinalStep, $step->id_role),
                 'lastupdate_by'   => $pic,
                 'lastupdate_time' => now(),
             ]);
@@ -59,14 +51,14 @@ class DecideSalesConfirmationAction
         });
     }
 
-    private function outcome(DocumentApprovalStepStatus $status, int $stepOrder, ?int $roleId): array
+    private function outcome(DocumentApprovalStepStatus $status, bool $isFinalStep, ?int $roleId): array
     {
         if ($status === DocumentApprovalStepStatus::Rejected) {
             return ['disposisi' => SalesConfirmationStatus::Rejected];
         }
 
-        if ($stepOrder === 1) {
-            return ['disposisi' => SalesConfirmationStatus::PendingOm];
+        if (! $isFinalStep) {
+            return ['disposisi' => SalesConfirmationStatus::InApproval];
         }
 
         return [

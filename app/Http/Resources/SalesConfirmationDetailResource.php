@@ -78,7 +78,7 @@ class SalesConfirmationDetailResource extends JsonResource
             ],
             'sc' => [
                 'disposisi'       => $disposisi,
-                'disposisi_label' => SalesConfirmationStatus::tryFrom($disposisi)?->label() ?? 'Draft',
+                'disposisi_label' => $sc?->statusLabel() ?? SalesConfirmationStatus::PendingAdmin->label(),
                 'disposisi_time'  => Carbon::parse($when)->format('Y-m-d H:i:s'),
             ],
             'sc_header' => $sc ? [

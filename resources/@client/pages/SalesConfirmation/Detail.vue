@@ -138,9 +138,7 @@ const approvalSteps = computed<StepItem[]>(() => {
   const flow = approvalFlow.value
   if (!flow) return [adminStep.value]
 
-  const awaitingDecision =
-    scDisposisi.value === SALES_CONFIRMATION_STATUS.PendingBm ||
-    scDisposisi.value === SALES_CONFIRMATION_STATUS.PendingOm
+  const awaitingDecision = scDisposisi.value === SALES_CONFIRMATION_STATUS.InApproval
 
   const flowSteps = flow.steps.map((step): StepItem => {
     const note = [step.actor_name, step.decision_note].filter(Boolean).join(' · ')
@@ -850,7 +848,7 @@ function backToIndex(): void {
 
     <ConfirmDialog :open="submitConfirmOpen"
       :title="isRejected ? 'Ajukan ulang Sales Confirmation?' : 'Ajukan Sales Confirmation?'"
-      description="Sales Confirmation akan diajukan untuk persetujuan BM lalu OM."
+      description="Sales Confirmation akan diajukan untuk persetujuan."
       :confirm-text="isRejected ? 'Ya, ajukan ulang' : 'Ya, ajukan'" icon="Send" icon-class="bg-primary/10 text-primary"
       variant="primary" :loading="submitting" @close="submitConfirmOpen = false" @confirm="submitAdmin" />
 

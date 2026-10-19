@@ -3,11 +3,13 @@
 namespace App\Actions\SalesConfirmation;
 
 use App\Enums\PoCustomerScProcessState;
+use App\Enums\QuotationBrand;
 use App\Enums\QuotationVerifierRole;
 use App\Enums\SalesConfirmationStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\CustomerAdminArnya;
 use App\Models\PoCustomer;
+use App\Models\Quotation;
 use App\Models\SalesConfirmation;
 use App\Models\SalesConfirmationApproval;
 use App\Services\Approval\DocumentApprovalService;
@@ -18,9 +20,7 @@ use Illuminate\Support\Str;
 
 class SaveSalesConfirmationAction
 {
-    public function __construct(private readonly DocumentApprovalService $approvalService)
-    {
-    }
+    public function __construct(private readonly DocumentApprovalService $approvalService) {}
 
     public function execute(
         PoCustomer $po,
@@ -62,7 +62,7 @@ class SaveSalesConfirmationAction
                         'ov_under_60'     => (float) ($arnya->overdue_31_60 ?? 0),
                         'ov_under_90'     => (float) ($arnya->overdue_61_90 ?? 0),
                         'ov_up_90'        => (float) ($arnya->overdue_90_plus ?? 0),
-                        'disposisi'       => SalesConfirmationStatus::PendingBm,
+                        'disposisi'       => SalesConfirmationStatus::InApproval,
                         'flag_approval'   => 1,
                         'role_approved'   => null,
                         'tgl_approved'    => null,
@@ -92,12 +92,13 @@ class SaveSalesConfirmationAction
                     ]
                 );
 
-                if (!$this->approvalService->activeCycle($sc)) {
-                    $quotation = $po->loadMissing('quotation')->quotation;
-                    $this->approvalService->startCycleForRoles($sc, [
-                        QuotationVerifierRole::branchManagerFor($quotation->brand, $quotation->isPolimer())->value,
-                        QuotationVerifierRole::operationManagerFor($quotation->brand)->value
-                    ]);
+                $hasRunningApproval = $this->approvalService->activeCycle($sc) !== null;
+
+                if (! $hasRunningApproval) {
+                    $po->loadMissing('quotation');
+                    $approverRoleIds = $this->resolveApproverRoleIds($po->quotation);
+
+                    $this->approvalService->startCycleForRoles($sc, $approverRoleIds);
                 }
 
                 return $sc->refresh();
@@ -113,6 +114,32 @@ class SaveSalesConfirmationAction
         return $sc;
     }
 
+    /** Urutan array = urutan step approval, sumber config/approvals.php. */
+    private function resolveApproverRoleIds(Quotation $quotation): array
+    {
+        $key = $this->resolveBusinessUnit($quotation);
+
+        $approverKeys = config("approvals.sales_confirmation.{$key}");
+
+        if (! is_array($approverKeys) || $approverKeys === []) {
+            throw new \LogicException("Approver Sales Confirmation untuk business unit '{$key}' belum dikonfigurasi.");
+        }
+
+        return array_map(
+            fn(string $approverKey) => QuotationVerifierRole::fromApproverKey($approverKey)->value,
+            array_values($approverKeys)
+        );
+    }
+
+    private function resolveBusinessUnit(Quotation $quotation): string
+    {
+        return match (true) {
+            $quotation->brand === QuotationBrand::Proenergi => 'proenergi',
+            $quotation->isPolimer()                         => 'tds_polimer',
+            default                                         => 'tds_crushed_stone',
+        };
+    }
+
     private function assertSubmittable(PoCustomer $po): void
     {
         $lockedPo = PoCustomer::whereKey($po->getKey())->lockForUpdate()->firstOrFail();
@@ -123,9 +150,7 @@ class SaveSalesConfirmationAction
 
         $existing = SalesConfirmation::where('po_customer_id', $po->id_poc)->lockForUpdate()->first();
 
-        $inApproval = [SalesConfirmationStatus::PendingBm, SalesConfirmationStatus::PendingOm];
-
-        if (in_array($existing?->disposisi, $inApproval, true)) {
+        if ($existing?->disposisi === SalesConfirmationStatus::InApproval) {
             throw new BusinessRuleException('Sales Confirmation sedang dalam proses approval.');
         }
 

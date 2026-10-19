@@ -39,7 +39,7 @@ class SalesConfirmationIndexResource extends JsonResource
             'marketing_name' => $marketing,
 
             'disposisi'      => $disposisi,
-            'disposisi_text' => SalesConfirmationStatus::tryFrom($disposisi)?->label() ?? 'Draft',
+            'disposisi_text' => $sc?->statusLabel() ?? SalesConfirmationStatus::PendingAdmin->label(),
             'disposisi_time' => $when ? Carbon::parse($when)->format('Y-m-d H:i:s') : null,
 
             'sc_process_state' => $this->sc_process_state?->value,

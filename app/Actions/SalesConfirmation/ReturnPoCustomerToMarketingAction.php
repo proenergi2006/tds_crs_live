@@ -49,7 +49,7 @@ class ReturnPoCustomerToMarketingAction
 
         $disposisi = SalesConfirmation::where('po_customer_id', $po->id_poc)->lockForUpdate()->first()?->disposisi;
 
-        if (in_array($disposisi, [SalesConfirmationStatus::PendingBm, SalesConfirmationStatus::PendingOm], true)) {
+        if ($disposisi === SalesConfirmationStatus::InApproval) {
             throw new BusinessRuleException('Sales Confirmation sedang dalam proses approval.');
         }
 

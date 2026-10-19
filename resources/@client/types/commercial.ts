@@ -91,7 +91,7 @@ export type PoCustomerStatusKey = 'awaiting_process' | 'blocked' | 'awaiting_sc'
 
 export type PoCustomerPaymentType = 'CBD' | 'COD' | 'CREDIT'
 
-export type SalesConfirmationStatus = 1 | 2 | 3 | 4 | 5
+export type SalesConfirmationStatus = 1 | 2 | 4 | 5
 
 export interface PoCustomerItem {
   id: number

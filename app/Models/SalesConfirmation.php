@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DocumentApprovalStatus;
+use App\Enums\QuotationVerifierRole;
 use App\Enums\SalesConfirmationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -82,11 +83,41 @@ class SalesConfirmation extends Model
 
     public function expectedStepOrder(): ?int
     {
-        return match ($this->disposisi) {
-            SalesConfirmationStatus::PendingBm => 1,
-            SalesConfirmationStatus::PendingOm => 2,
-            default                            => null,
-        };
+        if ($this->disposisi !== SalesConfirmationStatus::InApproval) {
+            return null;
+        }
+
+        $cycle = $this->latestDocumentApproval;
+
+        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress || $cycle->current_step_order === null) {
+            return null;
+        }
+
+        return (int) $cycle->current_step_order;
+    }
+
+    public function activeApproverRole(): ?QuotationVerifierRole
+    {
+        $roleId = $this->activeApprovalStep()?->id_role;
+
+        return $roleId === null ? null : QuotationVerifierRole::tryFrom((int) $roleId);
+    }
+
+    public function statusLabel(): string
+    {
+        $status = SalesConfirmationStatus::tryFrom((int) $this->getRawOriginal('disposisi'));
+
+        if ($status === null) {
+            return 'Draft';
+        }
+
+        if ($status !== SalesConfirmationStatus::InApproval) {
+            return $status->label();
+        }
+
+        $role = $this->activeApproverRole();
+
+        return $role ? "Menunggu Verifikasi {$role->shortLabel()}" : $status->label();
     }
 
     public function isAwaitingDecision(): bool

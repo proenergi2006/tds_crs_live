@@ -35,9 +35,16 @@ enum QuotationVerifierRole: int
         };
     }
 
-    public static function operationManagerFor(QuotationBrand $brand): self
+    public static function fromApproverKey(string $key): self
     {
-        return $brand === QuotationBrand::Proenergi ? self::OperationManagerProenergi : self::OperationManager;
+        return match ($key) {
+            'bm'           => self::BranchManager,
+            'bm_polimer'   => self::BranchManagerPolimer,
+            'bm_proenergi' => self::BranchManagerProenergi,
+            'om'           => self::OperationManager,
+            'om_proenergi' => self::OperationManagerProenergi,
+            default        => throw new \LogicException("Kunci approver '{$key}' tidak dikenal."),
+        };
     }
 
     public static function permission(QuotationBrand $brand): string
@@ -54,6 +61,15 @@ enum QuotationVerifierRole: int
             self::OperationManager          => 'Operation Manager',
             self::OperationManagerProenergi => 'Operation Manager Proenergi',
             self::Ceo                       => 'CEO',
+        };
+    }
+
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::BranchManager, self::BranchManagerPolimer, self::BranchManagerProenergi => 'BM',
+            self::OperationManager, self::OperationManagerProenergi                       => 'OM',
+            self::Ceo                                                                     => 'CEO',
         };
     }
 

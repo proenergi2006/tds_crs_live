@@ -2,8 +2,7 @@ import type { SalesConfirmationStatus } from "@/types";
 
 export const SALES_CONFIRMATION_STATUS = {
   PendingAdmin: 1,
-  PendingBm: 2,
-  PendingOm: 3,
+  InApproval: 2,
   Confirmed: 4,
   Rejected: 5,
 } as const;
@@ -14,8 +13,7 @@ export const SALES_CONFIRMATION_STATUS_OPTIONS: readonly {
 }[] = [
   { value: "", label: "Semua status" },
   { value: SALES_CONFIRMATION_STATUS.PendingAdmin, label: "Menunggu Verifikasi Admin" },
-  { value: SALES_CONFIRMATION_STATUS.PendingBm, label: "Menunggu Verifikasi BM" },
-  { value: SALES_CONFIRMATION_STATUS.PendingOm, label: "Menunggu Verifikasi OM" },
+  { value: SALES_CONFIRMATION_STATUS.InApproval, label: "Menunggu Verifikasi" },
   { value: SALES_CONFIRMATION_STATUS.Confirmed, label: "Confirmed" },
   { value: SALES_CONFIRMATION_STATUS.Rejected, label: "Ditolak" },
 ];
@@ -26,8 +24,7 @@ export function salesConfirmationBadgeClass(
   switch (Number(value)) {
     case SALES_CONFIRMATION_STATUS.PendingAdmin:
       return "bg-amber-100 text-amber-700";
-    case SALES_CONFIRMATION_STATUS.PendingBm:
-    case SALES_CONFIRMATION_STATUS.PendingOm:
+    case SALES_CONFIRMATION_STATUS.InApproval:
       return "bg-blue-100 text-blue-700";
     case SALES_CONFIRMATION_STATUS.Confirmed:
       return "bg-emerald-100 text-emerald-700";
