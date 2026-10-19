@@ -5,14 +5,18 @@ namespace App\Support\Approval;
 use App\Actions\Quotation\ResolveQuotationVerifierAction;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\QuotationStatus;
 use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
-use App\Enums\QuotationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class QuotationApprovalStepsBuilder
 {
+    public function __construct(private readonly ResolveQuotationVerifierAction $resolveVerifier)
+    {
+    }
+
     public function buildAttempts(Model $quotation): array
     {
         $cycles = $quotation->documentApprovals->sortBy('id_approval')->values();
@@ -22,13 +26,8 @@ class QuotationApprovalStepsBuilder
         }
 
         $isDraftNow = $quotation->status === QuotationStatus::Draft;
-        $lastIndex = $cycles->count() - 1;
 
-        $groups = $cycles->map(function (DocumentApproval $cycle, int $index) use ($quotation, $isDraftNow, $lastIndex) {
-            $wasReopened = $isDraftNow && $index === $lastIndex;
-
-            return ['steps' => $this->fromCycle($cycle, $wasReopened, $quotation)];
-        })->values();
+        $groups = $cycles->map(fn (DocumentApproval $cycle) => ['steps' => $this->fromCycle($cycle)])->values();
 
         if ($isDraftNow) {
             $groups->push(['steps' => $this->fromVerifierPreview($quotation)]);
@@ -46,38 +45,59 @@ class QuotationApprovalStepsBuilder
         ])->all();
     }
 
-    private function fromCycle(DocumentApproval $cycle, bool $wasReopened = false, ?Model $quotation = null): array
+    private function fromCycle(DocumentApproval $cycle): array
     {
-        $steps = $cycle->steps->map(function (DocumentApprovalStep $step) use ($cycle) {
-            $isCurrent = $cycle->status === DocumentApprovalStatus::InProgress
-                && $step->step_order === $cycle->current_step_order;
+        return $cycle->steps
+            ->map(fn (DocumentApprovalStep $step) => $step->status === DocumentApprovalStepStatus::Cancelled
+                ? $this->cancellationStep($step)
+                : $this->decisionStep($step, $cycle))
+            ->all();
+    }
 
-            $stepName = $step->displayName() ?? "Tahap {$step->step_order}";
+    private function decisionStep(DocumentApprovalStep $step, DocumentApproval $cycle): array
+    {
+        $stepName = $step->displayName() ?? "Tahap {$step->step_order}";
 
+        if ($cycle->status === DocumentApprovalStatus::Cancelled && $step->status === DocumentApprovalStepStatus::Pending) {
             return [
                 'title'       => $stepName,
-                'description' => $this->describeStep($step, $stepName),
-                'status'      => match (true) {
-                    $step->status === DocumentApprovalStepStatus::Approved => 'completed',
-                    $step->status === DocumentApprovalStepStatus::Rejected => 'rejected',
-                    $isCurrent => 'active',
-                    default => 'pending',
-                },
-                'timestamp' => $step->acted_at,
-            ];
-        })->all();
-
-        if ($wasReopened) {
-            $steps[] = [
-                'title'       => 'Dikembalikan ke Draft',
-                'description' => 'Dokumen dikembalikan ke tahap drafting untuk diedit.',
-                'status'      => 'rejected',
-                'status_text' => 'DIKEMBALIKAN',
-                'timestamp'   => $quotation?->updated_at,
+                'description' => 'Dibatalkan karena penawaran dikembalikan ke Draft.',
+                'status'      => 'pending',
+                'status_text' => 'DIBATALKAN',
+                'timestamp'   => null,
             ];
         }
 
-        return $steps;
+        $isCurrent = $cycle->status === DocumentApprovalStatus::InProgress
+            && $step->step_order === $cycle->current_step_order;
+
+        return [
+            'title'       => $stepName,
+            'description' => $this->describeStep($step, $stepName),
+            'status'      => match (true) {
+                $step->status === DocumentApprovalStepStatus::Approved => 'completed',
+                $step->status === DocumentApprovalStepStatus::Rejected => 'rejected',
+                $isCurrent => 'active',
+                default => 'pending',
+            },
+            'timestamp' => $step->acted_at,
+        ];
+    }
+
+    private function cancellationStep(DocumentApprovalStep $step): array
+    {
+        $actor       = $step->actor?->name;
+        $description = $actor
+            ? "Oleh {$actor}. Catatan: {$step->decision_note}"
+            : "Catatan: {$step->decision_note}";
+
+        return [
+            'title'       => 'Dikembalikan ke Draft',
+            'description' => $description,
+            'status'      => 'rejected',
+            'status_text' => 'DIKEMBALIKAN',
+            'timestamp'   => $step->acted_at,
+        ];
     }
 
     private function describeStep(DocumentApprovalStep $step, string $stepName): string
@@ -131,7 +151,7 @@ class QuotationApprovalStepsBuilder
         ];
 
         try {
-            $title = 'Verifikasi ' . app(ResolveQuotationVerifierAction::class)->execute($quotation)['verifier']->label();
+            $title = 'Verifikasi ' . $this->resolveVerifier->execute($quotation)['verifier']->label();
         } catch (ValidationException) {
             $title = 'Verifikasi';
         }

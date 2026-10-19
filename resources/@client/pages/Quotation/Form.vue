@@ -9,7 +9,6 @@ import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
 import Tippy from '@/components/Base/Tippy'
 import TomSelect from '@/components/Base/TomSelect'
-import Table from '@/components/Base/Table'
 import { FormCheck, FormInput, FormLabel, FormSelect, FormTextarea } from '@/components/Base/Form'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
@@ -20,8 +19,13 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import RadioCard from '@/components/SystemDesign/Form/RadioCard.vue'
 import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
+import { useAuthStore } from '@/stores/auth'
+import { DEFAULT_PPN_RATE, formatPercentRate } from '@/utils/format'
+import { actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import { defaultCreateBrand } from '@/utils/quotation-brand'
 import { createResourceApi, http } from "@/utils/resourceApi";
 import type {
+  ApiResponse,
   QuotationBrand,
   QuotationItemLine,
   TransportBasis,
@@ -34,34 +38,15 @@ import { transportBasisLabel, transportLegLabel } from './status'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const { success, warning, error: notifyError } = useNotification()
 const transporterApi = createResourceApi("/transporters");
 const transportAreaApi = createResourceApi("/transport-areas");
 const volumeApi = createResourceApi("/volumes");
 
-const brand: QuotationBrand = (route.meta.brand as QuotationBrand) === 'proenergi' ? 'proenergi' : 'tds'
-const isProenergi = brand === 'proenergi'
+const QUOTATION_API_BASE = '/api/quotations'
 
-const BRAND_CONFIG = {
-  tds: {
-    apiBase: '/api/penawarans',
-    listRoute: 'penawarans-list',
-    detailRoute: 'penawarans-detail',
-    createRoute: 'penawarans-create',
-    usePe: false,
-    showAcuan: false,
-  },
-  proenergi: {
-    apiBase: '/api/penawarans-proenergi',
-    listRoute: 'penawarans-list-proenergi',
-    detailRoute: 'penawarans-detail-proenergi',
-    createRoute: 'penawarans-create-proenergi',
-    usePe: true,
-    showAcuan: true,
-  },
-}
-const cfg = BRAND_CONFIG[brand]
-const brandLabel = isProenergi ? 'Penawaran Proenergi' : 'Penawaran'
+type QuotationUpdateResponse = ApiResponse<unknown> & { meta: { transport_recalculated: boolean } }
 const TRANSPORT_LEG_TYPES = ['VESSEL', 'TRUCK'] as const satisfies readonly TransportLegType[]
 
 const METODE_LABELS = {
@@ -112,6 +97,8 @@ const transportirs = ref<any[]>([])
 const wilayahs = ref<any[]>([])
 const volumes = ref<any[]>([])
 
+const activeBrand = ref<QuotationBrand | null>(null)
+
 const customerContacts = ref<any[]>([])
 const customerContactsLoading = ref(false)
 const newContactOpen = ref(false)
@@ -142,6 +129,7 @@ const selectedPeriodId = ref<string>('')
 const clonedFromNomor = ref<string | null>(null)
 
 const isEditingExpiredPeriod = ref(false)
+const ppnRate = ref<number>(DEFAULT_PPN_RATE)
 
 const itemsModalOpen = ref(false)
 
@@ -183,6 +171,7 @@ const form = reactive(createDefaultForm())
 
 const idParam = computed(() => route.params.id as string | undefined)
 const isEdit = computed(() => Boolean(idParam.value))
+const isProenergi = computed<boolean>(() => activeBrand.value === 'proenergi')
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -200,6 +189,8 @@ const itemsBasis = computed<ItemsBasis>(() => {
 })
 
 const isMetodeLocked = computed<boolean>(() => itemsBasis.value === 'franco')
+
+const itemsEditable = computed<boolean>(() => !isEditingExpiredPeriod.value)
 
 const metodeOptions = computed<Array<{ value: string; code: string; label: string }>>(() => {
   if (itemsBasis.value === 'franco') return [metodeOption('FRANCO')]
@@ -277,7 +268,7 @@ const dppPreview = computed<number | null>(() => {
   }
   return round2(sum)
 })
-const ppnPreview = computed<number | null>(() => (dppPreview.value === null ? null : round2(dppPreview.value * 0.11)))
+const ppnPreview = computed<number | null>(() => (dppPreview.value === null ? null : round2(dppPreview.value * ppnRate.value)))
 const totalPreview = computed<number | null>(() =>
   dppPreview.value === null || ppnPreview.value === null ? null : round2(dppPreview.value + ppnPreview.value),
 )
@@ -437,7 +428,14 @@ const validationRules = computed(() => ({
 
 const v$ = useVuelidate(validationRules, form)
 
-watch(() => route.fullPath, initializeForm, { immediate: true })
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.name === 'forbidden' || route.name === 'not-found') return
+    initializeForm()
+  },
+  { immediate: true },
+)
 
 watch(selectedPeriodId, (id) => {
   if (id === 'custom') return
@@ -492,6 +490,7 @@ function resetLocalState() {
 
 async function initializeForm() {
   resetLocalState()
+  activeBrand.value = isEdit.value || route.query.clone_from ? null : defaultCreateBrand(auth.can)
   await Promise.all([fetchSelects(), fetchTransportirWilayahVolume()])
   if (!isEdit.value) {
     const jakarta = cabangs.value.find(
@@ -596,9 +595,12 @@ async function fetchLegTariff(type: TransportLegType): Promise<void> {
 
 async function fetchQuotation() {
   try {
-    const { data } = await axios.get(`${cfg.apiBase}/${idParam.value}`)
+    const { data: body } = await axios.get<ApiResponse<any>>(`${QUOTATION_API_BASE}/${idParam.value}`)
+    const data = body.data
+    activeBrand.value = data.brand
 
     isEditingExpiredPeriod.value = isDateExpired(data.sampai_dengan)
+    ppnRate.value = Number(data.ppn_rate ?? DEFAULT_PPN_RATE)
     selectedPeriodId.value = data.price_period_id != null ? String(data.price_period_id) : ''
 
     Object.assign(form, {
@@ -652,14 +654,17 @@ async function fetchQuotation() {
         if (row && row.transport_price != null) item.transport_price = Number(row.transport_price)
       }
     }
-  } catch {
+  } catch (e: any) {
+    if (redirectToErrorPage(router, e.response?.status)) return
     notifyError('Gagal', 'Gagal memuat data penawaran')
   }
 }
 
 async function fetchCloneSource(cloneFromId: string) {
   try {
-    const { data } = await axios.get(`${cfg.apiBase}/${cloneFromId}`)
+    const { data: body } = await axios.get<ApiResponse<any>>(`${QUOTATION_API_BASE}/${cloneFromId}`)
+    const data = body.data
+    activeBrand.value = data.brand
     clonedFromNomor.value = data.nomor_penawaran || null
 
     form.customer_id = data.customer_id ? String(data.customer_id) : ''
@@ -693,6 +698,7 @@ async function fetchCloneSource(cloneFromId: string) {
 
     success('Data Dimuat', `Data dari penawaran ${data.nomor_penawaran} berhasil disalin ke form ini. Periksa kembali item & periode harga sebelum menyimpan.`)
   } catch {
+    activeBrand.value = defaultCreateBrand(auth.can)
     notifyError('Gagal', 'Gagal memuat data penawaran sumber untuk disalin.')
   }
 }
@@ -718,7 +724,7 @@ async function remapClonedItems(oldItems: any[]) {
         skipped.push(it.product?.nama_produk || `#${it.product_id}`)
         continue
       }
-      const harga = cfg.usePe && Number(row.price_list_pe) > 0 ? Number(row.price_list_pe) : Number(row.price_list)
+      const harga = isProenergi.value && Number(row.price_list_pe) > 0 ? Number(row.price_list_pe) : Number(row.price_list)
       remapped.push({
         product_id: String(it.product_id ?? ''),
         source_branch_id: it.source_branch_id != null ? String(it.source_branch_id) : '',
@@ -850,7 +856,7 @@ async function saveQuotation() {
       keterangan: form.keterangan,
 
       tipe_pembayaran: form.tipe_pembayaran,
-      ...(isProenergi ? {
+      ...(isProenergi.value ? {
         acuan_pembayaran: form.acuan_pembayaran,
       } : {}),
       dp_persen: parseInt((form.dp_persen || '0').replace(/\./g, ''), 10) || 0,
@@ -866,20 +872,21 @@ async function saveQuotation() {
       catatan: form.catatan,
       syarat_ketentuan: form.syarat_ketentuan,
       lampiran_tambahan: form.lampiran_tambahan,
+      ...(isEdit.value ? {} : { brand: activeBrand.value }),
     }
 
     if (isEdit.value) {
-      const { data } = await axios.put(`${cfg.apiBase}/${idParam.value}`, payload)
-      if (data.transport_recalculated === true) {
-        warning('Penawaran Diupdate', 'Harga transport dihitung ulang mengikuti tarif terbaru.')
+      const { data: body } = await axios.put<QuotationUpdateResponse>(`${QUOTATION_API_BASE}/${idParam.value}`, payload)
+      if (body.meta?.transport_recalculated === true) {
+        warning('Penawaran Diupdate', body.message || 'Harga transport dihitung ulang mengikuti tarif terbaru.')
       } else {
-        success('Berhasil', 'Penawaran berhasil diupdate.')
+        success('Berhasil', body.message || 'Penawaran berhasil diupdate.')
       }
-      router.push({ name: cfg.detailRoute, params: { id: idParam.value } })
+      router.push({ name: 'quotations.show', params: { id: idParam.value } })
     } else {
-      const { data } = await axios.post(cfg.apiBase, payload)
-      success('Berhasil', 'Penawaran berhasil dibuat.')
-      router.push({ name: cfg.detailRoute, params: { id: data.id } })
+      const { data: body } = await axios.post<ApiResponse<{ id: number }>>(QUOTATION_API_BASE, payload)
+      success('Berhasil', body.message || 'Penawaran berhasil dibuat.')
+      router.push({ name: 'quotations.show', params: { id: body.data.id } })
     }
   } catch (e: any) {
     if (e.response?.status === 422 && e.response.data.errors) {
@@ -888,9 +895,9 @@ async function saveQuotation() {
       notifyError('Validasi Backend Gagal', 'Perbaiki data berikut:', { items })
     } else if (e.response?.status === 409) {
       notifyError('Gagal', e.response.data?.message || 'Penawaran tidak bisa diubah.')
-      router.push({ name: cfg.detailRoute, params: { id: idParam.value } })
+      router.push({ name: 'quotations.show', params: { id: idParam.value } })
     } else {
-      notifyError('Gagal', e.response?.data?.message || 'Gagal menyimpan penawaran.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal menyimpan penawaran.'))
     }
   } finally {
     loading.value = false
@@ -1032,11 +1039,11 @@ function itemFinalTotal(it: QuotationItemLine): number | null {
 }
 
 function goBack() {
-  router.push({ name: cfg.listRoute })
+  router.push({ name: 'quotations.index' })
 }
 
 function openCloneFromCurrentEdit() {
-  router.push({ name: cfg.createRoute, query: { clone_from: String(idParam.value) } })
+  router.push({ name: 'quotations.create', query: { clone_from: String(idParam.value) } })
 }
 
 function openNewContactForm() {
@@ -1084,6 +1091,24 @@ function isDateExpired(dateStr: string | null | undefined): boolean {
   return end < today
 }
 
+function produkName(id: string | number): string {
+  const p = produkById.value[String(id)]
+  return p ? p.nama_produk : `#${id}`
+}
+
+function produkSize(id: string | number): string {
+  const ukuran = produkById.value[String(id)]?.ukuran
+  if (!ukuran?.nama_ukuran) return ''
+  return `${ukuran.nama_ukuran}${ukuran.satuan?.nama_satuan ? ' ' + ukuran.satuan.nama_satuan : ''}`
+}
+
+function itemFieldError(index: number, field: 'quantity' | 'unit_price'): string {
+  const items = v$.value.items as any
+  if (!items?.$dirty) return ''
+  const rowErrors = items.$each?.$response?.$errors?.[index]?.[field] ?? []
+  return rowErrors[0]?.$message?.toString() ?? ''
+}
+
 function produkLabel(id: string | number): string {
   const p = produkById.value[String(id)]
   if (!p) return `#${id}`
@@ -1119,7 +1144,7 @@ function formatCurrency(v: number | string = 0) {
 </script>
 
 <template>
-  <FormPage :title="isEdit ? `Edit ${brandLabel}` : `Tambah ${brandLabel}`"
+  <FormPage :title="isEdit ? 'Edit Penawaran' : 'Tambah Penawaran'"
     :description="isEdit ? 'Perbarui data penawaran ke customer.' : 'Lengkapi data penawaran baru ke customer.'"
     size="full" layout="sidebar" surface="plain" :show-footer="false" :loading="loading"
     :submit-text="isEdit ? 'Update Penawaran' : 'Simpan Penawaran'" submit-icon="Save" cancel-icon="ArrowLeft"
@@ -1190,19 +1215,6 @@ function formatCurrency(v: number | string = 0) {
               </div>
               <small v-if="fieldError('customer_id')" class="block input-error-text">{{ fieldError('customer_id')
               }}</small>
-            </div>
-
-            <div v-if="false">
-              <FormLabel>Cabang Invoice
-                <RequiredAsterisk />
-              </FormLabel>
-              <FormSelect v-model="form.branch_id" class="w-full" :class="inputClass('branch_id')">
-                <option value="" disabled>Pilih Cabang…</option>
-                <option v-for="c in cabangs" :key="c.id_cabang" :value="c.id_cabang">
-                  {{ c.nama_cabang }}
-                </option>
-              </FormSelect>
-              <small v-if="fieldError('branch_id')" class="block input-error-text">{{ fieldError('branch_id') }}</small>
             </div>
 
             <div>
@@ -1363,10 +1375,10 @@ function formatCurrency(v: number | string = 0) {
             <h4 class="mb-3 text-overline">Transport</h4>
 
             <p v-if="itemsBasis === null" class="text-caption">Pilih item penawaran untuk menentukan angkutan.</p>
-            <p v-else-if="itemsBasis === 'mixed'" class="text-caption !text-rose-600">
+            <p v-else-if="itemsBasis === 'mixed'" class="!text-rose-600 text-caption">
               Produk loco dan franco tidak boleh dalam satu penawaran.
             </p>
-            <p v-else-if="itemsBasis === 'missing'" class="text-caption !text-rose-600">
+            <p v-else-if="itemsBasis === 'missing'" class="!text-rose-600 text-caption">
               Sebagian produk belum memiliki basis harga (loco/franco). Lengkapi di Periode Harga.
             </p>
 
@@ -1434,13 +1446,13 @@ function formatCurrency(v: number | string = 0) {
                         {{ formatCurrency(Number(transportLegs[type].check?.price ?? 0)) }}
                       </span>
                       <span v-else-if="transportLegs[type].status === 'loading'" class="text-body">Memuat tarif…</span>
-                      <span v-else-if="transportLegs[type].status === 'unavailable'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'unavailable'" class="!text-rose-600 text-body">
                         Tarif belum siap. Margin belum diisi Logistik
                       </span>
-                      <span v-else-if="transportLegs[type].status === 'not_found'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'not_found'" class="!text-rose-600 text-body">
                         Tarif tidak ditemukan
                       </span>
-                      <span v-else-if="transportLegs[type].status === 'error'" class="text-body !text-rose-600">
+                      <span v-else-if="transportLegs[type].status === 'error'" class="!text-rose-600 text-body">
                         Gagal memuat tarif
                       </span>
                       <span v-else class="text-body">-</span>
@@ -1463,7 +1475,7 @@ function formatCurrency(v: number | string = 0) {
 
       <div class="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
         <p class="!text-slate-500 text-body">
-          Item penawaran disusun lewat modal generator berdasarkan periode & source harga.
+          Susun daftar produk penawaran terlebih dahulu.
         </p>
         <Button type="button" variant="primary" class="inline-flex justify-center items-center gap-2 whitespace-nowrap"
           @click="openItemsModal">
@@ -1490,21 +1502,36 @@ function formatCurrency(v: number | string = 0) {
               <tr class="hover:bg-slate-50 transition">
                 <td class="px-4 py-3 text-center num-sm">{{ idx + 1 }}.</td>
                 <td class="px-4 py-3">
+                  <span v-if="item.source_name"
+                    class="inline-block bg-slate-100 mb-1 px-2 rounded-full text-caption">Source: {{ item.source_name }}</span>
                   <div class="flex items-start gap-1.5">
-                    <span class="text-body-strong">{{ produkLabel(item.product_id) }}</span>
+                    <span class="text-body-strong">{{ produkName(item.product_id) }}</span>
                     <Tippy v-if="itemsBasis === 'mixed' || itemsBasis === 'missing'"
                       :content="item.cogs_basis ? `Basis harga: ${transportBasisLabel(item.cogs_basis)}` : 'Belum ada basis harga (loco/franco)'"
                       as="span" class="inline-flex mt-0.5 text-danger cursor-help shrink-0">
                       <Lucide icon="AlertCircle" class="w-4 h-4" />
                     </Tippy>
                   </div>
-                  <div class="text-caption">{{ item.source_name || '-' }}</div>
+                  <div v-if="produkSize(item.product_id)" class="text-caption">{{ produkSize(item.product_id) }}</div>
                 </td>
-                <td class="px-4 py-3 text-right num-sm">{{ Number(item.quantity).toLocaleString('id-ID') }}</td>
-                <td class="px-4 py-3 text-right num-sm">{{ formatCurrency(item.unit_price || 0) }}</td>
                 <td class="px-4 py-3 text-right num-sm">
-                  <template v-if="itemTransportPrice(item) !== null">{{ formatCurrency(itemTransportPrice(item) ?? 0) }}</template>
-                  <span v-else-if="requiresFreshPricing && itemsBasis === 'franco'" class="text-caption !text-rose-600">
+                  <NumberField v-if="itemsEditable" v-model="item.quantity" :min="0" :decimals="2"
+                    :error="itemFieldError(idx, 'quantity')" />
+                  <template v-else>{{ Number(item.quantity).toLocaleString('id-ID') }}</template>
+                </td>
+                <td class="px-4 py-3 text-right num-sm">
+                  <Tippy v-if="itemsEditable && Number(item.harga_price_list) > 0"
+                    :content="`Harga price list: ${formatCurrency(item.harga_price_list)}`" as="div">
+                    <CurrencyField v-model="item.unit_price" :error="itemFieldError(idx, 'unit_price')" />
+                  </Tippy>
+                  <CurrencyField v-else-if="itemsEditable" v-model="item.unit_price"
+                    :error="itemFieldError(idx, 'unit_price')" />
+                  <template v-else>{{ formatCurrency(item.unit_price || 0) }}</template>
+                </td>
+                <td class="px-4 py-3 text-right num-sm">
+                  <template v-if="itemTransportPrice(item) !== null">{{ formatCurrency(itemTransportPrice(item) ?? 0)
+                  }}</template>
+                  <span v-else-if="requiresFreshPricing && itemsBasis === 'franco'" class="!text-rose-600 text-caption">
                     Margin transport belum diisi Logistik
                   </span>
                   <template v-else>—</template>
@@ -1559,7 +1586,7 @@ function formatCurrency(v: number | string = 0) {
                   <option value="CBD">CBD</option>
                   <option value="TOP 7">TOP 7</option>
                   <option value="TOP 14">TOP 14</option>
-                  <option v-if="!isProenergi" value="TOP 30">TOP 30</option>
+                  <option v-if="activeBrand === 'tds'" value="TOP 30">TOP 30</option>
                   <option value="CUSTOM">CUSTOM</option>
                 </FormSelect>
                 <small v-if="fieldError('tipe_pembayaran')" class="block input-error-text">{{
@@ -1567,7 +1594,7 @@ function formatCurrency(v: number | string = 0) {
                 }}</small>
               </div>
 
-              <div v-if="cfg.showAcuan" class="col-span-12 md:col-span-6">
+              <div v-if="isProenergi" class="col-span-12 md:col-span-6">
                 <FormLabel>Acuan Pembayaran</FormLabel>
                 <FormSelect v-model="form.acuan_pembayaran" class="w-full">
                   <option value="" disabled>Pilih…</option>
@@ -1689,7 +1716,7 @@ function formatCurrency(v: number | string = 0) {
 
     <ItemsGeneratorModal :open="itemsModalOpen" :price-period-id="selectedPeriodId"
       :period-label="selectedPeriodLabelText" :cabangs="cabangs" :produks="produks" :initial-items="form.items"
-      :use-pe="cfg.usePe" @close="itemsModalOpen = false" @save="onItemsSaved" />
+      :use-pe="isProenergi" @close="itemsModalOpen = false" @save="onItemsSaved" />
 
     <FormModal :open="newContactOpen" title="Tambah Kontak Baru"
       description="Kontak baru ini langsung tersimpan di master data customer." :loading="newContactSaving"
@@ -1729,15 +1756,15 @@ function formatCurrency(v: number | string = 0) {
         <dl class="divide-y divide-slate-100">
           <div class="flex justify-between items-baseline gap-3 py-2">
             <dt class="text-body-strong">DPP</dt>
-            <dd class="num-md text-right">{{ dppPreview === null ? '-' : formatCurrency(dppPreview) }}</dd>
+            <dd class="text-right num-md">{{ dppPreview === null ? '-' : formatCurrency(dppPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">
-            <dt class="text-body-strong">PPN (11%)</dt>
-            <dd class="num-md text-right">{{ ppnPreview === null ? '-' : formatCurrency(ppnPreview) }}</dd>
+            <dt class="text-body-strong">PPN ({{ formatPercentRate(ppnRate) }})</dt>
+            <dd class="text-right num-md">{{ ppnPreview === null ? '-' : formatCurrency(ppnPreview) }}</dd>
           </div>
           <div class="flex justify-between items-baseline gap-3 py-2">
             <dt class="text-section-title">TOTAL</dt>
-            <dd class="!text-emerald-700 text-lg num-md text-right">{{
+            <dd class="!text-emerald-700 text-lg text-right num-md">{{
               totalPreview === null ? '-' : formatCurrency(totalPreview) }}</dd>
           </div>
         </dl>

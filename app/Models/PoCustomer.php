@@ -5,11 +5,14 @@ namespace App\Models;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\PoCustomerPaymentType;
 use App\Enums\PoCustomerScProcessState;
+use App\Enums\SalesConfirmationStatus;
+use App\Support\Tax;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 class PoCustomer extends Model
 {
@@ -17,7 +20,12 @@ class PoCustomer extends Model
     protected $primaryKey = 'id_poc';
     public $timestamps = false;
 
+    protected $attributes = [
+        'ppn_rate' => Tax::PPN_RATE,
+    ];
+
     protected $fillable = [
+        'ppn_rate',
         'id_customer',
         'quotation_id',
         'tipe_bayar',
@@ -45,10 +53,11 @@ class PoCustomer extends Model
     ];
 
     protected $casts = [
+        'ppn_rate' => 'decimal:4',
         'tanggal_poc' => 'date:Y-m-d',
         'supply_date' => 'date:Y-m-d',
         'harga_poc' => 'decimal:4',
-        'volume_poc' => 'integer',
+        'volume_poc' => 'decimal:2',
         'created_time' => 'datetime',
         'lastupdate_time' => 'datetime',
         'sc_process_state' => PoCustomerScProcessState::class,
@@ -66,9 +75,9 @@ class PoCustomer extends Model
         return $this->belongsTo(Quotation::class, 'quotation_id');
     }
 
-    public function scopeOwnedBy(Builder $query, User $user): Builder
+    public function items(): HasMany
     {
-        return $query->whereHas('quotation', fn (Builder $q) => $q->where('user_id', $user->id));
+        return $this->hasMany(PoCustomerItem::class, 'po_customer_id', 'id_poc');
     }
 
     public function isOwnedBy(User $user): bool
@@ -78,12 +87,50 @@ class PoCustomer extends Model
 
     public function isWritableBy(User $user): bool
     {
-        return $user->can('penawaran.viewAny') || $this->isOwnedBy($user);
+        $brand = $this->quotation?->brand;
+
+        return $brand !== null
+            && $user->can($brand->managePermission())
+            && ($user->can($brand->viewAnyPermission()) || $this->isOwnedBy($user));
     }
 
     public function isReadableBy(User $user): bool
     {
-        return $user->can('penawaran.viewAny') || $user->can('sales-confirmation.manage') || $this->isOwnedBy($user);
+        $brand = $this->quotation?->brand;
+
+        return ($brand !== null && $user->can($brand->viewAnyPermission()))
+            || static::readsAllPosAs($user)
+            || $this->isOwnedBy($user);
+    }
+
+    public static function readsAllPosAs(User $user): bool
+    {
+        return $user->can('sales-confirmation.manage') && $user->cant('sales-confirmation.approve');
+    }
+
+    public function scopeSalesConfirmationVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can('sales-confirmation.view')) {
+            return $query;
+        }
+
+        if ($user->can('sales-confirmation.approve')) {
+            return $query->whereHas(
+                'salesConfirmation.documentApprovals.steps',
+                fn (Builder $steps) => $steps->whereIn('id_role', $user->roles->pluck('id')->all())
+            );
+        }
+
+        if ($user->can('sales-confirmation.manage')) {
+            return $query;
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    public function isSalesConfirmationVisibleTo(User $user): bool
+    {
+        return static::whereKey($this->getKey())->salesConfirmationVisibleTo($user)->exists();
     }
 
     public function salesConfirmation(): HasOne
@@ -91,14 +138,94 @@ class PoCustomer extends Model
         return $this->hasOne(SalesConfirmation::class, 'po_customer_id', 'id_poc');
     }
 
-    public function poCustomerPlans(): HasMany
+    public function unblockRequests(): HasMany
+    {
+        return $this->hasMany(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc');
+    }
+
+    public function activeUnblockRequestRelation(): HasOne
+    {
+        return $this->hasOne(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc')
+            ->ofMany(['id' => 'max'], fn (Builder $query) => $query->where('status', DocumentApprovalStatus::InProgress));
+    }
+
+    public function plans(): HasMany
     {
         return $this->hasMany(PoCustomerPlan::class, 'id_poc', 'id_poc');
     }
 
-    public function unblockRequests(): HasMany
+    public function scopeWithOrderAggregates(Builder $query): Builder
     {
-        return $this->hasMany(PoCustomerUnblockRequest::class, 'id_poc', 'id_poc');
+        return $query
+            ->withSum('items as total_volume_sum', 'volume')
+            ->withSum(
+                'items as order_value_sum',
+                DB::raw(
+                    'ROUND(po_customer_items.volume * '
+                    . '(po_customer_items.unit_price + po_customer_items.transport_price), 2)'
+                )
+            );
+    }
+
+    public function aggregatedTotalVolume(): float
+    {
+        return round((float) $this->total_volume_sum, 2);
+    }
+
+    public function aggregatedOrderValue(): float
+    {
+        return round((float) $this->order_value_sum, 2);
+    }
+
+    public function totalVolume(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => (float) $item->volume), 2);
+    }
+
+    public function materialSubtotal(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->materialTotal()), 2);
+    }
+
+    public function transportTotal(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->transportLineTotal()), 2);
+    }
+
+    public function orderValue(): float
+    {
+        $this->loadMissing('items');
+
+        return round((float) $this->items->sum(fn (PoCustomerItem $item) => $item->lineTotal()), 2);
+    }
+
+    public function orderPpn(): float
+    {
+        return round($this->orderValue() * (float) $this->ppn_rate, 2);
+    }
+
+    public function orderValueWithPpn(): float
+    {
+        return round($this->orderValue() + $this->orderPpn(), 2);
+    }
+
+    public function orderTotals(): array
+    {
+        return [
+            'volume'            => $this->totalVolume(),
+            'material_subtotal' => $this->materialSubtotal(),
+            'transport_total'   => $this->transportTotal(),
+            'dpp'               => $this->orderValue(),
+            'ppn_rate'          => (float) $this->ppn_rate,
+            'ppn'               => $this->orderPpn(),
+            'grand_total'       => $this->orderValueWithPpn(),
+        ];
     }
 
     public function activeUnblockRequest(): ?PoCustomerUnblockRequest
@@ -122,8 +249,11 @@ class PoCustomer extends Model
     {
         $sc = $this->salesConfirmation;
 
+        $isConfirmed = $sc !== null
+            && (int) $sc->getRawOriginal('disposisi') === SalesConfirmationStatus::Confirmed->value;
+
         return match (true) {
-            $sc !== null && (int) $sc->getRawOriginal('disposisi') === 4 => 'done',
+            $isConfirmed                                                 => 'done',
             $sc !== null                                                 => 'sc_in_progress',
             $this->sc_process_state === PoCustomerScProcessState::Blocked => 'blocked',
             $this->sc_process_state === PoCustomerScProcessState::Cleared => 'awaiting_sc',

@@ -5,34 +5,41 @@ import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import Lucide from '@/components/Base/Lucide'
-import Table from '@/components/Base/Table'
+import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import type { ApiResponse, PoCustomerDetail } from '@/types'
+import PoCustomerItemsTable from './components/PoCustomerItemsTable.vue'
+import { poCustomerStatusBadgeClass } from './status'
 
 const route = useRoute()
 const router = useRouter()
-const auth = useAuthStore()
 const { success, error: notifyError } = useNotification()
 const poCustomerApi = createResourceApi('/customer-pos')
 
 const idPoc = Number(route.params.id)
 
-const poCustomer = ref<any>(null)
+const poCustomer = ref<PoCustomerDetail | null>(null)
 const loading = ref(true)
 const processing = ref(false)
 
+const deleteDialog = {
+  isOpen: ref(false),
+  isLoading: ref(false),
+}
+
+const canEditPo = computed<boolean>(() => !!poCustomer.value?.can_update && !poCustomer.value.is_locked)
+
 const canProcessSc = computed<boolean>(
-  () => poCustomer.value?.status_key === 'awaiting_process' && auth.can('penawaran.manage'),
+  () => poCustomer.value?.status_key === 'awaiting_process' && !!poCustomer.value.can_update,
 )
 
-const canEditPo = computed<boolean>(
-  () =>
-    auth.can('penawaran.manage') &&
-    ['awaiting_process', 'blocked'].includes(poCustomer.value?.status_key),
+const takenItemCount = computed<number>(
+  () => poCustomer.value?.items.filter(item => Number(item.volume) > 0).length ?? 0,
 )
 
 const showGatePanel = computed<boolean>(
@@ -46,8 +53,10 @@ const gatePanelDescription = computed<string>(() =>
 )
 
 const statusSteps = computed<StepItem[]>(() => {
-  const po = poCustomer.value ?? {}
-  const sc = po.sales_confirmation ?? null
+  const po = poCustomer.value
+  if (!po) return []
+
+  const sc = po.sales_confirmation
   const key = po.status_key
 
   const scStatus: StepItem['status'] =
@@ -75,20 +84,10 @@ const statusSteps = computed<StepItem[]>(() => {
     title: 'Sales Confirmation',
     status: scStatus,
     description: sc?.disposisi_label || po.status_label || undefined,
-    timestamp: sc?.lastupdate_time ? formatDateTime(sc.lastupdate_time) : undefined,
   })
 
   return steps
 })
-
-const quotationItems = computed<any[]>(() => poCustomer.value?.quotation?.items ?? [])
-const quotationTotalQuantity = computed<number>(() =>
-  quotationItems.value.reduce((sum, it) => sum + Number(it.quantity ?? 0), 0),
-)
-
-const totalNilaiPo = computed<number>(
-  () => Number(poCustomer.value?.harga_poc ?? 0) * Number(poCustomer.value?.volume_poc ?? 0),
-)
 
 const paymentDisplay = computed<string>(() => {
   const po = poCustomer.value
@@ -106,12 +105,20 @@ const attachmentIsPdf = computed<boolean>(() =>
 onMounted(load)
 
 async function load(): Promise<void> {
+  if (!Number.isInteger(idPoc) || idPoc <= 0) {
+    poCustomer.value = null
+    loading.value = false
+    redirectToErrorPage(router, 404)
+    return
+  }
+
   loading.value = true
   try {
-    const { data } = await poCustomerApi.getById(idPoc)
-    poCustomer.value = data
+    const { data }: { data: ApiResponse<PoCustomerDetail> } = await poCustomerApi.getById(idPoc)
+    poCustomer.value = data.data
   } catch (e: any) {
     poCustomer.value = null
+    if (redirectToErrorPage(router, e.response?.status)) return
     notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat PO Customer.')
   } finally {
     loading.value = false
@@ -121,15 +128,15 @@ async function load(): Promise<void> {
 async function processSalesConfirmation(): Promise<void> {
   processing.value = true
   try {
-    const { data } = await axios.post(`/api/po-customers/${idPoc}/process-sc`)
-    success('Berhasil', data.status_label ?? 'Proses SC selesai.')
+    const { data } = await axios.post<ApiResponse<unknown>>(`/api/po-customers/${idPoc}/process-sc`)
+    success('Berhasil', data.message || 'Proses SC selesai.')
     await load()
   } catch (e: any) {
     if (e.response?.status === 409) {
       notifyError('Gagal', e.response?.data?.message ?? 'Status PO Customer sudah berubah.')
       await load()
     } else {
-      notifyError('Gagal', e.response?.data?.message ?? 'Gagal memproses gerbang Sales Confirmation.')
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal memproses gerbang Sales Confirmation.'))
     }
   } finally {
     processing.value = false
@@ -144,9 +151,28 @@ function goToEdit(): void {
   router.push({ name: 'po-customers-edit', params: { id: idPoc } })
 }
 
-function poVolumeForItem(it: any): number {
-  if (!poCustomer.value || quotationTotalQuantity.value <= 0) return 0
-  return Math.round(Number(poCustomer.value.volume_poc ?? 0) * Number(it.quantity ?? 0) / quotationTotalQuantity.value)
+function openDeleteDialog(): void {
+  deleteDialog.isOpen.value = true
+}
+
+async function submitDelete(): Promise<void> {
+  deleteDialog.isLoading.value = true
+  try {
+    const { data } = await axios.delete<ApiResponse<null>>(`/api/customer-pos/${idPoc}`)
+    deleteDialog.isOpen.value = false
+    success('Berhasil', data.message || 'PO Customer berhasil dihapus.')
+    router.push({ name: 'po-customers-index' })
+  } catch (e: any) {
+    if (e.response?.status === 409) {
+      notifyError('Gagal', e.response?.data?.message ?? 'PO Customer sudah terkunci.')
+      deleteDialog.isOpen.value = false
+      await load()
+    } else {
+      notifyError('Gagal', actionErrorMessage(e, 'Gagal menghapus PO Customer.'))
+    }
+  } finally {
+    deleteDialog.isLoading.value = false
+  }
 }
 </script>
 
@@ -155,19 +181,28 @@ function poVolumeForItem(it: any): number {
     <div class="intro-y flex flex-col gap-4">
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <div class="flex items-center gap-3">
-            <h2 class="text-screen-title">Detail PO Customer</h2>
+          <div class="flex flex-wrap items-center gap-3">
+            <h2 class="text-screen-title">{{ poCustomer?.nomor_poc || 'Detail PO Customer' }}</h2>
+            <span v-if="poCustomer" class="px-2.5 py-1 rounded-full text-caption"
+              :class="poCustomerStatusBadgeClass(poCustomer.status_key)">{{ poCustomer.status_label }}</span>
           </div>
-          <p class="mt-1 text-body-lg">Informasi lengkap PO Customer dan status Sales Confirmation-nya.</p>
+          <p v-if="poCustomer" class="mt-1 text-body-lg">
+            {{ poCustomer.customer?.company_name || '-' }} · Penawaran {{ poCustomer.quotation?.nomor_penawaran || '-' }}
+          </p>
+          <p v-else class="mt-1 text-body-lg">Informasi lengkap PO Customer dan status Sales Confirmation-nya.</p>
         </div>
         <div class="flex items-center gap-2">
+          <Button variant="outline-secondary" @click="goBackToIndex">
+            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
+            Kembali
+          </Button>
           <Button v-if="canEditPo" variant="outline-secondary" @click="goToEdit">
             <Lucide icon="Pencil" class="mr-2 h-4 w-4" />
             Edit PO
           </Button>
-          <Button variant="outline-secondary" @click="goBackToIndex">
-            <Lucide icon="ArrowLeft" class="mr-2 h-4 w-4" />
-            Kembali
+          <Button v-if="canEditPo" variant="outline-danger" @click="openDeleteDialog">
+            <Lucide icon="Trash2" class="mr-2 h-4 w-4" />
+            Hapus
           </Button>
         </div>
       </div>
@@ -190,8 +225,8 @@ function poVolumeForItem(it: any): number {
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
               <div class="text-overline">Total Nilai PO</div>
-              <div class="mt-1 num-lg">{{ formatCurrency(totalNilaiPo) }}</div>
-              <div class="text-body text-xs">{{ formatCurrency(poCustomer.harga_poc) }} / m³</div>
+              <div class="mt-1 num-lg">{{ formatCurrency(poCustomer.totals.grand_total) }}</div>
+              <div class="text-caption">DPP {{ formatCurrency(poCustomer.totals.dpp) }}</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
               <Lucide icon="Banknote" class="h-4 w-4" />
@@ -201,8 +236,8 @@ function poVolumeForItem(it: any): number {
           <div class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
               <div class="text-overline">Total Volume</div>
-              <div class="mt-1 num-lg">{{ formatNumber(poCustomer.volume_poc) }} m³</div>
-              <div class="text-body text-xs">{{ quotationItems.length }} Variasi Ukuran</div>
+              <div class="mt-1 num-lg">{{ formatNumber(poCustomer.totals.volume) }} m³</div>
+              <div class="text-caption">{{ takenItemCount }} dari {{ poCustomer.items.length }} item diambil</div>
             </div>
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
               <Lucide icon="Boxes" class="h-4 w-4" />
@@ -286,54 +321,9 @@ function poVolumeForItem(it: any): number {
               </div>
             </CardSection>
 
-            <CardSection title="Rincian Produk & Item PO" description="Breakdown quantity, volume, dan harga per item"
+            <CardSection title="Item PO" description="Volume dan harga per item yang diambil customer"
               icon="Layers" icon-class="bg-indigo-100 text-indigo-600">
-              <div class="overflow-x-auto">
-                <Table bordered sm class="text-body">
-                  <Table.Thead class="bg-slate-50">
-                    <Table.Tr>
-                      <Table.Th class="px-4 py-3 text-form-label text-left">Produk</Table.Th>
-                      <Table.Th class="px-4 py-3 text-form-label text-left">Ukuran</Table.Th>
-                      <Table.Th class="px-4 py-3 text-form-label text-right">Quantity</Table.Th>
-                      <Table.Th class="px-4 py-3 text-form-label text-right">Volume</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-
-                  <Table.Tbody class="bg-white">
-                    <Table.Tr v-for="(it, i) in quotationItems" :key="it.id || i">
-                      <Table.Td class="px-4 py-3">
-                        <div class="text-body-strong">{{ it.product?.nama_produk || '-' }}</div>
-                        <div v-if="it.product?.jenis?.nama" class="text-caption">{{ it.product?.jenis?.nama }}</div>
-                      </Table.Td>
-                      <Table.Td class="px-4 py-3">{{ it.product?.ukuran?.nama_ukuran || '-' }}</Table.Td>
-                      <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(it.quantity) }}</Table.Td>
-                      <Table.Td class="px-4 py-3 num-sm text-right">{{ formatNumber(poVolumeForItem(it)) }} m³</Table.Td>
-                    </Table.Tr>
-
-                    <Table.Tr v-if="!quotationItems.length">
-                      <Table.Td colspan="4" class="px-4 py-6 text-body text-center">Belum ada item penawaran.</Table.Td>
-                    </Table.Tr>
-                  </Table.Tbody>
-
-                  <Table.Tbody class="bg-slate-50">
-                    <Table.Tr>
-                      <Table.Td colspan="3" class="px-4 py-2 text-body-strong text-right">Total Keseluruhan</Table.Td>
-                      <Table.Td class="px-4 py-2 num-sm text-right">{{ formatNumber(poCustomer.volume_poc) }} m³</Table.Td>
-                    </Table.Tr>
-                  </Table.Tbody>
-                </Table>
-              </div>
-
-              <div class="mt-4 px-4 py-3 border border-slate-200 rounded-xl space-y-2">
-                <div class="flex justify-between gap-4 border-b border-slate-100 pb-1.5">
-                  <span class="text-form-label">Harga per m³</span>
-                  <span class="text-body-strong text-right">{{ formatCurrency(poCustomer.harga_poc) }}</span>
-                </div>
-                <div class="flex justify-between gap-4">
-                  <span class="text-form-label">Total Harga</span>
-                  <span class="num-md text-right">{{ formatCurrency(totalNilaiPo) }}</span>
-                </div>
-              </div>
+              <PoCustomerItemsTable :items="poCustomer.items" :totals="poCustomer.totals" />
             </CardSection>
 
             <CardSection v-if="poCustomer.lampiran_poc" title="Lampiran Dokumen PO" icon="Paperclip"
@@ -393,5 +383,9 @@ function poVolumeForItem(it: any): number {
         </div>
       </template>
     </div>
+
+    <DeleteRecordDialog :open="deleteDialog.isOpen.value" :title="`Hapus PO ${poCustomer?.nomor_poc ?? ''}`"
+      description="PO Customer beserta itemnya dan lampirannya akan dihapus." :loading="deleteDialog.isLoading.value"
+      @close="deleteDialog.isOpen.value = false" @confirm="submitDelete" />
   </div>
 </template>

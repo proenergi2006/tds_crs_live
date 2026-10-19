@@ -181,14 +181,8 @@ function periodLabel(p: TransportMarginPeriod): string {
               <span v-else class="text-caption">Belum diisi Procurement</span>
             </Table.Td>
             <Table.Td>
-              <div class="flex items-center gap-1">
-                <CurrencyField :model-value="drafts[row.id]" :readonly="row.is_ended" placeholder="Belum diisi"
-                  @update:model-value="(v) => { drafts[row.id] = v }" />
-                <Button v-if="!row.is_ended && drafts[row.id] !== null" variant="outline-secondary" rounded
-                  class="!shadow-none !p-0 !w-8 !h-8 shrink-0" title="Kosongkan" @click="drafts[row.id] = null">
-                  <Lucide icon="X" class="w-4 h-4" />
-                </Button>
-              </div>
+              <CurrencyField :model-value="drafts[row.id]" :readonly="row.is_ended" placeholder="Belum diisi"
+                @update:model-value="(v) => { drafts[row.id] = v }" />
             </Table.Td>
             <Table.Td class="text-body-strong text-right whitespace-nowrap num-sm">
               {{ draftFrancoTransportPrice(row) !== null ? formatCurrency(draftFrancoTransportPrice(row)) : '-' }}

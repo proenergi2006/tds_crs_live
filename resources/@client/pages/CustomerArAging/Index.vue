@@ -12,13 +12,7 @@ import FormModal from '@/components/SystemDesign/Form/FormModal.vue'
 import CurrencyField from '@/components/SystemDesign/Form/CurrencyField.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-
-type ArBucketKey =
-  | 'outstanding_current'
-  | 'overdue_1_30'
-  | 'overdue_31_60'
-  | 'overdue_61_90'
-  | 'overdue_90_plus'
+import type { ArBucketKey } from '@/types'
 
 type ArAgingRow = {
   id_customer: number

@@ -9,7 +9,6 @@ import { FormSelect } from '@/components/Base/Form'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import BarChart from '@/components/SystemDesign/Data/BarChart.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-// import StockChart from '@/components/StockChart.vue'
 
 import { createResourceApi } from '@/utils/resourceApi.js'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
@@ -275,7 +274,6 @@ function formatDateTime(value: string) {
           </div>
         </div>
 
-        <!-- <StockChart :data="chartData" /> -->
         <BarChart :data="systemChartData" dataset-label="Volume Stok" value-suffix=" L" :height="320"
           :y-axis-label-count="7" />
       </div>

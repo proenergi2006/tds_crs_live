@@ -4,23 +4,27 @@ namespace App\Http\Resources;
 
 use App\Enums\QuotationTransportSource;
 use App\Models\QuotationItem;
-use App\Support\Approval\QuotationApprovalStepsBuilder;
-use App\Enums\PriceTier;
 use App\Support\Approval\QuotationVerifierSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class QuotationDetailResource extends JsonResource
 {
+    public function __construct($resource, private readonly array $approvalAttempts)
+    {
+        parent::__construct($resource);
+    }
+
     public function toArray(Request $request): array
     {
-        $brand = $request->route('brand');
         $canSeeInternals = QuotationVerifierSummary::canSeeInternals($request->user());
 
         $data = [
             'id'                   => $this->id,
             'nomor_penawaran'      => $this->nomor_penawaran,
             'status'               => $this->status?->value,
+            'brand'                => $this->brand?->value,
+            'brand_label'          => $this->brand?->label(),
             'customer_id'          => $this->customer_id,
             'branch_id'            => $this->branch_id,
             'price_period_id'      => $this->price_period_id,
@@ -47,6 +51,8 @@ class QuotationDetailResource extends JsonResource
             'transport_basis'      => $this->transport_basis?->value,
             'transport_mode'       => $this->transportMode()?->value,
             'can_edit_details'     => $request->user() !== null && $this->canEditNonCommercialDetails($request->user()),
+            'can_reopen'           => ($request->user()?->can('reopen', $this->resource) ?? false) && $this->isReopenable(),
+            'can_manage'           => $request->user()?->can('update', $this->resource) ?? false,
         ];
 
         $data['customer'] = $this->customer ? [
@@ -69,7 +75,7 @@ class QuotationDetailResource extends JsonResource
 
         $data['transports'] = $this->transportLegs($canSeeInternals);
 
-        $data['items'] = $this->items->map(function ($item) use ($brand, $canSeeInternals) {
+        $data['items'] = $this->items->map(function ($item) use ($canSeeInternals) {
             $productPrice = $item->productPrice;
 
             $row = [
@@ -83,7 +89,7 @@ class QuotationDetailResource extends JsonResource
                 'final_total'       => $item->finalTotal(),
                 'source_branch_id'  => $item->source_branch_id,
                 'product_price_id'  => $item->product_price_id,
-                'price_list'        => $productPrice?->priceListForBrand($brand),
+                'price_list'        => $productPrice?->priceListForBrand($this->brand),
                 'cogs_basis'        => $productPrice?->cogs_basis,
                 'source_branch'     => $item->sourceBranch
                     ? ['id' => $item->sourceBranch->id_cabang, 'nama_cabang' => $item->sourceBranch->nama_cabang]
@@ -105,11 +111,12 @@ class QuotationDetailResource extends JsonResource
 
                 $row['price_tier']         = $item->price_tier?->value;
                 $row['tier_limits']        = [
-                    'price_list' => $productPrice?->priceListForBrand($brand),
+                    'price_list' => $productPrice?->priceListForBrand($this->brand),
                     'bm_price'   => $productPrice?->bm_price,
                     'om_price'   => $productPrice?->om_price,
                     'ceo_price'  => $productPrice?->ceo_price,
                 ];
+                $row['below_ceo_limit']    = $this->belowCeoLimit($item);
                 $row['cogs_price']         = $productPrice?->cogs_price;
                 $row['transport_snapshot'] = $item->transport_snapshot;
                 $row['margin_material']    = $marginMaterial;
@@ -125,6 +132,7 @@ class QuotationDetailResource extends JsonResource
         $data['subtotal_material'] = $this->subtotalMaterial();
         $data['transport_total']   = $this->transportTotal();
         $data['dpp']               = $this->dpp();
+        $data['ppn_rate']          = (float) $this->ppn_rate;
         $data['ppn']               = $this->ppnAmount();
         $data['total']             = $this->grandTotal();
 
@@ -135,7 +143,7 @@ class QuotationDetailResource extends JsonResource
             $marginTransportTotal = $this->marginTotal(fn ($item) => $this->itemMarginTransport($item));
 
             $data['price_tier']             = $this->price_tier?->value;
-            $data['out_of_range']           = $this->price_tier === PriceTier::OutOfRange;
+            $data['below_ceo_limit']        = $this->items->contains(fn (QuotationItem $item) => $this->belowCeoLimit($item));
             $data['margin_material_total']  = $marginMaterialTotal;
             $data['margin_transport_total'] = $marginTransportTotal;
             $data['margin_total']           = $marginMaterialTotal === null || $marginTransportTotal === null
@@ -145,7 +153,7 @@ class QuotationDetailResource extends JsonResource
             unset($data['verifier_role']);
         }
 
-        $data['approval_attempts'] = app(QuotationApprovalStepsBuilder::class)->buildAttempts($this->resource);
+        $data['approval_attempts'] = $this->approvalAttempts;
 
         return $data;
     }
@@ -216,6 +224,11 @@ class QuotationDetailResource extends JsonResource
         }
 
         return round((float) $margin * (float) $item->quantity, 2);
+    }
+
+    private function belowCeoLimit(QuotationItem $item): bool
+    {
+        return $item->productPrice?->isBelowCeoLimit((float) $item->unit_price) === true;
     }
 
     private function marginTotal(callable $perItem): ?float

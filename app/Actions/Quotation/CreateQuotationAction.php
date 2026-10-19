@@ -2,11 +2,12 @@
 
 namespace App\Actions\Quotation;
 
-use App\Actions\Quotation\Concerns\ManagesQuotationLineItems;
+use App\Actions\Quotation\Traits\ManagesQuotationLineItems;
+use App\Enums\QuotationBrand;
 use App\Enums\QuotationStatus;
 use App\Models\Cabang;
-use App\Models\Quotation;
 use App\Models\PricePeriod;
+use App\Models\Quotation;
 use App\Models\User;
 use App\Support\RomanMonth;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class CreateQuotationAction
     {
     }
 
-    public function execute(array $data, string $brand, User $user): Quotation
+    public function execute(array $data, QuotationBrand $brand, User $user): Quotation
     {
         $pricing = $this->resolveTransportPricing->execute(
             $data['items'],
@@ -51,18 +52,15 @@ class CreateQuotationAction
             $this->replaceTransports($quotation, $pricing['transports']);
             $this->replaceItems($quotation, $data['items']);
 
-            $quotation->refresh();
-
-            return $quotation->load(['customer', 'branch', 'items.product']);
+            return $quotation->refresh();
         });
     }
 
-    private function generateNomor(Cabang $cabang, string $brand): string
+    private function generateNomor(Cabang $cabang, QuotationBrand $brand): string
     {
         $urut = (int) $cabang->urut_penawaran + 1;
-        $prefix = $brand === 'proenergi' ? 'PE-PN' : 'TDS-PN';
         $nomor = str_pad($urut, 5, '0', STR_PAD_LEFT)
-            . "/{$prefix}/" . $cabang->inisial_cabang . '/' . RomanMonth::of(date('m')) . '/' . substr(date('Y'), -2);
+            . "/{$brand->numberPrefix()}/" . $cabang->inisial_cabang . '/' . RomanMonth::of(date('m')) . '/' . substr(date('Y'), -2);
 
         $cabang->urut_penawaran = $urut;
         $cabang->save();

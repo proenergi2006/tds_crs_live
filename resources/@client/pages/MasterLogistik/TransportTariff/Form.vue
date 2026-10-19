@@ -3,8 +3,6 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, required } from "@vuelidate/validators";
 
-import Button from "@/components/Base/Button";
-import Lucide from "@/components/Base/Lucide";
 import FormModal from "@/components/SystemDesign/Form/FormModal.vue";
 import RequiredAsterisk from "@/components/SystemDesign/Form/RequiredAsterisk.vue";
 import CurrencyField from "@/components/SystemDesign/Form/CurrencyField.vue";
@@ -58,7 +56,7 @@ const form = reactive({
   transport_area_id: "" as number | "",
   volume_id: "" as number | "",
   rate: 0,
-  margin: null as number | null,
+  margin: 0 as number | null,
   note: "",
   is_active: true,
 });
@@ -147,14 +145,11 @@ function resetForm() {
   form.transport_area_id = "";
   form.volume_id = "";
   form.rate = 0;
-  form.margin = null;
+  form.margin = 0;
   form.note = "";
   form.is_active = true;
 }
 
-function clearMargin() {
-  form.margin = null;
-}
 
 function resetErrors() {
   formError.value = null;
@@ -292,16 +287,8 @@ async function submitForm() {
       <CurrencyField id="tariff-rate" v-model="form.rate" label="COGS Transport/m³" required
         :error="getFieldError('rate')" />
 
-      <div class="flex items-end gap-1">
-        <div class="flex-1">
-          <CurrencyField id="tariff-margin" :model-value="form.margin" label="Margin/m³" placeholder="Belum diisi"
-            :error="getFieldError('margin')" @update:model-value="(v) => (form.margin = v)" />
-        </div>
-        <Button v-if="form.margin !== null" type="button" variant="outline-secondary" rounded
-          class="mb-1 !shadow-none !p-0 !w-8 !h-8 shrink-0" title="Kosongkan" @click="clearMargin">
-          <Lucide icon="X" class="w-4 h-4" />
-        </Button>
-      </div>
+      <CurrencyField id="tariff-margin" :model-value="form.margin" label="Margin/m³" placeholder="Belum diisi"
+        :error="getFieldError('margin')" @update:model-value="(v) => (form.margin = v)" />
 
       <div>
         <FormLabel>Harga Jual/m³</FormLabel>

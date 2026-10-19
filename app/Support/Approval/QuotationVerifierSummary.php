@@ -2,18 +2,16 @@
 
 namespace App\Support\Approval;
 
-use App\Enums\QuotationStatus;
-use App\Enums\QuotationVerifierRole;
+use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\QuotationBrand;
 use App\Models\Quotation;
 use App\Models\User;
 
 class QuotationVerifierSummary
 {
-    private const INTERNAL_VIEW_PERMISSIONS = ['penawaran.verify', 'penawaran.verify-ceo', 'penawaran.proenergi.verify'];
-
     public static function canSeeInternals(User $user): bool
     {
-        return $user->canAny(self::INTERNAL_VIEW_PERMISSIONS);
+        return $user->canAny(array_map(fn (QuotationBrand $brand) => $brand->verifyPermission(), QuotationBrand::cases()));
     }
 
     public static function for(Quotation $quotation, User $user): array
@@ -21,11 +19,12 @@ class QuotationVerifierSummary
         $cycle = $quotation->latestDocumentApproval;
         $step  = $quotation->activeVerificationStep();
 
-        $displayStep = $step ?? $cycle?->steps->sortByDesc('step_order')->first();
+        $displayStep = $step ?? $cycle?->steps
+            ->reject(fn ($s) => $s->status === DocumentApprovalStepStatus::Cancelled)
+            ->sortByDesc('step_order')
+            ->first();
 
-        $canVerify = $quotation->status === QuotationStatus::WaitingVerification
-            && $step !== null
-            && QuotationVerifierRole::tryFrom((int) $step->id_role)?->isHeldBy($user) === true;
+        $canVerify = $quotation->isAwaitingVerification() && $user->can('verify', $quotation);
 
         return [
             'verifier_role' => $displayStep?->role?->name,

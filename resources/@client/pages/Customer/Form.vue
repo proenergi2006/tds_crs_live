@@ -18,24 +18,22 @@ import RadioCard from "@/components/SystemDesign/Form/RadioCard.vue";
 import RequiredAsterisk from "@/components/SystemDesign/Form/RequiredAsterisk.vue";
 import { useNotification } from "@/components/SystemDesign/Notification/useNotification";
 import { useRegionCascade } from "@/composables/useRegionCascade";
-import { useAuthStore } from "@/stores/auth";
 import { createResourceApi } from "@/utils/resourceApi.js";
 
 const router = useRouter();
-const auth = useAuthStore();
 const { success, error: notifyError } = useNotification();
 const customerApi = createResourceApi("/customers");
 
-const isProenergi = computed(() => [13, 14].includes(Number(auth.user?.id_role)));
 const indexRoute = "customers-list";
+const pageTitle = "Tambah Customer";
+const pageDescription = "Tambahkan data customer baru untuk proses penawaran.";
+const submitText = "Simpan Customer";
 
 const loading = ref(false);
 const formError = ref<string | null>(null);
 
-/* State: lookups (cascading province -> regency, BPS data via useRegionCascade) */
 const region = useRegionCascade();
 
-/* nama alamat di-derive dari list region yang sudah ke-fetch, region cascade cuma nyimpen id */
 const fullAddressSummary = computed(() => {
   const villageName = region.villages.value.find((v) => v.id === form.village_id)?.name;
   const districtName = region.districts.value.find((d) => d.id === form.district_id)?.name;
@@ -67,7 +65,6 @@ const form = reactive({
   phone: "",
 });
 
-/* State: cek ketersediaan nama perusahaan (informational, tidak menahan submit) */
 const nameCheckStatus = ref<"idle" | "checking" | "available" | "taken">("idle");
 const nameMatches = ref<
   { id_customer: number; company_name: string; marketing: { id: number | null; name: string | null } }[]
@@ -86,15 +83,6 @@ const rules = {
 };
 
 const v$ = useVuelidate(rules, form);
-
-const pageTitle = computed(() => {
-  const suffix = isProenergi.value ? " Proenergi" : "";
-  return `Tambah Customer${suffix}`;
-});
-
-const pageDescription = "Tambahkan data customer baru untuk proses penawaran.";
-
-const submitText = "Simpan Customer";
 
 watch(
   () => form.province_id,
@@ -131,7 +119,6 @@ watch(
   },
 );
 
-// cek ketersediaan nama perusahaan, debounced biar gak request tiap keystroke
 watch(() => form.company_name, debounce(checkCompanyName, 400));
 
 onMounted(async () => {
@@ -152,7 +139,6 @@ async function checkCompanyName() {
     nameMatches.value = data.matches || [];
     nameCheckStatus.value = data.available ? "available" : "taken";
   } catch {
-    // cuma fitur informational, gagal cek jangan sampai ganggu pengisian form
     nameCheckStatus.value = "idle";
     nameMatches.value = [];
   }
@@ -246,7 +232,6 @@ function cancel() {
       </Button>
     </template>
 
-    <!-- Section: Informasi Dasar -->
     <CardSection title="Informasi Dasar" description="Data utama customer dalam sistem">
       <div class="gap-4 grid grid-cols-1 md:grid-cols-2">
         <div>
@@ -321,7 +306,6 @@ function cancel() {
       </div>
     </CardSection>
 
-    <!-- Section: Detail Alamat -->
     <CardSection title="Detail Alamat" description="Alamat lengkap customer">
       <div class="gap-4 grid grid-cols-1 md:grid-cols-2">
         <div class="md:col-span-2">
@@ -458,12 +442,10 @@ function cancel() {
       </div>
     </CardSection>
 
-    <!-- Sidebar: Ringkasan & Aksi -->
     <template #sidebar>
       <section
         class="relative bg-gradient-to-br from-theme-1 via-emerald-800 to-green-600 shadow-sm p-6 rounded-lg overflow-hidden text-white"
       >
-        <!-- Aksen dekoratif, murni visual -->
         <div class="-top-14 -right-10 absolute bg-white/10 rounded-full w-40 h-40 pointer-events-none" />
         <div class="-right-6 -bottom-16 absolute bg-white/5 rounded-full w-32 h-32 pointer-events-none" />
 

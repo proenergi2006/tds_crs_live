@@ -4,34 +4,67 @@ namespace App\Actions\SalesConfirmation;
 
 use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\SalesConfirmationStatus;
+use App\Exceptions\BusinessRuleException;
 use App\Models\SalesConfirmation;
 use App\Services\Approval\DocumentApprovalService;
 use Illuminate\Support\Facades\DB;
 
 class DecideSalesConfirmationAction
 {
-    private const ROLE_BM = '8';
-
-    public function execute(SalesConfirmation $sc, DocumentApprovalStepStatus $status, int $actorId, ?string $note, string $pic): SalesConfirmation
+    public function __construct(private readonly DocumentApprovalService $approvalService)
     {
+    }
+
+    public function execute(
+        SalesConfirmation $sc,
+        DocumentApprovalStepStatus $status,
+        int $actorId,
+        ?string $note,
+        string $pic
+    ): SalesConfirmation {
         return DB::transaction(function () use ($sc, $status, $actorId, $note, $pic) {
-            (new DocumentApprovalService())->decideStep($sc, 1, $status, $actorId, $note);
+            $locked   = SalesConfirmation::whereKey($sc->getKey())->lockForUpdate()->firstOrFail();
+            $expected = $locked->expectedStepOrder();
 
-            $sc->update($status === DocumentApprovalStepStatus::Approved
-                ? [
-                    'disposisi'       => SalesConfirmationStatus::Confirmed,
-                    'role_approved'   => self::ROLE_BM,
-                    'tgl_approved'    => now(),
-                    'lastupdate_by'   => $pic,
-                    'lastupdate_time' => now(),
-                ]
-                : [
-                    'disposisi'       => SalesConfirmationStatus::PendingAdmin,
-                    'lastupdate_by'   => $pic,
-                    'lastupdate_time' => now(),
-                ]);
+            if ($expected === null) {
+                throw new BusinessRuleException('Sales Confirmation ini tidak sedang menunggu keputusan.');
+            }
 
-            return $sc->refresh();
+            $cycle   = $this->approvalService->activeCycle($locked);
+            $step    = $cycle?->steps->firstWhere('step_order', $expected);
+
+            if ($cycle === null || (int) $cycle->current_step_order !== $expected || $step === null) {
+                throw new BusinessRuleException('Step approval aktif tidak sesuai dengan status Sales Confirmation.');
+            }
+
+            $isFinalStep = $expected === (int) $cycle->steps->max('step_order');
+
+            $this->approvalService->decideStep($locked, $expected, $status, $actorId, $note);
+
+            $locked->update([
+                ...$this->outcome($status, $isFinalStep, $step->id_role),
+                'lastupdate_by'   => $pic,
+                'lastupdate_time' => now(),
+            ]);
+
+            return $locked->refresh();
         });
+    }
+
+    private function outcome(DocumentApprovalStepStatus $status, bool $isFinalStep, ?int $roleId): array
+    {
+        if ($status === DocumentApprovalStepStatus::Rejected) {
+            return ['disposisi' => SalesConfirmationStatus::Rejected];
+        }
+
+        if (! $isFinalStep) {
+            return ['disposisi' => SalesConfirmationStatus::InApproval];
+        }
+
+        return [
+            'disposisi'     => SalesConfirmationStatus::Confirmed,
+            'role_approved' => (string) $roleId,
+            'tgl_approved'  => now(),
+        ];
     }
 }

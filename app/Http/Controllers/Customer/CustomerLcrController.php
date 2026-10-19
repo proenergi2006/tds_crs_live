@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Customer;
 
-use App\Http\Controllers\Controller;
-
 use App\Actions\Customer\GenerateCustomerLcrDocumentAction;
 use App\Actions\Customer\SyncCustomerLcrSiteDetailsAction;
 use App\Enums\CustomerLcrVesselQuantityCheckingMethod;
@@ -12,7 +10,8 @@ use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QualityCheckingMethod;
 use App\Enums\QuantityCheckingMethod;
 use App\Enums\VesselQualityCheckingMethod;
-use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Traits\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\StoreCustomerLcrRequest;
 use App\Http\Requests\Customer\UpdateCustomerLcrRequest;
 use App\Models\Customer;

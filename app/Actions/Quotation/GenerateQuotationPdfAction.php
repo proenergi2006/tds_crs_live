@@ -10,18 +10,13 @@ use Endroid\QrCode\ErrorCorrectionLevel;
 
 class GenerateQuotationPdfAction
 {
-    public function execute(
-        string $brand,
-        int $id,
-        string $lang,
-        bool $priceDetail,
-        string $viewPrefix,
-        string $logoLeftPath
-    ) {
-        $with = ['customer.headOfficeAddress', 'customerContact', 'branch', 'items.product.ukuran', 'user.primaryRole'];
-        $quotation = Quotation::where('brand', $brand)->with($with)->findOrFail($id);
+    public function execute(Quotation $quotation, string $lang, bool $priceDetail)
+    {
+        $quotation->loadMissing(['customer.headOfficeAddress', 'customerContact', 'branch', 'items.product.ukuran', 'user.primaryRole']);
 
-        $isPolimer = $quotation->items()->whereHas('product', fn ($q) => $q->where('id_jenis', 11))->exists();
+        $isPolimer = $quotation->isPolimer();
+        $viewPrefix = $quotation->brand->pdfViewPrefix();
+        $logoLeftPath = $quotation->brand->logoPath();
 
         $u = $quotation->user;
         if (!$u && !empty($quotation->created_by)) {
@@ -48,7 +43,7 @@ class GenerateQuotationPdfAction
         $qrBase64 = null;
 
         if (!empty($quotation->token_verifikasi)) {
-            $qrPayload = url('/verifikasi-penawaran/' . $quotation->token_verifikasi);
+            $qrPayload = url('/verify-quotation/' . $quotation->token_verifikasi);
 
             $result = Builder::create()
                 ->writer(new PngWriter())

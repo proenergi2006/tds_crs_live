@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { debounce } from 'lodash'
 
 import Button from '@/components/Base/Button'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
+import { FormSelect } from '@/components/Base/Form'
 import { Menu } from '@/components/Base/Headless'
+import TippyContent from '@/components/Base/TippyContent'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import DeleteRecordDialog from '@/components/SystemDesign/Dialog/DeleteRecordDialog.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, toDateKey, todayDateKey } from '@/utils/format'
-import type { QuotationBrand } from '@/types'
-import TippyContent from '@/components/Base/TippyContent'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import {
+  QUOTATION_BRANDS,
+  QUOTATION_BRAND_FILTER_OPTIONS,
+  canManageQuotationBrand,
+  manageableBrands,
+  quotationPermission,
+  viewableBrands,
+} from '@/utils/quotation-brand'
+import type { ApiPaginatedResponse, ApiResponse, QuotationBrand, QuotationIndexRow } from '@/types'
 import {
   QUOTATION_STATUS,
   quotationStatusBadgeClass,
@@ -23,33 +33,13 @@ import {
 } from './status'
 
 const router = useRouter()
-const route = useRoute()
 const { success, error } = useNotification()
 const auth = useAuthStore()
 
-const BRAND_CONFIG = {
-  tds: {
-    apiBase: '/api/penawarans',
-    createRoute: 'penawarans-create',
-    detailRoute: 'penawarans-detail',
-    editRoute: 'penawarans-edit',
-    title: 'Penawaran',
-    description: 'Kelola data penawaran ke customer',
-  },
-  proenergi: {
-    apiBase: '/api/penawarans-proenergi',
-    createRoute: 'penawarans-create-proenergi',
-    detailRoute: 'penawarans-detail-proenergi',
-    editRoute: 'penawarans-edit-proenergi',
-    title: 'Penawaran Proenergi',
-    description: 'Kelola data penawaran ke customer (Proenergi)',
-  },
-}
+const QUOTATION_API_BASE = '/api/quotations'
 
-const brand = computed<QuotationBrand>(() => (route.meta.brand as QuotationBrand) === 'proenergi' ? 'proenergi' : 'tds')
-const cfg = computed(() => BRAND_CONFIG[brand.value])
-
-const quotations = ref<any[]>([])
+const quotations = ref<QuotationIndexRow[]>([])
+const filterBrand = ref<QuotationBrand | ''>('')
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
@@ -61,28 +51,38 @@ const deleteModal = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<{ id: number; nomor: string } | null>(null)
 
-const canManageQuotation = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.manage') : auth.can('penawaran.manage'))
-const canViewAnyQuotation = computed(() => brand.value === 'proenergi' ? auth.can('penawaran.proenergi.viewAny') : auth.can('penawaran.viewAny'))
+const showBrandFilter = computed(() => viewableBrands(auth.can).length > 1)
+const activeFilterCount = computed(() => (filterBrand.value ? 1 : 0))
+const canCreateQuotation = computed(() => manageableBrands(auth.can).length > 0)
+const canViewAnyQuotation = computed(() =>
+  QUOTATION_BRANDS.some((brand) => auth.can(quotationPermission(brand, 'viewAny'))),
+)
 const dataListColspan = computed(() => (canViewAnyQuotation.value ? 8 : 7))
+const emptyDescription = computed(() =>
+  filterBrand.value ? 'Tidak ada penawaran untuk filter ini.' : 'Belum ada penawaran untuk ditampilkan.',
+)
 
-watch(() => cfg.value.apiBase, () => fetchData(1), { immediate: true })
+watch(filterBrand, () => fetchData(1))
 watch(searchQuery, debounce(() => fetchData(1), 300))
 watch(perPage, () => fetchData(1))
+
+onMounted(() => fetchData(1))
 
 async function fetchData(page = 1) {
   loading.value = true
   try {
-    const res = await axios.get(cfg.value.apiBase, {
+    const res = await axios.get<ApiPaginatedResponse<QuotationIndexRow>>(QUOTATION_API_BASE, {
       params: {
         page,
         per_page: perPage.value,
         search: searchQuery.value || undefined,
+        brand: filterBrand.value || undefined,
       },
     })
     quotations.value = res.data.data
-    currentPage.value = res.data.current_page
-    totalPages.value = res.data.last_page
-    totalRecords.value = res.data.total
+    currentPage.value = res.data.meta.current_page
+    totalPages.value = res.data.meta.last_page
+    totalRecords.value = res.data.meta.total
   } catch (e: any) {
     error('Gagal', e.response?.data?.message ?? 'Gagal memuat data')
   } finally {
@@ -95,7 +95,28 @@ function goToPage(page: number) {
 }
 
 function openCreate() {
-  router.push({ name: cfg.value.createRoute })
+  router.push({ name: 'quotations.create' })
+}
+
+function isOwnRow(row: QuotationIndexRow): boolean {
+  return Number(row.user_id) === Number(auth.user?.id)
+}
+
+function canModifyDraft(row: QuotationIndexRow): boolean {
+  return row.status === QUOTATION_STATUS.Draft && isOwnRow(row) && canManageQuotationBrand(auth.can, row.brand)
+}
+
+function canCreatePoFrom(row: QuotationIndexRow): boolean {
+  return (
+    row.status === QUOTATION_STATUS.Approved &&
+    !row.has_po_customer &&
+    isValidToday(row) &&
+    canManageQuotationBrand(auth.can, row.brand)
+  )
+}
+
+function resetFilters() {
+  filterBrand.value = ''
 }
 
 function isValidToday(pen: { masa_berlaku?: string | null; sampai_dengan?: string | null }): boolean {
@@ -119,12 +140,12 @@ async function submitDelete() {
   if (!deleteTarget.value) return
   deleteLoading.value = true
   try {
-    await axios.delete(`${cfg.value.apiBase}/${deleteTarget.value.id}`)
+    const { data } = await axios.delete<ApiResponse<null>>(`${QUOTATION_API_BASE}/${deleteTarget.value.id}`)
     deleteModal.value = false
-    success('Berhasil', 'Penawaran berhasil dihapus.')
+    success('Berhasil', data.message || 'Penawaran berhasil dihapus.')
     fetchData(currentPage.value)
   } catch (e: any) {
-    error('Gagal', e.response?.data?.message ?? 'Gagal menghapus penawaran.')
+    error('Gagal', actionErrorMessage(e, 'Gagal menghapus penawaran.'))
   } finally {
     deleteLoading.value = false
     deleteTarget.value = null
@@ -146,9 +167,9 @@ function joinWithAmpersand(items: string[]): string {
 <template>
   <div class="page-content-wrapper">
     <div class="flex flex-col gap-4 intro-y">
-      <PageHeader :title="cfg.title" :description="cfg.description">
+      <PageHeader title="Penawaran" description="Kelola data penawaran ke customer">
         <template #action>
-          <Button v-if="canManageQuotation" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
+          <Button v-if="canCreateQuotation" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="PlusCircle" class="w-4 h-4" />
             Tambah Penawaran
           </Button>
@@ -157,9 +178,32 @@ function joinWithAmpersand(items: string[]): string {
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="quotations.length === 0" :colspan="dataListColspan" :show-footer="true" :show-toolbar="true"
-        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+        :total="totalRecords" :current-page="currentPage" :total-pages="totalPages" :active-filter-count="activeFilterCount"
         search-placeholder="Cari nomor atau customer..." loading-text="Memuat data penawaran..."
-        empty-description="Belum ada penawaran untuk ditampilkan." @page-change="goToPage">
+        :empty-description="emptyDescription" @page-change="goToPage">
+        <template v-if="showBrandFilter" #filters>
+          <div class="space-y-4 p-1">
+            <div>
+              <div class="px-3 pt-1 pb-2 text-overline">
+                Brand
+              </div>
+
+              <FormSelect v-model="filterBrand">
+                <option v-for="opt in QUOTATION_BRAND_FILTER_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </FormSelect>
+            </div>
+
+            <div class="pt-3 border-slate-100 border-t">
+              <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
+                @click="resetFilters">
+                Reset filter
+              </Button>
+            </div>
+          </div>
+        </template>
+
         <template #head>
           <Table.Th class="w-12">No</Table.Th>
           <Table.Th>Nomor Penawaran</Table.Th>
@@ -253,26 +297,26 @@ function joinWithAmpersand(items: string[]): string {
                   <Lucide icon="MoreVertical" class="w-4 h-4" />
                 </Menu.Button>
                 <Menu.Items class="w-52" placement="bottom-end">
-                  <Menu.Item :as="RouterLink" :to="{ name: cfg.detailRoute, params: { id: pen.id } }">
+                  <Menu.Item :as="RouterLink" :to="{ name: 'quotations.show', params: { id: pen.id } }">
                     <Lucide icon="Eye" class="mr-2 w-4 h-4" />
                     Detail
                   </Menu.Item>
 
-                  <Menu.Item v-if="pen.status === QUOTATION_STATUS.Draft" :as="RouterLink"
-                    :to="{ name: cfg.editRoute, params: { id: pen.id } }">
+                  <Menu.Item v-if="canModifyDraft(pen)" :as="RouterLink"
+                    :to="{ name: 'quotations.edit', params: { id: pen.id } }">
                     <Lucide icon="Edit" class="mr-2 w-4 h-4" />
                     Edit
                   </Menu.Item>
 
-                  <Menu.Item v-if="pen.status === QUOTATION_STATUS.Approved && isValidToday(pen)"
+                  <Menu.Item v-if="canCreatePoFrom(pen)"
                     @click="openCreateSalesOrder(pen.id)">
                     <Lucide icon="ShoppingCart" class="mr-2 w-4 h-4" />
                     Buat PO Customer
                   </Menu.Item>
 
-                  <template v-if="pen.status === QUOTATION_STATUS.Draft">
+                  <template v-if="canModifyDraft(pen)">
                     <Menu.Divider />
-                    <Menu.Item class="!text-danger" @click="confirmDelete(pen.id, pen.nomor_penawaran)">
+                    <Menu.Item class="!text-danger" @click="confirmDelete(pen.id, pen.nomor_penawaran ?? '')">
                       <Lucide icon="Trash2" class="mr-2 w-4 h-4" />
                       Hapus
                     </Menu.Item>

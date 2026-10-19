@@ -1,19 +1,37 @@
-import { createRouter, createWebHistory } from "vue-router";
+import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
+import { quotationPermissionsForAllBrands } from "@/utils/quotation-brand";
 import { startRouteLoading, stopRouteLoading } from "@/utils/routeLoading";
 
 declare module "vue-router" {
   interface RouteMeta {
     title?: string;
     breadcrumbTitle?: string;
-    brand?: string;
-    role?: string;
     permission?: string | string[];
     anyPermission?: string[];
     guestOnly?: boolean;
   }
 }
+
+const poCustomerViewPermissions = [
+  ...quotationPermissionsForAllBrands("viewAny"),
+  ...quotationPermissionsForAllBrands("manage"),
+  "sales-confirmation.manage",
+];
+
+const legacyQuotationRedirects: RouteRecordRaw[] = [
+  { path: "/penawarans", redirect: { name: "quotations.index" } },
+  { path: "/penawarans/create", redirect: { name: "quotations.create" } },
+  { path: "/penawarans/verifikasi", redirect: { name: "verification.quotations.index" } },
+  {
+    path: "/penawarans/verifikasi/:role(bm|om|ceo)/:id",
+    redirect: (to) => ({ name: "verification.quotations.show", params: { id: to.params.id }, query: to.query }),
+  },
+  { path: "/penawarans/:id", redirect: { name: "quotations.show" } },
+  { path: "/penawarans/:id/edit", redirect: { name: "quotations.edit" } },
+  { path: "/verifikasi-penawaran/:token", redirect: { name: "quotations.public-verify" } },
+];
 
 const routes = [
   {
@@ -39,8 +57,8 @@ const routes = [
   },
 
   {
-    path: "/verifikasi-penawaran/:token",
-    name: "penawaran-verification",
+    path: "/verify-quotation/:token",
+    name: "quotations.public-verify",
     component: () => import("@/pages/QuotationPublicVerification/Index.vue"),
   },
 
@@ -277,54 +295,28 @@ const routes = [
         meta: { permission: "inventory.view" },
       },
       {
-        path: "/penawarans",
-        name: "penawarans-list",
+        path: "/quotations",
+        name: "quotations.index",
         component: () => import("@/pages/Quotation/Index.vue"),
-        meta: { brand: "tds", permission: "penawaran.viewOwn" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("viewOwn") },
       },
       {
-        path: "/penawarans-proenergi",
-        name: "penawarans-list-proenergi",
-        component: () => import("@/pages/Quotation/Index.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
-      },
-      {
-        path: "/penawarans/create",
-        name: "penawarans-create",
+        path: "/quotations/create",
+        name: "quotations.create",
         component: () => import("@/pages/Quotation/Form.vue"),
-        meta: { brand: "tds", permission: "penawaran.manage" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("manage") },
       },
       {
-        path: "/penawarans-proenergi/create",
-        name: "penawarans-create-proenergi",
+        path: "/quotations/:id/edit",
+        name: "quotations.edit",
         component: () => import("@/pages/Quotation/Form.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
-      },
-
-      {
-        path: "/penawarans/:id/edit",
-        name: "penawarans-edit",
-        component: () => import("@/pages/Quotation/Form.vue"),
-        meta: { brand: "tds", permission: "penawaran.manage" },
-      },
-
-      {
-        path: "/penawarans-proenergi/:id/edit",
-        name: "penawarans-edit-proenergi",
-        component: () => import("@/pages/Quotation/Form.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.manage" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("manage") },
       },
       {
-        path: "/penawarans/:id",
-        name: "penawarans-detail",
+        path: "/quotations/:id",
+        name: "quotations.show",
         component: () => import("@/pages/Quotation/Detail.vue"),
-        meta: { brand: "tds", permission: "penawaran.viewOwn" },
-      },
-      {
-        path: "/penawarans-proenergi/:id",
-        name: "penawarans-detail-proenergi",
-        component: () => import("@/pages/Quotation/Detail.vue"),
-        meta: { brand: "proenergi", permission: "penawaran.proenergi.viewOwn" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("viewOwn") },
       },
 
       {
@@ -377,73 +369,42 @@ const routes = [
       },
 
       {
-        path: "/penawarans/verifikasi",
-        name: "penawarans-verifikasi",
+        path: "/verification/quotations",
+        name: "verification.quotations.index",
         component: () => import("@/pages/Verification/Quotation/Index.vue"),
-        meta: { brand: "tds", anyPermission: ["penawaran.verify", "penawaran.verify-ceo"] },
+        meta: { anyPermission: quotationPermissionsForAllBrands("verify") },
       },
       {
-        path: "/penawarans-proenergi/verifikasi",
-        name: "penawarans-verifikasi-proenergi",
-        component: () => import("@/pages/Verification/Quotation/Index.vue"),
-        meta: { brand: "proenergi", anyPermission: ["penawaran.proenergi.verify", "penawaran.verify-ceo"] },
-      },
-      {
-        path: "/penawarans/verifikasi/bm/:id",
-        name: "penawarans-verifikasi-bm-detail",
+        path: "/verification/quotations/:id",
+        name: "verification.quotations.show",
         component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "bm", brand: "tds", permission: "penawaran.verify" },
-      },
-      {
-        path: "/penawarans-proenergi/verifikasi/bm/:id",
-        name: "penawarans-verifikasi-bm-detail-proenergi",
-        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "bm", brand: "proenergi", permission: "penawaran.proenergi.verify-bm" },
-      },
-      {
-        path: "/penawarans/verifikasi/om/:id",
-        name: "penawarans-verifikasi-om-detail",
-        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "om", brand: "tds", permission: ["penawaran.verify", "penawaran.verify-om"] },
-      },
-      {
-        path: "/penawarans-proenergi/verifikasi/om/:id",
-        name: "penawarans-verifikasi-om-detail-proenergi",
-        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "om", brand: "proenergi", permission: "penawaran.proenergi.verify-om" },
-      },
-      {
-        path: "/penawarans/verifikasi/ceo/:id",
-        name: "penawarans-verifikasi-ceo-detail",
-        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "ceo", brand: "tds", permission: "penawaran.verify-ceo" },
-      },
-      {
-        path: "/penawarans-proenergi/verifikasi/ceo/:id",
-        name: "penawarans-verifikasi-ceo-detail-proenergi",
-        component: () => import("@/pages/Verification/Quotation/Detail.vue"),
-        meta: { role: "ceo", brand: "proenergi", permission: "penawaran.verify-ceo" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("verify") },
       },
 
       {
         path: "/po-customer/create",
         name: "penawarans-po",
         component: () => import("@/pages/PoCustomer/Form.vue"),
-        meta: { permission: "penawaran.manage" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("manage") },
       },
 
-      { path: "/po-customers", name: "po-customers-index", component: () => import("@/pages/PoCustomer/Index.vue") },
+      {
+        path: "/po-customers",
+        name: "po-customers-index",
+        component: () => import("@/pages/PoCustomer/Index.vue"),
+        meta: { anyPermission: poCustomerViewPermissions },
+      },
       {
         path: "/po-customers/:id",
         name: "po-customers-detail",
         component: () => import("@/pages/PoCustomer/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail PO Customer" },
+        meta: { anyPermission: poCustomerViewPermissions, breadcrumbTitle: "Detail PO Customer" },
       },
       {
         path: "/po-customers/:id/edit",
         name: "po-customers-edit",
         component: () => import("@/pages/PoCustomer/Form.vue"),
-        meta: { permission: "penawaran.manage", breadcrumbTitle: "Edit PO Customer" },
+        meta: { anyPermission: quotationPermissionsForAllBrands("manage"), breadcrumbTitle: "Edit PO Customer" },
       },
 
       {
@@ -482,7 +443,13 @@ const routes = [
         path: "/sales-confirmations",
         name: "sales-confirmations",
         component: () => import("@/pages/SalesConfirmation/Index.vue"),
-        meta: { anyPermission: ["sales-confirmation.manage", "sales-confirmation.view"] },
+        meta: {
+          anyPermission: [
+            "sales-confirmation.manage",
+            "sales-confirmation.view",
+            "sales-confirmation.approve",
+          ],
+        },
       },
       {
         path: "/sales-confirmations/delivery-queue",
@@ -494,7 +461,14 @@ const routes = [
         path: "/sales-confirmations/:id",
         name: "sales-confirmations-detail",
         component: () => import("@/pages/SalesConfirmation/Detail.vue"),
-        meta: { breadcrumbTitle: "Detail Sales Confirmation", anyPermission: ["sales-confirmation.manage", "sales-confirmation.view"] },
+        meta: {
+          breadcrumbTitle: "Detail Sales Confirmation",
+          anyPermission: [
+            "sales-confirmation.manage",
+            "sales-confirmation.view",
+            "sales-confirmation.approve",
+          ],
+        },
       },
       {
         path: "/ar-agings",
@@ -540,17 +514,28 @@ const routes = [
 
       { path: "testing-page", name: "testing-page", component: () => import("@/pages/Testing/Index.vue") },
 
-      { path: "testing-page-2", name: "testing-page-2", component: () => import("@/pages/Tooltip.vue") },
-
       {
         path: "design-system",
         name: "design-system",
         component: () => import("@/pages/DesignSystem/Index.vue"),
         meta: { title: "Design System" },
       },
+
+      {
+        path: "/403",
+        name: "forbidden",
+        component: () => import("@/pages/Error/Forbidden.vue"),
+        meta: { title: "Akses Ditolak" },
+      },
+      {
+        path: "/:pathMatch(.*)*",
+        name: "not-found",
+        component: () => import("@/pages/Error/NotFound.vue"),
+        meta: { title: "Halaman Tidak Ditemukan" },
+      },
     ],
   },
-  { path: "/:catchAll(.*)", redirect: "/login" },
+  ...legacyQuotationRedirects,
 ];
 
 const router = createRouter({ history: createWebHistory(), routes });
@@ -600,7 +585,7 @@ router.beforeEach(async (to, from, next) => {
     to.name !== "login" &&
     to.name !== "two-factor" &&
     to.name !== "customer-onboarding" &&
-    to.name !== "penawaran-verification" &&
+    to.name !== "quotations.public-verify" &&
     to.name !== "forgot-password"
   ) {
     stopRouteLoading(150);
@@ -612,7 +597,7 @@ router.beforeEach(async (to, from, next) => {
     to.name !== "login" &&
     to.name !== "two-factor" &&
     to.name !== "customer-onboarding" &&
-    to.name !== "penawaran-verification" &&
+    to.name !== "quotations.public-verify" &&
     to.name !== "forgot-password" &&
     !auth.isForceLoggingOut
   ) {
@@ -630,11 +615,11 @@ router.beforeEach(async (to, from, next) => {
   const required = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
   const anyPermission = to.meta.anyPermission;
   if (
-    (requiredPermission && !required.every((p) => auth.can(p)))
-    || (anyPermission && !anyPermission.some((p) => auth.can(p)))
+    (requiredPermission && !required.every((p) => auth.can(p))) ||
+    (anyPermission && !anyPermission.some((p) => auth.can(p)))
   ) {
     stopRouteLoading(150);
-    return next({ name: "dashboard-overview-1" });
+    return auth.user ? next({ name: "forbidden" }) : next(false);
   }
 
   next();

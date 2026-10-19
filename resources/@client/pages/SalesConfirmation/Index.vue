@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { debounce } from 'lodash'
 import axios from 'axios'
 
+import Button from '@/components/Base/Button'
+import { FormSelect } from '@/components/Base/Form'
 import Table from '@/components/Base/Table'
 import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
@@ -12,19 +14,20 @@ import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { actionErrorMessage } from '@/utils/http-error-route'
+import type { ApiPaginatedResponse, SalesConfirmationIndexRow, SalesConfirmationStatus } from '@/types'
 
-import { salesConfirmationBadgeClass } from './status'
+import { SALES_CONFIRMATION_STATUS_OPTIONS, salesConfirmationBadgeClass } from './status'
 import UnblockModal from "./components/UnblockModal.vue";
 
 const router = useRouter()
 const auth = useAuthStore()
 const { error: notifyError, info } = useNotification()
 
-const ROLE_BM = 8
 const ROLE_ADMIN_FINANCE = 9
 
-const disposisiFilter = ref<number | null>(null)
-const salesConfirmations = ref<any[]>([])
+const disposisiFilter = ref<SalesConfirmationStatus | string>('')
+const salesConfirmations = ref<SalesConfirmationIndexRow[]>([])
 const searchQuery = ref('')
 const perPage = ref(10)
 const currentPage = ref(1)
@@ -33,7 +36,10 @@ const totalRecords = ref(0)
 const loading = ref(false)
 const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) };
 
-const isBranchManager = computed(() => auth.hasRole(ROLE_BM))
+const activeFilterCount = computed(() => (disposisiFilter.value ? 1 : 0))
+const emptyDescription = computed(() =>
+  disposisiFilter.value ? 'Tidak ada Sales Confirmation untuk filter ini.' : 'Tidak ada Sales Confirmation',
+)
 
 watch(disposisiFilter, () => fetchData(1))
 watch(searchQuery, debounce(() => fetchData(1), 300))
@@ -44,20 +50,20 @@ onMounted(() => fetchData(1))
 async function fetchData(page = 1): Promise<void> {
   loading.value = true
   try {
-    const { data } = await axios.get('/api/sales-confirmations', {
+    const { data } = await axios.get<ApiPaginatedResponse<SalesConfirmationIndexRow>>('/api/sales-confirmations', {
       params: {
         page,
         per_page: perPage.value,
         search: searchQuery.value || undefined,
-        disposisi: disposisiFilter.value ?? undefined,
+        disposisi: disposisiFilter.value === '' ? undefined : Number(disposisiFilter.value),
       },
     })
     salesConfirmations.value = data.data ?? []
-    currentPage.value = data.current_page ?? 1
-    totalPages.value = data.last_page ?? 1
-    totalRecords.value = data.total ?? salesConfirmations.value.length
+    currentPage.value = data.meta.current_page ?? 1
+    totalPages.value = data.meta.last_page ?? 1
+    totalRecords.value = data.meta.total ?? salesConfirmations.value.length
   } catch (e: any) {
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data Sales Confirmation.')
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal memuat data Sales Confirmation.'))
   } finally {
     loading.value = false
   }
@@ -66,6 +72,10 @@ async function fetchData(page = 1): Promise<void> {
 function goToPage(page: number): void {
   if (page < 1 || page > totalPages.value) return
   fetchData(page)
+}
+
+function resetFilters(): void {
+  disposisiFilter.value = ''
 }
 
 function openDetail(id: number): void {
@@ -82,7 +92,7 @@ function closeUnblockModal(): void {
   unblockModal.idPoc.value = null;
 }
 
-function handleRowAction(row: any): void {
+function handleRowAction(row: SalesConfirmationIndexRow): void {
   if (row.sc_process_state !== "blocked") {
     openDetail(row.id_poc);
     return;
@@ -105,13 +115,13 @@ function handleUnblockSaved(): void {
   fetchData(currentPage.value);
 }
 
-function rowBadgeLabel(row: any): string {
+function rowBadgeLabel(row: SalesConfirmationIndexRow): string {
   if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "Diblokir — Perlu Diajukan";
   if (row.sc_process_state === "blocked" && row.active_unblock_request) return "Menunggu Persetujuan Unblock (BM)";
-  return row.disposisi_text;
+  return row.disposisi_text ?? "-";
 }
 
-function rowBadgeClass(row: any): string {
+function rowBadgeClass(row: SalesConfirmationIndexRow): string {
   if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "bg-rose-100 text-rose-700";
   if (row.sc_process_state === "blocked" && row.active_unblock_request) return "bg-amber-100 text-amber-700";
   return salesConfirmationBadgeClass(row.disposisi);
@@ -123,30 +133,41 @@ function rowBadgeClass(row: any): string {
     <div class="intro-y flex flex-col gap-4">
       <PageHeader title="Sales Confirmation" description="Daftar Sales Confirmation dan status verifikasinya." />
 
-      <div v-if="isBranchManager" class="inline-flex w-fit gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium transition"
-          :class="disposisiFilter === 2 ? 'bg-theme-1 text-white' : 'text-slate-600 hover:bg-slate-100'"
-          @click="disposisiFilter = 2">
-          Antrean Saya
-        </button>
-        <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium transition"
-          :class="disposisiFilter === null ? 'bg-theme-1 text-white' : 'text-slate-600 hover:bg-slate-100'"
-          @click="disposisiFilter = null">
-          Semua
-        </button>
-      </div>
-
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="salesConfirmations.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true"
         :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
+        :active-filter-count="activeFilterCount"
         search-placeholder="Cari nomor PO atau customer..." loading-text="Memuat data Sales Confirmation..."
-        empty-description="Belum ada Sales Confirmation." @page-change="goToPage">
+        :empty-description="emptyDescription" @page-change="goToPage">
+        <template #filters>
+          <div class="space-y-4 p-1">
+            <div>
+              <div class="px-3 pt-1 pb-2 text-overline">
+                Status
+              </div>
+
+              <FormSelect v-model="disposisiFilter">
+                <option v-for="opt in SALES_CONFIRMATION_STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </FormSelect>
+            </div>
+
+            <div class="pt-3 border-slate-100 border-t">
+              <Button type="button" variant="outline-secondary" class="w-full" :disabled="activeFilterCount === 0"
+                @click="resetFilters">
+                Reset filter
+              </Button>
+            </div>
+          </div>
+        </template>
+
         <template #head>
           <Table.Th class="w-12 text-center">No</Table.Th>
           <Table.Th>Customer</Table.Th>
           <Table.Th>Marketing</Table.Th>
           <Table.Th>Nomor / Tanggal PO</Table.Th>
-          <Table.Th class="text-center">Volume / Harga</Table.Th>
+          <Table.Th class="text-center">Total Volume / Total Nilai (DPP)</Table.Th>
           <Table.Th class="text-center">Disposisi</Table.Th>
           <Table.Th class="text-center">Aksi</Table.Th>
         </template>
@@ -172,8 +193,8 @@ function rowBadgeClass(row: any): string {
             </Table.Td>
 
             <Table.Td class="text-center whitespace-nowrap">
-              <div>{{ formatNumber(row.volume_poc) }} m³</div>
-              <div class="text-slate-500">{{ formatCurrency(row.harga_poc) }} /m³</div>
+              <div>{{ formatNumber(row.total_volume) }} m³</div>
+              <div class="text-slate-500">{{ formatCurrency(row.total_value) }}</div>
             </Table.Td>
 
             <Table.Td class="text-center">

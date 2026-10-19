@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
+use App\Http\Controllers\Customer\Traits\GuardsCustomerEditLock;
 use App\Http\Requests\Customer\UpdateCustomerPaymentRequest;
 use App\Models\Customer;
 use App\Models\CustomerPayment;

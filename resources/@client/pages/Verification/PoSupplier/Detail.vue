@@ -114,7 +114,7 @@ async function handleReject() {
 async function preview() {
   const previewTab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`/vendor-pos/${id}/preview`, { responseType: 'blob' })
+    const response = await axios.get(`/api/vendor-pos/${id}/preview`, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     if (previewTab) {
       previewTab.location.href = url
@@ -138,7 +138,6 @@ function goBack() {
   <div class="page-content-wrapper">
     <div class="intro-x flex flex-col gap-4">
 
-      <!-- HEADER -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 class="text-screen-title">Detail Verifikasi PO</h2>
@@ -152,10 +151,8 @@ function goBack() {
         </Button>
       </div>
 
-      <!-- 2-COLUMN LAYOUT -->
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
-        <!-- KIRI: Konten utama -->
         <div class="space-y-6 xl:col-span-2">
 
           <CardSection title="Informasi PO" description="Data utama purchase order vendor" icon="FileText">
@@ -266,7 +263,6 @@ function goBack() {
 
         </div>
 
-        <!-- KANAN: Sticky sidebar -->
         <div class="xl:col-span-1">
           <div class="sticky top-6 space-y-4">
             <CardSection title="Status Approval" description="Tahapan persetujuan PO" icon="ShieldCheck"

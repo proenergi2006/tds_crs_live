@@ -5,6 +5,7 @@ namespace App\Actions\Quotation;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationVerifierRole;
+use App\Exceptions\BusinessRuleException;
 use App\Mail\QuotationRejectedMail;
 use App\Models\Quotation;
 use App\Models\User;
@@ -15,26 +16,28 @@ use Illuminate\Support\Facades\Schema;
 
 class RejectQuotationAction
 {
-    public function execute(Quotation $quotation, User $actor, string $note, string $detailUrl): array
+    public function __construct(private readonly DocumentApprovalService $approvalService)
     {
-        DB::beginTransaction();
+    }
 
-        try {
+    public function execute(Quotation $quotation, User $actor, string $note, string $detailUrl): void
+    {
+        [$quotation, $verifier] = DB::transaction(function () use ($quotation, $actor, $note) {
             $quotation = Quotation::lockForUpdate()->findOrFail($quotation->id);
             $step      = $quotation->activeVerificationStep();
-            $verifier  = QuotationVerifierRole::tryFrom((int) $step?->id_role);
+
+            if (! $step) {
+                throw new BusinessRuleException('Penawaran tidak sedang menunggu verifikasi.');
+            }
+
+            $verifier = QuotationVerifierRole::tryFrom((int) $step->id_role);
 
             $quotation->update(['status' => QuotationStatus::Rejected]);
 
-            (new DocumentApprovalService())->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Rejected, $actor->id, $note);
+            $this->approvalService->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Rejected, $actor->id, $note);
 
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            report($e);
-
-            return ['success' => false, 'status' => 500, 'message' => 'Gagal menolak penawaran', 'error' => $e->getMessage()];
-        }
+            return [$quotation, $verifier];
+        });
 
         $creatorEmail = $this->getCreatorEmail($quotation->created_by);
 
@@ -47,8 +50,6 @@ class RejectQuotationAction
                 report($e);
             }
         }
-
-        return ['message' => 'Status penawaran Ditolak'];
     }
 
     private function getCreatorEmail(?string $creatorName): ?string

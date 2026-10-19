@@ -130,7 +130,7 @@ function goReceive(id: number) {
 async function previewPdf(id: number) {
   const previewTab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`/vendor-pos/${id}/preview`, { responseType: 'blob' })
+    const response = await axios.get(`/api/vendor-pos/${id}/preview`, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     if (previewTab) {
       previewTab.location.href = url

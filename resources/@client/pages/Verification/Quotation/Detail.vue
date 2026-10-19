@@ -3,59 +3,64 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
+import Alert from '@/components/Base/Alert'
 import Button from '@/components/Base/Button'
 import { FormLabel, FormTextarea } from '@/components/Base/Form'
-import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import Lucide from '@/components/Base/Lucide'
+import Tippy from '@/components/Base/Tippy'
 import Table from '@/components/Base/Table'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
-import {
-  getVerifikasiDetailConfig,
-  type VerifikasiRole,
-} from './config'
 import { QUOTATION_STATUS, priceTierBadgeClass, priceTierLabel } from '@/pages/Quotation/status'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate, formatDateTime, formatPercentRate, toDateKey, todayDateKey } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
-import type { QuotationBrand, QuotationTransport } from '@/types'
+import { actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import type { ApiResponse, QuotationTransport } from '@/types'
 import QuotationPdfDialog from '@/pages/Quotation/components/QuotationPdfDialog.vue'
 import QuotationTransportSummary from '@/pages/Quotation/components/QuotationTransportSummary.vue'
+import { QUOTATION_VERIFICATION_DETAIL } from './config'
 
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotification()
 
-const role = computed(() => route.meta.role as VerifikasiRole)
-const brand = computed(() => route.meta.brand as QuotationBrand)
-const config = computed(() => getVerifikasiDetailConfig(role.value, brand.value))
+const BELOW_CEO_LIMIT_LABEL = 'Di bawah batas CEO'
+const BELOW_CEO_LIMIT_BADGE_CLASS = 'bg-danger/10 text-danger'
 
-const id = computed(() => Number(route.params.id))
 const quotation = ref<any>({})
 const loading = ref(false)
-const notFound = ref(false)
+const loadFailed = ref(false)
 
-async function fetchQuotation() {
-  loading.value = true
-  notFound.value = false
+const verifikasiDialogOpen = ref(false)
+const verifikasiCatatan = ref('')
+const verifikasiLoading = ref(false)
 
-  try {
-    const { data } = await axios.get(`/api${config.value.fetchEndpoint}/${id.value}`)
-    quotation.value = data
-  } catch (e: any) {
-    notFound.value = true
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data penawaran.')
-  } finally {
-    loading.value = false
-  }
-}
+const tolakDialogOpen = ref(false)
+const tolakCatatan = ref('')
+const tolakLoading = ref(false)
+
+const previewLangDialogOpen = ref(false)
+const previewLoading = ref(false)
+
+const id = computed(() => Number(route.params.id))
 
 const items = computed(() => quotation.value.items ?? [])
 const isMultiProduct = computed<boolean>(() => items.value.length > 1)
 
-const isProenergi = computed(() => brand.value === 'proenergi')
+const isProenergi = computed<boolean>(() => quotation.value.brand === 'proenergi')
+
+const isExpired = computed<boolean>(() => {
+  const to = toDateKey(quotation.value.sampai_dengan)
+  return !!to && to < todayDateKey()
+})
+
+const showVerifierRole = computed<boolean>(() =>
+  !!quotation.value.verifier_role && quotation.value.status !== QUOTATION_STATUS.Draft,
+)
 
 const totalQuantity = computed<number>(() =>
   items.value.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0),
@@ -73,10 +78,6 @@ const cogsBasisNote = computed<string>(() => {
   return `Harga ${basis === 'loco' ? 'Loco' : 'Franco'}`
 })
 
-function dash(v: unknown) {
-  return v === null || v === undefined || v === '' ? '-' : v
-}
-
 const transports = computed<QuotationTransport[]>(() => quotation.value.transports ?? [])
 
 const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>(() =>
@@ -86,32 +87,75 @@ const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>
       title: s.title,
       description: s.description,
       status: s.status,
+      statusText: s.status_text,
       timestamp: s.timestamp ? formatDateTime(s.timestamp) : undefined,
     })),
   }))
 )
 
-const verifikasiDialogOpen = ref(false)
-const verifikasiCatatan = ref('')
-const verifikasiLoading = ref(false)
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.params.id === undefined) return
+    if (Number.isInteger(id.value) && id.value > 0) fetchQuotation()
+    else redirectToErrorPage(router, 404)
+  },
+  { immediate: true },
+)
 
-const tolakDialogOpen = ref(false)
-const tolakCatatan = ref('')
-const tolakLoading = ref(false)
+async function fetchQuotation() {
+  loading.value = true
+  loadFailed.value = false
+
+  try {
+    const { data } = await axios.get<ApiResponse<any>>(`/api${QUOTATION_VERIFICATION_DETAIL.fetchEndpoint}/${id.value}`)
+    quotation.value = data.data
+  } catch (e: any) {
+    if (redirectToErrorPage(router, e.response?.status)) return
+    loadFailed.value = true
+    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memuat data penawaran.')
+  } finally {
+    loading.value = false
+  }
+}
+
+function tierLimitsTooltip(item: any): string {
+  const limits = item.tier_limits
+  if (!limits) return 'Batas tier tidak tercatat (data lama)'
+  const lines = [
+    limits.price_list != null ? `Price list: ${formatCurrency(limits.price_list)}` : null,
+    `BM ≥ ${formatCurrency(limits.bm_price)}`,
+    `OM ≥ ${formatCurrency(limits.om_price)}`,
+    `CEO ≥ ${formatCurrency(limits.ceo_price)}`,
+  ].filter(Boolean)
+  const belowCeoLine = item.below_ceo_limit === true
+    ? `<div class="mb-1 font-semibold">${BELOW_CEO_LIMIT_LABEL}</div>`
+    : ''
+  return `${belowCeoLine}<div class="font-semibold mb-1">Batas tier</div>${lines.map(l => `<div class="whitespace-nowrap">${l}</div>`).join('')}`
+}
+
+function itemMarginTotal(item: any): number | null {
+  if (item.margin_material == null || item.margin_transport == null) return null
+  return Number(item.margin_material) + Number(item.margin_transport)
+}
+
+function dash(v: unknown) {
+  return v === null || v === undefined || v === '' ? '-' : v
+}
 
 async function verifikasi() {
   verifikasiLoading.value = true
   try {
-    await axios.patch(`/api${config.value.verifyEndpoint(id.value)}`, {
+    const { data } = await axios.patch<ApiResponse<null>>(`/api${QUOTATION_VERIFICATION_DETAIL.verifyEndpoint(id.value)}`, {
       catatan: verifikasiCatatan.value || 'Tanpa catatan',
     })
     verifikasiDialogOpen.value = false
     verifikasiCatatan.value = ''
-    success('Berhasil', 'Penawaran disetujui.')
+    success('Berhasil', data.message || 'Penawaran disetujui.')
     fetchQuotation()
   } catch (e: any) {
     verifikasiDialogOpen.value = false
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal memverifikasi penawaran.')
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal memverifikasi penawaran.'))
     if ([403, 409].includes(e.response?.status)) fetchQuotation()
   } finally {
     verifikasiLoading.value = false
@@ -126,34 +170,25 @@ async function tolak() {
 
   tolakLoading.value = true
   try {
-    await axios.patch(`/api${config.value.rejectEndpoint(id.value)}`, { catatan: tolakCatatan.value })
+    const { data } = await axios.patch<ApiResponse<null>>(`/api${QUOTATION_VERIFICATION_DETAIL.rejectEndpoint(id.value)}`, { catatan: tolakCatatan.value })
     tolakDialogOpen.value = false
     tolakCatatan.value = ''
-    success('Ditolak', 'Penawaran ditolak.')
+    success('Ditolak', data.message || 'Penawaran ditolak.')
     fetchQuotation()
   } catch (e: any) {
     tolakDialogOpen.value = false
-    notifyError('Gagal', e.response?.data?.message ?? 'Gagal menolak penawaran.')
+    notifyError('Gagal', actionErrorMessage(e, 'Gagal menolak penawaran.'))
     if ([403, 409].includes(e.response?.status)) fetchQuotation()
   } finally {
     tolakLoading.value = false
   }
 }
 
-function formatCurrency(v?: number | string | null) {
-  return `Rp. ${(Number(v) || 0).toLocaleString('id-ID')}`
-}
-function formatNumber(v?: number | string | null) {
-  return (Number(v) || 0).toLocaleString('id-ID')
-}
-const previewLangDialogOpen = ref(false)
-const previewLoading = ref(false)
-
 async function preview(payload: { lang: 'id' | 'en' }) {
   previewLoading.value = true
   const previewTab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`/api${config.value.fetchEndpoint}/${id.value}/preview`, {
+    const response = await axios.get(`/api${QUOTATION_VERIFICATION_DETAIL.fetchEndpoint}/${id.value}/preview`, {
       params: { lang: payload.lang },
       responseType: 'blob',
     })
@@ -177,7 +212,13 @@ function goBack() {
   router.back()
 }
 
-watch(() => route.fullPath, fetchQuotation, { immediate: true })
+function formatCurrency(v?: number | string | null) {
+  return `Rp. ${(Number(v) || 0).toLocaleString('id-ID')}`
+}
+
+function formatNumber(v?: number | string | null) {
+  return (Number(v) || 0).toLocaleString('id-ID')
+}
 </script>
 
 <template>
@@ -187,20 +228,22 @@ watch(() => route.fullPath, fetchQuotation, { immediate: true })
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <h2 class="text-screen-title">{{ config.title }}</h2>
-            <span v-if="quotation.out_of_range === true"
-              class="inline-flex items-center px-3 py-1 rounded-full text-form-label whitespace-nowrap"
-              :class="priceTierBadgeClass('out_of_range')">
-              {{ priceTierLabel('out_of_range') }}
-            </span>
-            <span v-else-if="quotation.price_tier"
+            <h2 class="text-screen-title">{{ QUOTATION_VERIFICATION_DETAIL.title }}</h2>
+            <span v-if="quotation.price_tier"
               class="inline-flex items-center px-3 py-1 rounded-full text-form-label whitespace-nowrap"
               :class="priceTierBadgeClass(quotation.price_tier)">
               {{ priceTierLabel(quotation.price_tier) }}
             </span>
+            <span v-if="quotation.below_ceo_limit === true"
+              class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-form-label whitespace-nowrap"
+              :class="BELOW_CEO_LIMIT_BADGE_CLASS">
+              <Lucide icon="AlertCircle" class="w-3.5 h-3.5" />
+              {{ BELOW_CEO_LIMIT_LABEL }}
+            </span>
           </div>
           <p class="mt-1 text-body-lg">
-            Informasi lengkap penawaran dan status verifikasi.
+            <template v-if="showVerifierRole">Verifikator: {{ quotation.verifier_role }}</template>
+            <template v-else>Informasi lengkap penawaran dan status verifikasi.</template>
           </p>
         </div>
         <Button variant="outline-secondary" @click="goBack">
@@ -214,12 +257,12 @@ watch(() => route.fullPath, fetchQuotation, { immediate: true })
         <span class="text-body">Memuat data penawaran...</span>
       </div>
 
-      <div v-else-if="notFound" class="flex flex-col justify-center items-center gap-2 min-h-[320px] text-center">
+      <div v-else-if="loadFailed" class="flex flex-col justify-center items-center gap-2 min-h-[320px] text-center">
         <div class="flex justify-center items-center bg-rose-50 rounded-full w-14 h-14">
           <Lucide icon="AlertTriangle" class="w-7 h-7 text-rose-500" />
         </div>
-        <h3 class="text-section-title">Data penawaran tidak ditemukan</h3>
-        <p class="text-body">Silakan kembali ke halaman sebelumnya.</p>
+        <h3 class="text-section-title">Gagal memuat data penawaran</h3>
+        <p class="text-body">Muat ulang halaman atau kembali ke halaman sebelumnya.</p>
       </div>
 
       <div v-else class="gap-6 grid grid-cols-1 xl:grid-cols-3">
@@ -328,17 +371,12 @@ watch(() => route.fullPath, fetchQuotation, { immediate: true })
             <div class="rounded-xl">
               <Table bordered sm class="mt-4 text-body">
                 <Table.Thead class="bg-slate-50">
-                  <Table.Th>Produk</Table.Th>
-                  <Table.Th class="w-40">Source</Table.Th>
-                  <Table.Th class="w-28 text-right">Quantity</Table.Th>
-                  <Table.Th class="w-36 text-right">Material/m³</Table.Th>
-                  <Table.Th class="w-36 text-right">Transport/m³</Table.Th>
-                  <Table.Th class="w-36 text-right">Final/m³</Table.Th>
-                  <Table.Th class="w-40 text-right">Subtotal</Table.Th>
-                  <Table.Th class="w-44">Batas Tier</Table.Th>
+                  <Table.Th>Produk &amp; Source</Table.Th>
+                  <Table.Th class="w-24 text-right">Qty</Table.Th>
+                  <Table.Th class="w-44 text-right">Harga Final/m³</Table.Th>
+                  <Table.Th class="w-44 text-right">Subtotal</Table.Th>
                   <Table.Th class="w-32 text-center">Tier</Table.Th>
-                  <Table.Th class="w-36 text-right">Margin Material</Table.Th>
-                  <Table.Th class="w-36 text-right">Margin Transport</Table.Th>
+                  <Table.Th class="w-44 text-right">Margin</Table.Th>
                 </Table.Thead>
                 <Table.Tbody class="bg-white">
                   <Table.Tr v-for="item in items" :key="item.id">
@@ -347,114 +385,113 @@ watch(() => route.fullPath, fetchQuotation, { immediate: true })
                       <div class="mt-0.5 text-caption">
                         {{ item.product?.jenis?.nama || '-' }}
                         <span class="mx-1">·</span>
-                        {{ item.product?.ukuran?.nama_ukuran || '-' }} {{ item.product?.ukuran?.satuan?.nama_satuan || ''
-                        }}
+                        {{ item.product?.ukuran?.nama_ukuran || '-' }} {{ item.product?.ukuran?.satuan?.nama_satuan || '' }}
                       </div>
+                      <div class="mt-0.5 text-caption">Source: {{ item.source_branch?.nama_cabang ?? '—' }}</div>
                     </Table.Td>
-                    <Table.Td class="text-body">{{ item.source_branch?.nama_cabang ?? '—' }}</Table.Td>
-                    <Table.Td class="num-sm text-lg text-right">{{ formatNumber(item.quantity) }}</Table.Td>
-                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.unit_price) }}</Table.Td>
-                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.transport_price) }}</Table.Td>
-                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.final_price) }}</Table.Td>
-                    <Table.Td class="num-sm text-lg text-right">{{ formatCurrency(item.final_total) }}</Table.Td>
-                    <Table.Td class="text-caption">
-                      <template v-if="item.tier_limits">
-                        <div v-if="item.tier_limits.price_list != null">Price list {{ formatCurrency(item.tier_limits.price_list) }}</div>
-                        <div>BM ≥ {{ formatCurrency(item.tier_limits.bm_price) }}</div>
-                        <div>OM ≥ {{ formatCurrency(item.tier_limits.om_price) }}</div>
-                        <div>CEO ≥ {{ formatCurrency(item.tier_limits.ceo_price) }}</div>
-                      </template>
-                      <span v-else>—</span>
+                    <Table.Td class="num-sm text-right">{{ formatNumber(item.quantity) }}</Table.Td>
+                    <Table.Td class="text-right">
+                      <div class="num-sm whitespace-nowrap">{{ formatCurrency(item.final_price) }}</div>
+                      <div class="mt-0.5 text-caption whitespace-nowrap">Mat {{ formatCurrency(item.unit_price) }}</div>
+                      <div class="text-caption whitespace-nowrap">Trp {{ formatCurrency(item.transport_price) }}</div>
                     </Table.Td>
+                    <Table.Td class="num-sm text-right whitespace-nowrap">{{ formatCurrency(item.final_total) }}</Table.Td>
                     <Table.Td class="text-center">
-                      <span v-if="item.price_tier"
-                        class="inline-flex items-center px-3 py-1 rounded-full text-form-label whitespace-nowrap"
-                        :class="priceTierBadgeClass(item.price_tier)">
-                        {{ priceTierLabel(item.price_tier) }}
-                      </span>
-                      <span v-else>-</span>
+                      <Tippy :content="tierLimitsTooltip(item)" :options="{ allowHTML: true }" as="span"
+                        class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-form-label whitespace-nowrap cursor-help"
+                        :class="item.price_tier ? priceTierBadgeClass(item.price_tier) : 'bg-slate-100 text-slate-500'">
+                        {{ item.price_tier ? priceTierLabel(item.price_tier) : 'Data lama' }}
+                        <Lucide v-if="item.below_ceo_limit === true" icon="AlertCircle" class="w-3.5 h-3.5 text-danger" />
+                        <Lucide icon="Info" class="w-3.5 h-3.5" />
+                      </Tippy>
                     </Table.Td>
-                    <Table.Td class="num-sm text-right">
-                      <span v-if="item.margin_material != null">{{ formatCurrency(item.margin_material) }}</span>
-                      <span v-else class="text-slate-400" title="Data COGS tidak tersedia">—</span>
-                    </Table.Td>
-                    <Table.Td class="num-sm text-right">
-                      <span v-if="item.margin_transport != null">{{ formatCurrency(item.margin_transport) }}</span>
-                      <span v-else class="text-slate-400" title="Tidak tercatat (data lama)">—</span>
+                    <Table.Td class="text-right">
+                      <div v-if="itemMarginTotal(item) != null" class="num-sm whitespace-nowrap">
+                        {{ formatCurrency(itemMarginTotal(item)) }}
+                      </div>
+                      <div v-else class="num-sm text-slate-400">—</div>
+                      <div class="mt-0.5 text-caption whitespace-nowrap">
+                        Mat {{ item.margin_material != null ? formatCurrency(item.margin_material) : '—' }}
+                      </div>
+                      <div class="text-caption whitespace-nowrap">
+                        Trp {{ item.margin_transport != null ? formatCurrency(item.margin_transport) : '—' }}
+                      </div>
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
 
                 <Table.Tbody v-if="isMultiProduct" class="bg-slate-50 border-slate-200 border-t">
                   <Table.Tr>
-                    <Table.Td colspan="2" class="py-2.5 pr-6 text-section-title text-right">Total</Table.Td>
+                    <Table.Td class="py-2.5 pr-6 text-section-title text-right">Total</Table.Td>
                     <Table.Td class="py-2.5 num-md text-right">{{ formatNumber(totalQuantity) }}</Table.Td>
-                    <Table.Td colspan="3"></Table.Td>
-                    <Table.Td class="py-2.5 num-md text-right">{{ formatCurrency(quotation.dpp) }}</Table.Td>
-                    <Table.Td colspan="4"></Table.Td>
+                    <Table.Td></Table.Td>
+                    <Table.Td class="py-2.5 num-md text-right whitespace-nowrap">{{ formatCurrency(quotation.dpp) }}</Table.Td>
+                    <Table.Td colspan="2"></Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
             </div>
           </CardSection>
 
-          <CardSection title="Rincian Harga" description="Komponen harga penawaran" icon="Wallet"
-            icon-class="bg-emerald-100 text-emerald-600">
-            <dl class="gap-4 grid grid-cols-1 sm:grid-cols-2">
-              <div class="bg-slate-100 p-4 rounded-lg text-right">
-                <dt class="text-form-label">Subtotal Material</dt>
-                <dd class="mt-1 num-md text-lg">{{ formatCurrency(quotation.subtotal_material) }}</dd>
-              </div>
-              <div class="bg-slate-100 p-4 rounded-lg text-right">
-                <dt class="text-form-label">Total Transport</dt>
-                <dd class="mt-1 num-md text-lg">{{ formatCurrency(quotation.transport_total) }}</dd>
-              </div>
-              <div class="bg-slate-100 p-4 rounded-lg text-right">
-                <dt class="text-form-label">DPP</dt>
-                <dd class="mt-1 num-md text-xl">{{ formatCurrency(quotation.dpp) }}</dd>
-              </div>
-              <div class="bg-slate-100 p-4 rounded-lg text-right">
-                <dt class="text-form-label">PPN (11%)</dt>
-                <dd class="mt-1 num-md text-xl">{{ formatCurrency(quotation.ppn) }}</dd>
-              </div>
-              <div class="bg-slate-100 p-4 rounded-lg text-right">
-                <dt class="text-form-label">Total</dt>
-                <dd class="mt-1 num-md text-success text-xl">{{ formatCurrency(quotation.total) }}</dd>
-              </div>
-            </dl>
-
-            <div class="mt-6 pt-5 border-slate-100 border-t">
-              <h4 class="mb-3 text-overline">Analisa Margin</h4>
-              <dl class="gap-4 grid grid-cols-1">
-                <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="text-form-label">Margin Material</dt>
-                  <dd v-if="quotation.margin_material_total != null" class="mt-1 num-md text-lg">
-                    {{ formatCurrency(quotation.margin_material_total) }}
-                  </dd>
-                  <dd v-else class="mt-1 text-body !text-amber-700">Data COGS material tidak lengkap</dd>
+          <div class="gap-6 grid grid-cols-1 lg:grid-cols-2">
+            <CardSection title="Rincian Harga" description="Komponen harga penawaran" icon="Wallet"
+              icon-class="bg-emerald-100 text-emerald-600">
+              <dl class="divide-y divide-slate-100">
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">Subtotal Material</dt>
+                  <dd class="num-sm whitespace-nowrap">{{ formatCurrency(quotation.subtotal_material) }}</dd>
                 </div>
-                <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="text-form-label">Margin Transport</dt>
-                  <dd v-if="quotation.margin_transport_total != null" class="mt-1 num-md text-lg">
-                    {{ formatCurrency(quotation.margin_transport_total) }}
-                  </dd>
-                  <dd v-else class="mt-1 text-body text-slate-500">Tidak tercatat (data lama)</dd>
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">Total Transport</dt>
+                  <dd class="num-sm whitespace-nowrap">{{ formatCurrency(quotation.transport_total) }}</dd>
                 </div>
-                <div class="bg-slate-100 p-4 rounded-lg text-right">
-                  <dt class="text-form-label">Total Margin</dt>
-                  <dd v-if="quotation.margin_total != null" class="mt-1 num-md text-lg">
-                    {{ formatCurrency(quotation.margin_total) }}
-                    <template v-if="marginPercent != null">({{ marginPercent.toFixed(2) }}% dari DPP)</template>
-                  </dd>
-                  <template v-else>
-                    <dd class="mt-1 num-md text-lg">—</dd>
-                    <dd class="mt-1 text-caption">Tidak dihitung karena ada komponen yang tidak tercatat</dd>
-                  </template>
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">DPP</dt>
+                  <dd class="num-sm whitespace-nowrap">{{ formatCurrency(quotation.dpp) }}</dd>
+                </div>
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">PPN ({{ formatPercentRate(quotation.ppn_rate) }})</dt>
+                  <dd class="num-sm whitespace-nowrap">{{ formatCurrency(quotation.ppn) }}</dd>
+                </div>
+                <div class="flex justify-between items-center gap-4 pt-3">
+                  <dt class="text-section-title text-success">Total</dt>
+                  <dd class="num-md text-success text-lg whitespace-nowrap">{{ formatCurrency(quotation.total) }}</dd>
                 </div>
               </dl>
-              <div v-if="cogsBasisNote" class="mt-1 text-caption text-slate-500 italic">{{ cogsBasisNote }}</div>
-            </div>
-          </CardSection>
+            </CardSection>
+
+            <CardSection title="Analisa Margin" description="Margin material dan transport" icon="TrendingUp"
+              icon-class="bg-sky-100 text-sky-600">
+              <dl class="divide-y divide-slate-100">
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">Margin Material</dt>
+                  <dd v-if="quotation.margin_material_total != null" class="num-sm whitespace-nowrap">
+                    {{ formatCurrency(quotation.margin_material_total) }}
+                  </dd>
+                  <dd v-else class="text-caption !text-amber-700">Data COGS material tidak lengkap</dd>
+                </div>
+                <div class="flex justify-between items-center gap-4 py-2.5">
+                  <dt class="text-body">Margin Transport</dt>
+                  <dd v-if="quotation.margin_transport_total != null" class="num-sm whitespace-nowrap">
+                    {{ formatCurrency(quotation.margin_transport_total) }}
+                  </dd>
+                  <dd v-else class="text-caption">Tidak tercatat (data lama)</dd>
+                </div>
+                <div class="flex justify-between items-start gap-4 pt-3">
+                  <dt class="text-section-title">Total Margin</dt>
+                  <dd v-if="quotation.margin_total != null" class="text-right">
+                    <div class="num-md text-lg whitespace-nowrap">{{ formatCurrency(quotation.margin_total) }}</div>
+                    <div v-if="marginPercent != null" class="text-caption">{{ marginPercent.toFixed(2) }}% dari DPP</div>
+                  </dd>
+                  <dd v-else class="text-right">
+                    <div class="num-md text-lg">—</div>
+                    <div class="text-caption">Tidak dihitung karena ada komponen yang tidak tercatat</div>
+                  </dd>
+                </div>
+              </dl>
+              <div v-if="cogsBasisNote" class="mt-2 text-caption text-slate-500 italic">{{ cogsBasisNote }}</div>
+            </CardSection>
+          </div>
 
           <div class="flex xl:flex-row flex-col gap-6">
             <div class="flex-1">
@@ -574,6 +611,13 @@ watch(() => route.fullPath, fetchQuotation, { immediate: true })
             <CardSection v-if="quotation.can_verify === true" title="Aksi Verifikasi"
               icon="CheckCircle" icon-class="bg-blue-100 text-blue-600">
               <div class="space-y-3">
+                <Alert v-if="isExpired" variant="soft-warning" class="flex items-start gap-2 !px-4 !py-3 text-caption">
+                  <Lucide icon="AlertTriangle" class="mt-0.5 w-4 h-4 shrink-0" />
+                  <span>
+                    Masa berlaku penawaran sudah lewat. Penawaran tidak bisa disetujui. Tolak agar Marketing membuat
+                    penawaran baru.
+                  </span>
+                </Alert>
                 <div class="flex flex-row gap-2">
                   <Button variant="danger" class="inline-flex justify-center items-center gap-2 w-full"
                     @click="tolakDialogOpen = true">

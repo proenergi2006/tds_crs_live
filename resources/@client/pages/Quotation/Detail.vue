@@ -4,17 +4,21 @@ import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 import Button from '@/components/Base/Button'
+import { FormLabel, FormTextarea } from '@/components/Base/Form'
 import Lucide from '@/components/Base/Lucide'
 import Table from '@/components/Base/Table'
+import RequiredAsterisk from '@/components/SystemDesign/Form/RequiredAsterisk.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
 import Stepper, { type StepItem } from '@/components/SystemDesign/Stepper/Stepper.vue'
 import ConfirmDialog from '@/components/SystemDesign/Dialog/ConfirmDialog.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { createResourceApi } from '@/utils/resourceApi'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate, formatDateTime, formatPercentRate, toDateKey, todayDateKey } from '@/utils/format'
 import { openPdfLoadingTab } from '@/utils/pdfPreviewTab'
-import type { QuotationBrand, QuotationTransport } from '@/types'
+import { FORBIDDEN_ACTION_MESSAGE, actionErrorMessage, redirectToErrorPage } from '@/utils/http-error-route'
+import { canManageQuotationBrand } from '@/utils/quotation-brand'
+import type { ApiResponse, QuotationTransport } from '@/types'
 import QuotationDetailsEditModal from './components/QuotationDetailsEditModal.vue'
 import QuotationPdfDialog from './components/QuotationPdfDialog.vue'
 import QuotationTransportSummary from './components/QuotationTransportSummary.vue'
@@ -24,43 +28,45 @@ const router = useRouter()
 const route = useRoute()
 const { success, error } = useNotification()
 const auth = useAuthStore()
+const quotationApi = createResourceApi('/quotations')
 
-const BRAND_CONFIG = {
-  tds: {
-    resourceEndpoint: '/penawarans',
-    apiBase: '/api/penawarans',
-    listRoute: 'penawarans-list',
-    editRoute: 'penawarans-edit',
-    createRoute: 'penawarans-create',
-    title: 'Detail Penawaran',
-    description: 'Informasi lengkap penawaran dan status verifikasi.',
-  },
-  proenergi: {
-    resourceEndpoint: '/penawarans-proenergi',
-    apiBase: '/api/penawarans-proenergi',
-    listRoute: 'penawarans-list-proenergi',
-    editRoute: 'penawarans-edit-proenergi',
-    createRoute: 'penawarans-create-proenergi',
-    title: 'Detail Penawaran Proenergi',
-    description: 'Informasi lengkap dan status persetujuan penawaran Proenergi',
-  },
-}
-const brand = computed<QuotationBrand>(() => (route.meta.brand as QuotationBrand) === 'proenergi' ? 'proenergi' : 'tds')
-const isProenergi = computed(() => brand.value === 'proenergi')
-const cfg = computed(() => BRAND_CONFIG[brand.value])
-const quotationApi = computed(() => createResourceApi(cfg.value.resourceEndpoint))
-const id = computed(() => Number(route.params.id))
+const QUOTATION_API_BASE = '/api/quotations'
+
 const quotation = ref<any>({})
 const loading = ref(true)
 const ajukanLoading = ref(false)
 const ajukanDialogOpen = ref(false)
 const detailsEditOpen = ref(false)
+const previewLangDialogOpen = ref(false)
+const previewLoading = ref(false)
+const reopenDialog = {
+  isOpen: ref(false),
+  catatan: ref(''),
+  isLoading: ref(false),
+}
 
-const canManageQuotation = computed<boolean>(() =>
-  isProenergi.value ? auth.can('penawaran.proenergi.manage') : auth.can('penawaran.manage'),
-)
+const isProenergi = computed<boolean>(() => quotation.value.brand === 'proenergi')
+
+const id = computed(() => Number(route.params.id))
+
+const canManage = computed<boolean>(() => quotation.value.can_manage === true)
 
 const canEditDetails = computed<boolean>(() => quotation.value.can_edit_details === true)
+
+const canReopen = computed<boolean>(() => quotation.value.can_reopen === true)
+
+const isExpired = computed<boolean>(() => {
+  const to = toDateKey(quotation.value.sampai_dengan)
+  return !!to && to < todayDateKey()
+})
+
+const canClone = computed<boolean>(() =>
+  quotation.value.brand
+    ? canManageQuotationBrand(auth.can, quotation.value.brand) &&
+      (quotation.value.status === QUOTATION_STATUS.Rejected ||
+        (quotation.value.status === QUOTATION_STATUS.Approved && isExpired.value))
+    : false,
+)
 
 const items = computed<any[]>(() => quotation.value.items || [])
 
@@ -106,14 +112,23 @@ const approvalAttempts = computed<{ label: string | null; steps: StepItem[] }[]>
   }))
 )
 
-watch(() => route.fullPath, fetchQuotation, { immediate: true })
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.params.id === undefined) return
+    if (Number.isInteger(id.value) && id.value > 0) fetchQuotation()
+    else redirectToErrorPage(router, 404)
+  },
+  { immediate: true },
+)
 
 async function fetchQuotation() {
   loading.value = true
   try {
-    const { data } = await quotationApi.value.getById(id.value)
-    quotation.value = data
+    const { data }: { data: ApiResponse<any> } = await quotationApi.getById(id.value)
+    quotation.value = data.data
   } catch (e: any) {
+    if (redirectToErrorPage(router, e.response?.status)) return
     error('Gagal', e.response?.data?.message || 'Gagal memuat detail penawaran')
   } finally {
     loading.value = false
@@ -123,25 +138,52 @@ async function fetchQuotation() {
 async function submitQuotation() {
   ajukanLoading.value = true
   try {
-    const { data } = await axios.patch(`${cfg.value.apiBase}/${id.value}/ajukan`)
+    const { data } = await axios.patch<ApiResponse<null>>(`${QUOTATION_API_BASE}/${id.value}/submit`)
     ajukanDialogOpen.value = false
     success('Berhasil Diajukan', data.message || 'Penawaran berhasil diajukan untuk verifikasi.')
     await fetchQuotation()
   } catch (e: any) {
-    error('Gagal', e.response?.data?.message || 'Gagal mengajukan penawaran')
+    error('Gagal', actionErrorMessage(e, 'Gagal mengajukan penawaran'))
   } finally {
     ajukanLoading.value = false
   }
 }
 
-const previewLangDialogOpen = ref(false)
-const previewLoading = ref(false)
+async function submitReopen() {
+  const catatan = reopenDialog.catatan.value.trim()
+  if (!catatan) {
+    error('Gagal', 'Alasan wajib diisi.')
+    return
+  }
+
+  reopenDialog.isLoading.value = true
+  try {
+    const { data } = await axios.patch<ApiResponse<unknown>>(`${QUOTATION_API_BASE}/${id.value}/reopen`, { catatan })
+    closeReopenDialog()
+    success('Berhasil', data.message || 'Penawaran dikembalikan ke Draft.')
+    await fetchQuotation()
+  } catch (e: any) {
+    closeReopenDialog()
+    error(
+      'Gagal',
+      e.response?.data?.errors?.catatan?.[0] ?? actionErrorMessage(e, 'Gagal mengembalikan penawaran ke Draft.'),
+    )
+    if ([403, 409].includes(e.response?.status)) await fetchQuotation()
+  } finally {
+    reopenDialog.isLoading.value = false
+  }
+}
+
+function closeReopenDialog() {
+  reopenDialog.isOpen.value = false
+  reopenDialog.catatan.value = ''
+}
 
 async function preview(payload: { lang: 'id' | 'en' }) {
   previewLoading.value = true
   const previewTab = openPdfLoadingTab()
   try {
-    const response = await axios.get(`${cfg.value.apiBase}/${id.value}/preview`, {
+    const response = await axios.get(`${QUOTATION_API_BASE}/${id.value}/preview`, {
       params: { lang: payload.lang },
       responseType: 'blob',
     })
@@ -153,9 +195,9 @@ async function preview(payload: { lang: 'id' | 'en' }) {
     }
     setTimeout(() => URL.revokeObjectURL(url), 60000)
     previewLangDialogOpen.value = false
-  } catch {
+  } catch (e: any) {
     previewTab?.close()
-    error('Gagal', 'Gagal membuka preview PDF')
+    error('Gagal', e.response?.status === 403 ? FORBIDDEN_ACTION_MESSAGE : 'Gagal membuka preview PDF')
   } finally {
     previewLoading.value = false
   }
@@ -167,15 +209,15 @@ async function onDetailsSaved() {
 }
 
 function goBack() {
-  router.push({ name: cfg.value.listRoute })
+  router.push({ name: 'quotations.index' })
 }
 
 function openEdit() {
-  router.push({ name: cfg.value.editRoute, params: { id: id.value } })
+  router.push({ name: 'quotations.edit', params: { id: id.value } })
 }
 
 function openClone() {
-  router.push({ name: cfg.value.createRoute, query: { clone_from: String(id.value) } })
+  router.push({ name: 'quotations.create', query: { clone_from: String(id.value) } })
 }
 
 function formatCurrency(v: number | string = 0) {
@@ -195,11 +237,11 @@ function formatNumber(v: number | string = 0) {
 
       <div class="flex lg:flex-row flex-col lg:justify-between lg:items-start gap-4">
         <div>
-          <h2 class="text-screen-title">{{ cfg.title }}</h2>
-          <p class="mt-1 text-body-lg">{{ cfg.description }}</p>
+          <h2 class="text-screen-title">Detail Penawaran</h2>
+          <p class="mt-1 text-body-lg">Informasi lengkap penawaran dan status verifikasi.</p>
         </div>
         <div class="flex items-center gap-2">
-          <Button v-if="quotation.status === QUOTATION_STATUS.Draft" variant="soft-warning" @click="openEdit">
+          <Button v-if="quotation.status === QUOTATION_STATUS.Draft && canManage" variant="soft-warning" @click="openEdit">
             <Lucide icon="Edit" class="mr-2 w-4 h-4" />
             Edit
           </Button>
@@ -207,10 +249,13 @@ function formatNumber(v: number | string = 0) {
             <Lucide icon="Edit3" class="mr-2 w-4 h-4" />
             Edit Info
           </Button>
-          <Button v-if="quotation.status === QUOTATION_STATUS.Rejected && canManageQuotation" variant="soft-dark"
-            @click="openClone">
+          <Button v-if="canClone" variant="soft-dark" @click="openClone">
             <Lucide icon="Copy" class="mr-2 w-4 h-4" />
             Buat Penawaran Baru dari Ini
+          </Button>
+          <Button v-if="canReopen" variant="outline-danger" @click="reopenDialog.isOpen.value = true">
+            <Lucide icon="Undo2" class="mr-2 w-4 h-4" />
+            Kembalikan ke Draft
           </Button>
           <Button variant="outline-secondary" @click="goBack">
             <Lucide icon="ArrowLeft" class="mr-2 w-4 h-4" />
@@ -410,7 +455,7 @@ function formatNumber(v: number | string = 0) {
                   </div>
                   <div class="bg-slate-100 p-4 rounded-lg grow">
                     <div class="flex justify-between items-start">
-                      <dt class="text-form-label">PPN 11%</dt>
+                      <dt class="text-form-label">PPN ({{ formatPercentRate(quotation.ppn_rate) }})</dt>
                       <dd class="mt-1 num-md !text-slate-800 text-xl">{{ formatCurrency(quotation.ppn) }}</dd>
                     </div>
                   </div>
@@ -474,7 +519,7 @@ function formatNumber(v: number | string = 0) {
                     <Lucide icon="Printer" class="w-4 h-4" />
                     Preview PDF
                   </Button>
-                  <Button v-if="quotation.status === QUOTATION_STATUS.Draft" variant="primary"
+                  <Button v-if="quotation.status === QUOTATION_STATUS.Draft && canManage" variant="primary"
                     class="inline-flex justify-center items-center gap-2 w-full" @click="ajukanDialogOpen = true">
                     <Lucide icon="Send" class="w-4 h-4" />
                     Ajukan Verifikasi
@@ -494,7 +539,19 @@ function formatNumber(v: number | string = 0) {
     confirm-text="Ya, Ajukan" icon="Send" icon-class="bg-primary/10 text-primary" variant="primary"
     :loading="ajukanLoading" @close="ajukanDialogOpen = false" @confirm="submitQuotation" />
 
-  <QuotationDetailsEditModal :open="detailsEditOpen" :api-base="cfg.apiBase" :quotation="quotation"
+  <ConfirmDialog :open="reopenDialog.isOpen.value" title="Kembalikan ke Draft?"
+    description="Penawaran kembali ke Draft dengan nomor yang sama. Riwayat verifikasi ditutup dan penawaran perlu diajukan ulang."
+    confirm-text="Ya, kembalikan" icon="Undo2" icon-class="bg-warning/10 text-warning" variant="warning"
+    :loading="reopenDialog.isLoading.value" :confirm-disabled="!reopenDialog.catatan.value.trim()"
+    @close="closeReopenDialog" @confirm="submitReopen">
+    <FormLabel>Alasan
+      <RequiredAsterisk />
+    </FormLabel>
+    <FormTextarea v-model="reopenDialog.catatan.value" placeholder="Masukkan alasan pengembalian..." :rows="3"
+      :maxlength="1000" />
+  </ConfirmDialog>
+
+  <QuotationDetailsEditModal :open="detailsEditOpen" :quotation="quotation"
     @close="detailsEditOpen = false" @saved="onDetailsSaved" />
 
   <QuotationPdfDialog :open="previewLangDialogOpen" :loading="previewLoading" @close="previewLangDialogOpen = false"

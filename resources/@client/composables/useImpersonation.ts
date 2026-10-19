@@ -1,4 +1,5 @@
 import { computed, onScopeDispose, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
@@ -14,6 +15,7 @@ function formatRemaining(expiresAt: string, nowMs: number): string {
 }
 
 export function useImpersonation() {
+  const router = useRouter()
   const auth = useAuthStore()
   const { error } = useNotification()
 
@@ -37,7 +39,7 @@ export function useImpersonation() {
       const { data } = await axios.post('/api/impersonate/leave')
 
       auth.setToken(data.access_token)
-      window.location.reload()
+      window.location.href = router.resolve({ name: 'dashboard-overview-1' }).href
     } catch (e: any) {
       error('Gagal', e.response?.data?.message || 'Gagal kembali ke akun admin')
     } finally {

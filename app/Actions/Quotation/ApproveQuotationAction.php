@@ -6,6 +6,7 @@ use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationVerifierRole;
+use App\Exceptions\BusinessRuleException;
 use App\Mail\QuotationApprovalRequestMail;
 use App\Mail\QuotationApprovedMail;
 use App\Models\Quotation;
@@ -18,15 +19,25 @@ use Illuminate\Support\Str;
 
 class ApproveQuotationAction
 {
-    public function execute(Quotation $quotation, User $actor, ?string $note, string $detailUrl, \Closure $verificationUrlFor): array
+    public function __construct(private readonly DocumentApprovalService $approvalService)
     {
-        DB::beginTransaction();
+    }
 
-        try {
+    public function execute(Quotation $quotation, User $actor, ?string $note, string $detailUrl, string $verificationUrl): string
+    {
+        return DB::transaction(function () use ($quotation, $actor, $note, $detailUrl, $verificationUrl) {
             $quotation = Quotation::lockForUpdate()->findOrFail($quotation->id);
             $step      = $quotation->activeVerificationStep();
 
-            $cycle   = (new DocumentApprovalService())->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Approved, $actor->id, $note);
+            if (! $step) {
+                throw new BusinessRuleException('Penawaran tidak sedang menunggu verifikasi.');
+            }
+
+            if (! $quotation->isValidOn(now())) {
+                throw new BusinessRuleException('Masa berlaku penawaran sudah lewat, penawaran tidak bisa disetujui. Tolak agar Marketing membuat penawaran baru.');
+            }
+
+            $cycle   = $this->approvalService->decideStep($quotation, $step->step_order, DocumentApprovalStepStatus::Approved, $actor->id, $note);
             $isFinal = $cycle?->status === DocumentApprovalStatus::Approved;
 
             if ($isFinal) {
@@ -40,24 +51,13 @@ class ApproveQuotationAction
 
             if (! $isFinal) {
                 $nextStep = $cycle->steps()->where('step_order', $cycle->current_step_order)->first();
-                $this->notifyNextVerifier($quotation, $nextStep?->id_role, $verificationUrlFor);
+                $this->notifyNextVerifier($quotation, $nextStep?->id_role, $verificationUrl);
             }
 
-            DB::commit();
-
-            return ['message' => $isFinal
+            return $isFinal
                 ? 'Penawaran disetujui dan langsung final'
-                : 'Penawaran disetujui & notifikasi terkirim'];
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return [
-                'success' => false,
-                'status'  => 500,
-                'message' => 'Gagal verifikasi penawaran',
-                'error'   => $e->getMessage(),
-            ];
-        }
+                : 'Penawaran disetujui & notifikasi terkirim';
+        });
     }
 
     private function notifyCreator(Quotation $quotation, string $detailUrl, string $level): void
@@ -89,7 +89,7 @@ class ApproveQuotationAction
         }
     }
 
-    private function notifyNextVerifier(Quotation $quotation, ?int $roleId, \Closure $verificationUrlFor): void
+    private function notifyNextVerifier(Quotation $quotation, ?int $roleId, string $verificationUrl): void
     {
         $nextRole = $roleId === null ? null : QuotationVerifierRole::tryFrom($roleId);
 
@@ -113,7 +113,7 @@ class ApproveQuotationAction
         try {
             Mail::to($recipients)->send(new QuotationApprovalRequestMail(
                 $quotation->load('items', 'customer', 'branch', 'user'),
-                $verificationUrlFor($nextRole),
+                $verificationUrl,
                 $nextRole->label()
             ));
         } catch (\Throwable $e) {

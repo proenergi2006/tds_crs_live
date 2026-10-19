@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Quotation;
 
-use App\Models\Quotation;
-use App\Models\QuotationItem;
 use App\Models\ProductPrice;
 use App\Enums\QuotationTransportMode;
 use App\Enums\TransportType;
@@ -14,13 +12,7 @@ class UpdateQuotationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $brand = $this->route('brand');
-        $quotation = Quotation::where('brand', $brand)->findOrFail($this->route('id'));
-        $user = $this->user();
-        $permission = $brand === 'proenergi' ? 'penawaran.proenergi.manage' : 'penawaran.manage';
-
-        return $user->can($permission)
-            && (int) $quotation->user_id === (int) $user->id;
+        return $this->user()->can('update', $this->route('quotation'));
     }
 
     public function rules(): array
@@ -97,7 +89,7 @@ class UpdateQuotationRequest extends FormRequest
 
     private function alreadySavedPriceIds(): array
     {
-        return QuotationItem::where('quotation_id', $this->route('id'))
+        return $this->route('quotation')->items()
             ->whereNotNull('product_price_id')
             ->pluck('product_price_id')
             ->all();

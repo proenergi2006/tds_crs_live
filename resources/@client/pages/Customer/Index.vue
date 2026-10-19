@@ -19,8 +19,6 @@ const { success, error } = useNotification()
 const router = useRouter()
 const auth = useAuthStore()
 
-const isProenergi = [13, 14].includes(Number(auth.user?.id_role))
-
 const customers = ref<any[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
@@ -42,10 +40,6 @@ function canManageRow(item: any) {
     (canViewAnyCustomer.value || Number(item.id_user) === Number(auth.user?.id))
   )
 }
-
-const totalQuotations = computed(() =>
-  customers.value.reduce((sum, c) => sum + Number(c.quotation_count ?? 0), 0)
-)
 
 onMounted(() => fetchData())
 
@@ -120,8 +114,7 @@ function needsReverification(item: any) {
 <template>
   <div class="page-content-wrapper">
     <div class="intro-y flex flex-col gap-4">
-      <PageHeader :title="isProenergi ? 'Master Customers Proenergi' : 'Master Customers'"
-        :description="isProenergi ? 'Kelola data customer Proenergi yang kamu tangani' : 'Kelola data customer yang kamu tangani'">
+      <PageHeader title="Master Customers" description="Kelola data customer yang kamu tangani">
         <template #action>
           <Button v-if="canManageCustomer" variant="white" class="inline-flex items-center gap-2" @click="openCreate">
             <Lucide icon="Plus" class="h-4 w-4" />
@@ -129,29 +122,6 @@ function needsReverification(item: any) {
           </Button>
         </template>
       </PageHeader>
-
-      <div v-if="isProenergi" class="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div class="box p-4">
-          <div class="text-form-label">Total Customer</div>
-          <div class="num-lg mt-1">{{ totalRecords }}</div>
-        </div>
-        <div class="box p-4">
-          <div class="text-form-label">Prospect</div>
-          <div class="num-lg mt-1 text-slate-300"
-            title="Belum tersedia — akan disambungkan ke customer_status">-
-          </div>
-        </div>
-        <div class="box p-4">
-          <div class="text-form-label">Customer Tetap</div>
-          <div class="num-lg mt-1 text-slate-300"
-            title="Belum tersedia — akan disambungkan ke customer_status">-
-          </div>
-        </div>
-        <div class="box p-4">
-          <div class="text-form-label">Total Penawaran</div>
-          <div class="num-lg mt-1 !text-primary">{{ totalQuotations }}</div>
-        </div>
-      </div>
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="customers.length === 0" :colspan="8" :show-footer="true" :show-toolbar="true" :total="totalRecords"

@@ -23,7 +23,6 @@ use App\Http\Controllers\MasterData\UkuranController;
 use App\Http\Controllers\MasterData\VendorController;
 use App\Http\Controllers\MasterData\PricePeriodController;
 use App\Http\Controllers\MasterData\AddressController;
-use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerAddressController;
 use App\Http\Controllers\Customer\CustomerContactController;
 use App\Http\Controllers\Customer\CustomerController;
@@ -48,7 +47,8 @@ use App\Http\Controllers\MasterLogistik\TruckController;
 use App\Http\Controllers\MasterLogistik\TransportTariffController;
 use App\Http\Controllers\MasterLogistik\LogisticDocumentController;
 use App\Http\Controllers\PoCustomer\PoCustomerController;
-use App\Http\Controllers\PoCustomerUnblockRequestController;
+use App\Http\Controllers\SalesConfirmation\PoCustomerUnblockRequestController;
+use App\Http\Controllers\SalesConfirmation\SalesConfirmationController;
 use App\Http\Controllers\CustomerArAgingController;
 use App\Http\Controllers\Customer\CustomerLcrController;
 use App\Http\Controllers\Customer\CustomerReviewController;
@@ -65,7 +65,9 @@ Route::post('login', [AuthController::class, 'login']);
 
 Route::post('two-factor', [AuthController::class, 'twoFactor']);
 
-Route::get('product-prices/check', [ProductPriceController::class, 'check']);
+if (app()->environment('local')) {
+    Route::get('product-prices/check', [ProductPriceController::class, 'check']);
+}
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', [ImpersonationController::class, 'whoami']);
@@ -104,8 +106,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('user/profile', [ProfileController::class, 'updateProfile']);
     Route::post('/user/face', [ProfileController::class, 'updateFace']);
 
-    Route::apiResource('cabangs', CabangController::class);
     Route::get('/cabangs/suggest', [CabangController::class, 'suggest']);
+    Route::apiResource('cabangs', CabangController::class);
     Route::apiResource('satuans', SatuanController::class);
     Route::apiResource('ukurans', UkuranController::class);
     Route::apiResource('produks', ProdukController::class);
@@ -180,7 +182,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customers/{customer}/review-attachment', [CustomerReviewController::class, 'uploadReviewAttachment']);
     Route::delete('customers/{customer}/review-attachment/{no}', [CustomerReviewController::class, 'deleteReviewAttachment']);
 
-    Route::get('customers/{customer}/penawarans', [CustomerVerificationController::class, 'lookupForCustomer']);
+    Route::get('customers/{customer}/quotations', [CustomerVerificationController::class, 'lookupForCustomer']);
 
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('terminals', TerminalController::class);
@@ -197,6 +199,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('vendor-pos', VendorPoController::class)->except(['create', 'edit']);
     Route::patch('vendor-pos/{id}/approve', [VendorPoController::class, 'approve'])
         ->name('vendor-pos.approve');
+    Route::get('vendor-pos/{id}/preview', [VendorPoController::class, 'preview'])
+        ->whereNumber('id')
+        ->name('vendor-pos.preview');
 
     Route::get('po-verification', [PoVerificationController::class, 'index']);
     Route::post('po-verification/{id}', [PoVerificationController::class, 'verify']);
@@ -211,19 +216,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('stocks', [StockController::class, 'index']);
 
-    Route::get('penawarans', [QuotationController::class, 'index'])->defaults('brand', 'tds');
-    Route::get('penawarans/bm', [QuotationController::class, 'bmVerificationIndex'])->defaults('brand', 'tds');
-    Route::get('penawarans/ceo', [QuotationController::class, 'ceoVerificationIndex'])->defaults('brand', 'tds');
-    Route::patch('penawarans/{id}/verifikasi',   [QuotationController::class, 'approve'])->defaults('brand', 'tds');
-    Route::patch('penawarans/{id}/tolak-bm',     [QuotationController::class, 'reject'])->defaults('brand', 'tds');
-    Route::get('penawarans/om',                  [QuotationController::class, 'omVerificationIndex'])->defaults('brand', 'tds');
-    Route::patch('penawarans/{id}/verifikasi-om', [QuotationController::class, 'approve'])->defaults('brand', 'tds');
-    Route::patch('penawarans/{id}/tolak-om',     [QuotationController::class, 'reject'])->defaults('brand', 'tds');
-    Route::get('penawarans/{id}',                [QuotationController::class, 'show'])->defaults('brand', 'tds');
-    Route::post('penawarans',                    [QuotationController::class, 'store'])->defaults('brand', 'tds');
-    Route::put('penawarans/{id}',                [QuotationController::class, 'update'])->defaults('brand', 'tds');
-    Route::delete('penawarans/{id}',             [QuotationController::class, 'destroy'])->defaults('brand', 'tds');
-    Route::get('/penawarans/{id}/preview', [QuotationController::class, 'previewPdfMultiLang'])->defaults('brand', 'tds');
+    Route::get('quotations', [QuotationController::class, 'index']);
+    Route::post('quotations', [QuotationController::class, 'store']);
+    Route::get('quotations/{quotation}', [QuotationController::class, 'show'])->whereNumber('quotation');
+    Route::put('quotations/{quotation}', [QuotationController::class, 'update'])->whereNumber('quotation');
+    Route::delete('quotations/{quotation}', [QuotationController::class, 'destroy'])->whereNumber('quotation');
+    Route::patch('quotations/{quotation}/submit', [QuotationController::class, 'submit'])->whereNumber('quotation');
+    Route::patch('quotations/{quotation}/reopen', [QuotationController::class, 'reopen'])->whereNumber('quotation');
+    Route::patch('quotations/{quotation}/details', [QuotationController::class, 'updateDetails'])->whereNumber('quotation');
+    Route::get('quotations/{quotation}/preview', [QuotationController::class, 'preview'])->whereNumber('quotation');
+    Route::get('quotation-verifications', [QuotationVerificationController::class, 'index']);
+    Route::patch('quotation-verifications/{quotation}/approve', [QuotationVerificationController::class, 'approve'])->whereNumber('quotation');
+    Route::patch('quotation-verifications/{quotation}/reject', [QuotationVerificationController::class, 'reject'])->whereNumber('quotation');
 
     Route::apiResource('jenis-produks', JenisProdukController::class);
     Route::apiResource('transporters', TransporterController::class);
@@ -246,8 +250,6 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereNumber('parentId')
         ->whereNumber('documentId');
 
-    Route::patch('penawarans/{id}/ajukan', [QuotationController::class, 'ajukan'])->defaults('brand', 'tds');
-    Route::patch('penawarans/{id}/details', [QuotationController::class, 'updateDetails'])->defaults('brand', 'tds');
     Route::apiResource('customer-pos', PoCustomerController::class);
 
     Route::get('review/lcr-sites', [CustomerLcrController::class, 'reviewIndex']);
@@ -268,14 +270,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('review/customer-verifications/{id}/document/lcr', [CustomerVerificationController::class, 'lcrDocument'])->whereNumber('id');
     Route::get('review/customer-verifications/{id}/document/bulk', [CustomerVerificationController::class, 'bulkDocument'])->whereNumber('id');
 
-    Route::get('/sales-confirmations', [PoCustomerController::class, 'salesConfirmation']);
+    Route::get('/sales-confirmations', [SalesConfirmationController::class, 'index']);
 
-    Route::get('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'showSalesConfirmation']);
-    Route::post('/sales-confirmations/po/{poc}', [PoCustomerController::class, 'saveSalesConfirmation']);
-    Route::post('/sales-confirmations/po/{poc}/bm', [PoCustomerController::class, 'decideSalesConfirmationBm']);
-    Route::post('/sales-confirmations/po/{poc}/return', [PoCustomerController::class, 'returnSalesConfirmationToMarketing']);
+    Route::get('/sales-confirmations/po/{poc}', [SalesConfirmationController::class, 'show']);
+    Route::post('/sales-confirmations/po/{poc}', [SalesConfirmationController::class, 'submit']);
+    Route::post('/sales-confirmations/po/{poc}/decision', [SalesConfirmationController::class, 'decide']);
+    Route::post('/sales-confirmations/po/{poc}/return', [SalesConfirmationController::class, 'returnToMarketing']);
 
-    Route::post('/po-customers/{poc}/process-sc', [PoCustomerController::class, 'processSalesConfirmation']);
+    Route::post('/po-customers/{poc}/process-sc', [SalesConfirmationController::class, 'process']);
 
     Route::get('/po-customers/{poc}/unblock-context', [PoCustomerUnblockRequestController::class, 'unblockContext']);
     Route::post('/po-customers/{poc}/unblock-requests', [PoCustomerUnblockRequestController::class, 'store']);
@@ -284,7 +286,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/po-customers/{poc}/plan', [PoCustomerController::class, 'getPoPlan']);
     Route::post('/po-customers/{poc}/plan', [PoCustomerController::class, 'createPoPlan']);
-    Route::delete('/po-customers/{poc}/plan/{id}', [PoCustomerController::class, 'deletePoPlan']);
+    Route::delete('/po-customers/{poc}/plan/{plan}', [PoCustomerController::class, 'deletePoPlan'])->scopeBindings();
 
     Route::prefix('logistics')->group(function () {
         Route::get('/delivery-plans',              [DeliveryPlanController::class, 'index']);
@@ -305,22 +307,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stocks', [StockController::class, 'index']);
     });
 
-    Route::get('penawarans-proenergi', [QuotationController::class, 'index'])->defaults('brand', 'proenergi');
-    Route::get('penawarans-proenergi/bm', [QuotationController::class, 'bmVerificationIndex'])->defaults('brand', 'proenergi');
-    Route::get('penawarans-proenergi/ceo', [QuotationController::class, 'ceoVerificationIndex'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/verifikasi',   [QuotationController::class, 'approve'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/tolak-bm',     [QuotationController::class, 'reject'])->defaults('brand', 'proenergi');
-    Route::get('penawarans-proenergi/om',                  [QuotationController::class, 'omVerificationIndex'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/verifikasi-om', [QuotationController::class, 'approve'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/tolak-om',     [QuotationController::class, 'reject'])->defaults('brand', 'proenergi');
-    Route::get('penawarans-proenergi/{id}',                [QuotationController::class, 'show'])->defaults('brand', 'proenergi');
-    Route::post('penawarans-proenergi',                    [QuotationController::class, 'store'])->defaults('brand', 'proenergi');
-    Route::put('penawarans-proenergi/{id}',                [QuotationController::class, 'update'])->defaults('brand', 'proenergi');
-    Route::delete('penawarans-proenergi/{id}',             [QuotationController::class, 'destroy'])->defaults('brand', 'proenergi');
-    Route::get('/penawarans-proenergi/{id}/preview', [QuotationController::class, 'previewPdfMultiLang'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/ajukan', [QuotationController::class, 'ajukan'])->defaults('brand', 'proenergi');
-    Route::patch('penawarans-proenergi/{id}/details', [QuotationController::class, 'updateDetails'])->defaults('brand', 'proenergi');
-
     Route::get('/logs/files', [LogViewerController::class, 'files'])->middleware('throttle:30,1');
     Route::get('/logs', [LogViewerController::class, 'index'])->middleware('throttle:30,1');
 
@@ -329,7 +315,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'show']);
 Route::put('/customer-onboarding/{token}', [CustomerOnboardingController::class, 'update']);
-Route::get('/verifikasi-penawaran/{token}', [QuotationVerificationController::class, 'show']);
+Route::get('/quotation-verifications/public/{token}', [QuotationVerificationController::class, 'showPublic']);
 Route::get('/provinces',                       [AddressController::class, 'provinces']);
 Route::get('/provinces/{province}',             [AddressController::class, 'showProvince']);
 Route::get('/provinces/{province}/regencies',   [AddressController::class, 'regencies']);
@@ -340,6 +326,8 @@ Route::get('/districts/{district}/villages',    [AddressController::class, 'vill
 Route::get('/villages/{village}',               [AddressController::class, 'showVillage']);
 Route::get('/captcha', [CaptchaController::class, 'generate'])->middleware('throttle:30,1');
 
-Route::get('public/vendor-pos/{id}', [VendorPoController::class, 'publicShow'])->whereNumber('id');
+if (app()->environment('local')) {
+    Route::get('public/vendor-pos/{id}', [VendorPoController::class, 'publicShow'])->whereNumber('id');
 
-Route::get('dev/test-email', [\App\Http\Controllers\Dev\MailTestController::class, 'send']);
+    Route::get('dev/test-email', [\App\Http\Controllers\Dev\MailTestController::class, 'send']);
+}

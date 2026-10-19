@@ -139,6 +139,7 @@ const updateValue = (
       const optionValue = optionEl.getAttribute("value");
       if (!optionValue && !allowEmptyOption) return;
       clonedEl.TomSelect.addOption({
+        ...(optionEl as HTMLElement).dataset,
         text: optionEl.textContent,
         value: optionValue,
       });

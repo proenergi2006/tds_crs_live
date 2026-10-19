@@ -9,6 +9,7 @@ use App\Models\DocumentApproval;
 use App\Models\DocumentApprovalStep;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class DocumentApprovalService
 {
@@ -45,12 +46,38 @@ class DocumentApprovalService
         return $approval;
     }
 
+    public function startCycleForRoles(Model $approvable, array $roleIds): DocumentApproval
+    {
+        if ($roleIds === []) {
+            throw new InvalidArgumentException('Daftar role approval tidak boleh kosong.');
+        }
+
+        $approval = $approvable->documentApprovals()->create([
+            'id_template'        => null,
+            'status'             => DocumentApprovalStatus::InProgress,
+            'current_step_order' => 1,
+            'started_at'         => now(),
+        ]);
+
+        foreach (array_values($roleIds) as $index => $roleId) {
+            DocumentApprovalStep::create([
+                'id_approval'      => $approval->id_approval,
+                'id_template_step' => null,
+                'id_role'          => (int) $roleId,
+                'step_order'       => $index + 1,
+                'status'           => DocumentApprovalStepStatus::Pending,
+            ]);
+        }
+
+        return $approval;
+    }
+
     public function startCycle(Model $approvable, string $templateCode, ?array $stepOrders = null): DocumentApproval
     {
         $template = $this->activeTemplate($templateCode);
 
         if (!$template || $template->steps->isEmpty()) {
-            Log::error("Approval template {$templateCode} tidak ditemukan/tidak lengkap saat memulai siklus approval.", [
+            Log::error("Approval template {$templateCode} tidak ditemukan/tidak lengkap saat memulai siklus.", [
                 'approvable_type' => $approvable::class,
                 'approvable_id'   => $approvable->getKey(),
             ]);
@@ -63,7 +90,9 @@ class DocumentApprovalService
             : $template->steps->whereIn('step_order', $stepOrders);
 
         if ($steps->isEmpty()) {
-            throw new \RuntimeException("stepOrders yang diberikan tidak cocok dengan step manapun di template {$templateCode}.");
+            throw new \RuntimeException(
+                "stepOrders yang diberikan tidak cocok dengan step manapun di template {$templateCode}."
+            );
         }
 
         $approval = $approvable->documentApprovals()->create([
@@ -93,6 +122,56 @@ class DocumentApprovalService
             ->where('status', DocumentApprovalStatus::InProgress)
             ->latest('id_approval')
             ->first();
+    }
+
+    public function cancelCycle(DocumentApproval $cycle, int $actorId, ?int $roleId, string $note): DocumentApproval
+    {
+        $stepOrder = ((int) $cycle->steps()->max('step_order')) + 1;
+
+        $this->appendCancellationStep($cycle, $stepOrder, $actorId, $roleId, $note);
+
+        $cycle->update([
+            'status'             => DocumentApprovalStatus::Cancelled,
+            'current_step_order' => null,
+            'completed_at'       => now(),
+        ]);
+
+        return $cycle->refresh();
+    }
+
+    public function startCancelledCycle(Model $approvable, int $actorId, ?int $roleId, string $note): DocumentApproval
+    {
+        $cycle = $approvable->documentApprovals()->create([
+            'id_template'        => null,
+            'status'             => DocumentApprovalStatus::Cancelled,
+            'current_step_order' => null,
+            'started_at'         => now(),
+            'completed_at'       => now(),
+        ]);
+
+        $this->appendCancellationStep($cycle, 1, $actorId, $roleId, $note);
+
+        return $cycle->refresh();
+    }
+
+    private function appendCancellationStep(
+        DocumentApproval $cycle,
+        int $stepOrder,
+        int $actorId,
+        ?int $roleId,
+        string $note
+    ): void
+    {
+        DocumentApprovalStep::create([
+            'id_approval'      => $cycle->id_approval,
+            'id_template_step' => null,
+            'id_role'          => $roleId,
+            'step_order'       => $stepOrder,
+            'status'           => DocumentApprovalStepStatus::Cancelled,
+            'actor_id'         => $actorId,
+            'acted_at'         => now(),
+            'decision_note'    => $note,
+        ]);
     }
 
     public function decideStep(
@@ -164,7 +243,7 @@ class DocumentApprovalService
             ->first();
 
         if ($nextStepOrder === null) {
-            Log::warning('Step ini bukan step_order maksimum tapi step berikutnya tidak ditemukan -- cycle ditutup approved untuk mencegah macet.', [
+            Log::warning('Step bukan step_order maksimum tapi step berikutnya tidak ada -- cycle ditutup approved.', [
                 'approvable_type' => $approvable::class,
                 'approvable_id'   => $approvable->getKey(),
                 'id_approval'     => $approval->id_approval,

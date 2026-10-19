@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Customer;
 
-use App\Http\Controllers\Controller;
-
 use App\Enums\CustomerReviewQuestionCode;
-use App\Http\Controllers\Customer\Concerns\GuardsCustomerEditLock;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\Traits\GuardsCustomerEditLock;
 use App\Models\Customer;
 use App\Models\CustomerReview;
 use Illuminate\Http\Request;

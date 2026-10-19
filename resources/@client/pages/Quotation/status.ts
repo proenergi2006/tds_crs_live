@@ -45,8 +45,6 @@ export function priceTierLabel(tier: string | null | undefined): string {
       return 'Tier II'
     case 'tier_3':
       return 'Tier III'
-    case 'out_of_range':
-      return 'Di luar batas tier'
     default:
       return '-'
   }
@@ -60,8 +58,6 @@ export function priceTierBadgeClass(tier: string | null | undefined): string {
       return 'bg-blue-100 text-blue-700'
     case 'tier_3':
       return 'bg-amber-100 text-amber-700'
-    case 'out_of_range':
-      return 'bg-red-100 text-red-700'
     default:
       return 'bg-slate-100 text-slate-500'
   }

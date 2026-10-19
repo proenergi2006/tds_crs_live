@@ -1,4 +1,5 @@
 import type { NavSection } from "@/stores/menu";
+import { quotationPermissionsForAllBrands } from "@/utils/quotation-brand";
 
 export const commercialSection: NavSection = {
   key: "commercial",
@@ -14,43 +15,25 @@ export const commercialSection: NavSection = {
     },
     {
       icon: "FileText",
-      pageName: "penawarans-list",
+      pageName: "quotations.index",
       title: "Quotation",
       activePageNames: [
-        "penawarans-create",
-        "penawarans-edit",
-        "penawarans-detail",
+        "quotations.create",
+        "quotations.edit",
+        "quotations.show",
       ],
-      permission: "penawaran.viewOwn",
-    },
-    {
-      icon: "FileSignature",
-      pageName: "penawarans-list-proenergi",
-      title: "Quotation Proenergi",
-      activePageNames: [
-        "penawarans-create-proenergi",
-        "penawarans-edit-proenergi",
-        "penawarans-detail-proenergi",
-      ],
-      permission: "penawaran.proenergi.viewOwn",
+      permission: quotationPermissionsForAllBrands("viewOwn"),
     },
     {
       icon: "ShoppingCart",
       pageName: "po-customers-index",
       title: "PO Customer",
-      activePageNames: ["po-customers-detail", "penawarans-po"],
-      permission: ["penawaran.viewAny", "penawaran.manage"],
-    },
-    {
-      icon: "ClipboardCheck",
-      pageName: "sales-confirmations",
-      title: "Sales Confirmation",
-      activePageNames: [
-        "sales-confirmations-detail",
-        "sales-confirmations-delivery-queue",
-        "po-customer-plan",
+      activePageNames: ["po-customers-detail", "po-customers-edit", "penawarans-po"],
+      permission: [
+        ...quotationPermissionsForAllBrands("viewAny"),
+        ...quotationPermissionsForAllBrands("manage"),
+        "sales-confirmation.manage",
       ],
-      permission: ["sales-confirmation.manage", "sales-confirmation.view"],
     },
     {
       icon: "CalendarClock",

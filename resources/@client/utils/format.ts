@@ -1,18 +1,16 @@
-/* Format tanggal & waktu dengan locale id-ID, dipakai lintas halaman SystemDesign. */
-
-/** Kunci tanggal "YYYY-MM-DD" tanpa jam/zona; mengembalikan "" jika kosong. */
+/** "YYYY-MM-DD", tanpa jam. Kosong → "". */
 export function toDateKey(value?: string | null): string {
   return value ? String(value).slice(0, 10) : "";
 }
 
-/** Tanggal hari ini (zona lokal) sebagai "YYYY-MM-DD". */
+/** Hari ini sebagai "YYYY-MM-DD". */
 export function todayDateKey(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Rentang "dd/mm/YYYY – dd/mm/YYYY" dari dua tanggal; "-" bagi sisi kosong. */
+/** "dd/mm/YYYY – dd/mm/YYYY". Sisi kosong → "-". */
 export function formatDateRangeShort(from?: string | null, to?: string | null): string {
   const fmt = (v?: string | null) => {
     const k = toDateKey(v);
@@ -21,7 +19,7 @@ export function formatDateRangeShort(from?: string | null, to?: string | null): 
   return `${fmt(from)} – ${fmt(to)}`;
 }
 
-/** Tanggal panjang, mis. "22 Juni 2026". Mengembalikan "-" jika kosong. */
+/** Contoh: "22 Juni 2026". Kosong → "-". */
 export function formatDate(value?: string | null): string {
   return value
     ? new Date(value).toLocaleDateString("id-ID", {
@@ -32,11 +30,7 @@ export function formatDate(value?: string | null): string {
     : "-";
 }
 
-/**
- * Tanggal + jam, mis. "22 Jun 2026, 14:30".
- * Mengembalikan `undefined` (bukan "-") jika kosong, agar pemanggil bisa
- * menyembunyikan elemen ketika datanya belum ada.
- */
+/** Contoh: "22 Jun 2026, 14.30". Kosong → undefined (bukan "-"), supaya elemen bisa disembunyikan. */
 export function formatDateTime(value?: string | null): string | undefined {
   if (!value) return undefined;
   return new Date(value).toLocaleString("id-ID", {
@@ -48,7 +42,7 @@ export function formatDateTime(value?: string | null): string | undefined {
   });
 }
 
-/** Nominal mata uang, mis. "Rp 1.500.000". Mengembalikan "-" jika kosong. */
+/** Contoh: "Rp 1.500.000". Kosong → "-". */
 export function formatCurrency(value?: number | string | null): string {
   if (value === null || value === undefined || value === "") return "-";
   const n = typeof value === "string" ? parseFloat(value) : value;
@@ -58,4 +52,14 @@ export function formatCurrency(value?: number | string | null): string {
 export function formatNumber(v: number | string = 0) {
   const n = typeof v === "string" ? parseFloat(v) : (v ?? 0);
   return !isNaN(n) ? n.toLocaleString("id-ID") : "-";
+}
+
+/** Tarif PPN default untuk dokumen baru. */
+export const DEFAULT_PPN_RATE = 0.11;
+
+/** 0.11 → "11%", 0.115 → "11,5%". Kosong → "-". */
+export function formatPercentRate(rate?: number | string | null): string {
+  const n = Number(rate);
+  if (rate === null || rate === undefined || rate === "" || isNaN(n)) return "-";
+  return `${(Math.round(n * 10000) / 100).toLocaleString("id-ID")}%`;
 }

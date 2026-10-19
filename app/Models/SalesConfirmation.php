@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentApprovalStatus;
+use App\Enums\QuotationVerifierRole;
 use App\Enums\SalesConfirmationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,5 +68,72 @@ class SalesConfirmation extends Model
     public function latestDocumentApproval(): MorphOne
     {
         return $this->documentApprovals()->one()->latestOfMany('id_approval');
+    }
+
+    public function activeApprovalStep(): ?DocumentApprovalStep
+    {
+        $cycle = $this->latestDocumentApproval;
+
+        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress) {
+            return null;
+        }
+
+        return $cycle->steps->firstWhere('step_order', $cycle->current_step_order);
+    }
+
+    public function expectedStepOrder(): ?int
+    {
+        if ($this->disposisi !== SalesConfirmationStatus::InApproval) {
+            return null;
+        }
+
+        $cycle = $this->latestDocumentApproval;
+
+        if (! $cycle || $cycle->status !== DocumentApprovalStatus::InProgress || $cycle->current_step_order === null) {
+            return null;
+        }
+
+        return (int) $cycle->current_step_order;
+    }
+
+    public function activeApproverRole(): ?QuotationVerifierRole
+    {
+        $roleId = $this->activeApprovalStep()?->id_role;
+
+        return $roleId === null ? null : QuotationVerifierRole::tryFrom((int) $roleId);
+    }
+
+    public function statusLabel(): string
+    {
+        $status = SalesConfirmationStatus::tryFrom((int) $this->getRawOriginal('disposisi'));
+
+        if ($status === null) {
+            return 'Draft';
+        }
+
+        if ($status !== SalesConfirmationStatus::InApproval) {
+            return $status->label();
+        }
+
+        $role = $this->activeApproverRole();
+
+        return $role ? "Menunggu Verifikasi {$role->shortLabel()}" : $status->label();
+    }
+
+    public function isAwaitingDecision(): bool
+    {
+        return $this->expectedStepOrder() !== null;
+    }
+
+    public function isDecidableBy(User $user): bool
+    {
+        $expected = $this->expectedStepOrder();
+        $step     = $this->activeApprovalStep();
+
+        return $expected !== null
+            && $step !== null
+            && (int) $step->step_order === $expected
+            && $user->can('sales-confirmation.approve')
+            && $user->hasRole((int) $step->id_role);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Dashboard\BuildMarketingRecentActivityAction;
 use App\Enums\DocumentApprovalStatus;
 use App\Enums\DocumentApprovalStepStatus;
+use App\Enums\QuotationBrand;
 use App\Enums\QuotationStatus;
 use App\Enums\QuotationVerifierRole;
 use App\Enums\VendorPoApprovalState;
@@ -39,7 +40,7 @@ class DashboardController extends Controller
                 'verified'   => $customerVerified,
                 'unverified' => $customerUnverified,
             ],
-            'penawarans' => [
+            'quotations' => [
                 'total'      => $quotationTotal,
                 'approved'   => $quotationApproved,
                 'unapproved' => $quotationUnapproved,
@@ -50,7 +51,11 @@ class DashboardController extends Controller
 
     public function agentSummary(Request $request)
     {
-        $query = Quotation::where('brand', 'proenergi');
+        if (! in_array(QuotationBrand::Proenergi, QuotationBrand::viewableBy($request->user()), true)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $query = Quotation::where('brand', QuotationBrand::Proenergi);
 
         $total = (clone $query)->count();
 
@@ -223,23 +228,27 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $brands = QuotationBrand::viewableAnyBy($request->user());
+
         return response()->json([
-            'penawaran_approval_queue' => $this->quotationApprovalQueue(),
-            'bm_queue_context'         => $this->bmQueueContext(),
-            'penawaran_funnel'         => $this->quotationFunnel(),
+            'penawaran_approval_queue' => $this->quotationApprovalQueue($brands),
+            'bm_queue_context'         => $this->bmQueueContext($brands),
+            'penawaran_funnel'         => $this->quotationFunnel($brands),
         ]);
     }
 
-    private function quotationApprovalQueue(): array
+    private function quotationApprovalQueue(array $brands): array
     {
         $roles = QuotationVerifierRole::operationManagerRoles();
-        $total = Quotation::waitingAtRoles($roles)->count();
+        $total = Quotation::waitingAtRoles($roles)->whereIn('brand', $brands)->count();
 
         $items = Quotation::waitingAtRoles($roles)
+            ->whereIn('brand', $brands)
             ->with(['customer', 'latestDocumentApproval.steps'])
             ->get()
             ->map(fn ($p) => [
                 'quotation_id'    => $p->id,
+                'brand'           => $p->brand->value,
                 'nomor_penawaran' => $p->nomor_penawaran,
                 'customer_name'   => optional($p->customer)->company_name,
                 'waiting_since'   => $p->waitingSince(),
@@ -252,18 +261,18 @@ class DashboardController extends Controller
         return ['total' => $total, 'items' => $items->all()];
     }
 
-    private function bmQueueContext(): array
+    private function bmQueueContext(array $brands): array
     {
-        return ['total' => Quotation::waitingAtRoles(QuotationVerifierRole::branchManagerRoles())->count()];
+        return ['total' => Quotation::waitingAtRoles(QuotationVerifierRole::branchManagerRoles())->whereIn('brand', $brands)->count()];
     }
 
-    private function quotationFunnel(): array
+    private function quotationFunnel(array $brands): array
     {
         $funnel = ['draft' => 0, 'waiting_bm' => 0, 'waiting_om' => 0, 'waiting_ceo' => 0, 'approved' => 0, 'rejected_bm' => 0, 'rejected_om' => 0];
         $bmRoles = QuotationVerifierRole::branchManagerRoles();
         $omRoles = QuotationVerifierRole::operationManagerRoles();
 
-        foreach (Quotation::with('latestDocumentApproval.steps')->get(['id', 'status']) as $quotation) {
+        foreach (Quotation::with('latestDocumentApproval.steps')->whereIn('brand', $brands)->get(['id', 'status']) as $quotation) {
             $roleId = (int) $quotation->activeVerificationStep()?->id_role;
 
             $key = match ($quotation->status) {

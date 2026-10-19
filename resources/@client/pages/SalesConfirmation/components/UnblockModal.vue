@@ -18,7 +18,7 @@ import {
   unblockStepStatusLabel,
   UNBLOCK_ROLE_ADMIN_FINANCE,
 } from "../status";
-import type { UnblockContext, UnblockRequest } from "../types";
+import type { ApiResponse, UnblockContext, UnblockRequest } from "@/types";
 
 const props = defineProps<{ open: boolean; idPoc: number | null }>();
 
@@ -105,8 +105,8 @@ async function fetchContext(): Promise<void> {
 
   loading.value = true;
   try {
-    const { data } = await axios.get(`/api/po-customers/${props.idPoc}/unblock-context`);
-    context.value = data;
+    const { data } = await axios.get<ApiResponse<UnblockContext>>(`/api/po-customers/${props.idPoc}/unblock-context`);
+    context.value = data.data;
   } catch (e: any) {
     context.value = null;
     notifyError("Gagal", e.response?.data?.message ?? "Gagal memuat konteks Unblock.");
@@ -142,10 +142,10 @@ async function submitUnblockRequest(): Promise<void> {
     const fd = new FormData();
     fd.append("reason", submitForm.reason.value);
     submitForm.attachments.value.forEach((file) => fd.append("attachments[]", file));
-    await axios.post(`/api/po-customers/${props.idPoc}/unblock-requests`, fd, {
+    const { data } = await axios.post<ApiResponse<UnblockRequest>>(`/api/po-customers/${props.idPoc}/unblock-requests`, fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    success("Berhasil", "Pengajuan Unblock terkirim.");
+    success("Berhasil", data.message || "Pengajuan Unblock terkirim.");
     emit("saved");
     emit("close");
   } catch (e: any) {

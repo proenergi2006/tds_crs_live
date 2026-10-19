@@ -9,10 +9,6 @@ use App\Models\StockAllocation;
 
 class DeliveryRequestController extends Controller
 {
-    /**
-     * GET /api/procurement/delivery-requests
-     * Query: from,to (YYYY-MM-DD atau DD/MM/YYYY), page, per_page
-     */
     public function index(Request $req)
     {
         [$from, $to] = $this->parseRange($req);
@@ -30,7 +26,7 @@ class DeliveryRequestController extends Controller
                 COALESCE(SUM(d.volume), 0)       AS total_volume,
                 COALESCE(SUM(d.vol_ori), 0)      AS total_volume_awal,
                 COALESCE(SUM(d.vol_potongan), 0) AS total_potongan,
-                string_agg(DISTINCT c.nama_perusahaan, E'\n') AS agg_customers,
+                string_agg(DISTINCT c.company_name, E'\n') AS agg_customers,
                 string_agg(DISTINCT poc.nomor_poc,     E'\n') AS agg_nomor_poc
             ")
             ->when($from, fn($w) => $w->whereDate('pr.tanggal_pr','>=',$from))
@@ -75,16 +71,11 @@ class DeliveryRequestController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/procurement/delivery-requests/{id}
-     * Detail PR + items
-     */
     public function show($id)
     {
         $pr = DB::table('pro_pr')->where('id_pr',$id)->first();
         abort_if(!$pr, 404);
 
-        // Ambil detail + ringkasan alokasi utk hitung avg harga beli
         $rows = DB::table('pro_pr_detail as d')
             ->leftJoin('po_customer_plan as pcp','pcp.id_plan','=','d.id_plan')
             ->leftJoin('po_customers as poc','poc.id_poc','=','pcp.id_poc')
@@ -107,7 +98,7 @@ class DeliveryRequestController extends Controller
                 COALESCE(d.vol_potongan,0)    AS vol_potongan,
                 COALESCE(d.vol_ori,d.volume)  AS vol_ori,
                 COALESCE(alloc.sum_cost/NULLIF(alloc.sum_qty,0),0) AS avg_buy,
-                c.nama_perusahaan  AS customer,
+                c.company_name  AS customer,
                 poc.nomor_poc      AS nomor_poc,
                 poc.harga_poc      AS harga_jual,
                 pcp.status_jadwal  AS status_jadwal,
@@ -122,7 +113,7 @@ class DeliveryRequestController extends Controller
             $vol        = (int)$r->volume;
             $dialokasi  = (int)$r->vol_potongan;
             $remain     = max(0, $vol - $dialokasi);
-            $hargaBeli  = (float)$r->avg_buy;              // ⬅️ hasil rata-rata dari alokasi
+            $hargaBeli  = (float)$r->avg_buy;
             $hargaJual  = (float)($r->harga_jual ?? 0);
             $npPerLtr   = $hargaJual - $hargaBeli;
             $npTotal    = $npPerLtr * $vol;
@@ -138,7 +129,7 @@ class DeliveryRequestController extends Controller
                 'volume'       => $vol,
                 'allocated'    => $dialokasi,
                 'remain'       => $remain,
-                'harga_beli'   => $hargaBeli,               // ⬅️ tampil di UI
+                'harga_beli'   => $hargaBeli,
                 'harga_jual'   => $hargaJual,
                 'net_profit_per_liter' => $npPerLtr,
                 'net_profit_total'     => $npTotal,
@@ -162,24 +153,12 @@ class DeliveryRequestController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/procurement/delivery-requests/verify
-     * Body: { summary?: string }
-     */
     public function verify(Request $req, $id)
     {
         $data = $req->validate([
             'summary' => 'nullable|string'
         ]);
 
-        // (Opsional) pastikan tidak ada sisa volume
-        // $sisa = DB::table('pro_pr_detail')->where('id_pr',$id)
-        //     ->selectRaw('SUM(GREATEST(volume-COALESCE(vol_potongan,0),0)) AS sisa')->value('sisa');
-        // if ($sisa > 0) {
-        //     throw ValidationException::withMessages([
-        //         'verify' => "Masih ada sisa volume belum dialokasikan: {$sisa} liter."
-        //     ]);
-        // }
 
         $affected = DB::table('pro_pr')->where('id_pr',$id)->update([
             'disposisi_pr'        => 1,
@@ -194,16 +173,6 @@ class DeliveryRequestController extends Controller
         return response()->json(['success'=>true]);
     }
 
-    /**
-     * POST /api/procurement/delivery-requests/allocate
-     * Body:
-     * {
-     *   items: [
-     *     { id_prd: int, produk_id: int|null, allocations: [{ stock_id:int, qty:number }, ...] },
-     *     ...
-     *   ]
-     * }
-     */
     public function allocate(Request $req)
     {
         $data = $req->validate([
@@ -231,17 +200,15 @@ class DeliveryRequestController extends Controller
                         ]);
                     }
 
-                    // catat alokasi
                     StockAllocation::create([
                         'stock_id'         => (int)$stock->id,
                         'id_prd'           => $idPrd,
                         'qty'              => $qty,
-                        'allocated_volume' => $qty,                       // penting: kolom NOT NULL
+                        'allocated_volume' => $qty,
                         'harga_tebus'      => (float)$stock->harga_tebus,
                         'created_by'       => auth()->user()->name ?? 'system',
                     ]);
 
-                    // kurangi stok
                     DB::table('stocks')->where('id',$stock->id)->update([
                         'volume' => DB::raw("volume - {$qty}")
                     ]);
@@ -249,7 +216,6 @@ class DeliveryRequestController extends Controller
                     $totalQty += $qty;
                 }
 
-                // update vol_potongan pada detail PR
                 DB::table('pro_pr_detail')->where('id_prd',$idPrd)->update([
                     'vol_potongan' => DB::raw('COALESCE(vol_potongan,0) + '.$totalQty),
                 ]);
@@ -259,7 +225,6 @@ class DeliveryRequestController extends Controller
         return response()->json(['success'=>true]);
     }
 
-    // ================= Helpers =================
 
     private static function splitAddressNotes(?string $blob, ?string $reschedNote = null): array
     {
@@ -283,8 +248,8 @@ class DeliveryRequestController extends Controller
     {
         if (!$s) return null;
         $s = trim($s);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/',$s)) return $s;              // YYYY-MM-DD
-        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/',$s,$m)) return "{$m[3]}-{$m[2]}-{$m[1]}"; // DD/MM/YYYY
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/',$s)) return $s;
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/',$s,$m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
         return null;
     }
 }

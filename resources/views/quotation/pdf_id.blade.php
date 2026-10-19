@@ -322,7 +322,7 @@
       </tr>
       <tr>
         <td class="no"></td>
-        <td class="label"><b>PPN 11%</b></td>
+        <td class="label"><b>PPN {{ $quotation->ppnPercentLabel() }}</b></td>
         <td class="colon">:</td>
         <td class="value">{{ $rupiah($quotation->ppnAmount()) }}</td>
       </tr>

@@ -7,8 +7,8 @@ import axios from 'axios'
 import Lucide, { type Icon } from '@/components/Base/Lucide/Lucide.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
 import CardSection from '@/components/SystemDesign/Page/CardSection.vue'
+import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 
-/* Types */
 interface QuickAction {
   label: string
   description: string
@@ -25,17 +25,16 @@ interface RecentActivityApi {
 
 interface MarketingSummary {
   customers: { total: number; verified: number; unverified: number }
-  penawarans: { total: number; approved: number; unapproved: number }
+  quotations: { total: number; approved: number; unapproved: number }
   recent_activities: RecentActivityApi[]
 }
 
 const router = useRouter()
+const { error } = useNotification()
 
-/* State: summary dari API */
 const summary = ref<MarketingSummary | null>(null)
 const loading = ref(false)
 
-/* State: quick actions (route beneran, bukan mock) */
 const quickActions: QuickAction[] = [
   {
     label: 'Customer',
@@ -49,14 +48,12 @@ const quickActions: QuickAction[] = [
     description: 'Ajukan penawaran baru',
     icon: 'FilePlus',
     iconClass: 'bg-emerald-100 text-emerald-600',
-    routeName: 'penawarans-create',
+    routeName: 'quotations.create',
   },
 ]
 
-/* Computed: recent activity dari summary API */
 const recentActivities = computed(() => summary.value?.recent_activities ?? [])
 
-/* Helper: icon + warna per tipe activity */
 function activityIcon(type: string): { icon: Icon; iconClass: string } {
   switch (type) {
     case 'customer_created':
@@ -72,7 +69,6 @@ function activityIcon(type: string): { icon: Icon; iconClass: string } {
   }
 }
 
-/* Helper: waktu relatif berbahasa Indonesia */
 function formatRelativeTime(iso: string): string {
   const occurredAt = new Date(iso)
   const diffMs = Date.now() - occurredAt.getTime()
@@ -90,19 +86,17 @@ function formatRelativeTime(iso: string): string {
   return occurredAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/* Action: navigasi quick action */
 function goToQuickAction(routeName: string) {
   router.push({ name: routeName })
 }
 
-/* Init: fetch ringkasan dashboard marketing */
 onMounted(async () => {
   loading.value = true
   try {
     const { data } = await axios.get('/api/dashboard/marketing-summary')
     summary.value = data
   } catch (e: any) {
-    // tampilkan state kosong/gagal, jangan biarkan halaman crash
+    error('Gagal', e.response?.data?.message ?? 'Gagal memuat ringkasan dashboard.')
   } finally {
     loading.value = false
   }
@@ -113,7 +107,6 @@ onMounted(async () => {
   <div class="intro-y flex flex-col gap-4">
     <PageHeader title="Dashboard Marketing" description="Ringkasan aktivitas customer dan quotation kamu" />
 
-    <!-- Ringkasan + Quick Actions -->
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <CardSection title="Ringkasan Customer" description="Customer yang kamu kelola" icon="Users"
         icon-class="bg-primary/10 text-primary">
@@ -140,17 +133,17 @@ onMounted(async () => {
         <div class="grid grid-cols-3 gap-3">
           <div>
             <div class="text-form-label">Total</div>
-            <div class="num-display mt-1">{{ loading || !summary ? '-' : summary.penawarans.total }}</div>
+            <div class="num-display mt-1">{{ loading || !summary ? '-' : summary.quotations.total }}</div>
           </div>
           <div>
             <div class="text-form-label">Approved</div>
             <div class="num-display mt-1 !text-emerald-600">{{ loading || !summary ? '-' :
-              summary.penawarans.approved }}</div>
+              summary.quotations.approved }}</div>
           </div>
           <div>
             <div class="text-form-label">Unapproved</div>
             <div class="num-display mt-1 !text-amber-600">{{ loading || !summary ? '-' :
-              summary.penawarans.unapproved }}</div>
+              summary.quotations.unapproved }}</div>
           </div>
         </div>
       </CardSection>
@@ -173,7 +166,6 @@ onMounted(async () => {
       </CardSection>
     </div>
 
-    <!-- Recent Activity -->
     <CardSection title="Aktivitas Terbaru" description="Aktivitas customer & quotation terakhir" icon="History"
       icon-class="bg-slate-100 text-slate-600">
       <div v-if="!loading && !recentActivities.length" class="py-3 text-center">

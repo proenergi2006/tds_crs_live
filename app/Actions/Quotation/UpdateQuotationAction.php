@@ -2,12 +2,12 @@
 
 namespace App\Actions\Quotation;
 
-use App\Actions\Quotation\Concerns\ManagesQuotationLineItems;
+use App\Actions\Quotation\Traits\ManagesQuotationLineItems;
 use App\Enums\QuotationStatus;
-use App\Models\Quotation;
+use App\Exceptions\BusinessRuleException;
 use App\Models\PricePeriod;
+use App\Models\Quotation;
 use App\Models\User;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +22,7 @@ class UpdateQuotationAction
     public function execute(Quotation $quotation, array $data, User $user): array
     {
         if ($quotation->status !== QuotationStatus::Draft) {
-            throw new HttpResponseException(response()->json(['message' => 'Hanya penawaran draft yang bisa diubah.'], 409));
+            throw new BusinessRuleException('Hanya penawaran draft yang bisa diubah.');
         }
 
         $quotation->loadMissing(['items', 'transports']);
