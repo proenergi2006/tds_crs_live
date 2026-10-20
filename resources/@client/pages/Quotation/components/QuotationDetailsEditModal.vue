@@ -184,13 +184,6 @@ async function submitForm() {
         <small v-if="serverErrors.syarat_ketentuan" class="block input-error-text">{{
           serverErrors.syarat_ketentuan }}</small>
       </div>
-
-      <div>
-        <FormLabel>Lampiran Tambahan</FormLabel>
-        <FormTextarea v-model="form.lampiran_tambahan" :rows="4" placeholder="Lampiran tambahan…" />
-        <small v-if="serverErrors.lampiran_tambahan" class="block input-error-text">{{
-          serverErrors.lampiran_tambahan }}</small>
-      </div>
     </div>
   </FormModal>
 </template>

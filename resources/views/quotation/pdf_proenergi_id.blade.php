@@ -100,11 +100,11 @@
 
     .footer{
       position: fixed;
-      left: 42mm;
-      right: 42mm;
+      left: 19mm;
+      right: 19mm;
       bottom: 6mm;
       text-align: center;
-      font-size: 10.8px;
+      font-size: 9.6px;
       padding: 0;
       border: none;
     }
@@ -269,7 +269,7 @@
     </tr>
   </table>
 
-  <div class="subject">{{ ($isPolimer ?? false) ? 'Penawaran Harga Produk' : 'Penawaran Harga Batu Pecah' }}</div>
+  <div class="subject">Penawaran Harga</div>
 
   <p class="p">Yth. Bapak/Ibu,</p>
   <p class="p">
@@ -277,13 +277,8 @@
     Izin Usaha Penjualan &amp; Jasa Pertambangan dari ESDM, bergerak di bidang pertambangan.
   </p>
   <p class="p">
-    @if($isPolimer ?? false)
-      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
-      kebutuhan perusahaan <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
-    @else
-      Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
-      kebutuhan Batu Pecah untuk <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
-    @endif
+    Dengan pengalaman, jaminan kualitas produk, sumber daya, dan fasilitas yang kami miliki, kami percaya dapat memenuhi
+    kebutuhan perusahaan <strong>{{ $cust->company_name ?? '—' }}.</strong> Sehubungan dengan itu, berikut kami sampaikan penawaran:
   </p>
 
   <div class="box">
@@ -463,11 +458,11 @@
 <div class="brand-band"></div>
 <div class="footer">
   <hr style="border:none; border-top:1px solid #000;">
-  <strong>PT. Pro Energi, </strong> • Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2 •
-  Telp. +021 5289 2321 • Fax +021 5289 2310 •
+  <div><strong>PT. Pro Energi</strong> · Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2</div>
+  <div>Telp. +021 5289 2321 · Fax +021 5289 2310 ·
   <a href="https://www.proenergi.com" target="_blank" rel="noopener noreferrer">
     www.proenergi.com
-  </a>
+  </a></div>
 </div>
 
 @if($hasTerms)
@@ -509,7 +504,6 @@
     <table class="sig-table">
       <tr>
         <td class="sig-label">Best Regards,<br>PT. Pro Energi</td>
-        <td class="sig-label t-right">{{ strtoupper($cust->company_name ?? '-') }}</td>
       </tr>
 
       <tr>
@@ -518,17 +512,12 @@
             <img src="{{ $qrBase64 }}" class="qr" alt="QR">
           @endif
         </td>
-        <td class="signbox t-right"></td>
       </tr>
 
       <tr>
         <td class="sig-name">
           Vica Krisdianatha
           <div class="sig-role">Chief Executive Officer</div>
-        </td>
-        <td class="sig-name t-right">
-          {{ $quotation->customerContact->full_name ?? 'Customer' }}
-          <div class="sig-role">{{ $quotation->customerContact->position ?? '' }}</div>
         </td>
       </tr>
     </table>

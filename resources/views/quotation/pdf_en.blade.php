@@ -85,11 +85,11 @@
 
 .footer{
   position: fixed;
-  left: 42mm;
-  right: 42mm;
+  left: 19mm;
+  right: 19mm;
   bottom: 6mm;
   text-align: center;
-  font-size: 10.8px;
+  font-size: 9.6px;
   padding: 0;
   border: none;
 }
@@ -250,7 +250,7 @@
     </tr>
   </table>
 
-  <div class="subject">{{ ($isPolimer ?? false) ? 'Price Quotation' : 'Price Quotation of Crushed Stone' }}</div>
+  <div class="subject">Price Quotation</div>
 
   <p class="p">Dear Sir,</p>
   <p class="p">
@@ -258,13 +258,8 @@
     engaged in Mining.
   </p>
   <p class="p">
-    @if($isPolimer ?? false)
-      With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
-      <strong>{{ $cust->company_name ?? '—' }}.</strong> Therefore, we would like to offer to your company:
-    @else
-      With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
-      Crushed Stone for <strong>{{ $cust->company_name ?? '—' }}.</strong> Therefore, we would like to offer to your company:
-    @endif
+    With our experience, product assurance and resource, and facilities, we believe we are able to fulfill the needs of
+    <strong>{{ $cust->company_name ?? '—' }}.</strong> Therefore, we would like to offer to your company:
   </p>
 
 
@@ -299,7 +294,7 @@
 
       @unless($isPolimer ?? false)
       <tr>
-        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Parameter</b></td><td class="colon">:</td>
+        <td class="no">{{ $rowNum }}.</td><td class="label"><b>Abrasion</b></td><td class="colon">:</td>
         <td class="value"><b>{{ $quotation->abrasi }}</b></td>
       </tr>
       @php $rowNum++; @endphp
@@ -424,15 +419,15 @@
 <div class="brand-band"></div>
 <div class="footer">
   <hr style="border: none; border-top: 1px solid #000;">
-  <strong >PT. Tri Daya Selaras, </strong> • Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2 •
-  Telp. +021 5289 2321 • Fax +021 5289 2310 • <a
+  <div><strong>PT. Tri Daya Selaras</strong> · Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2</div>
+  <div>Telp. +021 5289 2321 · Fax +021 5289 2310 · <a
   href="https://www.tridayaselaras.com"
   target="_blank"
   rel="noopener noreferrer"
   class="text-blue-600 underline hover:text-blue-800"
 >
   www.tridayaselaras.com
-</a>
+</a></div>
 
 </div>
 
@@ -475,7 +470,6 @@
     <table class="sig-table">
       <tr>
         <td class="sig-label">Best Regards,<br>PT. Tri Daya Selaras</td>
-        <td class="sig-label t-right">{{ strtoupper($cust->company_name ?? '-') }}</td>
       </tr>
 
       <tr>
@@ -484,17 +478,12 @@
             <img src="{{ $qrBase64 }}" class="qr" alt="QR">
           @endif
         </td>
-        <td class="signbox t-right"></td>
       </tr>
 
       <tr>
         <td class="sig-name">
           Vica Krisdianatha
           <div class="sig-role">Chief Executive Officer</div>
-        </td>
-        <td class="sig-name t-right">
-          {{ $quotation->customerContact->full_name ?? 'Customer' }}
-          <div class="sig-role">{{ $quotation->customerContact->position ?? '' }}</div>
         </td>
       </tr>
     </table>

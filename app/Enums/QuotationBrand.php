@@ -73,6 +73,46 @@ enum QuotationBrand: string
         };
     }
 
+    public function companyName(): string
+    {
+        return match ($this) {
+            self::Tds       => 'PT Tri Daya Selaras',
+            self::Proenergi => 'PT Pro Energi',
+        };
+    }
+
+    public function footerAddress(): string
+    {
+        return match ($this) {
+            self::Tds       => 'Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2',
+            self::Proenergi => 'Graha Irama Building 6th floor unit G, Jln. HR Rasuna Said Blok X1 Kav 1-2',
+        };
+    }
+
+    public function phone(): string
+    {
+        return match ($this) {
+            self::Tds       => '+021 5289 2321',
+            self::Proenergi => '+021 5289 2321',
+        };
+    }
+
+    public function fax(): string
+    {
+        return match ($this) {
+            self::Tds       => '+021 5289 2310',
+            self::Proenergi => '+021 5289 2310',
+        };
+    }
+
+    public function website(): string
+    {
+        return match ($this) {
+            self::Tds       => 'www.tridayaselaras.com',
+            self::Proenergi => 'www.proenergi.com',
+        };
+    }
+
     public static function managedBy(User $user): array
     {
         return self::allowing(fn (self $brand) => $user->can($brand->managePermission()));

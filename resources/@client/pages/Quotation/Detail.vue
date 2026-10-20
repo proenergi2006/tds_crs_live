@@ -470,7 +470,7 @@ function formatNumber(v: number | string = 0) {
             </div>
           </div>
 
-          <div class="gap-6 grid grid-cols-2">
+          <div class="gap-6 grid grid-cols-1">
             <CardSection title="Catatan & Syarat" icon="StickyNote" icon-class="bg-amber-100 text-amber-600">
               <div class="flex flex-col gap-4">
                 <div class="flex-1 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
@@ -481,12 +481,6 @@ function formatNumber(v: number | string = 0) {
                   <div class="text-form-label">Syarat & Ketentuan</div>
                   <p class="mt-1 text-body whitespace-pre-line">{{ quotation.syarat_ketentuan || '-' }}</p>
                 </div>
-              </div>
-            </CardSection>
-
-            <CardSection title="Lampiran Tambahan" icon="Paperclip" icon-class="bg-rose-100 text-rose-600">
-              <div class="bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl">
-                <p class="text-body whitespace-pre-line">{{ quotation.lampiran_tambahan || '-' }}</p>
               </div>
             </CardSection>
           </div>
