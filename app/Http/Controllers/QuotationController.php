@@ -217,12 +217,19 @@ class QuotationController extends Controller
         $validated = $request->validate([
             'lang'         => ['nullable', Rule::in(['id', 'en'])],
             'price_format' => ['nullable', Rule::in(['summary', 'detail'])],
+            'version'      => ['nullable', Rule::in(['v1', 'v2'])],
         ]);
 
         $lang = $validated['lang'] ?? 'id';
         $priceDetail = ($validated['price_format'] ?? null) === 'detail';
+        $version = $validated['version'] ?? 'v2';
 
-        return $action->execute($quotation, $lang, $priceDetail);
+        return $action->execute(
+            $quotation,
+            $lang,
+            $priceDetail,
+            $version
+        );
     }
 
     private function detailResource(Quotation $quotation): QuotationDetailResource

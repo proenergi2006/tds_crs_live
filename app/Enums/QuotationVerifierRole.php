@@ -73,6 +73,34 @@ enum QuotationVerifierRole: int
         };
     }
 
+    public function rank(): int
+    {
+        return match ($this) {
+            self::Ceo                                                                     => 3,
+            self::OperationManager, self::OperationManagerProenergi                       => 2,
+            self::BranchManager, self::BranchManagerPolimer, self::BranchManagerProenergi => 1,
+        };
+    }
+
+    public function signatoryTitle(): string
+    {
+        return match ($this) {
+            self::Ceo                                               => 'Chief Executive Officer',
+            self::OperationManager, self::OperationManagerProenergi => 'Operation Manager',
+            self::BranchManager, self::BranchManagerProenergi       => 'Branch Manager',
+            self::BranchManagerPolimer                              => 'Branch Manager Polimer',
+        };
+    }
+
+    public static function highestHeldBy(User $user): ?self
+    {
+        return $user->roles
+            ->map(fn ($role) => self::tryFrom((int) $role->id))
+            ->filter()
+            ->sortByDesc(fn (self $role) => $role->rank())
+            ->first();
+    }
+
     public function isHeldBy(User $user, QuotationBrand $brand): bool
     {
         return $user->hasRole('Administrator')

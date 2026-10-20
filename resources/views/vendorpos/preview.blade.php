@@ -166,7 +166,7 @@
     <thead>
       <tr>
         <th style="width:22%">Item</th>
-        <th style="width:14%">Quantity (m&sup3;)</th>
+        <th style="width:14%">Quantity</th>
         <th style="width:17%">Unit Price (IDR)</th>
         <th style="width:17%">Total Price (IDR)</th>
         <th style="width:10%">Tax Code</th>

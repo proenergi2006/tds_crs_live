@@ -1684,7 +1684,7 @@ function formatCurrency(v: number | string = 0) {
       </div>
     </CardSection>
 
-    <div class="gap-6 grid grid-cols-1 lg:grid-cols-2">
+    <div class="gap-6 grid grid-cols-1">
       <CardSection title="Catatan & Syarat" description="Informasi tambahan penawaran" icon="StickyNote"
         icon-class="bg-rose-100 text-rose-600">
         <div class="space-y-4">
@@ -1697,14 +1697,6 @@ function formatCurrency(v: number | string = 0) {
             <FormLabel>Syarat & Ketentuan</FormLabel>
             <FormTextarea v-model="form.syarat_ketentuan" :rows="5" placeholder="Syarat dan ketentuan…" />
           </div>
-        </div>
-      </CardSection>
-
-      <CardSection title="Lampiran Tambahan" description="Rincian tambahan di luar template standar" icon="Paperclip"
-        icon-class="bg-rose-100 text-rose-600">
-        <div>
-          <FormLabel>Lampiran Tambahan</FormLabel>
-          <FormTextarea v-model="form.lampiran_tambahan" :rows="9" placeholder="Lampiran tambahan…" />
         </div>
       </CardSection>
     </div>
