@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #2b2b2b;
             line-height: 1.25;
             margin: 0;
@@ -48,28 +48,29 @@
         }
         .form-title {
             text-align: right;
-            font-size: 11pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #022c22;
             margin: 0;
         }
 
         .section-title {
-            background-color: #f1f5f9;
-            color: #1e293b;
-            font-size: 8.5pt;
+            background-color: #2a6a3c;
+            color: #ffffff;
+            font-size: 10pt;
             font-weight: bold;
-            padding: 3px 6px;
-            margin-top: 8px;
-            border-left: 3px solid #022c22;
-            border-right: 1px solid #cbd5e1;
-            border-top: 1px solid #cbd5e1;
+            padding: 6px;
+            margin-top: 10px;
+            border-right: 1px solid #2a6a3c;
+            border-top: 1px solid #2a6a3c;
             text-transform: uppercase;
         }
 
         .section-content {
             padding: 6px 12px;
-            border: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            border-right: 1px solid #cbd5e1;
+            border-left: 1px solid #cbd5e1;
         }
 
         table.data-table {
@@ -78,7 +79,7 @@
             margin-bottom: 2px;
         }
         table.data-table td {
-            padding: 2px 4px;
+            padding: 3px 4px;
             vertical-align: top;
         }
         .label {
@@ -99,7 +100,7 @@
             border: 1px solid #cbd5e1;
             padding: 3px 4px;
             text-align: left;
-            font-size: 8pt;
+            font-size: 10pt;
             vertical-align: top;
         }
         table.grid-table th {
@@ -108,34 +109,83 @@
             font-weight: bold;
         }
 
+        table.review-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.review-table td {
+            padding: 0 4px;
+            vertical-align: top;
+        }
+        td.review-no {
+            width: 16px;
+            padding-top: 3px;
+        }
+        td.review-question {
+            width: 50%;
+            padding-top: 3px;
+            padding-right: 12px;
+        }
+        td.answer-line {
+            border-left: 1px solid #94a3b8;
+            border-right: 1px solid #94a3b8;
+            padding: 0 5px;
+        }
+        td.answer-first {
+            border-top: 1px solid #94a3b8;
+            padding-top: 3px;
+        }
+        td.answer-last {
+            border-bottom: 1px solid #94a3b8;
+            padding-bottom: 1.25em;
+        }
+        td.review-gap {
+            height: 8px;
+        }
+
         .muted {
             color: #666;
             font-style: italic;
         }
 
+        .closing-block {
+            page-break-inside: avoid;
+        }
         .signature-section {
             page-break-inside: avoid;
         }
         .sig-box {
             border: 1px solid #cbd5e1;
             padding: 6px;
-            background-color: #fafafa;
         }
         .sig-title {
             font-weight: bold;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #1e293b;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 2px;
         }
-        .sig-line {
-            border-bottom: 1px dotted #94a3b8;
-            margin-bottom: 4px;
+        .sig-caption {
+            font-size: 9pt;
+            color: #475569;
         }
         .sig-area {
-            display: block;
-            min-height: 40px;
+            height: 70px;
+        }
+        table.sig-fields {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.sig-fields td {
+            border-bottom: 1px dashed #94a3b8;
+            padding: 4px 2px 2px;
+        }
+        table.sig-fields td.sig-field-label {
+            width: 1%;
+            white-space: nowrap;
+            padding-right: 6px;
+            color: #334155;
+        }
+        table.sig-fields td.sig-field-value {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -167,7 +217,7 @@
     </table>
 </div>
 
-<div class="section-title">1. Rincian Customer</div>
+<div class="section-title">Rincian Customer</div>
 <div class="section-content">
     <table class="data-table">
         <tr>
@@ -179,26 +229,36 @@
     </table>
 </div>
 
-<div class="section-title">2. Sales Review</div>
+<div class="section-title">Sales Review</div>
 <div class="section-content">
-    <table class="data-table">
+    {{-- satu baris jawaban = satu <tr>: DomPDF tidak memecah <tr> antar halaman, jadi jawaban panjang hanya bisa terpotong di antara baris --}}
+    <table class="review-table">
         @forelse (($review->review_answers ?? []) as $index => $answer)
-            <tr>
-                <td width="16px">{{ $index + 1 }}.</td>
-                <td class="label" width="50%">
-                    <span>{{ $answer['question'] ?? ($answer['question_code'] ?? '-') }}</span>
-                </td>
-                <td class="value">
-                    <textarea rows="2" readonly style="width: 100%; background: transparent; font-family: inherit; font-size: inherit; color: inherit; resize: none;">{{ $answer['answer'] ?? '' }}</textarea>
-                </td>
-            </tr>
+            @php
+                $lines = preg_split('/\R/', trim((string) ($answer['answer'] ?? '')));
+                $lastLine = count($lines) - 1;
+            @endphp
+            @foreach ($lines as $i => $line)
+                <tr>
+                    @if ($i === 0)
+                        <td class="review-no">{{ $index + 1 }}.</td>
+                        <td class="label review-question">{{ $answer['question'] ?? ($answer['question_code'] ?? '-') }}</td>
+                    @else
+                        <td class="review-no"></td>
+                        <td class="review-question"></td>
+                    @endif
+                    <td class="answer-line{{ $i === 0 ? ' answer-first' : '' }}{{ $i === $lastLine ? ' answer-last' : '' }}">{{ $line !== '' ? $line : "\u{00A0}" }}</td>
+                </tr>
+            @endforeach
+            <tr><td class="review-gap" colspan="3"></td></tr>
         @empty
-            <tr><td colspan="2" class="muted">Belum ada Sales Review tercatat.</td></tr>
+            <tr><td colspan="3" class="muted">Belum ada Sales Review tercatat.</td></tr>
         @endforelse
     </table>
 </div>
 
-<div class="section-title" style="page-break-before: always;">3. Detail Informasi</div>
+<div class="closing-block">
+<div class="section-title">Detail Informasi</div>
 <div class="section-content" style="min-height: 140px;">
     @if ($review->notes ?? null)
         <div>{!! nl2br(e($review->notes)) !!}</div>
@@ -212,37 +272,35 @@
     <table style="width: 100%; border-collapse: collapse;">
         <tr>
             <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                <div style="font-size: 7.5pt; color: #64748b;">Proposed by,</div>
                 <div class="sig-title">Marketing</div>
-                <table class="data-table" style="border-spacing: 0;">
-                    <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
-                    <tr><td class="label">Date:</td></tr>
+                <div class="sig-caption">Proposed by</div>
+                <div class="sig-area"></div>
+                <table class="sig-fields">
+                    <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $marketingName }}</td></tr>
+                    <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                 </table>
-                <div class="sig-line"></div>
             </td>
             <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                <div style="font-size: 7.5pt; color: #64748b;">Review by,</div>
                 <div class="sig-title">Administration</div>
-                <table class="data-table" style="border-spacing: 0;">
-                    <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: Eka Riyanti</td></tr>
-                    <tr><td class="label">Date:</td></tr>
+                <div class="sig-caption">Review by</div>
+                <div class="sig-area"></div>
+                <table class="sig-fields">
+                    <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">Eka Riyanti</td></tr>
+                    <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                 </table>
-                <div class="sig-line"></div>
             </td>
             <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                <div style="font-size: 7.5pt; color: #64748b;">Approved by,</div>
                 <div class="sig-title">Supervisor</div>
-                <table class="data-table" style="border-spacing: 0;">
-                    <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: {{ $supervisorName }}</td></tr>
-                    <tr><td class="label">Date:</td></tr>
+                <div class="sig-caption">Approved by</div>
+                <div class="sig-area"></div>
+                <table class="sig-fields">
+                    <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $supervisorName }}</td></tr>
+                    <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                 </table>
-                <div class="sig-line"></div>
             </td>
         </tr>
     </table>
+</div>
 </div>
 
 </body>
