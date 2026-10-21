@@ -6,12 +6,15 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 1cm;
+            margin-top: 2.7cm;
+            margin-right: 1cm;
+            margin-bottom: 1cm;
+            margin-left: 1cm;
         }
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #2b2b2b;
             line-height: 1.25;
             margin: 0;
@@ -19,7 +22,10 @@
         }
 
         .header {
-            width: 100%;
+            position: fixed;
+            top: -1.7cm;
+            left: 0;
+            right: 0;
             border-bottom: 2px solid #0f172a;
             padding-bottom: 6px;
             margin-bottom: 8px;
@@ -42,28 +48,29 @@
         }
         .form-title {
             text-align: right;
-            font-size: 11pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #022c22;
             margin: 0;
         }
 
         .section-title {
-            background-color: #f1f5f9;
-            color: #1e293b;
-            font-size: 8.5pt;
+            background-color: #2a6a3c;
+            color: #ffffff;
+            font-size: 10pt;
             font-weight: bold;
-            padding: 3px 6px;
-            margin-top: 8px;
-            border-left: 3px solid #022c22;
-            border-right: 1px solid #cbd5e1;
-            border-top: 1px solid #cbd5e1;
+            padding: 6px;
+            margin-top: 10px;
+            border-right: 1px solid #2a6a3c;
+            border-top: 1px solid #2a6a3c;
             text-transform: uppercase;
         }
 
         .section-content {
             padding: 6px 12px;
-            border: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            border-right: 1px solid #cbd5e1;
+            border-left: 1px solid #cbd5e1;
         }
 
         table.data-table {
@@ -72,17 +79,16 @@
             margin-bottom: 2px;
         }
         table.data-table td {
-            padding: 2px 4px;
+            padding: 3px 4px;
             vertical-align: top;
         }
         .label {
             font-weight: bold;
             color: #475569;
-            width: 22%;
+            width: 34mm;
         }
         .value {
             color: #0f172a;
-            width: 28%;
         }
 
         table.grid-table {
@@ -95,7 +101,7 @@
             border: 1px solid #cbd5e1;
             padding: 3px 4px;
             text-align: left;
-            font-size: 8pt;
+            font-size: 10pt;
             vertical-align: top;
         }
         table.grid-table th {
@@ -107,6 +113,7 @@
 
         .checkbox-mark {
             font-family: 'DejaVu Sans', sans-serif;
+            line-height: 1;
             color: #0f172a;
             margin-right: 2px;
         }
@@ -124,29 +131,81 @@
         .sig-box {
             border: 1px solid #cbd5e1;
             padding: 6px;
-            background-color: #fafafa;
         }
         .sig-title {
             font-weight: bold;
-            font-size: 7.5pt;
+            font-size: 10pt;
             color: #1e293b;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 2px;
         }
-        .sig-line {
-            border-bottom: 1px dotted #94a3b8;
-            margin-bottom: 3px;
+        .sig-caption {
+            font-size: 9pt;
+            color: #475569;
         }
         .sig-area {
-            display: block;
-            min-height: 50px;
+            height: 70px;
+        }
+        table.sig-pair {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #cbd5e1;
+        }
+        table.sig-pair td {
+            padding: 0;
+            vertical-align: bottom;
+            font-size: 8.5pt;
+        }
+        table.sig-pair td.sp-head {
+            width: 50%;
+            padding: 6px 6px 0;
+            vertical-align: top;
+            font-size: 10pt;
+        }
+        table.sig-pair td.sp-label {
+            width: 10mm;
+            white-space: nowrap;
+            padding-left: 6px;
+            color: #334155;
+        }
+        table.sig-pair td.sp-value {
+            width: 25.5mm;
+            padding-right: 6px;
+            font-weight: bold;
+        }
+        table.sig-pair td.sp-divider {
+            border-left: 1px solid #cbd5e1;
+        }
+        table.sig-pair tr.sp-name td {
+            height: 36px;
+        }
+        table.sig-pair tr.sp-last td {
+            padding-bottom: 6px;
+        }
+        .sp-line {
+            border-bottom: 1px dashed #94a3b8;
+            padding: 4px 2px 2px;
+        }
+        .sig-line {
+            border-bottom: 1px dashed #94a3b8;
+            margin-bottom: 3px;
         }
         .sig-role {
-            font-size: 7pt;
-            color: #64748b;
+            font-size: 8pt;
+            color: #475569;
             text-align: center;
         }
+
+        .section-table table.grid-table {
+            margin: 0;
+        }
+
+        .keep-together {
+            page-break-inside: avoid;
+        }
+
+        .committee-section {
+            page-break-inside: avoid;
+        }
+
 
         .notes-box {
             border: 1px solid #cbd5e1;
@@ -157,14 +216,14 @@
         .notes-box .notes-label {
             font-weight: bold;
             color: #475569;
-            font-size: 7.5pt;
+            font-size: 9pt;
         }
 
         .footer-note {
             margin-top: 8px;
-            font-size: 7.5pt;
+            font-size: 9pt;
             font-style: italic;
-            color: #64748b;
+            color: #475569;
         }
     </style>
 </head>
@@ -177,15 +236,28 @@
             return null;
         }
 
-        $provincePostal = trim(collect([$regionName($address->province), $address->postal_code])->filter()->implode(' '));
+        $line = trim((string) $address->address_line);
+        $alreadyWritten = function (?string $name) use ($line) {
+            if (blank($name)) {
+                return true;
+            }
+            $core = trim(preg_replace('/^(kabupaten|kab\.|kota administrasi|kota adm\.|kota|provinsi|daerah khusus ibukota)\s+/i', '', $name));
 
-        return collect([
-            $address->address_line,
-            $regionName($address->village),
-            $regionName($address->district),
-            $regionName($address->regency),
-            $provincePostal !== '' ? $provincePostal : null,
-        ])->filter()->implode(', ');
+            return $line !== '' && stripos($line, $core) !== false;
+        };
+
+        $parts = [$line !== '' ? $line : null];
+        foreach ([$address->village, $address->district, $address->regency, $address->province] as $region) {
+            $name = $regionName($region);
+            if (!$alreadyWritten($name)) {
+                $parts[] = $name;
+            }
+        }
+        if (filled($address->postal_code) && !preg_match('/\b\d{5}\b/', $line)) {
+            $parts[] = $address->postal_code;
+        }
+
+        return collect($parts)->filter()->implode(', ');
     };
     $submissionTypes = ['New Customer', 'Re-Activated', 'Add TOP', 'Add CL'];
     $committeeMembers = [
@@ -226,11 +298,11 @@
     </table>
 </div>
 
-<div class="section-title">1. Customer Information</div>
+<div class="section-title">Customer Information</div>
 <div class="section-content">
     <table class="data-table">
         <tr>
-            <td class="label" width="20%">Company Name:</td>
+            <td class="label">Company Name:</td>
             <td class="value" colspan="3"><b>{{ $customer->company_name ?? '' }}</b></td>
         </tr>
         <tr>
@@ -250,7 +322,7 @@
     </table>
 </div>
 
-<div class="section-title">2. Financial Review</div>
+<div class="section-title">Financial Review</div>
 <div class="rich-text-content section-content" style="min-height: 100px;">
     @if ($verification->financial_review)
         {!! $verification->financial_review !!}
@@ -259,8 +331,9 @@
     @endif
 </div>
 
-<div class="section-title">3. Credit Limit &amp; TOP</div>
-<div class="section-content">
+<div class="keep-together">
+<div class="section-title">Credit Limit &amp; TOP</div>
+<div class="section-table">
     @php
         $rupiah = fn ($n) => $n === null ? '' : 'Rp ' . number_format((float) $n, 0, ',', '.');
         $days = fn ($n) => $n === null ? '' : $n . ' days';
@@ -301,9 +374,11 @@
         </tbody>
     </table>
 </div>
+</div>
 
-<div class="section-title">4. Credit Committee Approval</div>
-<div class="section-content">
+<div class="committee-section">
+<div class="section-title">Credit Committee Approval</div>
+<div>
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
         <tr>
             <td class="sig-box" style="width: 14.28%; text-align: center; font-weight: bold; background-color: #f8fafc;">Presented by,</td>
@@ -315,10 +390,10 @@
         </tr>
         <tr>
             @foreach ($committeeMembers as $member)
-                <td class="sig-box" style="vertical-align: top; text-align: center;">
+                <td class="sig-box" style="vertical-align: top; text-align: center; padding: 6px 3px;">
                     <div class="sig-area"></div>
                     <div class="sig-line"></div>
-                    <div style="font-weight: bold; font-size: 7.5pt; min-height: 9pt;">{{ $member['name'] }}</div>
+                    <div style="font-weight: bold; font-size: 8pt; min-height: 10pt;">{{ $member['name'] }}</div>
                     <div class="sig-role">{{ $member['role'] }}</div>
                 </td>
             @endforeach
@@ -335,28 +410,34 @@
                 @endforeach
             </td>
             <td style="width: 42%; vertical-align: top;">
-                <div class="notes-box" style="min-height: 240px;">
+                <div class="notes-box" style="min-height: 200px;">
                     <div class="notes-label">General Notes:</div>
                 </div>
 
-                <table style="width: 100%; border-collapse: collapse;">
+                <table class="sig-pair">
                     <tr>
-                        <td class="sig-box" style="width: 50%; vertical-align: top;">
-                            <div class="sig-title">Proposed by,</div>
-                            <table class="data-table" style="border-spacing: 0;">
-                                <tr><td class="sig-area"></td></tr>
-                            </table>
-                            <div class="sig-line"></div>
-                            <div class="sig-role">{{ $marketingName }}<br>KAE/Marketing</div>
+                        <td class="sp-head" colspan="2">
+                            <div class="sig-title">KAE/Marketing</div>
+                            <div class="sig-caption">Proposed by</div>
+                            <div class="sig-area"></div>
                         </td>
-                        <td class="sig-box" style="width: 50%; vertical-align: top;">
-                            <div class="sig-title">Review by,</div>
-                            <table class="data-table" style="border-spacing: 0;">
-                                <tr><td class="sig-area"></td></tr>
-                            </table>
-                            <div class="sig-line"></div>
-                            <div class="sig-role">Eka Riyanti<br>Administration</div>
+                        <td class="sp-head sp-divider" colspan="2">
+                            <div class="sig-title">Administration</div>
+                            <div class="sig-caption">Review by</div>
+                            <div class="sig-area"></div>
                         </td>
+                    </tr>
+                    <tr class="sp-name">
+                        <td class="sp-label"><div class="sp-line">Name:</div></td>
+                        <td class="sp-value"><div class="sp-line">{{ $marketingName }}</div></td>
+                        <td class="sp-label sp-divider"><div class="sp-line">Name:</div></td>
+                        <td class="sp-value"><div class="sp-line">Eka Riyanti</div></td>
+                    </tr>
+                    <tr class="sp-last">
+                        <td class="sp-label"><div class="sp-line">Date:</div></td>
+                        <td class="sp-value"><div class="sp-line">&nbsp;</div></td>
+                        <td class="sp-label sp-divider"><div class="sp-line">Date:</div></td>
+                        <td class="sp-value"><div class="sp-line">&nbsp;</div></td>
                     </tr>
                 </table>
             </td>
@@ -365,6 +446,7 @@
 </div>
 
 <div class="footer-note">*To be completed by marketing / Harap dilengkapi oleh marketing</div>
+</div>
 
 </body>
 </html>

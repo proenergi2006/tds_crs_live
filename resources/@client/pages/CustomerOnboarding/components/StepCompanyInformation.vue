@@ -225,19 +225,21 @@ watch(npwpSameAsHeadOffice, (checked) => {
             <FormInput v-model="form.identity.postal_code" type="text" placeholder="e.g. 12345" />
           </div>
           <div>
-            <FormLabel class="text-form-label !mb-1 block">Phone</FormLabel>
+            <FormLabel class="text-form-label !mb-1 block">Company Phone</FormLabel>
             <FormInput v-model="form.identity.phone" type="text" placeholder="e.g. 021-1234567" />
+            <p class="text-caption mt-1">Nomor kantor perusahaan, bukan nomor pribadi PIC.</p>
           </div>
           <div>
             <FormLabel class="text-form-label !mb-1 block">Fax</FormLabel>
             <FormInput v-model="form.identity.fax" type="text" placeholder="e.g. 021-1234568 (optional)" />
           </div>
           <div>
-            <FormLabel class="text-form-label !mb-1 block">Email</FormLabel>
-            <FormInput v-model="form.identity.email" type="email" placeholder="e.g. finance@company.com"
+            <FormLabel class="text-form-label !mb-1 block">Company Email</FormLabel>
+            <FormInput v-model="form.identity.email" type="email" placeholder="e.g. info@company.com"
               :class="errors['identity.email'] ? 'input-error' : ''" />
             <small v-if="errors['identity.email']" class="block input-error-text">{{ errors['identity.email']
             }}</small>
+            <p v-else class="text-caption mt-1">Email umum perusahaan, bukan email pribadi PIC.</p>
           </div>
         </div>
 

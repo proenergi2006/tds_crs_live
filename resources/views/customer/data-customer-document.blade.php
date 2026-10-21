@@ -11,7 +11,7 @@
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #2b2b2b;
             line-height: 1.25;
             margin: 0;
@@ -42,28 +42,29 @@
         }
         .form-title {
             text-align: right;
-            font-size: 11pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #022c22;
             margin: 0;
         }
 
         .section-title {
-            background-color: #f1f5f9;
-            color: #1e293b;
-            font-size: 8.5pt;
+            background-color: #2a6a3c;
+            color: #ffffff;
+            font-size: 10pt;
             font-weight: bold;
-            padding: 3px 6px;
-            margin-top: 8px;
-            border-left: 3px solid #022c22;
-            border-right: 1px solid #cbd5e1;
-            border-top: 1px solid #cbd5e1;
+            padding: 6px;
+            margin-top: 10px;
+            border-right: 1px solid #2a6a3c;
+            border-top: 1px solid #2a6a3c;
             text-transform: uppercase;
         }
 
         .section-content {
             padding: 6px 12px;
-            border: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            border-right: 1px solid #cbd5e1;
+            border-left: 1px solid #cbd5e1;
         }
 
         table.data-table {
@@ -72,17 +73,23 @@
             margin-bottom: 2px;
         }
         table.data-table td {
-            padding: 2px 4px;
+            padding: 3px 4px;
             vertical-align: top;
         }
         .label {
             font-weight: bold;
             color: #475569;
-            width: 22%;
+            width: 34mm;
+        }
+        .label-inline {
+            width: 29mm;
+            white-space: nowrap;
+        }
+        .value-left {
+            padding-right: 12px !important;
         }
         .value {
             color: #0f172a;
-            width: 28%;
         }
 
         table.grid-table {
@@ -95,7 +102,7 @@
             border: 1px solid #cbd5e1;
             padding: 3px 4px;
             text-align: left;
-            font-size: 8pt;
+            font-size: 10pt;
         }
         table.grid-table th {
             background-color: #f8fafc;
@@ -105,13 +112,20 @@
 
         .checkbox-mark {
             font-family: 'DejaVu Sans', sans-serif;
+            line-height: 1;
             color: #0f172a;
             margin-right: 2px;
         }
 
+        .creditor-box {
+            border: 1px solid #cbd5e1;
+            padding: 1px 4px;
+            margin-top: 2px;
+        }
+
         .col-container {
             width: 100%;
-            margin-bottom: 2px;
+            margin-bottom: 6px;
         }
         .col-half {
             width: 49%;
@@ -125,23 +139,35 @@
         .sig-box {
             border: 1px solid #cbd5e1;
             padding: 6px;
-            background-color: #fafafa;
         }
         .sig-title {
             font-weight: bold;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #1e293b;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 2px;
         }
-        .sig-line {
-            border-bottom: 1px dotted #94a3b8;
-            margin-bottom: 4px;
+        .sig-caption {
+            font-size: 9pt;
+            color: #475569;
         }
         .sig-area {
-            display: block;
-            min-height: 40px;
+            height: 70px;
+        }
+        table.sig-fields {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.sig-fields td {
+            border-bottom: 1px dashed #94a3b8;
+            padding: 4px 2px 2px;
+        }
+        table.sig-fields td.sig-field-label {
+            width: 1%;
+            white-space: nowrap;
+            padding-right: 6px;
+            color: #334155;
+        }
+        table.sig-fields td.sig-field-value {
+            font-weight: bold;
         }
 
         .muted {
@@ -150,9 +176,31 @@
         }
         .field-other-note {
             margin-top: 2px;
-            font-size: 7.5pt;
+            font-size: 9pt;
             font-style: italic;
             color: #64748b;
+        }
+        table.address-pair {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2px;
+        }
+        td.address-card {
+            width: 50%;
+            padding: 2px 12px 2px 4px;
+            vertical-align: top;
+        }
+        td.address-card-right {
+            border-left: 1px solid #cbd5e1;
+            padding-left: 12px;
+        }
+        .address-head {
+            font-weight: bold;
+            color: #475569;
+            margin-bottom: 2px;
+        }
+        .section-table table.grid-table {
+            margin: 0;
         }
     </style>
 </head>
@@ -166,15 +214,28 @@
             return null;
         }
 
-        $provincePostal = trim(collect([$regionName($address->province), $address->postal_code])->filter()->implode(' '));
+        $line = trim((string) $address->address_line);
+        $alreadyWritten = function (?string $name) use ($line) {
+            if (blank($name)) {
+                return true;
+            }
+            $core = trim(preg_replace('/^(kabupaten|kab\.|kota administrasi|kota adm\.|kota|provinsi|daerah khusus ibukota)\s+/i', '', $name));
 
-        return collect([
-            $address->address_line,
-            $regionName($address->village),
-            $regionName($address->district),
-            $regionName($address->regency),
-            $provincePostal !== '' ? $provincePostal : null,
-        ])->filter()->implode(', ');
+            return $line !== '' && stripos($line, $core) !== false;
+        };
+
+        $parts = [$line !== '' ? $line : null];
+        foreach ([$address->village, $address->district, $address->regency, $address->province] as $region) {
+            $name = $regionName($region);
+            if (!$alreadyWritten($name)) {
+                $parts[] = $name;
+            }
+        }
+        if (filled($address->postal_code) && !preg_match('/\b\d{5}\b/', $line)) {
+            $parts[] = $address->postal_code;
+        }
+
+        return collect($parts)->filter()->implode(', ');
     };
     $renderCheckboxOption = function (string $label, bool $checked) {
         $mark = $checked ? '&#9745;' : '&#9744;';
@@ -210,48 +271,50 @@
     </table>
 </div>
 
-<div class="section-title">1. Corporate Details</div>
+<div class="section-title">Corporate Details</div>
 <div class="section-content">
     <table class="data-table">
         <tr>
-            <td class="label" width="20%">Company Name:</td>
+            <td class="label">Company Name:</td>
             <td class="value" colspan="3"><b>{{ $dash($customer->company_name) }}</b></td>
         </tr>
         <tr>
-            <td class="label" width="20%">Holding / Parent:</td>
+            <td class="label">Holding / Parent:</td>
             <td class="value" colspan="3"><b>{{ $dash($customer->parent_company) }}</b></td>
         </tr>
         <tr>
             <td class="label">Website:</td>
-            <td class="value">{{ $dash($customer->website) }}</td>
-            <td class="label">Ownership:</td>
+            <td class="value value-left" style="overflow-wrap: anywhere;">{{ $dash($customer->website) }}</td>
+            <td class="label label-inline">Ownership:</td>
             <td class="value">{{ $dash($customer->ownership_type === 'Other' ? $customer->ownership_type_other : $customer->ownership_type) }}</td>
         </tr>
         <tr>
             <td class="label">Email:</td>
-            <td class="value">{{ $dash($customer->email) }}</td>
-            <td class="label">Business Type:</td>
+            <td class="value value-left">{{ $dash($customer->email) }}</td>
+            <td class="label label-inline">Business Type:</td>
             <td class="value">{{ $dash($customer->business_type === 'Other' ? $customer->business_type_other : $customer->business_type) }}</td>
         </tr>
         <tr>
-            <td class="label">Phone / Fax:</td>
-            <td class="value">{{ $dash($customer->phone) }} / {{ $dash($customer->fax) }}</td>
-            <td class="label">Incoterms:</td>
+            <td class="label">Phone:</td>
+            <td class="value value-left">{{ $dash($customer->phone) }}</td>
+            <td class="label label-inline">Incoterms:</td>
             <td class="value">{{ $customer->inco_terms ? ($customer->inco_terms->value === 'Other' ? $dash($customer->inco_terms_other) : $customer->inco_terms->label()) : '' }}</td>
         </tr>
     </table>
 </div>
 
-<div class="section-title">2. Addresses</div>
+<div class="section-title">Addresses</div>
 <div class="section-content">
-    <table class="data-table">
+    <table class="address-pair">
         <tr>
-            <td class="label">Head Office:</td>
-            <td colspan="3" class="value">{{ $formatAddressLine($headOfficeAddress) }}</td>
-        </tr>
-        <tr>
-            <td class="label">NPWP Address:</td>
-            <td colspan="3" class="value">{{ $formatAddressLine($npwpAddress) }}</td>
+            <td class="address-card">
+                <div class="address-head">Head Office</div>
+                <div class="value">{{ $formatAddressLine($headOfficeAddress) }}</div>
+            </td>
+            <td class="address-card address-card-right">
+                <div class="address-head">NPWP Address</div>
+                <div class="value">{{ $formatAddressLine($npwpAddress) }}</div>
+            </td>
         </tr>
     </table>
 
@@ -291,25 +354,31 @@
     @endif
 </div>
 
-<div class="section-title">3. Person In Charge (PIC)</div>
-<div class="section-content">
+<div class="section-title">Person In Charge</div>
+<div class="section-table">
     <table class="grid-table">
         <thead>
             <tr>
-                <th style="width: 22%;">Name</th>
+                <th style="width: 5%; text-align: center;">No</th>
+                <th style="width: 23%;">Name</th>
                 <th style="width: 20%;">Position</th>
-                <th style="width: 17%;">Phone</th>
-                <th style="width: 17%;">Mobile</th>
-                <th style="width: 24%;">Email</th>
+                <th style="width: 19%;">Phone / Mobile</th>
+                <th style="width: 33%;">Email</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($contacts as $c)
                 <tr>
+                    <td style="text-align: center;">{{ $loop->iteration }}</td>
                     <td>{{ $dash($c->full_name) }}</td>
                     <td>{{ $dash($c->position) }}</td>
-                    <td>{{ $dash($c->phone) }}</td>
-                    <td>{{ $dash($c->mobile) }}</td>
+                    <td>
+                        @php
+                            $digits = fn ($v) => preg_replace('/\D/', '', (string) $v);
+                            $numbers = collect([$c->phone, $c->mobile])->filter(fn ($v) => filled($v))->unique($digits);
+                        @endphp
+                        {!! $numbers->map(fn ($v) => e($v))->implode('<br>') !!}
+                    </td>
                     <td>{{ $dash($c->email) }}</td>
                 </tr>
             @empty
@@ -319,7 +388,7 @@
     </table>
 </div>
 
-<div class="section-title">4. Payment Term &amp; Banking Detail</div>
+<div class="section-title">Payment Term &amp; Banking Detail</div>
 @php
     $pay = $customer->payment;
     $pricingOptions = ['Discount Pricelist', 'Quotation'];
@@ -336,8 +405,8 @@
         <div class="col-half">
             <table class="data-table">
                 <tr>
-                    <td class="label" style="width: 40%;">Pricing Method:</td>
-                    <td class="value" style="width: 60%;">
+                    <td class="label">Pricing Method:</td>
+                    <td class="value">
                         @foreach ($pricingOptions as $opt)
                             {!! $renderCheckboxOption($opt, $pay->calculate_method === $opt) !!}<br>
                         @endforeach
@@ -364,7 +433,7 @@
         <div class="col-half">
             <table class="data-table">
                 <tr>
-                    <td class="label" style="width: 20%;">Payment Term:</td>
+                    <td class="label">Payment Term:</td>
                     <td class="value">
                         @foreach ($paymentTermOptions as $code => $label)
                             {!! $renderCheckboxOption($label, $pay->payment_term?->value === $code) !!}<br>
@@ -391,11 +460,11 @@
         <div class="col-half">
             <table class="data-table">
                 <tr>
-                    <td class="label" style="width: 40%;">Bank Name:</td>
-                    <td class="value" style="width: 60%;">{{ $dash($pay->bank_name) }}</td>
+                    <td class="label">Bank Name:</td>
+                    <td class="value">{{ $dash($pay->bank_name) }}</td>
                 </tr>
                 <tr>
-                    <td class="label" style="width: 20%;">Bank Account:</td>
+                    <td class="label">Bank Account:</td>
                     <td class="value">{{ $dash($pay->account_number) }}</td>
                 </tr>
                 <tr>
@@ -416,22 +485,18 @@
                         @foreach ($creditFacilityOptions as $value => $label)
                             {!! $renderCheckboxOption($label, $pay->credit_facility === (bool) $value) !!}&nbsp;&nbsp;&nbsp;
                         @endforeach
+                        @if ($pay->credit_facility === true)
+                            <div class="creditor-box">{{ $pay->creditor ?: '-' }}</div>
+                        @endif
                     </td>
                 </tr>
                 <tr>
-                    <td class="label">Creditor <i>(if has credit facility)</i>:</td>
-                    <td class="value">{{ $dash($pay->creditor) }}</td>
+                    <td class="label">Notes:</td>
+                    <td class="value">{{ $dash($pay->extra_notes) }}</td>
                 </tr>
             </table>
         </div>
     </div>
-
-    <table class="data-table">
-        <tr>
-            <td class="label" style="width: 20%;">Notes:</td>
-            <td class="value">{{ $dash($pay->extra_notes) }}</td>
-        </tr>
-    </table>
 @endif
 </div>
 
@@ -441,23 +506,21 @@
         <tr>
             <td class="sig-box" style="width: 50%; vertical-align: top;">
                 <div class="sig-title">Customer Representative</div>
-                <table class="data-table">
-                    <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name:</td></tr>
-                    <tr><td class="label">Date:</td></tr>
+                <div class="sig-caption">Authorized Signature &amp; Stamp</div>
+                <div class="sig-area"></div>
+                <table class="sig-fields">
+                    <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">&nbsp;</td></tr>
+                    <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                 </table>
-                <div class="sig-line"></div>
-                <div style="font-size: 7pt; color: #64748b; text-align: center;">Authorized Signature &amp; Stamp</div>
             </td>
             <td class="sig-box" style="width: 50%; vertical-align: top;">
                 <div class="sig-title">Sales Person (PT Tri Daya Selaras)</div>
-                <table class="data-table">
-                    <tr><td class="sig-area"></td></tr>
-                    <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
-                    <tr><td class="label">Date:</td></tr>
+                <div class="sig-caption">Authorized Signature</div>
+                <div class="sig-area"></div>
+                <table class="sig-fields">
+                    <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $marketingName }}</td></tr>
+                    <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                 </table>
-                <div class="sig-line"></div>
-                <div style="font-size: 7pt; color: #64748b; text-align: center;">Authorized Signature</div>
             </td>
         </tr>
     </table>

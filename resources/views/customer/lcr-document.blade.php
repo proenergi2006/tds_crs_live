@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #2b2b2b;
             line-height: 1.25;
             margin: 0;
@@ -48,7 +48,7 @@
         }
         .form-title {
             text-align: right;
-            font-size: 11pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #022c22;
             margin: 0;
@@ -57,7 +57,7 @@
         .site-banner {
             background-color: #022c22;
             color: #ffffff;
-            font-size: 10pt;
+            font-size: 11pt;
             font-weight: bold;
             padding: 5px 8px;
             margin-top: 4px;
@@ -65,27 +65,28 @@
         }
         .site-banner .site-index {
             font-weight: normal;
-            font-size: 8pt;
+            font-size: 9pt;
             color: #cbd5e1;
         }
 
         .section-title {
-            background-color: #f1f5f9;
-            color: #1e293b;
-            font-size: 8.5pt;
+            background-color: #2a6a3c;
+            color: #ffffff;
+            font-size: 10pt;
             font-weight: bold;
-            padding: 3px 6px;
-            margin-top: 8px;
-            border-left: 3px solid #022c22;
-            border-right: 1px solid #cbd5e1;
-            border-top: 1px solid #cbd5e1;
+            padding: 6px;
+            margin-top: 10px;
+            border-right: 1px solid #2a6a3c;
+            border-top: 1px solid #2a6a3c;
             text-transform: uppercase;
             page-break-after: avoid;
         }
 
         .section-content {
             padding: 6px 12px;
-            border: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            border-right: 1px solid #cbd5e1;
+            border-left: 1px solid #cbd5e1;
             page-break-inside: avoid;
         }
 
@@ -95,17 +96,16 @@
             margin-bottom: 2px;
         }
         table.data-table td {
-            padding: 2px 4px;
+            padding: 3px 4px;
             vertical-align: top;
         }
         .label {
             font-weight: bold;
             color: #475569;
-            width: 22%;
+            width: 34mm;
         }
         .value {
             color: #0f172a;
-            width: 28%;
         }
 
         table.grid-table {
@@ -118,7 +118,7 @@
             border: 1px solid #cbd5e1;
             padding: 3px 4px;
             text-align: left;
-            font-size: 8pt;
+            font-size: 10pt;
             vertical-align: top;
         }
         table.grid-table th {
@@ -135,7 +135,7 @@
         .sub-heading {
             font-weight: bold;
             color: #022c22;
-            font-size: 8pt;
+            font-size: 9pt;
             text-transform: uppercase;
             margin-top: 6px;
             margin-bottom: 2px;
@@ -147,7 +147,7 @@
         .photo-category-title {
             font-weight: bold;
             color: #1e293b;
-            font-size: 8pt;
+            font-size: 10pt;
             margin-bottom: 4px;
         }
         .photo-card {
@@ -164,7 +164,7 @@
             object-fit: cover;
         }
         .photo-card .photo-caption {
-            font-size: 7pt;
+            font-size: 9pt;
             color: #475569;
             margin-top: 3px;
         }
@@ -175,23 +175,35 @@
         .sig-box {
             border: 1px solid #cbd5e1;
             padding: 6px;
-            background-color: #fafafa;
         }
         .sig-title {
             font-weight: bold;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #1e293b;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 2px;
         }
-        .sig-line {
-            border-bottom: 1px dotted #94a3b8;
-            margin-bottom: 3px;
+        .sig-caption {
+            font-size: 9pt;
+            color: #475569;
         }
         .sig-area {
-            display: block;
-            min-height: 50px;
+            height: 70px;
+        }
+        table.sig-fields {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.sig-fields td {
+            border-bottom: 1px dashed #94a3b8;
+            padding: 4px 2px 2px;
+        }
+        table.sig-fields td.sig-field-label {
+            width: 1%;
+            white-space: nowrap;
+            padding-right: 6px;
+            color: #334155;
+        }
+        table.sig-fields td.sig-field-value {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -205,15 +217,28 @@
             return '';
         }
 
-        $provincePostal = trim(collect([$regionName($address->province), $address->postal_code])->filter()->implode(' '));
+        $line = trim((string) $address->address_line);
+        $alreadyWritten = function (?string $name) use ($line) {
+            if (blank($name)) {
+                return true;
+            }
+            $core = trim(preg_replace('/^(kabupaten|kab\.|kota administrasi|kota adm\.|kota|provinsi|daerah khusus ibukota)\s+/i', '', $name));
 
-        return collect([
-            $address->address_line,
-            $regionName($address->village),
-            $regionName($address->district),
-            $regionName($address->regency),
-            $provincePostal !== '' ? $provincePostal : null,
-        ])->filter()->implode(', ');
+            return $line !== '' && stripos($line, $core) !== false;
+        };
+
+        $parts = [$line !== '' ? $line : null];
+        foreach ([$address->village, $address->district, $address->regency, $address->province] as $region) {
+            $name = $regionName($region);
+            if (!$alreadyWritten($name)) {
+                $parts[] = $name;
+            }
+        }
+        if (filled($address->postal_code) && !preg_match('/\b\d{5}\b/', $line)) {
+            $parts[] = $address->postal_code;
+        }
+
+        return collect($parts)->filter()->implode(', ');
     };
     $rupiah = fn ($n) => $n === null ? '' : 'Rp ' . number_format((float) $n, 0, ',', '.');
     $codesToLabels = function (?array $codes, string $enumClass, ?string $otherText = null) {
@@ -264,7 +289,7 @@
                 </table>
             </td>
             <td style="text-align: right;">
-                <div class="form-title">LCR (LOKASI SURVEY) FORM</div>
+                <div class="form-title">LCR FORM</div>
             </td>
         </tr>
     </table>
@@ -280,7 +305,7 @@
     <div class="section-content">
         <table class="data-table">
             <tr>
-                <td class="label" width="20%">Nama Lokasi:</td>
+                <td class="label">Nama Lokasi:</td>
                 <td class="value" colspan="3"><b>{{ $dash($site->site_name) }}</b></td>
             </tr>
             <tr>
@@ -305,7 +330,7 @@
             </tr>
         </table>
 
-        <div class="sub-heading">Penanggung Jawab (PIC)</div>
+        <div class="sub-heading">Penanggung Jawab</div>
         <table class="grid-table">
             <thead>
                 <tr>
@@ -334,7 +359,7 @@
     <div class="section-content">
         <table class="data-table">
             <tr>
-                <td class="label" width="20%">Jenis Usaha Site:</td>
+                <td class="label">Jenis Usaha Site:</td>
                 <td class="value" colspan="3">{{ $dash($site->site_business_type === 'other' ? $site->site_business_type_other : $site->site_business_type) }}</td>
             </tr>
             <tr>
@@ -382,7 +407,7 @@
     <div class="section-content">
         <table class="data-table">
             <tr>
-                <td class="label" width="20%">Kapasitas Truk (Ton):</td>
+                <td class="label">Kapasitas Truk (Ton):</td>
                 <td class="value">Min {{ $dash($site->max_truck_capacity_min) }} &ndash; Max {{ $dash($site->max_truck_capacity_max) }}</td>
                 <td class="label">Jarak dari Depot:</td>
                 <td class="value">{{ $dash($site->distance_from_depot) }}</td>
@@ -434,7 +459,7 @@
     <div class="section-content">
         <table class="data-table">
             <tr>
-                <td class="label" width="20%">Metode Unloading:</td>
+                <td class="label">Metode Unloading:</td>
                 <td class="value">{{ $dash($site->unloading_method) }}</td>
                 <td class="label">Maks Truk/Hari:</td>
                 <td class="value">{{ $dash($site->max_trucks_per_day) }}</td>
@@ -460,7 +485,7 @@
     <div class="section-content">
         <table class="data-table">
             <tr>
-                <td class="label" width="20%">Metode Pemeriksaan Kualitas:</td>
+                <td class="label">Metode Pemeriksaan Kualitas:</td>
                 <td class="value" colspan="3">{{ $codesToLabels($site->quality_checking_method, \App\Enums\QualityCheckingMethod::class, $site->quality_checking_method_other) }}</td>
             </tr>
             <tr>
@@ -483,7 +508,7 @@
         <div class="section-content">
             <table class="data-table">
                 <tr>
-                    <td class="label" width="20%">Jenis Kapal:</td>
+                    <td class="label">Jenis Kapal:</td>
                     <td class="value">{{ $dash($site->vessel_type?->value === 'other' ? $site->vessel_type_other : $site->vessel_type?->label()) }}</td>
                     <td class="label">Kapasitas Kargo:</td>
                     <td class="value">{{ $dash($site->vessel_cargo_capacity) }}</td>
@@ -573,34 +598,31 @@
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
                 <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                    <div style="font-size: 7.5pt; color: #64748b;">Proposed by,</div>
                     <div class="sig-title">Marketing</div>
-                    <table class="data-table" style="border-spacing: 0;">
-                        <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name: {{ $marketingName }}</td></tr>
-                        <tr><td class="label">Date:</td></tr>
+                    <div class="sig-caption">Proposed by</div>
+                    <div class="sig-area"></div>
+                    <table class="sig-fields">
+                        <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $marketingName }}</td></tr>
+                        <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                     </table>
-                    <div class="sig-line"></div>
                 </td>
                 <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                    <div style="font-size: 7.5pt; color: #64748b;">Review by,</div>
                     <div class="sig-title">Logistik</div>
-                    <table class="data-table" style="border-spacing: 0;">
-                        <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name: {{ $logisticsReviewerBySite[$site->id_lcr] ?? '-' }}</td></tr>
-                        <tr><td class="label">Date:</td></tr>
+                    <div class="sig-caption">Review by</div>
+                    <div class="sig-area"></div>
+                    <table class="sig-fields">
+                        <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $logisticsReviewerBySite[$site->id_lcr] ?? '-' }}</td></tr>
+                        <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                     </table>
-                    <div class="sig-line"></div>
                 </td>
                 <td class="sig-box" style="width: 33.33%; vertical-align: top;">
-                    <div style="font-size: 7.5pt; color: #64748b;">Approved by,</div>
                     <div class="sig-title">Supervisor</div>
-                    <table class="data-table" style="border-spacing: 0;">
-                        <tr><td class="sig-area"></td></tr>
-                        <tr><td class="label" style="width: 30%;">Name: {{ $supervisorName }}</td></tr>
-                        <tr><td class="label">Date:</td></tr>
+                    <div class="sig-caption">Approved by</div>
+                    <div class="sig-area"></div>
+                    <table class="sig-fields">
+                        <tr><td class="sig-field-label">Name:</td><td class="sig-field-value">{{ $supervisorName }}</td></tr>
+                        <tr><td class="sig-field-label">Date:</td><td class="sig-field-value">&nbsp;</td></tr>
                     </table>
-                    <div class="sig-line"></div>
                 </td>
             </tr>
         </table>
