@@ -61,13 +61,12 @@ class QuotationController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'brand'               => ['nullable', Rule::enum(QuotationBrand::class)],
-            'status'              => ['nullable', Rule::enum(QuotationStatus::class)],
-            'customer_id'         => ['nullable', 'integer', 'min:1'],
-            'per_page'            => ['nullable', 'integer', 'min:1', 'max:200'],
-            'search'              => ['nullable', 'string', 'max:150'],
-            'valid_today'         => ['nullable', 'boolean'],
-            'without_po_customer' => ['nullable', 'boolean'],
+            'brand'       => ['nullable', Rule::enum(QuotationBrand::class)],
+            'status'      => ['nullable', Rule::enum(QuotationStatus::class)],
+            'customer_id' => ['nullable', 'integer', 'min:1'],
+            'per_page'    => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'      => ['nullable', 'string', 'max:150'],
+            'valid_today' => ['nullable', 'boolean'],
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 10);
@@ -100,10 +99,6 @@ class QuotationController extends Controller
 
         if ($request->boolean('valid_today')) {
             $query->validOn(now());
-        }
-
-        if ($request->boolean('without_po_customer')) {
-            $query->whereDoesntHave('poCustomers');
         }
 
         $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);

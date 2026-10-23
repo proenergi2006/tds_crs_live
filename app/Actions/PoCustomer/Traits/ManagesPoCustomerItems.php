@@ -4,7 +4,6 @@ namespace App\Actions\PoCustomer\Traits;
 
 use App\Exceptions\BusinessRuleException;
 use App\Models\PoCustomer;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 
@@ -92,18 +91,6 @@ trait ManagesPoCustomerItems
             'lampiran_poc'     => $file->storeAs('lampiran_po', $filename, 'public'),
             'lampiran_poc_ori' => $file->getClientOriginalName(),
         ];
-    }
-
-    private function translateDuplicateQuotation(\Throwable $e): \Throwable
-    {
-        $isDuplicateQuotation = $e instanceof UniqueConstraintViolationException
-            && str_contains($e->getMessage(), 'po_customers_quotation_id_unique');
-
-        if ($isDuplicateQuotation) {
-            return new BusinessRuleException('Penawaran ini sudah memiliki PO Customer.', 409, $e);
-        }
-
-        return $e;
     }
 
     private function volumeToCents(string|int|float $volume): int
