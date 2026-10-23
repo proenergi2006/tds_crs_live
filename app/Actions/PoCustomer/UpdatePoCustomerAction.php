@@ -41,7 +41,7 @@ class UpdatePoCustomerAction
 
                 $targetId         = (int) ($validated['quotation_id'] ?? $locked->quotation_id);
                 $quotationChanged = $targetId !== (int) $locked->quotation_id;
-                $replacement      = $quotationChanged ? $this->lockReplacement($locked, $targetId) : null;
+                $replacement      = $quotationChanged ? $this->lockReplacement($targetId) : null;
                 $quotationItems   = ($replacement ?? $locked->quotation)->items()->orderBy('id')->get();
 
                 $this->assertItemInvariants(
@@ -88,7 +88,7 @@ class UpdatePoCustomerAction
                 Storage::disk('public')->delete($newAttachment['lampiran_poc']);
             }
 
-            throw $this->translateDuplicateQuotation($e);
+            throw $e;
         }
 
         if ($oldPath) {
@@ -98,16 +98,12 @@ class UpdatePoCustomerAction
         return $updated;
     }
 
-    private function lockReplacement(PoCustomer $locked, int $quotationId): Quotation
+    private function lockReplacement(int $quotationId): Quotation
     {
         $quotation = Quotation::whereKey($quotationId)->lockForUpdate()->firstOrFail();
 
         if ($quotation->status !== QuotationStatus::Approved) {
             throw new BusinessRuleException('Penawaran ini sudah tidak berstatus disetujui.');
-        }
-
-        if (PoCustomer::where('quotation_id', $quotationId)->whereKeyNot($locked->getKey())->exists()) {
-            throw new BusinessRuleException('Penawaran ini sudah memiliki PO Customer.');
         }
 
         return $quotation;

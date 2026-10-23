@@ -29,10 +29,6 @@ class CreatePoCustomerAction
                     throw new BusinessRuleException('Penawaran ini sudah tidak berstatus disetujui.');
                 }
 
-                if (PoCustomer::where('quotation_id', $quotation->id)->exists()) {
-                    throw new BusinessRuleException('Penawaran ini sudah memiliki PO Customer.');
-                }
-
                 $quotationItems = $quotation->items()->orderBy('id')->get();
                 $this->assertItemInvariants($quotationItems, $validated['items']);
 
@@ -63,7 +59,7 @@ class CreatePoCustomerAction
                 Storage::disk('public')->delete($attachment['lampiran_poc']);
             }
 
-            throw $this->translateDuplicateQuotation($e);
+            throw $e;
         }
     }
 }

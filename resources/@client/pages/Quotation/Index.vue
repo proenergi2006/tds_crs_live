@@ -109,7 +109,6 @@ function canModifyDraft(row: QuotationIndexRow): boolean {
 function canCreatePoFrom(row: QuotationIndexRow): boolean {
   return (
     row.status === QUOTATION_STATUS.Approved &&
-    !row.has_po_customer &&
     isValidToday(row) &&
     canManageQuotationBrand(auth.can, row.brand)
   )

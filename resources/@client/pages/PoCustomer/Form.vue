@@ -427,7 +427,6 @@ async function fetchQuotationOptions(): Promise<void> {
         status: QUOTATION_STATUS.Approved,
         per_page: 200,
         valid_today: 1,
-        without_po_customer: 1,
         ...(isEditMode.value && poRecord.value ? { customer_id: poRecord.value.id_customer } : {}),
         ...(isEditMode.value && poRecord.value?.quotation?.brand ? { brand: poRecord.value.quotation.brand } : {}),
       },
@@ -754,7 +753,7 @@ function deriveDefaultPayment(tipePembayaran: string | null | undefined, repayme
             serverError('quotation_id') || serverError('id_customer') }}</small>
           <Alert v-if="unavailableQuotationAlert" variant="soft-warning" class="flex items-start gap-2 mt-2">
             <Lucide icon="AlertTriangle" class="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Penawaran ini sudah memiliki PO Customer atau tidak tersedia.</span>
+            <span>Penawaran ini tidak tersedia (belum disetujui atau tidak berlaku hari ini).</span>
           </Alert>
         </div>
       </div>
