@@ -211,6 +211,49 @@ export interface SalesConfirmationAdminAttachment {
   size_bytes: number | null
 }
 
+export interface SalesConfirmationQuotationItem {
+  produk: string | null
+  ukuran: string | null
+  satuan: string | null
+  unit_price: number
+  quantity: number
+  line_total: number
+  transport_price: number
+  final_price: number
+  final_total: number
+}
+
+export interface SalesConfirmationQuotationApproval {
+  step_order: number
+  step_name: string | null
+  actor_name: string | null
+  acted_at: string | null
+  status: string | null
+}
+
+export interface SalesConfirmationQuotation {
+  id?: number
+  brand?: QuotationBrand | null
+  nomor_penawaran: string
+  marketing_name: string
+  masa_berlaku?: string | null
+  sampai_dengan?: string | null
+  dpp?: number
+  subtotal_material?: number
+  transport_total?: number
+  harga_per_m3?: number
+  tipe_pembayaran?: string | null
+  repayment_hari?: number | string | null
+  type_pengiriman?: string | null
+  lokasi_pengiriman?: string | null
+  total_volume?: number
+  total_harga?: number
+  ppn_rate?: number
+  total_harga_ppn?: number
+  items?: SalesConfirmationQuotationItem[]
+  approvals?: SalesConfirmationQuotationApproval[]
+}
+
 export interface SalesConfirmationDetail {
   poc: {
     id_poc: number
@@ -228,7 +271,7 @@ export interface SalesConfirmationDetail {
     totals: PoCustomerTotals
   }
   customer: { id_customer: number; customer_code: string | null; company_name: string | null; credit_limit: number }
-  quotation: Record<string, any>
+  quotation: SalesConfirmationQuotation
   credit: {
     approved_top: number | null
     nilai_order_ppn: number

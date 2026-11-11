@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { debounce } from 'lodash'
 import axios from 'axios'
 
 import Button from '@/components/Base/Button'
 import { FormSelect } from '@/components/Base/Form'
 import Table from '@/components/Base/Table'
-import Lucide from '@/components/Base/Lucide'
 import DataList from '@/components/SystemDesign/Data/DataList.vue'
 import PageHeader from '@/components/SystemDesign/Page/PageHeader.vue'
-import ExtendableButton from '@/components/SystemDesign/Button/ExtendableButton.vue'
 import { useNotification } from '@/components/SystemDesign/Notification/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from '@/utils/format'
@@ -18,9 +16,9 @@ import { actionErrorMessage } from '@/utils/http-error-route'
 import type { ApiPaginatedResponse, SalesConfirmationIndexRow, SalesConfirmationStatus } from '@/types'
 
 import { SALES_CONFIRMATION_STATUS_OPTIONS, salesConfirmationBadgeClass } from './status'
-import UnblockModal from "./components/UnblockModal.vue";
+import ScRowAction from './components/ScRowAction.vue'
+import UnblockModal from './components/UnblockModal.vue'
 
-const router = useRouter()
 const auth = useAuthStore()
 const { error: notifyError, info } = useNotification()
 
@@ -34,11 +32,14 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const totalRecords = ref(0)
 const loading = ref(false)
-const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) };
+const unblockModal = { open: ref(false), idPoc: ref<number | null>(null) }
 
 const activeFilterCount = computed(() => (disposisiFilter.value ? 1 : 0))
 const emptyDescription = computed(() =>
   disposisiFilter.value ? 'Tidak ada Sales Confirmation untuk filter ini.' : 'Tidak ada Sales Confirmation',
+)
+const canSubmitUnblock = computed<boolean>(
+  () => auth.hasRole(ROLE_ADMIN_FINANCE) && auth.can('sales-confirmation.manage'),
 )
 
 watch(disposisiFilter, () => fetchData(1))
@@ -78,67 +79,70 @@ function resetFilters(): void {
   disposisiFilter.value = ''
 }
 
-function openDetail(id: number): void {
-  router.push({ name: 'sales-confirmations-detail', params: { id } })
+function isBlocked(row: SalesConfirmationIndexRow): boolean {
+  return row.sc_process_state === 'blocked'
+}
+
+function detailRoute(row: SalesConfirmationIndexRow): RouteLocationRaw {
+  return { name: 'sales-confirmations-detail', params: { id: row.id_poc } }
+}
+
+function blockedActionLabel(row: SalesConfirmationIndexRow): string {
+  return !row.active_unblock_request && canSubmitUnblock.value ? 'Ajukan Unblock' : 'Detail'
 }
 
 function openUnblockModal(idPoc: number): void {
-  unblockModal.idPoc.value = idPoc;
-  unblockModal.open.value = true;
+  unblockModal.idPoc.value = idPoc
+  unblockModal.open.value = true
 }
 
 function closeUnblockModal(): void {
-  unblockModal.open.value = false;
-  unblockModal.idPoc.value = null;
+  unblockModal.open.value = false
+  unblockModal.idPoc.value = null
 }
 
-function handleRowAction(row: SalesConfirmationIndexRow): void {
-  if (row.sc_process_state !== "blocked") {
-    openDetail(row.id_poc);
-    return;
-  }
-
+function handleBlockedRowAction(row: SalesConfirmationIndexRow): void {
   if (row.active_unblock_request) {
-    info("Menunggu", "Pengajuan Unblock untuk PO ini sedang diproses.");
-    return;
+    info('Menunggu', 'Pengajuan Unblock untuk PO ini sedang diproses.')
+    return
   }
 
-  if (auth.hasRole(ROLE_ADMIN_FINANCE) && auth.can("sales-confirmation.manage")) {
-    openUnblockModal(row.id_poc);
-    return;
+  if (canSubmitUnblock.value) {
+    openUnblockModal(row.id_poc)
+    return
   }
 
-  info("Diblokir", "PO ini diblokir kredit. Menunggu Admin Finance mengajukan Unblock.");
+  info('Diblokir', 'PO ini diblokir kredit. Menunggu Admin Finance mengajukan Unblock.')
 }
 
 function handleUnblockSaved(): void {
-  fetchData(currentPage.value);
+  fetchData(currentPage.value)
 }
 
 function rowBadgeLabel(row: SalesConfirmationIndexRow): string {
-  if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "Diblokir — Perlu Diajukan";
-  if (row.sc_process_state === "blocked" && row.active_unblock_request) return "Menunggu Persetujuan Unblock (BM)";
-  return row.disposisi_text ?? "-";
+  if (isBlocked(row) && !row.active_unblock_request) return 'Diblokir — Perlu Diajukan'
+  if (isBlocked(row) && row.active_unblock_request) return 'Menunggu Persetujuan Unblock (BM)'
+  return row.disposisi_text ?? '-'
 }
 
 function rowBadgeClass(row: SalesConfirmationIndexRow): string {
-  if (row.sc_process_state === "blocked" && !row.active_unblock_request) return "bg-rose-100 text-rose-700";
-  if (row.sc_process_state === "blocked" && row.active_unblock_request) return "bg-amber-100 text-amber-700";
-  return salesConfirmationBadgeClass(row.disposisi);
+  if (isBlocked(row) && !row.active_unblock_request) return 'bg-rose-100 text-rose-700'
+  if (isBlocked(row) && row.active_unblock_request) return 'bg-amber-100 text-amber-700'
+  return salesConfirmationBadgeClass(row.disposisi)
 }
 </script>
 
 <template>
   <div class="page-content-wrapper">
-    <div class="intro-y flex flex-col gap-4">
+    <div class="flex flex-col gap-4 intro-y">
       <PageHeader title="Sales Confirmation" description="Daftar Sales Confirmation dan status verifikasinya." />
 
       <DataList v-model:search="searchQuery" v-model:per-page="perPage" :loading="loading"
         :empty="salesConfirmations.length === 0" :colspan="7" :show-footer="true" :show-toolbar="true"
         :total="totalRecords" :current-page="currentPage" :total-pages="totalPages"
         :active-filter-count="activeFilterCount"
-        search-placeholder="Cari nomor PO atau customer..." loading-text="Memuat data Sales Confirmation..."
-        :empty-description="emptyDescription" @page-change="goToPage">
+        search-placeholder="Cari nomor PO, customer, atau nomor Quotation..."
+        loading-text="Memuat data Sales Confirmation..." :empty-description="emptyDescription" @page-change="goToPage">
         <template #filters>
           <div class="space-y-4 p-1">
             <div>
@@ -163,33 +167,35 @@ function rowBadgeClass(row: SalesConfirmationIndexRow): string {
         </template>
 
         <template #head>
-          <Table.Th class="w-12 text-center">No</Table.Th>
+          <Table.Th class="w-16 text-center">No</Table.Th>
+          <Table.Th class="w-64">No. PO Customer</Table.Th>
           <Table.Th>Customer</Table.Th>
-          <Table.Th>Marketing</Table.Th>
-          <Table.Th>Nomor / Tanggal PO</Table.Th>
-          <Table.Th class="text-center">Total Volume / Total Nilai (DPP)</Table.Th>
-          <Table.Th class="text-center">Disposisi</Table.Th>
-          <Table.Th class="text-center">Aksi</Table.Th>
+          <Table.Th class="w-36">Marketing</Table.Th>
+          <Table.Th class="w-72 text-center">Total Volume / Total Nilai (DPP)</Table.Th>
+          <Table.Th class="w-60 text-center">Disposisi</Table.Th>
+          <Table.Th class="w-36 text-center">Aksi</Table.Th>
         </template>
 
         <template #body>
-          <Table.Tr v-for="(row, idx) in salesConfirmations" :key="row.id_poc" class="transition hover:bg-slate-50">
+          <Table.Tr v-for="(row, idx) in salesConfirmations" :key="row.id_poc" class="hover:bg-slate-50 transition">
             <Table.Td class="num-sm text-center">
-              {{ (currentPage - 1) * perPage + idx + 1 }}
-            </Table.Td>
-
-            <Table.Td>
-              <div class="text-body-strong">{{ row.customer?.customer_code || '-' }}</div>
-              <div class="text-slate-500">{{ row.customer?.company_name || '-' }}</div>
-            </Table.Td>
-
-            <Table.Td class="whitespace-nowrap">
-              {{ row.marketing_name || '-' }}
+              {{ (currentPage - 1) * perPage + idx + 1 }}.
             </Table.Td>
 
             <Table.Td class="whitespace-nowrap">
               <div class="text-body-strong">{{ row.nomor_poc || '-' }}</div>
               <div class="text-slate-500">{{ formatDate(row.tanggal_poc) }}</div>
+            </Table.Td>
+
+            <Table.Td>
+              <div class="text-body-strong">{{ row.customer?.customer_code || '-' }}</div>
+              <div class="text-slate-500">
+                <span class="line-clamp-2" :title="row.customer?.company_name || '-'">{{ row.customer?.company_name || '-' }}</span>
+              </div>
+            </Table.Td>
+
+            <Table.Td>
+              <span class="line-clamp-2" :title="row.marketing_name || '-'">{{ row.marketing_name || '-' }}</span>
             </Table.Td>
 
             <Table.Td class="text-center whitespace-nowrap">
@@ -198,17 +204,15 @@ function rowBadgeClass(row: SalesConfirmationIndexRow): string {
             </Table.Td>
 
             <Table.Td class="text-center">
-              <span class="text-form-label inline-flex items-center rounded-full px-3 py-1"
-                :class="rowBadgeClass(row)">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-form-label" :class="rowBadgeClass(row)">
                 {{ rowBadgeLabel(row) }}
               </span>
               <div v-if="row.disposisi_time" class="text-slate-500">{{ formatDateTime(row.disposisi_time) }} WIB</div>
             </Table.Td>
 
             <Table.Td class="text-center">
-              <ExtendableButton variant="soft-dark" rounded label="Detail" @click="handleRowAction(row)">
-                <Lucide icon="Eye" class="w-4 h-4" />
-              </ExtendableButton>
+              <ScRowAction v-if="!isBlocked(row)" label="Detail" :to="detailRoute(row)" />
+              <ScRowAction v-else :label="blockedActionLabel(row)" @click="handleBlockedRowAction(row)" />
             </Table.Td>
           </Table.Tr>
         </template>
